@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn-error.log*
+
+# Superdesign / local agent caches (keep init artifacts; ignore credentials)
+.superdesign/config.json
+.superdesign/resume.json
+**/.superdesign/config.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Secrets / env
+.env
+.env.*
+!.env.example
+*.pem
+credentials.json
+service-account*.json
+
+# Build outputs
+dist/
+build/
+.gradle/
+*.apk
+*.aab
+DerivedData/
+xcuserdata/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/

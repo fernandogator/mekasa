@@ -1,0 +1,127 @@
+# MEKASA CI/CD Pipeline
+#
+# Manual-approve gate is mandatory before every production deployment — no exceptions.
+# The visual-verify stage fails if structural layout diverges from baseline.
+# Content differences from test data are expected and do not constitute failures.
+
+name: Mekasa CI
+
+on:
+  push:
+    paths:
+      - "mekasa/**"
+  pull_request:
+    paths:
+      - "mekasa/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: mekasa-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mekasa
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run unit, integration, UI, and snapshot tests
+        run: |
+          echo "TODO: run backend unit tests"
+          echo "TODO: run integration tests under tests/"
+          echo "TODO: run Android Compose UI + screenshot tests"
+          echo "TODO: run iOS XCUITest + swift-snapshot-testing"
+          # Placeholder until application code exists
+          true
+
+  build:
+    name: build
+    needs: test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mekasa
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Android and backend artifacts
+        run: |
+          echo "TODO: ./gradlew assembleDebug (android/)"
+          echo "TODO: build Cloud Run container image (backend/)"
+          true
+
+  visual-verify:
+    name: visual-verify
+    needs: build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mekasa
+    steps:
+      - uses: actions/checkout@v4
+      - name: Semantic UI verification against baselines
+        run: |
+          echo "TODO: compare structural layout to design/baselines/{android,ios}"
+          echo "Fail only on structural layout divergence; ignore test-data content diffs"
+          true
+
+  deploy-dev:
+    name: deploy-dev
+    needs: visual-verify
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: mekasa-dev
+    defaults:
+      run:
+        working-directory: mekasa
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy backend to GCP dev
+        run: |
+          echo "TODO: deploy Cloud Run service to mekasa-dev"
+          true
+
+  # REQUIRED human approval gate before prod — no exceptions
+  manual-approve:
+    name: manual-approve
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    environment: mekasa-prod-approval
+    steps:
+      - name: Human approval required
+        run: echo "Production deploy gated on GitHub Environment approval"
+
+  deploy-prod:
+    name: deploy-prod
+    needs: manual-approve
+    runs-on: ubuntu-latest
+    environment: mekasa-prod
+    defaults:
+      run:
+        working-directory: mekasa
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to production after human approval
+        run: |
+          echo "TODO: deploy Cloud Run service to mekasa-prod"
+          true
+
+  publish-spec:
+    name: publish-spec
+    needs: deploy-prod
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mekasa
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify spec version matches deployed code version
+        run: |
+          echo "TODO: assert docs/spec-v1.0.md version equals deployed artifact version"
+          true
