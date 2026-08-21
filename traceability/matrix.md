@@ -1,36 +1,36 @@
 # Mekasa Traceability Matrix
 
 Spec version: 1.0  
-Last updated: 2026-08-20
+Last updated: 2026-08-21
 
 | Requirement ID | Description | Design Artifact | Test Case ID | Test File | Status | Last Verified |
 |----------------|-------------|-----------------|--------------|-----------|--------|---------------|
-| REQ-001 | User Authentication | — | pending | pending | not tested | — |
-| REQ-002 | Household Creation | — | pending | pending | not tested | — |
-| REQ-003 | Household Membership and Roles | — | pending | pending | not tested | — |
-| REQ-004 | Address Confirmation via GPS | — | pending | pending | not tested | — |
-| REQ-005 | Preferred Store Selection | — | pending | pending | not tested | — |
-| REQ-006 | Inventory Item CRUD | — | pending | pending | not tested | — |
-| REQ-007 | Initial Inventory Scan | — | pending | pending | not tested | — |
-| REQ-008 | Barcode Lookup | — | pending | pending | not tested | — |
-| REQ-009 | Receipt OCR | — | pending | pending | not tested | — |
-| REQ-010 | Voice Item Input | — | pending | pending | not tested | — |
-| REQ-011 | Manual Item Entry | — | pending | pending | not tested | — |
-| REQ-012 | Shopping List Generation | — | pending | pending | not tested | — |
-| REQ-013 | Shopping List Approvals | — | pending | pending | not tested | — |
-| REQ-014 | Spending by Category | — | pending | pending | not tested | — |
-| REQ-015 | Trash Station Mode | — | pending | pending | not tested | — |
-| REQ-016 | Realtime Sync | — | pending | pending | not tested | — |
-| REQ-017 | Push Notifications | — | pending | pending | not tested | — |
-| REQ-018 | Home Photo Storage | — | pending | pending | not tested | — |
-| REQ-019 | Places Discovery | — | pending | pending | not tested | — |
-| REQ-020 | Secrets Management | — | pending | pending | not tested | — |
-| UI-001 | Home Dashboard | design/mockups/Dashboard.jsx | pending | android/src/test/ui/DashboardUITest.kt; ios/MekasaTests/UI/DashboardUITest.swift | not tested | — |
-| UI-002 | Onboarding Store Selection | design/mockups/OnboardingStoreSelection.jsx | pending | android/src/test/ui/OnboardingUITest.kt; ios/MekasaTests/UI/OnboardingUITest.swift | not tested | — |
-| UI-003 | Shopping List | design/mockups/ShoppingList.jsx | pending | android/src/test/ui/ShoppingListUITest.kt; ios/MekasaTests/UI/ShoppingListUITest.swift | not tested | — |
-| UI-004 | Add Items | design/mockups/AddItems.jsx | pending | android/src/test/ui/ScannerUITest.kt; ios/MekasaTests/UI/ScannerUITest.swift | not tested | — |
-| UI-005 | Trash Station Mode | design/mockups/TrashStationMode.jsx | pending | android/src/test/ui/TrashStationModeUITest.kt; ios/MekasaTests/UI/TrashStationModeUITest.swift | not tested | — |
-| NFR-001 | Performance | — | pending | pending | not tested | — |
-| NFR-002 | Security | — | pending | pending | not tested | — |
-| NFR-003 | Privacy | — | pending | pending | not tested | — |
-| NFR-004 | Reliability | — | pending | pending | not tested | — |
+| REQ-001 | Household Account Creation | — | pending | pending | not tested | — |
+| REQ-002 | Household Naming and Photo | design/mockups/OnboardingHouseholdSetup.jsx | pending | pending | not tested | — |
+| REQ-003 | Home Address Detection and Store Discovery | design/mockups/OnboardingStoreSelection.jsx | pending | pending | not tested | — |
+| REQ-004 | Barcode Scanning and Product Lookup | design/mockups/AddItems.jsx | pending | pending | not tested | — |
+| REQ-005 | Receipt Scanning and Bulk Entry | design/mockups/AddItems.jsx | pending | pending | not tested | — |
+| REQ-006 | Manual Item Entry | design/mockups/AddItems.jsx | pending | pending | not tested | — |
+| REQ-007 | Voice Input for Item Entry | design/mockups/AddItems.jsx | pending | pending | not tested | — |
+| REQ-008 | Trash Station Consumption Scanning | design/mockups/TrashStationMode.jsx | pending | pending | not tested | — |
+| REQ-009 | Low Stock Threshold — Manual | design/mockups/Dashboard.jsx | pending | pending | not tested | — |
+| REQ-010 | Low Stock Threshold — Learned | — | pending | pending | not tested | — |
+| REQ-011 | Automatic Shopping List Addition | design/mockups/ShoppingList.jsx | pending | pending | not tested | — |
+| REQ-012 | Child Shopping Request Submission | design/mockups/ShoppingList.jsx | pending | pending | not tested | — |
+| REQ-013 | Request Approval Workflow | design/mockups/ShoppingList.jsx | pending | pending | not tested | — |
+| REQ-014 | Shopping List Purchase Restriction | design/mockups/ShoppingList.jsx | pending | pending | not tested | — |
+| REQ-015 | Price Capture from Receipt | — | pending | pending | not tested | — |
+| REQ-016 | Price Estimation Fallback | — | pending | pending | not tested | — |
+| REQ-017 | Spending Categorization | — | pending | pending | not tested | — |
+| REQ-018 | Spending History Reporting | design/mockups/SpendingReport.jsx | pending | pending | not tested | — |
+| REQ-019 | Household Member Invitation | design/mockups/FamilyMembers.jsx | pending | pending | not tested | — |
+| REQ-020 | Real-Time Multi-Device Sync | — | pending | pending | not tested | — |
+| UI-001 | Native Android Interface | design/mockups/ (all screens) | pending | android/src/test/ui/ | not tested | — |
+| UI-002 | Native iOS Interface | design/mockups/ (all screens) | pending | ios/MekasaTests/UI/ | not tested | — |
+| UI-003 | Onboarding Flow | design/mockups/OnboardingStoreSelection.jsx | pending | android/src/test/ui/OnboardingUITest.kt; ios/MekasaTests/UI/OnboardingUITest.swift | not tested | — |
+| UI-004 | Home Dashboard | design/mockups/Dashboard.jsx | pending | android/src/test/ui/DashboardUITest.kt; ios/MekasaTests/UI/DashboardUITest.swift | not tested | — |
+| UI-005 | Trash Station Mode | design/mockups/TrashStationMode.jsx | pending | android/src/test/ui/TrashStationUITest.kt; ios/MekasaTests/UI/TrashStationUITest.swift | not tested | — |
+| NFR-001 | Scan Performance | — | pending | pending | not tested | — |
+| NFR-002 | Data Privacy | — | pending | pending | not tested | — |
+| NFR-003 | Offline Resilience | — | pending | pending | not tested | — |
+| NFR-004 | Secrets Management | — | pending | pending | not tested | — |

@@ -1,215 +1,295 @@
-# Mekasa Specification v1.0
+# MEKASA — Specification v1.0
 
-> **Note:** Full functional (REQ-*) and nonfunctional (NFR-*) requirement text
-> will be replaced in Step 11 with the authoritative product owner document.
-> UI-001 through UI-005 below are seeded now with Design Artifact links (Step 9).
-> Placeholder REQ/NFR stubs exist so the traceability matrix can reference stable IDs.
+## Functional Requirements
 
-**Spec version:** 1.0  
-**Status:** scaffold / partial seed
+### REQ-001: Household Account Creation
+Priority: P0
+Description: First adult creates a household account.
+Design Artifact: N/A (backend)
+Acceptance Criteria:
+- AC1: User can sign up via Sign in with Apple
+- AC2: User can sign up via Sign in with Google
+- AC3: User can sign up via email and password with strength validation
 
----
+### REQ-002: Household Naming and Photo
+Priority: P2
+Description: User optionally names the household and adds a home
+photo used as the home screen backdrop.
+Design Artifact: design/mockups/OnboardingHouseholdSetup.jsx
+Acceptance Criteria:
+- AC1: Household name field is optional and skippable
+- AC2: Photo upload is optional and skippable
+- AC3: If provided, photo appears as home screen backdrop
 
-## Functional Requirements (placeholders pending Step 11)
+### REQ-003: Home Address Detection and Store Discovery
+Priority: P1
+Description: During onboarding, GPS detects the home location,
+reverse geocodes to a suggested address the user confirms or edits,
+then queries for grocery and retail stores within 15 miles.
+Design Artifact: design/mockups/OnboardingStoreSelection.jsx
+Acceptance Criteria:
+- AC1: App requests location permission and detects GPS coordinates
+- AC2: Coordinates are reverse geocoded to a human-readable address
+  shown to the user for confirmation
+- AC3: User can manually edit or replace the detected address before
+  confirming
+- AC4: Confirmed address is used to query nearby stores within a
+  15-mile radius including Walmart, Costco, Publix, and local stores
+- AC5: User selects one or more regular stores from the returned list
 
-### REQ-001: User Authentication
-Priority: P0  
-- AC1: Users can sign in securely  
-- AC2: Sessions expire appropriately  
-- AC3: Unauthorized access is rejected  
+### REQ-004: Barcode Scanning and Product Lookup
+Priority: P0
+Description: User scans a barcode and the app retrieves item name,
+category, and typical price from a third-party database.
+Design Artifact: design/mockups/AddItems.jsx
+Acceptance Criteria:
+- AC1: Valid barcode returns product name and category within 5
+  seconds on standard mobile network
+- AC2: Unknown barcode prompts manual entry fallback
+- AC3: Item is added to inventory with quantity of 1 by default,
+  adjustable before confirming
 
-### REQ-002: Household Creation
-Priority: P0  
-- AC1: User can create a household with name  
-- AC2: Optional home photo can be attached  
-- AC3: Creator becomes household admin  
+### REQ-005: Receipt Scanning and Bulk Entry
+Priority: P0
+Description: User photographs a receipt and backend OCR extracts
+line items for bulk addition to inventory.
+Design Artifact: design/mockups/AddItems.jsx
+Acceptance Criteria:
+- AC1: Receipt image is sent to backend OCR and returns parsed item list
+- AC2: User reviews and confirms or edits parsed items before saving
+- AC3: Prices from receipt are stored as price-paid per item
 
-### REQ-003: Household Membership and Roles
-Priority: P0  
-- AC1: Admins can invite members  
-- AC2: Role-based permissions enforced  
-- AC3: Members can leave or be removed  
+### REQ-006: Manual Item Entry
+Priority: P1
+Description: User manually adds an item with name, category, and quantity.
+Design Artifact: design/mockups/AddItems.jsx
+Acceptance Criteria:
+- AC1: Form includes name, category, quantity, and optional price
+- AC2: Item saves to shared household inventory immediately
+- AC3: Manual entry is accessible from the main inventory screen
 
-### REQ-004: Address Confirmation via GPS
-Priority: P0  
-- AC1: Device GPS used for address suggestion  
-- AC2: Reverse geocoding produces confirmable address  
-- AC3: User can correct address before save  
+### REQ-007: Voice Input for Item Entry
+Priority: P2
+Description: User adds an item using voice input.
+Design Artifact: design/mockups/AddItems.jsx
+Acceptance Criteria:
+- AC1: Voice input is triggerable from the inventory screen
+- AC2: Spoken item name is transcribed and matched against known
+  products where possible
+- AC3: User confirms item before it is saved
 
-### REQ-005: Preferred Store Selection
-Priority: P0  
-- AC1: Nearby stores discovered within 15-mile radius  
-- AC2: User can select preferred stores  
-- AC3: Selection persists for the household  
+### REQ-008: Trash Station Consumption Scanning
+Priority: P0
+Description: A dedicated scanning mode on a secondary device
+auto-decrements inventory when an item is scanned before disposal.
+Design Artifact: design/mockups/TrashStationMode.jsx
+Acceptance Criteria:
+- AC1: Trash station mode runs on a secondary device logged into
+  the household account
+- AC2: Scanning a known item barcode decrements quantity by 1 immediately
+- AC3: Unknown item scans are logged but do not create negative quantities
 
-### REQ-006: Inventory Item CRUD
-Priority: P0  
-- AC1: Items can be created, read, updated, deleted  
-- AC2: Quantity and category supported  
-- AC3: Changes sync across household devices  
+### REQ-009: Low Stock Threshold — Manual
+Priority: P0
+Description: User sets a minimum quantity threshold per item.
+Design Artifact: design/mockups/Dashboard.jsx
+Acceptance Criteria:
+- AC1: Threshold is settable from the item detail screen
+- AC2: Default threshold is 1 if not set
+- AC3: Changes apply immediately to low-stock calculations
 
-### REQ-007: Initial Inventory Scan
-Priority: P0  
-- AC1: Onboarding supports first inventory capture  
-- AC2: Scanned items appear in inventory  
-- AC3: User can skip and add later  
+### REQ-010: Low Stock Threshold — Learned
+Priority: P2
+Description: System learns consumption rate and suggests threshold
+adjustments over time.
+Design Artifact: N/A (backend)
+Acceptance Criteria:
+- AC1: System tracks consumption events with timestamps
+- AC2: After sufficient data, system suggests an adjusted threshold
+- AC3: User must approve suggested changes before they take effect
 
-### REQ-008: Barcode Lookup
-Priority: P0  
-- AC1: UPC/barcode resolves product metadata  
-- AC2: Failures surface actionable errors  
-- AC3: Manual fallback available  
+### REQ-011: Automatic Shopping List Addition
+Priority: P0
+Description: When quantity hits the low-stock threshold, item
+auto-adds to the shared shopping list.
+Design Artifact: design/mockups/ShoppingList.jsx
+Acceptance Criteria:
+- AC1: Item appears on shopping list within 5 seconds of crossing threshold
+- AC2: No approval step required for auto-additions
+- AC3: Item is removed from shopping list once marked purchased
 
-### REQ-009: Receipt OCR
-Priority: P0  
-- AC1: Receipt image processed via Cloud Vision  
-- AC2: Line items extracted into candidates  
-- AC3: User confirms before committing  
+### REQ-012: Child Shopping Request Submission
+Priority: P1
+Description: A Member can submit a shopping request tagged with their name.
+Design Artifact: design/mockups/ShoppingList.jsx
+Acceptance Criteria:
+- AC1: Request includes item name and is tagged with the requesting
+  member's name
+- AC2: Request appears in pending state visible to all Owners
+- AC3: Request does not appear as confirmed until approved
 
-### REQ-010: Voice Item Input
-Priority: P1  
-- AC1: Voice utterance parsed into item draft  
-- AC2: User confirms draft before save  
-- AC3: Unsupported locales handled gracefully  
+### REQ-013: Request Approval Workflow
+Priority: P1
+Description: Owner can approve, reject, or request more info on
+a pending child request.
+Design Artifact: design/mockups/ShoppingList.jsx
+Acceptance Criteria:
+- AC1: Owner can approve, moving item to active shopping list
+- AC2: Owner can reject with optional reason
+- AC3: Owner can send a question back to the requesting member
 
-### REQ-011: Manual Item Entry
-Priority: P0  
-- AC1: User can enter name, qty, category manually  
-- AC2: Validation prevents empty required fields  
-- AC3: Saved item appears in inventory  
+### REQ-014: Shopping List Purchase Restriction
+Priority: P1
+Description: Only Owners can mark shopping list items as purchased in v1.0.
+Design Artifact: design/mockups/ShoppingList.jsx
+Acceptance Criteria:
+- AC1: Purchase action is only available to Owner-role users
+- AC2: Member-role users can view but not mark items purchased
+- AC3: Data model supports a future "buyer" permission without schema migration
 
-### REQ-012: Shopping List Generation
-Priority: P0  
-- AC1: List auto-generated from inventory thresholds  
-- AC2: User can add/remove list items  
-- AC3: List shared with household in realtime  
+### REQ-015: Price Capture from Receipt
+Priority: P0
+Description: Actual price-paid is recorded when an item is purchased
+and logged via receipt scan.
+Design Artifact: N/A (backend)
+Acceptance Criteria:
+- AC1: Price-paid is stored per purchase event, not just per item
+- AC2: Price history is retained for at least 12 months
+- AC3: Price is associated with the store where purchased if known
 
-### REQ-013: Shopping List Approvals
-Priority: P1  
-- AC1: Requests can be approved or rejected  
-- AC2: Requester notified of decision  
-- AC3: Only authorized roles may approve  
+### REQ-016: Price Estimation Fallback
+Priority: P1
+Description: When actual price is unknown, system estimates using
+historical data, online lookup, or category average.
+Design Artifact: N/A (backend)
+Acceptance Criteria:
+- AC1: System checks historical price for same item first
+- AC2: If no history, attempts online price lookup
+- AC3: If no data available, uses category or brand average,
+  clearly marked as estimated
 
-### REQ-014: Spending by Category
-Priority: P0  
-- AC1: Purchases attributed to categories  
-- AC2: Reports aggregate by period  
-- AC3: Household members see consistent totals  
+### REQ-017: Spending Categorization
+Priority: P0
+Description: All tracked spending is categorized.
+Design Artifact: N/A (backend)
+Acceptance Criteria:
+- AC1: Every item has an assigned category at time of entry
+- AC2: Spending reports can be filtered and grouped by category
+- AC3: User can manually recategorize an item
 
-### REQ-015: Trash Station Mode
-Priority: P0  
-- AC1: Mode supports quick depletion of items  
-- AC2: Depleted items update inventory and list  
-- AC3: Mode is reachable from Add Items flow  
+### REQ-018: Spending History Reporting
+Priority: P1
+Description: Users can view historical spending by category and time period.
+Design Artifact: design/mockups/SpendingReport.jsx
+Acceptance Criteria:
+- AC1: Report supports weekly, monthly, and yearly groupings
+- AC2: Report is viewable by all household members
+- AC3: No budget caps or alerts in v1.0
 
-### REQ-016: Realtime Sync
-Priority: P0  
-- AC1: Inventory and list changes propagate in realtime  
-- AC2: Conflict handling is deterministic  
-- AC3: Offline changes reconcile on reconnect  
+### REQ-019: Household Member Invitation
+Priority: P0
+Description: Owner can invite additional adults (Owners) or children
+(Members) to the household.
+Design Artifact: design/mockups/FamilyMembers.jsx
+Acceptance Criteria:
+- AC1: Invite requires name plus email or phone number
+- AC2: Invited user receives a notification or link to download and join
+- AC3: Role is set at invitation and changeable by any Owner later
 
-### REQ-017: Push Notifications
-Priority: P1  
-- AC1: Members receive relevant household alerts  
-- AC2: Notification preferences are respected  
-- AC3: No PII leaked in notification payloads beyond necessity  
-
-### REQ-018: Home Photo Storage
-Priority: P2  
-- AC1: Photos stored in Cloud Storage  
-- AC2: Access limited to household members  
-- AC3: Failed uploads surface retry  
-
-### REQ-019: Places Discovery
-Priority: P0  
-- AC1: Google Places used within 15-mile radius  
-- AC2: Results include name and location  
-- AC3: API errors degrade gracefully  
-
-### REQ-020: Secrets Management
-Priority: P0  
-- AC1: All secrets via GCP Secret Manager  
-- AC2: No secrets in source or logs  
-- AC3: Rotation procedure documented  
+### REQ-020: Real-Time Multi-Device Sync
+Priority: P0
+Description: All household data syncs in real time across all
+members' devices.
+Design Artifact: N/A (backend)
+Acceptance Criteria:
+- AC1: Changes appear on other devices within 5 seconds under
+  normal network conditions
+- AC2: Sync conflicts resolve without data loss
+- AC3: Offline changes queue and sync once connectivity is restored
 
 ---
 
 ## UI Requirements
 
-### UI-001: Home Dashboard
-Priority: P0  
-Design Artifact: design/mockups/Dashboard.jsx  
-User Flow: design/user-flows.md  
-- AC1: Built entirely in Jetpack Compose (Android) / SwiftUI (iOS), no XML or Storyboards  
-- AC2: Follows Material Design 3 (Android) / Apple HIG (iOS)  
-- AC3: Supports light and dark mode  
-Test File: android/src/test/ui/DashboardUITest.kt  
-iOS Test File: ios/MekasaTests/UI/DashboardUITest.swift  
+### UI-001: Native Android Interface
+Priority: P0
+Design Artifact: design/mockups/ (all screens)
+User Flow: design/user-flows.md
+Test File: android/src/test/ui/
+Acceptance Criteria:
+- AC1: Built entirely in Jetpack Compose, no XML layouts
+- AC2: Follows Material Design 3
+- AC3: Supports light and dark mode
 
-### UI-002: Onboarding Store Selection
-Priority: P0  
-Design Artifact: design/mockups/OnboardingStoreSelection.jsx  
-User Flow: design/user-flows.md  
-- AC1: Presents nearby stores discovered within 15 miles  
-- AC2: User can select and confirm preferred stores  
-- AC3: Navigation continues to Initial Inventory Scan on confirm  
-Test File: android/src/test/ui/OnboardingUITest.kt  
-iOS Test File: ios/MekasaTests/UI/OnboardingUITest.swift  
+### UI-002: Native iOS Interface
+Priority: P0
+Design Artifact: design/mockups/ (all screens)
+User Flow: design/user-flows.md
+Test File: ios/MekasaTests/UI/
+Acceptance Criteria:
+- AC1: Built entirely in SwiftUI, no Storyboards
+- AC2: Follows Apple Human Interface Guidelines
+- AC3: Supports light and dark mode
 
-### UI-003: Shopping List
-Priority: P0  
-Design Artifact: design/mockups/ShoppingList.jsx  
-User Flow: design/user-flows.md  
-- AC1: Displays household shopping list items  
-- AC2: Supports add/remove and approval actions where authorized  
-- AC3: Reflects realtime sync updates  
-Test File: android/src/test/ui/ShoppingListUITest.kt  
-iOS Test File: ios/MekasaTests/UI/ShoppingListUITest.swift  
+### UI-003: Onboarding Flow
+Priority: P0
+Design Artifact: design/mockups/OnboardingStoreSelection.jsx
+User Flow: design/user-flows.md
+Test File: android/src/test/ui/OnboardingUITest.kt, ios/MekasaTests/UI/OnboardingUITest.swift
+Acceptance Criteria:
+- AC1: Follows sequence: signup → household name/photo → address
+  confirmation → store selection → inventory scan → invite prompt
+- AC2: Every optional step is clearly skippable
+- AC3: Onboarding is resumable if interrupted
 
-### UI-004: Add Items
-Priority: P0  
-Design Artifact: design/mockups/AddItems.jsx  
-User Flow: design/user-flows.md  
-- AC1: Entry points for barcode, receipt, voice, manual, and trash-station modes  
-- AC2: Each path produces a confirmable item draft  
-- AC3: Successful save returns user to inventory or dashboard as specified in user flows  
-Test File: android/src/test/ui/ScannerUITest.kt  
-iOS Test File: ios/MekasaTests/UI/ScannerUITest.swift  
+### UI-004: Home Dashboard
+Priority: P0
+Design Artifact: design/mockups/Dashboard.jsx
+User Flow: design/user-flows.md
+Test File: android/src/test/ui/DashboardUITest.kt, ios/MekasaTests/UI/DashboardUITest.swift
+Acceptance Criteria:
+- AC1: Displays low-stock items prominently
+- AC2: Displays pending child requests for Owner users
+- AC3: Displays home photo as backdrop if set
 
 ### UI-005: Trash Station Mode
-Priority: P0  
-Design Artifact: design/mockups/TrashStationMode.jsx  
-User Flow: design/user-flows.md  
-- AC1: Enables rapid marking of items as depleted  
-- AC2: Updates inventory and shopping list accordingly  
-- AC3: Layout and hierarchy match approved design artifact structurally  
-Test File: android/src/test/ui/TrashStationModeUITest.kt  
-iOS Test File: ios/MekasaTests/UI/TrashStationModeUITest.swift  
+Priority: P0
+Design Artifact: design/mockups/TrashStationMode.jsx
+User Flow: design/user-flows.md
+Test File: android/src/test/ui/TrashStationUITest.kt, ios/MekasaTests/UI/TrashStationUITest.swift
+Acceptance Criteria:
+- AC1: Simplified single-purpose UI for scanning only
+- AC2: No navigation or non-scanning elements visible
+- AC3: Scan confirmation is displayed briefly then resets
 
 ---
 
-## Nonfunctional Requirements (placeholders pending Step 11)
+## Non-Functional Requirements
 
-### NFR-001: Performance
-Priority: P0  
-- AC1: API p95 latency within agreed budget  
-- AC2: Cold start acceptable for Cloud Run  
-- AC3: Mobile screens remain responsive under normal load  
+### NFR-001: Scan Performance
+Priority: P0
+Acceptance Criteria:
+- AC1: 95th percentile barcode scan-to-result under 5 seconds
+- AC2: Works in typical indoor lighting
+- AC3: Failed scans provide immediate manual entry fallback
 
-### NFR-002: Security
-Priority: P0  
-- AC1: Authn/authz on all protected endpoints  
-- AC2: Secrets only via Secret Manager  
-- AC3: No secrets in client binaries beyond public keys  
+### NFR-002: Data Privacy
+Priority: P0
+Acceptance Criteria:
+- AC1: No cross-household data access possible
+- AC2: All API calls require authentication
+- AC3: No PII in plaintext application logs
 
-### NFR-003: Privacy
-Priority: P0  
-- AC1: No PII in logs  
-- AC2: Location used only for stated features  
-- AC3: Privacy policy covers data practices before launch  
+### NFR-003: Offline Resilience
+Priority: P1
+Acceptance Criteria:
+- AC1: Manual entry and trash-station scans work offline and queue
+- AC2: Clear offline indicator shown when disconnected
+- AC3: No data loss on reconnect
 
-### NFR-004: Reliability
-Priority: P0  
-- AC1: External calls use 10s timeout and 3-retry backoff  
-- AC2: Sync recovers after transient network loss  
-- AC3: Monitoring alerts on sustained error rates  
+### NFR-004: Secrets Management
+Priority: P0
+Acceptance Criteria:
+- AC1: All secrets stored in GCP Secret Manager
+- AC2: No secrets in source control history
+- AC3: Secrets rotated on a defined schedule

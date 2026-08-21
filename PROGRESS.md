@@ -1,7 +1,7 @@
 # Project MEKASA
 
 - **Current Phase:** 1 — Backend API Foundation
-- **Last Updated:** 2026-08-20
+- **Last Updated:** 2026-08-21
 
 > **WARNING:** This file must be reconciled against the actual codebase at the
 > start of every session. Never trust this file without verification.
@@ -12,49 +12,49 @@
 
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
-| auth | not started | unknown | — | Await versioned spec; scaffold API auth module |
-| household | not started | unknown | — | Await versioned spec; scaffold household endpoints |
-| inventory | not started | unknown | — | Await versioned spec; scaffold inventory CRUD |
-| shopping-list | not started | unknown | — | Await versioned spec; scaffold list generation |
-| spending | not started | unknown | — | Await versioned spec; scaffold category tracking |
-| sync | not started | unknown | — | Await versioned spec; scaffold realtime sync |
-| ocr | not started | unknown | — | Await versioned spec; wire Vision API receipt scan |
-| barcode | not started | unknown | — | Await versioned spec; integrate UPC lookup |
-| places | not started | unknown | — | Await versioned spec; Places API within 15 mi |
-| notifications | not started | unknown | — | Await versioned spec; scaffold push notifications |
+| auth | not started | unknown | — | Scaffold API auth module per REQ-001 |
+| household | not started | unknown | — | Scaffold household endpoints per REQ-002, REQ-019 |
+| inventory | not started | unknown | — | Scaffold inventory CRUD per REQ-004–REQ-008 |
+| shopping-list | not started | unknown | — | Scaffold list generation per REQ-011–REQ-014 |
+| spending | not started | unknown | — | Scaffold category tracking per REQ-015–REQ-018 |
+| sync | not started | unknown | — | Scaffold realtime sync per REQ-020 |
+| ocr | not started | unknown | — | Wire Vision API receipt scan per REQ-005 |
+| barcode | not started | unknown | — | Integrate UPC lookup per REQ-004 |
+| places | not started | unknown | — | Places API within 15 mi per REQ-003 |
+| notifications | not started | unknown | — | Scaffold push notifications per PRD §8 |
 
 ## Phase 2: Android App
 
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
-| onboarding | not started | unknown | — | Confirm UI req + mockup; write test stubs first |
-| dashboard | not started | unknown | — | Confirm UI req + mockup; write test stubs first |
-| inventory-screen | not started | unknown | — | Confirm UI req + mockup; write test stubs first |
-| scanner | not started | unknown | — | Confirm UI req + mockup; write test stubs first |
-| shopping-list-screen | not started | unknown | — | Confirm UI req + mockup; write test stubs first |
-| spending-screen | not started | unknown | — | Confirm UI req + mockup; write test stubs first |
-| settings | not started | unknown | — | Confirm UI req + mockup; write test stubs first |
-| trash-station-mode | not started | unknown | — | Confirm UI req + mockup; write test stubs first |
+| onboarding | not started | unknown | — | Confirm UI-003 + mockups; expand OnboardingUITest stubs |
+| dashboard | not started | unknown | — | Confirm UI-004 + Dashboard.jsx; expand DashboardUITest |
+| inventory-screen | not started | unknown | — | Await mockup + UI req coverage beyond AddItems |
+| scanner | not started | unknown | — | Confirm AddItems.jsx; expand ScannerUITest |
+| shopping-list-screen | not started | unknown | — | Confirm ShoppingList.jsx; add ShoppingList UI test stubs |
+| spending-screen | not started | unknown | — | Await SpendingReport.jsx from Superdesign |
+| settings | not started | unknown | — | Await FamilyMembers.jsx from Superdesign |
+| trash-station-mode | not started | unknown | — | Align TrashStation* test filename with UI-005 |
 
 ## Phase 3: iOS App
 
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
-| onboarding | not started | unknown | — | Confirm UI req + mockup; write test stubs first |
-| dashboard | not started | unknown | — | Confirm UI req + mockup; write test stubs first |
-| inventory-screen | not started | unknown | — | Confirm UI req + mockup; write test stubs first |
-| scanner | not started | unknown | — | Confirm UI req + mockup; write test stubs first |
-| shopping-list-screen | not started | unknown | — | Confirm UI req + mockup; write test stubs first |
-| spending-screen | not started | unknown | — | Confirm UI req + mockup; write test stubs first |
-| settings | not started | unknown | — | Confirm UI req + mockup; write test stubs first |
-| trash-station-mode | not started | unknown | — | Confirm UI req + mockup; write test stubs first |
+| onboarding | not started | unknown | — | Confirm UI-003 + mockups; expand OnboardingUITest stubs |
+| dashboard | not started | unknown | — | Confirm UI-004 + Dashboard.jsx; expand DashboardUITest |
+| inventory-screen | not started | unknown | — | Await mockup + UI req coverage beyond AddItems |
+| scanner | not started | unknown | — | Confirm AddItems.jsx; expand ScannerUITest |
+| shopping-list-screen | not started | unknown | — | Confirm ShoppingList.jsx; add ShoppingList UI test stubs |
+| spending-screen | not started | unknown | — | Await SpendingReport.jsx from Superdesign |
+| settings | not started | unknown | — | Await FamilyMembers.jsx from Superdesign |
+| trash-station-mode | not started | unknown | — | Align TrashStation* test filename with UI-005 |
 
 ## Phase 4: UI Design and Visual Verification
 
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
 | design-system | not started | unknown | — | Flesh out tokens after Superdesign session |
-| superdesign-mockups | not started | unknown | — | Run Superdesign after scaffold confirmation |
+| superdesign-mockups | blocked | unknown | Missing mockups referenced by spec | Run Superdesign; add OnboardingHouseholdSetup, SpendingReport, FamilyMembers |
 | android-ui-tests | not started | unknown | — | Expand stubs once screens exist |
 | ios-ui-tests | not started | unknown | — | Expand stubs once screens exist |
 | baseline-screenshots | not started | unknown | — | Capture from approved mockup renders |
@@ -65,7 +65,7 @@
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
 | end-to-end-tests | not started | unknown | — | Define E2E scenarios after API + clients exist |
-| performance-tests | not started | unknown | — | Define perf budgets from NFR section |
+| performance-tests | not started | unknown | — | Define perf budgets from NFR-001 |
 | sync-stress-tests | not started | unknown | — | Define multi-device sync stress plan |
 
 ## Phase 6: Launch Prep
@@ -74,12 +74,21 @@
 |--------|--------|---------------|------------|-----------|
 | app-store-assets | not started | unknown | — | Collect screenshots and store listing copy |
 | privacy-policy | not started | unknown | — | Draft privacy policy covering PII and location |
-| secrets-rotation | not started | unknown | — | Document Secret Manager rotation procedure |
+| secrets-rotation | not started | unknown | — | Document Secret Manager rotation per NFR-004 |
 | monitoring-setup | not started | unknown | — | Configure Cloud Run / Firebase monitoring |
 
 ---
 
 ## Running Log
+
+### 2026-08-21 — Steps 11–12 document seeding
+- Seeded `docs/PRD.md`, `docs/spec-v1.0.md`, and `docs/architecture.md` from authoritative v1.0 sources (exact copy).
+- Rebuilt `traceability/matrix.md` and `matrix.csv` to match authoritative REQ/UI/NFR titles, Design Artifact paths, and Test File paths.
+- **Reconcile mismatches flagged (no code changes):**
+  - Spec references mockups not yet in repo: `OnboardingHouseholdSetup.jsx`, `SpendingReport.jsx`, `FamilyMembers.jsx`.
+  - UI-005 Test File paths say `TrashStationUITest.kt` / `TrashStationUITest.swift`; scaffold has `TrashStationModeUITest.kt` / `TrashStationModeUITest.swift`.
+  - Scaffold UI test stubs also exist for ShoppingList, Spending, Settings, Inventory, Scanner beyond the five UI-XXX entries — keep until Superdesign + UI req coverage expands.
+- Still no application code. Next: Superdesign session for real `design/mockups/` once Node/Superdesign available; then Phase 1 backend.
 
 ### 2026-08-20 — AI-SDLC scaffold session
 - Scaffolded Steps 1–10 under `mekasa/` (no application code).
