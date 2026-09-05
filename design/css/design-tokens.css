@@ -1,1 +1,13 @@
-
+:root {
+  --color-brand: #171e19;
+  --color-brand-muted: #b7c6c2;
+  --color-surface: #eeebe3;
+  --color-surface-elevated: #ffffff;
+  --color-text: #171e19;
+  --color-text-muted: #6d7a76;
+  --color-accent: #ca0013;
+  --color-danger: #ca0013;
+  --color-success: #2f6b4f;
+  --color-warning: #c45c12;
+  --color-overlay: rgba(183, 198, 194, 0.20);
+}
