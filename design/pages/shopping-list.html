@@ -1,0 +1,138 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+
+    <!-- Primary Meta Tags -->
+    <title>Superdesign</title>
+    <meta name="title" content="Superdesign" />
+    <meta name="description" content="AI-powered design platform for creating beautiful interfaces and experiences" />
+    <meta name="keywords" content="design platform, AI design, web design, UI design, interface design, design tool, collaborative design" />
+    <meta name="author" content="Superdesign Team" />
+    <meta name="application-name" content="Superdesign" />
+
+    <!-- Theme color for browsers -->
+    <meta name="theme-color" content="#FAFAFA" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:site_name" content="Superdesign" />
+    <meta property="og:title" content="Superdesign" />
+    <meta property="og:description" content="AI-powered design platform for creating beautiful interfaces and experiences" />
+    <meta property="og:image" content="https://superdesign.dev/icons/icon-512x512.png" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Superdesign" />
+    <meta name="twitter:description" content="AI-powered design platform for creating beautiful interfaces and experiences" />
+    <meta name="twitter:image" content="https://superdesign.dev/icons/icon-512x512.png" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Superdesign" />
+    <meta name="msapplication-TileColor" content="#FAFAFA" />
+    <meta name="msapplication-tap-highlight" content="no" />
+
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/superdesign_logo.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-icon-180.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+
+    <!-- iOS Splash Screens -->
+    <link rel="apple-touch-startup-image" href="/icons/apple-splash-2048-2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/apple-splash-1668-2388.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/apple-splash-1536-2048.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/apple-splash-1125-2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/apple-splash-1242-2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/apple-splash-750-1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/apple-splash-640-1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Superdesign",
+        "description": "AI-powered design platform for creating beautiful interfaces and experiences",
+        "url": "https://superdesign.dev",
+        "applicationCategory": "DesignApplication",
+        "operatingSystem": "Web",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "author": {
+          "@type": "Organization",
+          "name": "Superdesign Team"
+        }
+      }
+    </script>
+
+    <!-- Theme initialization (prevent flash) -->
+    <script>
+      try {
+        // Light/dark mode initialization
+        const theme = localStorage.getItem('theme');
+        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        const activeTheme = theme || systemTheme;
+        if (activeTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+
+        // Color theme initialization
+        const colorTheme = localStorage.getItem('colorTheme');
+        if (colorTheme && colorTheme !== 'default') {
+          document.documentElement.setAttribute('data-color-theme-pending', colorTheme);
+        }
+      } catch (e) {}
+
+      // iOS input handling to prevent zoom
+      (function() {
+        if (!/iPad|iPhone|iPod/.test(navigator.userAgent)) return;
+
+        document.addEventListener('focusin', function(e) {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            e.target.style.fontSize = '16px';
+            e.target.style.transform = 'translateZ(0)';
+          }
+        });
+
+        document.addEventListener('focusout', function(e) {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            e.target.style.fontSize = '16px';
+          }
+        });
+      })();
+    </script>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17996336558"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'AW-17996336558');
+    </script>
+  <link rel="icon" href="/superdesign_logo.svg" type="image/svg+xml"><script defer src="/static/js/lib-react.5fcfafc0.js"></script><script defer src="/static/js/lib-router.b7f73cf2.js"></script><script defer src="/static/js/lib-axios.c924989a.js"></script><script defer src="/static/js/16914.7560e9da.js"></script><script defer src="/static/js/index.a7b239e5.js"></script><link href="/static/css/16914.1b8bb536.css" rel="stylesheet"><link href="/static/css/index.de3c2ff4.css" rel="stylesheet"></head>
+  <body class="antialiased">
+    <!--
+      translate="no" opts the React root out of browser auto-translation
+      (Google Translate / Chrome "translate this page"). The translator rewrites
+      text nodes in place, which desyncs React's virtual DOM and throws
+      NotFoundError on insertBefore/removeChild during reconciliation (SUP-53, SUP-60).
+      This is an interactive design tool, not static content, so machine-translating
+      the app UI is unsafe. Marketing/blog pages live in a separate build and stay translatable.
+    -->
+    <div id="root" translate="no" class="notranslate"></div>
+  </body>
+</html>
