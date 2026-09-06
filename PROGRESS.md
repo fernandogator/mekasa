@@ -81,6 +81,10 @@
 
 ## Running Log
 
+### 2026-09-06 — ADR-002a accepted
+- Recorded **ADR-002a: Firestore over Cloud SQL** in `docs/architecture.md`
+  (real-time sync + offline; spending via `spending_summaries` Cloud Function).
+
 ### 2026-09-06 — GCP project wired
 - User project: `hackathon2025-472017`, region `us-central1`, auth **Google + email first** (Apple later).
 - Added `backend/.env.example`, `backend/scripts/deploy-cloud-run.sh`, updated setup doc.
