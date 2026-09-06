@@ -81,12 +81,17 @@
 
 ## Running Log
 
+### 2026-09-06 — GCP project wired
+- User project: `hackathon2025-472017`, region `us-central1`, auth **Google + email first** (Apple later).
+- Added `backend/.env.example`, `backend/scripts/deploy-cloud-run.sh`, updated setup doc.
+- Agent host has no `gcloud`; user runs deploy from Mac and returns Service URL.
+
 ### 2026-09-06 — Thin onboarding API scaffold
 - Decisions: approve P0 mockups → iOS next → full onboarding UI → full auth providers → **thin backend first** with **Firebase Auth + Cloud Run**.
 - Scaffolded `backend/` FastAPI app: `/health`, `/v1/me`, household create/current, address, nearby stores (stub), store selection.
 - Local stub auth via `ALLOW_TEST_AUTH=true` + `Bearer test:<uid>`.
 - Unit tests: `tests/backend/test_onboarding_api.py` (4 passing).
-- Console checklist: `docs/gcp-firebase-setup.md`. Waiting on user Project ID before deploy + iOS onboarding client.
+- Console checklist: `docs/gcp-firebase-setup.md`.
 
 ### 2026-08-21 — Steps 11–12 document seeding
 - Seeded `docs/PRD.md`, `docs/spec-v1.0.md`, and `docs/architecture.md` from authoritative v1.0 sources (exact copy).

@@ -64,14 +64,14 @@ Production secrets belong in **GCP Secret Manager**, not in git.
 
 See [`docs/gcp-firebase-setup.md`](../docs/gcp-firebase-setup.md).
 
-## Deploy (after checklist)
+## Deploy
+
+Project: `hackathon2025-472017` · Region: `us-central1` · Auth: Google + email first
 
 ```bash
-gcloud run deploy mekasa-api \
-  --source . \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars ENVIRONMENT=prod,FIREBASE_PROJECT_ID=YOUR_PROJECT_ID,GCP_PROJECT_ID=YOUR_PROJECT_ID
+chmod +x scripts/deploy-cloud-run.sh
+./scripts/deploy-cloud-run.sh
 ```
 
-Prefer authenticating Cloud Run with IAM and verifying Firebase ID tokens in-app (already done). Public ingress is OK while clients send Firebase ID tokens; lock down further before launch.
+Clients send Firebase ID tokens; the API verifies them. Keep `ALLOW_TEST_AUTH=false` in prod.
+Full checklist: [`docs/gcp-firebase-setup.md`](../docs/gcp-firebase-setup.md).
