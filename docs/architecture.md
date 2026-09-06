@@ -106,6 +106,71 @@ Firestore can still be used as the database layer.
 Trade-off: More initial setup than Firebase. Mitigated by
 Cloud Run's simplicity and prior GCP experience from FALLOUT.
 
+### ADR-002a: Firestore over Cloud SQL as the Database Layer
+Date: 2026-09-06
+Status: Accepted
+Decision: Use Cloud Firestore as the primary database rather
+than Cloud SQL (PostgreSQL).
+
+Context: Mekasa stores household inventory items, receipt OCR
+line items, trash station events, child request queues, store
+discovery data, and family member profiles. Multiple family
+members on different devices interact with the same household
+data concurrently.
+
+Options considered:
+
+**Option A — Cloud Firestore (Document DB)**
+- Real-time multi-device sync built in — all family members see
+  inventory changes instantly without polling
+- Offline support built in — local cache keeps the app usable
+  without a connection; syncs automatically on reconnect
+- Flexible document schema — receipt OCR results vary widely by
+  store and format; a document model handles irregular structures
+  better than rigid columns
+- Native mobile SDKs with live listeners — ideal for reactive
+  Jetpack Compose and SwiftUI UI patterns
+- No schema migrations — new fields can be added without
+  `ALTER TABLE`; supports rapid early iteration
+- Already in the GCP org — no additional infrastructure, same
+  billing and IAM
+- Weakness: Limited ad-hoc querying — no joins, no arbitrary
+  `WHERE` clauses across collections
+- Weakness: Spending reports and category rollups require either
+  denormalized data or aggregation via Cloud Functions
+
+**Option B — Cloud SQL (PostgreSQL)**
+- Complex queries trivial — spending reports, category rollups,
+  date-range analytics are standard SQL
+- Relational integrity enforced at DB level — foreign keys between
+  items, receipts, and line items
+- Familiar tooling — standard SQL, easy to inspect and debug
+- Weakness: No real-time push — polling or a separate Pub/Sub
+  layer required for live family sync; significant custom work
+- Weakness: No built-in offline support — must be built separately
+  or omitted
+- Weakness: Schema migrations required for every new field —
+  slower iteration in early development
+- Weakness: Cloud SQL instance runs 24/7 even when idle — higher
+  baseline cost for a household-scale app
+
+Rationale: Real-time multi-device sync and offline support are
+core requirements for Mekasa — they are what makes a household
+inventory app actually usable by a family on the go. Firestore
+provides both for free. Replicating them on Cloud SQL would
+require significant custom engineering with no functional
+advantage for this use case.
+
+The one Firestore weakness — spending analytics — is resolved by
+a Cloud Function that aggregates spending totals into a
+`spending_summaries` collection on every confirmed receipt save.
+Reporting screens read from this pre-aggregated collection rather
+than running live queries across raw line-item documents.
+
+Trade-off: Spending report logic requires Cloud Function
+aggregation rather than live SQL queries. Acceptable given that
+spending reports are low-frequency reads, not real-time views.
+
 ### ADR-003: Server-Side Receipt OCR
 Date: 2026-08-17
 Status: Accepted
