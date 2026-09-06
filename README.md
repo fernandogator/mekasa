@@ -42,4 +42,5 @@ traceability/
 
 ## Status
 
-Phase 1 (Backend API Foundation) — not started. See `PROGRESS.md`.
+Phase 1 (Backend API Foundation) — **thin onboarding API scaffolded** under `backend/`.  
+GCP/Firebase project setup checklist: `docs/gcp-firebase-setup.md`. See `PROGRESS.md`.
