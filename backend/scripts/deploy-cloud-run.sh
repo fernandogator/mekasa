@@ -31,7 +31,7 @@ gcloud run deploy "$SERVICE" \
   --region "$REGION" \
   --project "$PROJECT_ID" \
   --allow-unauthenticated \
-  --set-env-vars "ENVIRONMENT=prod,GCP_PROJECT_ID=${PROJECT_ID},FIREBASE_PROJECT_ID=${PROJECT_ID},ALLOW_TEST_AUTH=false"
+  --set-env-vars "ENVIRONMENT=prod,GCP_PROJECT_ID=${PROJECT_ID},FIREBASE_PROJECT_ID=${PROJECT_ID},FIRESTORE_DATABASE_ID=mekasa-db,ALLOW_TEST_AUTH=false"
 
 echo
 echo "Service URL:"

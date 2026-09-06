@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     environment: str = "local"
     gcp_project_id: str | None = None
     firebase_project_id: str | None = None
+    # Named Firestore DB id (e.g. mekasa-db). Use "(default)" for the default DB.
+    firestore_database_id: str = "mekasa-db"
     google_application_credentials: str | None = None
     allow_test_auth: bool = False
     google_places_api_key: str | None = None

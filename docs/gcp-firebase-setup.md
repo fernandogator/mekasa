@@ -6,6 +6,7 @@
 |---------|--------|
 | GCP / Firebase project ID | `hackathon2025-472017` |
 | Region | `us-central1` |
+| Firestore database ID | `mekasa-db` (Standard, Restrictive rules) |
 | Auth for v1 onboarding | **Google + Email/Password first** (Apple later) |
 
 ## Finish in the console (if not done yet)
