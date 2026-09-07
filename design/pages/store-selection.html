@@ -1,138 +1,229 @@
-
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="view-transition" content="same-origin" />
+  <title>Mekasa — Store selection</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    body { margin: 0; background: #eeebe3; }
+    @view-transition { navigation: auto; }
+  </style>
+</head>
+<body>
+<style>  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+  :root {
+    --color-brand: #171e19;
+    --color-brand-muted: #b7c6c2;
+    --color-surface: #eeebe3;
+    --color-surface-elevated: #ffffff;
+    --color-text: #171e19;
+    --color-text-muted: #6d7a76;
+    --color-accent: #ca0013;
+    --color-danger: #ca0013;
+    --color-success: #2f6b4f;
+    --color-warning: #c45c12;
+    --color-overlay: rgba(183, 198, 194, 0.20);
+  }
+  .mekasa-screen {
+    font-family: Nunito, sans-serif;
+    background-color: var(--color-surface);
+    color: var(--color-text);
+  }
+  .mekasa-screen .text-brand { color: var(--color-brand); }
+  .mekasa-screen .text-muted { color: var(--color-text-muted); }
+  .mekasa-screen .bg-brand { background-color: var(--color-brand); }
+  .mekasa-screen .bg-accent { background-color: var(--color-accent); }
+  .mekasa-screen .bg-surface-elevated { background-color: var(--color-surface-elevated); }
+  .mekasa-screen .border-muted { border-color: rgba(183, 198, 194, 0.3); }
+  .mekasa-screen .sage-blob {
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: var(--color-overlay);
+    filter: blur(40px);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .mekasa-screen .store-checkbox {
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--color-brand-muted);
+    border-radius: 50%;
+    outline: none;
+    cursor: pointer;
+    position: relative;
+  }
+  .mekasa-screen .store-checkbox:checked {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+  .mekasa-screen .checkbox-custom {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--color-brand-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mekasa-screen .checkbox-custom.checked {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    color: white;
+  }</style>
 
-    <!-- Primary Meta Tags -->
-    <title>Superdesign</title>
-    <meta name="title" content="Superdesign" />
-    <meta name="description" content="AI-powered design platform for creating beautiful interfaces and experiences" />
-    <meta name="keywords" content="design platform, AI design, web design, UI design, interface design, design tool, collaborative design" />
-    <meta name="author" content="Superdesign Team" />
-    <meta name="application-name" content="Superdesign" />
+      <div class="mekasa-screen w-full h-screen flex flex-col relative overflow-hidden bg-[#eeebe3]">
+    <div class="sage-blob"></div>
+    
+    
+    <header class="shrink-0 pt-14 px-6 z-10">
+      <div class="flex flex-col items-center justify-center space-y-1">
+        <p class="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">Step 4 of 6</p>
+        <h1 class="text-xl font-black text-brand tracking-tight">Mekasa</h1>
+      </div>
+    </header>
 
-    <!-- Theme color for browsers -->
-    <meta name="theme-color" content="#FAFAFA" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)" />
+    
+    <main class="flex-1 overflow-y-auto px-6 pt-10 pb-32 z-10 flex flex-col" style="view-transition-name: main-content">
+      
+      
+      <div class="mb-8">
+        <h2 class="text-[32px] font-black text-brand leading-tight mb-3">Where do you shop?</h2>
+        <p class="text-[16px] font-semibold text-muted">
+          We'll look within 15 miles of 1842 Magnolia Ave.
+        </p>
+      </div>
 
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:locale" content="en_US" />
-    <meta property="og:site_name" content="Superdesign" />
-    <meta property="og:title" content="Superdesign" />
-    <meta property="og:description" content="AI-powered design platform for creating beautiful interfaces and experiences" />
-    <meta property="og:image" content="https://superdesign.dev/icons/icon-512x512.png" />
+      
+      <div class="relative mb-6">
+        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        </div>
+        <input 
+          type="text" 
+          placeholder="Search for a store..."
+          class="w-full h-[56px] pl-12 pr-4 bg-surface-elevated border border-muted rounded-[24px] text-[16px] font-semibold focus:outline-none focus:border-brand shadow-sm"
+         />
+      </div>
 
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Superdesign" />
-    <meta name="twitter:description" content="AI-powered design platform for creating beautiful interfaces and experiences" />
-    <meta name="twitter:image" content="https://superdesign.dev/icons/icon-512x512.png" />
+      
+      <div class="bg-surface-elevated rounded-[40px] p-2 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] border border-muted flex-1 overflow-y-auto space-y-1">
+        
+        
+        <label class="flex items-center justify-between p-4 rounded-[32px] bg-[#171e19] text-white cursor-pointer transition-colors">
+          <div class="flex items-center">
+            <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center mr-4 shrink-0 overflow-hidden">
+               
+               <span class="text-brand font-black text-sm">H-E-B</span>
+            </div>
+            <div>
+              <p class="font-extrabold text-[16px]">H-E-B</p>
+              <p class="text-[12px] font-bold text-[#b7c6c2] uppercase tracking-wider">0.8 mi</p>
+            </div>
+          </div>
+          <div class="w-8 h-8 rounded-full bg-accent flex items-center justify-center">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="m5 12 5 5L20 7"/></svg>
+          </div>
+        </label>
 
-    <!-- PWA -->
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Superdesign" />
-    <meta name="msapplication-TileColor" content="#FAFAFA" />
-    <meta name="msapplication-tap-highlight" content="no" />
+        
+        <label class="flex items-center justify-between p-4 rounded-[32px] bg-[#171e19] text-white cursor-pointer transition-colors">
+          <div class="flex items-center">
+            <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center mr-4 shrink-0 overflow-hidden">
+               <span class="text-brand font-black text-sm">Costco</span>
+            </div>
+            <div>
+              <p class="font-extrabold text-[16px]">Costco</p>
+              <p class="text-[12px] font-bold text-[#b7c6c2] uppercase tracking-wider">4.2 mi</p>
+            </div>
+          </div>
+          <div class="w-8 h-8 rounded-full bg-accent flex items-center justify-center">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="m5 12 5 5L20 7"/></svg>
+          </div>
+        </label>
 
-    <!-- Icons -->
-    <link rel="icon" type="image/svg+xml" href="/superdesign_logo.svg" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-icon-180.png" />
-    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+        
+        <label class="flex items-center justify-between p-4 rounded-[32px] hover:bg-[#f8f9f8] cursor-pointer transition-colors">
+          <div class="flex items-center">
+            <div class="w-12 h-12 rounded-full bg-[#f1f4f3] flex items-center justify-center mr-4 shrink-0 overflow-hidden">
+               <span class="text-brand font-black text-sm">Kroger</span>
+            </div>
+            <div>
+              <p class="font-extrabold text-[16px]">Kroger</p>
+              <p class="text-[12px] font-bold text-muted uppercase tracking-wider">2.1 mi</p>
+            </div>
+          </div>
+          <input type="checkbox" class="store-checkbox" />
+        </label>
 
-    <!-- iOS Splash Screens -->
-    <link rel="apple-touch-startup-image" href="/icons/apple-splash-2048-2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/icons/apple-splash-1668-2388.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/icons/apple-splash-1536-2048.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/icons/apple-splash-1125-2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/icons/apple-splash-1242-2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/icons/apple-splash-750-1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/icons/apple-splash-640-1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+        
+        <label class="flex items-center justify-between p-4 rounded-[32px] hover:bg-[#f8f9f8] cursor-pointer transition-colors">
+          <div class="flex items-center">
+            <div class="w-12 h-12 rounded-full bg-[#f1f4f3] flex items-center justify-center mr-4 shrink-0 overflow-hidden">
+               <span class="text-brand font-black text-xs">Walmart</span>
+            </div>
+            <div>
+              <p class="font-extrabold text-[16px]">Walmart Supercenter</p>
+              <p class="text-[12px] font-bold text-muted uppercase tracking-wider">6.7 mi</p>
+            </div>
+          </div>
+          <input type="checkbox" class="store-checkbox" />
+        </label>
 
-    <!-- Structured Data (JSON-LD) -->
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "Superdesign",
-        "description": "AI-powered design platform for creating beautiful interfaces and experiences",
-        "url": "https://superdesign.dev",
-        "applicationCategory": "DesignApplication",
-        "operatingSystem": "Web",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "USD"
-        },
-        "author": {
-          "@type": "Organization",
-          "name": "Superdesign Team"
-        }
-      }
-    </script>
+        
+        <label class="flex items-center justify-between p-4 rounded-[32px] hover:bg-[#f8f9f8] cursor-pointer transition-colors">
+          <div class="flex items-center">
+            <div class="w-12 h-12 rounded-full bg-[#f1f4f3] flex items-center justify-center mr-4 shrink-0 overflow-hidden">
+               <span class="text-brand font-black text-sm">Target</span>
+            </div>
+            <div>
+              <p class="font-extrabold text-[16px]">Target</p>
+              <p class="text-[12px] font-bold text-muted uppercase tracking-wider">5.4 mi</p>
+            </div>
+          </div>
+          <input type="checkbox" class="store-checkbox" />
+        </label>
 
-    <!-- Theme initialization (prevent flash) -->
-    <script>
-      try {
-        // Light/dark mode initialization
-        const theme = localStorage.getItem('theme');
-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        const activeTheme = theme || systemTheme;
-        if (activeTheme === 'dark') {
-          document.documentElement.classList.add('dark');
-        }
+      </div>
+    </main>
 
-        // Color theme initialization
-        const colorTheme = localStorage.getItem('colorTheme');
-        if (colorTheme && colorTheme !== 'default') {
-          document.documentElement.setAttribute('data-color-theme-pending', colorTheme);
-        }
-      } catch (e) {}
+    
+    <div class="absolute bottom-0 left-0 right-0 p-6 pt-4 bg-gradient-to-t from-[#eeebe3] via-[#eeebe3] to-transparent z-40">
+      <a href="#" 
+         
+         class="flex items-center justify-center w-full h-[56px] bg-accent text-white rounded-[24px] font-extrabold text-[18px] shadow-[0_8px_16px_rgba(202,0,19,0.2)] active:scale-[0.98] transition-transform">
+        Confirm stores
+      </a>
+      
+      
+      <div class="mt-6 w-full h-1 bg-[#d5ddd9] rounded-full overflow-hidden">
+         <div class="h-full bg-brand w-[66%]"></div>
+      </div>
+    </div>
 
-      // iOS input handling to prevent zoom
-      (function() {
-        if (!/iPad|iPhone|iPod/.test(navigator.userAgent)) return;
+  </div>
+    
+  
+<nav class="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 pt-2 pointer-events-none">
+  <div class="pointer-events-auto mx-auto max-w-md flex gap-2 justify-center flex-wrap text-[11px] font-bold">
+    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="dashboard.html">Home</a>
+    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="onboarding-household.html">Onboard</a>
+    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="store-selection.html">Stores</a>
+    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="shopping-list.html">List</a>
+    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="add-items.html">Add</a>
+    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="trash-station.html">Trash</a>
+    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="spending-report.html">Spend</a>
+    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="family-members.html">Family</a>
+    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="../">Index</a>
+  </div>
+</nav>
 
-        document.addEventListener('focusin', function(e) {
-          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-            e.target.style.fontSize = '16px';
-            e.target.style.transform = 'translateZ(0)';
-          }
-        });
-
-        document.addEventListener('focusout', function(e) {
-          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-            e.target.style.fontSize = '16px';
-          }
-        });
-      })();
-    </script>
-
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17996336558"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'AW-17996336558');
-    </script>
-  <link rel="icon" href="/superdesign_logo.svg" type="image/svg+xml"><script defer src="/static/js/lib-react.5fcfafc0.js"></script><script defer src="/static/js/lib-router.b7f73cf2.js"></script><script defer src="/static/js/lib-axios.c924989a.js"></script><script defer src="/static/js/16914.7560e9da.js"></script><script defer src="/static/js/index.a7b239e5.js"></script><link href="/static/css/16914.1b8bb536.css" rel="stylesheet"><link href="/static/css/index.de3c2ff4.css" rel="stylesheet"></head>
-  <body class="antialiased">
-    <!--
-      translate="no" opts the React root out of browser auto-translation
-      (Google Translate / Chrome "translate this page"). The translator rewrites
-      text nodes in place, which desyncs React's virtual DOM and throws
-      NotFoundError on insertBefore/removeChild during reconciliation (SUP-53, SUP-60).
-      This is an interactive design tool, not static content, so machine-translating
-      the app UI is unsafe. Marketing/blog pages live in a separate build and stay translatable.
-    -->
-    <div id="root" translate="no" class="notranslate"></div>
-  </body>
+</body>
 </html>
