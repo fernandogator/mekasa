@@ -10,7 +10,9 @@ struct MekasaApp: App {
 
     init() {
         #if canImport(FirebaseCore)
-        if Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil {
+        // Always configure when Firebase SPM is linked. Requires
+        // GoogleService-Info.plist in the Mekasa target (Copy Bundle Resources).
+        if FirebaseApp.app() == nil {
             FirebaseApp.configure()
         }
         #endif

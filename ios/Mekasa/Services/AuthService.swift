@@ -20,7 +20,7 @@ final class AuthService: ObservableObject {
 
     var isFirebaseConfigured: Bool {
         #if canImport(FirebaseCore)
-        return Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil
+        return FirebaseApp.app() != nil
         #else
         return false
         #endif

@@ -20,6 +20,17 @@ Change in `project.yml` if you use a different id — it must match the Firebase
 4. Place it at `ios/Mekasa/GoogleService-Info.plist` (gitignored)  
 5. Authentication already has **Google** + **Email/Password** enabled  
 
+Then regenerate so Xcode copies the plist into the app:
+
+```bash
+cd ios
+xcodegen generate
+open Mekasa.xcodeproj
+```
+
+In Xcode, select `GoogleService-Info.plist` → File inspector (right panel) → **Target Membership** → check **Mekasa**.  
+Build settings → Mekasa → **Build Phases → Copy Bundle Resources** must list `GoogleService-Info.plist`.
+
 ### Google Sign-In URL scheme
 
 From `GoogleService-Info.plist`, copy `REVERSED_CLIENT_ID` into `ios/Mekasa/Info.plist` under `CFBundleURLTypes` (replace `REPLACE_WITH_REVERSED_CLIENT_ID`).

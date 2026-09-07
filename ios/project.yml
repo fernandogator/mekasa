@@ -20,6 +20,10 @@ targets:
     platform: iOS
     sources:
       - path: Mekasa
+      # Present only on your Mac (gitignored). Re-run xcodegen after adding it.
+      - path: Mekasa/GoogleService-Info.plist
+        optional: true
+        buildPhase: resources
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.fernandogator.mekasa
       INFOPLIST_FILE: Mekasa/Info.plist
