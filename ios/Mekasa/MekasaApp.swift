@@ -1,7 +1,4 @@
 import SwiftUI
-#if canImport(FirebaseCore)
-import FirebaseCore
-#endif
 
 @main
 struct MekasaApp: App {
@@ -11,14 +8,14 @@ struct MekasaApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
-        // Belt-and-suspenders: configure before any SwiftUI view can touch Auth.
-        AppDelegate.configureFirebaseIfNeeded()
+        FirebaseBootstrap.configure()
     }
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(AppSession())
+                .onAppear { FirebaseBootstrap.configure() }
         }
     }
 }

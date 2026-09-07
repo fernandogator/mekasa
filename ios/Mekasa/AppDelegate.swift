@@ -1,7 +1,4 @@
 import UIKit
-#if canImport(FirebaseCore)
-import FirebaseCore
-#endif
 
 /// Configures Firebase as early as possible in the UIKit lifecycle.
 /// Satisfies: REQ-001
@@ -11,15 +8,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        Self.configureFirebaseIfNeeded()
+        FirebaseBootstrap.configure()
         return true
-    }
-
-    static func configureFirebaseIfNeeded() {
-        #if canImport(FirebaseCore)
-        if FirebaseApp.app() == nil {
-            FirebaseApp.configure()
-        }
-        #endif
     }
 }

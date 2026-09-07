@@ -84,11 +84,8 @@ final class AuthService: ObservableObject {
 
     private func ensureFirebaseReady() throws {
         #if canImport(FirebaseCore)
-        AppDelegate.configureFirebaseIfNeeded()
+        FirebaseBootstrap.configure()
         guard FirebaseApp.app() != nil else {
-            throw AuthServiceError.firebaseMissing
-        }
-        guard Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil else {
             throw AuthServiceError.firebaseMissing
         }
         #else
