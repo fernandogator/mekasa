@@ -1,6 +1,6 @@
 # Project MEKASA
 
-- **Current Phase:** 3 — iOS App (onboarding scaffold)
+- **Current Phase:** 3 — iOS App (Dashboard)
 - **Last Updated:** 2026-09-07
 
 > **WARNING:** This file must be reconciled against the actual codebase at the
@@ -54,13 +54,13 @@
 
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
-| onboarding | in progress (SwiftUI scaffold) | stubs | — | Add Firebase iOS app + `GoogleService-Info.plist`; xcodegen; run on simulator |
-| dashboard | not started | unknown | — | After onboarding ships |
-| inventory-screen | not started | unknown | — | Await mockup + UI req coverage beyond AddItems |
+| onboarding | ready (live auth verified) | stubs | — | Keep Firebase plist local; Google Sign-In OAuth client still optional |
+| dashboard | in progress (SwiftUI UI-004) | stubs | — | Wire inventory/spend APIs when backend endpoints exist |
+| inventory-screen | not started | unknown | — | Add items / scanner next |
 | scanner | not started | unknown | — | Confirm AddItems.jsx; expand ScannerUITest |
-| shopping-list-screen | not started | unknown | — | Confirm ShoppingList.jsx; add ShoppingList UI test stubs |
+| shopping-list-screen | not started | unknown | — | Confirm ShoppingList.jsx; expand ShoppingList UI tests |
 | spending-screen | not started | unknown | — | Confirm SpendingReport.jsx |
-| settings | not started | unknown | — | Confirm FamilyMembers.jsx |
+| settings | not started | unknown | — | Family tab placeholder exists; expand FamilyMembers |
 | trash-station-mode | not started | unknown | — | Align TrashStation* test filename with UI-005 |
 
 ## Phase 4: UI Design and Visual Verification
@@ -94,6 +94,12 @@
 ---
 
 ## Running Log
+
+### 2026-09-07 — iOS Dashboard (UI-004)
+- Replaced home stub with `DashboardView` + `MainShellView` (bottom nav + Add FAB).
+- Low stock / spend cards, Needs Approval (local approve/deny), Recent Activity fixtures.
+- List / Spend / Add are placeholders; Family tab includes Sign out.
+- Design: `design/mockups/Dashboard.jsx`.
 
 ### 2026-09-07 — iOS onboarding scaffold
 - Branched from merged `main` (Firestore PR #3).

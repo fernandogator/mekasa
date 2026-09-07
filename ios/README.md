@@ -1,6 +1,12 @@
 # Mekasa iOS
 
-SwiftUI client for Mekasa v1.0. First slice: **onboarding** (Welcome → Household → Address → Stores → Scan stub → Invite stub → Home stub) talking to Cloud Run.
+SwiftUI client for Mekasa v1.0.
+
+**Shipped so far**
+- Onboarding: Welcome → Household → Address → Stores → scan/invite stubs
+- Home: **Dashboard** (UI-004) with bottom nav + Add FAB
+
+Talks to Cloud Run for auth/household; dashboard stats/approvals are local fixtures until inventory APIs exist.
 
 ## Live API
 
