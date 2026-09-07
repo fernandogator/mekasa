@@ -1,0 +1,7 @@
+GoogleService-Info.plist
+*.xcuserstate
+xcuserdata/
+DerivedData/
+Mekasa.xcodeproj/
+Mekasa.xcworkspace/
+.swiftpm/
