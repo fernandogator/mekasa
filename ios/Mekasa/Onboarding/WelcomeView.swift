@@ -121,15 +121,22 @@ struct WelcomeView: View {
     private func submitEmail() async {
         session.isBusy = true
         defer { session.isBusy = false }
+        print("[Mekasa] submitEmail start signUp=\(isSignUp) firebase=\(AuthService.shared.isFirebaseConfigured)")
         do {
+            let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
             let result: (token: String, email: String?, name: String?)
             if isSignUp {
-                result = try await AuthService.shared.signUp(email: email.trimmingCharacters(in: .whitespaces), password: password)
+                print("[Mekasa] calling Firebase createUser…")
+                result = try await AuthService.shared.signUp(email: trimmed, password: password)
             } else {
-                result = try await AuthService.shared.signIn(email: email.trimmingCharacters(in: .whitespaces), password: password)
+                print("[Mekasa] calling Firebase signIn…")
+                result = try await AuthService.shared.signIn(email: trimmed, password: password)
             }
+            print("[Mekasa] auth OK, applying session…")
             await applyAuth(token: result.token, email: result.email, name: result.name)
+            print("[Mekasa] submitEmail done step=\(session.onboardingStep)")
         } catch {
+            print("[Mekasa] submitEmail ERROR: \(error)")
             session.lastError = error.localizedDescription
         }
     }
@@ -137,7 +144,12 @@ struct WelcomeView: View {
     private func submitGoogle() async {
         session.isBusy = true
         defer { session.isBusy = false }
+        print("[Mekasa] submitGoogle start")
         do {
+            guard FirebaseAppHelper.googleClientID != nil else {
+                session.lastError = AuthServiceError.missingGoogleClientID.localizedDescription
+                return
+            }
             guard let presenter = TopViewController.shared else {
                 session.lastError = "Could not find a window to present Google Sign-In."
                 return
@@ -145,6 +157,7 @@ struct WelcomeView: View {
             let result = try await AuthService.shared.signInWithGoogle(presenting: presenter)
             await applyAuth(token: result.token, email: result.email, name: result.name)
         } catch {
+            print("[Mekasa] submitGoogle ERROR: \(error)")
             session.lastError = error.localizedDescription
         }
     }
