@@ -1,7 +1,7 @@
 # Project MEKASA
 
-- **Current Phase:** 1 — Backend API Foundation
-- **Last Updated:** 2026-08-21
+- **Current Phase:** 1 — Backend API Foundation (thin onboarding slice)
+- **Last Updated:** 2026-09-06
 
 > **WARNING:** This file must be reconciled against the actual codebase at the
 > start of every session. Never trust this file without verification.
@@ -12,8 +12,8 @@
 
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
-| auth | not started | unknown | — | Scaffold API auth module per REQ-001 |
-| household | not started | unknown | — | Scaffold household endpoints per REQ-002, REQ-019 |
+| auth | in progress | unit (local stub) | — | Wire real Firebase project; disable ALLOW_TEST_AUTH in prod |
+| household | in progress | unit (in-memory) | — | Swap in-memory repo for Firestore; invite (REQ-019) later |
 | inventory | not started | unknown | — | Scaffold inventory CRUD per REQ-004–REQ-008 |
 | shopping-list | not started | unknown | — | Scaffold list generation per REQ-011–REQ-014 |
 | spending | not started | unknown | — | Scaffold category tracking per REQ-015–REQ-018 |
@@ -80,6 +80,22 @@
 ---
 
 ## Running Log
+
+### 2026-09-06 — ADR-002a accepted
+- Recorded **ADR-002a: Firestore over Cloud SQL** in `docs/architecture.md`
+  (real-time sync + offline; spending via `spending_summaries` Cloud Function).
+
+### 2026-09-06 — GCP project wired
+- User project: `hackathon2025-472017`, region `us-central1`, auth **Google + email first** (Apple later).
+- Added `backend/.env.example`, `backend/scripts/deploy-cloud-run.sh`, updated setup doc.
+- Agent host has no `gcloud`; user runs deploy from Mac and returns Service URL.
+
+### 2026-09-06 — Thin onboarding API scaffold
+- Decisions: approve P0 mockups → iOS next → full onboarding UI → full auth providers → **thin backend first** with **Firebase Auth + Cloud Run**.
+- Scaffolded `backend/` FastAPI app: `/health`, `/v1/me`, household create/current, address, nearby stores (stub), store selection.
+- Local stub auth via `ALLOW_TEST_AUTH=true` + `Bearer test:<uid>`.
+- Unit tests: `tests/backend/test_onboarding_api.py` (4 passing).
+- Console checklist: `docs/gcp-firebase-setup.md`.
 
 ### 2026-08-21 — Steps 11–12 document seeding
 - Seeded `docs/PRD.md`, `docs/spec-v1.0.md`, and `docs/architecture.md` from authoritative v1.0 sources (exact copy).
