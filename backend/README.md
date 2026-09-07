@@ -64,6 +64,16 @@ Production secrets belong in **GCP Secret Manager**, not in git.
 
 See [`docs/gcp-firebase-setup.md`](../docs/gcp-firebase-setup.md).
 
+## Persistence
+
+| Mode | When |
+|------|------|
+| `HOUSEHOLD_PERSISTENCE=memory` | Local/unit tests |
+| `HOUSEHOLD_PERSISTENCE=firestore` | Cloud Run prod (writes to DB `mekasa-db`) |
+| `HOUSEHOLD_PERSISTENCE=auto` | `prod` → firestore, otherwise memory |
+
+Deploy script sets firestore mode and runs Cloud Run as `mekasa-api@…`.
+
 ## Deploy
 
 Project: `hackathon2025-472017` · Region: `us-central1` · Auth: Google + email first
@@ -72,6 +82,8 @@ Project: `hackathon2025-472017` · Region: `us-central1` · Auth: Google + email
 chmod +x scripts/deploy-cloud-run.sh
 ./scripts/deploy-cloud-run.sh
 ```
+
+After deploy, `/health` should include `"persistence":"firestore","firestore_database":"mekasa-db"`.
 
 Clients send Firebase ID tokens; the API verifies them. Keep `ALLOW_TEST_AUTH=false` in prod.
 Full checklist: [`docs/gcp-firebase-setup.md`](../docs/gcp-firebase-setup.md).

@@ -12,6 +12,8 @@ class HealthResponse(BaseModel):
     status: Literal["ok"] = "ok"
     service: str
     environment: str
+    persistence: str | None = None
+    firestore_database: str | None = None
 
 
 class UserProfile(BaseModel):

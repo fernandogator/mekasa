@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     allow_test_auth: bool = False
     google_places_api_key: str | None = None
     store_search_radius_miles: float = 15.0
+    # memory | firestore | auto (prod → firestore, else memory)
+    household_persistence: str = "auto"
 
 
 @lru_cache

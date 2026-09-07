@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 os.environ["ALLOW_TEST_AUTH"] = "true"
 os.environ["ENVIRONMENT"] = "test"
+os.environ["HOUSEHOLD_PERSISTENCE"] = "memory"
 
 
 @pytest.fixture()
@@ -35,7 +36,9 @@ def _auth(uid: str = "owner-1") -> dict[str, str]:
 def test_health(client: TestClient) -> None:
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json()["status"] == "ok"
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body["persistence"] == "memory"
 
 
 def test_me_requires_auth(client: TestClient) -> None:
