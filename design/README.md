@@ -73,6 +73,12 @@ That is correct for this repo: keep the folder as **root**, not `/design`.
 | Screen index | https://fernandogator.github.io/mekasa/design/ |
 | Dashboard demo | https://fernandogator.github.io/mekasa/design/pages/dashboard.html |
 
+`design/pages/*.html` are **self-contained Tailwind mockups** built from `design/mockups/*.jsx`:
+
+```bash
+python3 design/scripts/build-static-pages.py
+```
+
 Do **not** switch the Pages folder to `/design` unless you also update these links (paths would drop the `/design` prefix).
 
 ---
