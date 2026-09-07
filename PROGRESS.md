@@ -13,7 +13,7 @@
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
 | auth | deployed (Firebase verify) | unit + Cloud Run smoke | — | Real Google/email ID tokens from iOS; keep `ALLOW_TEST_AUTH=false` in prod |
-| household | deployed (in-memory) | unit + Cloud Run smoke | — | **Wire Firestore `mekasa-db`**; then invites (REQ-019) |
+| household | in progress (Firestore code) | unit | — | Redeploy Cloud Run with `HOUSEHOLD_PERSISTENCE=firestore`; smoke against `mekasa-db` |
 | inventory | not started | unknown | — | Scaffold inventory CRUD per REQ-004–REQ-008 |
 | shopping-list | not started | unknown | — | Scaffold list generation per REQ-011–REQ-014 |
 | spending | not started | unknown | — | Scaffold category tracking per REQ-015–REQ-018 |
@@ -98,12 +98,17 @@
 
 ## Running Log
 
+### 2026-09-07 — Firestore household repository wired (code)
+- Added `FirestoreHouseholdRepository` targeting named DB `mekasa-db`.
+- `HOUSEHOLD_PERSISTENCE=memory|firestore|auto` (prod deploy → firestore).
+- Deploy script also binds Cloud Run to `mekasa-api@…` service account.
+- Unit tests: 7 passed. **User must redeploy** for prod to use Firestore.
+
 ### 2026-09-07 — Cloud Run smoke + progress save
 - Deployed thin API: `https://mekasa-api-934775015882.us-central1.run.app`
 - GCP console setup complete: APIs, Firebase Auth (Google+email), Firestore `mekasa-db`/`nam5`, SA `mekasa-api` + local JSON key.
 - Smoke path passed with temporary `ALLOW_TEST_AUTH=true`; then set back to `false` (401 on stub token confirmed).
-- Household CRUD still **in-memory** on the service.
-- **Next:** Wire Firestore repository for durable households; then iOS onboarding against live API.
+- Household CRUD still **in-memory** on the *currently deployed* revision until redeploy.
 - Product decisions locked earlier: P0 mockups approved → iOS first → full onboarding → thin backend first → Firebase Auth + Cloud Run → ADR-002a Firestore.
 
 ### 2026-09-06 — ADR-002a accepted
