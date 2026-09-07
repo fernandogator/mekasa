@@ -126,24 +126,22 @@ enum AuthErrorFormatter {
             parts.append(name)
         }
 
-        if let authCode = AuthErrorCode(rawValue: ns.code) {
-            parts.append("auth=\(authCode)")
-            switch authCode {
-            case .operationNotAllowed:
-                parts.append("HINT: Enable Email/Password in Firebase Authentication → Sign-in method.")
-            case .invalidEmail:
-                parts.append("HINT: Email looks invalid.")
-            case .emailAlreadyInUse:
-                parts.append("HINT: Account exists — try Sign in instead.")
-            case .weakPassword:
-                parts.append("HINT: Use a stronger password (6+ chars).")
-            case .networkError:
-                parts.append("HINT: Network/API blocked — check Identity Toolkit API + API key restrictions.")
-            case .internalError:
-                parts.append("HINT: Often Identity Toolkit API disabled, API key restricted, or Email/Password not enabled.")
-            default:
-                break
-            }
+        // Common FIRAuthErrorDomain codes (see Firebase Auth iOS errors docs).
+        switch ns.code {
+        case 17025: // operationNotAllowed
+            parts.append("HINT: Enable Email/Password in Firebase Authentication → Sign-in method.")
+        case 17008: // invalidEmail
+            parts.append("HINT: Email looks invalid.")
+        case 17007: // emailAlreadyInUse
+            parts.append("HINT: Account exists — try Sign in instead.")
+        case 17026: // weakPassword
+            parts.append("HINT: Use a stronger password (6+ chars).")
+        case 17020: // networkError
+            parts.append("HINT: Network/API blocked — check Identity Toolkit API + API key restrictions.")
+        case 17999: // internalError
+            parts.append("HINT: Enable Identity Toolkit API; ensure Email/Password is ON; loosen API key restrictions or re-download GoogleService-Info.plist.")
+        default:
+            break
         }
 
         var underlying: NSError? = ns.userInfo[NSUnderlyingErrorKey] as? NSError
