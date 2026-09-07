@@ -86,6 +86,14 @@ struct WelcomeView: View {
                             .padding(.top, 4)
                             #endif
                         }
+
+                        if !AuthService.shared.isFirebaseConfigured {
+                            Text("Firebase plist not in the app bundle yet. Use Browse UI offline, or add GoogleService-Info.plist → Copy Bundle Resources → xcodegen generate → Clean + Run.")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundStyle(MekasaTheme.textMuted)
+                                .multilineTextAlignment(.center)
+                                .padding(.top, 4)
+                        }
                     }
                 }
             }
