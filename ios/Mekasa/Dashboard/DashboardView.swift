@@ -82,7 +82,7 @@ struct DashboardView: View {
                 icon: "exclamationmark.circle",
                 iconBg: Color(red: 0xfc / 255, green: 0xe5 / 255, blue: 0xe7 / 255),
                 label: "Low Stock",
-                value: "\(DashboardFixtures.lowStockCount) items"
+                value: "\(session.lowStockCount) items"
             )
             statCard(
                 icon: "creditcard",
@@ -232,7 +232,7 @@ struct DashboardView: View {
                 .foregroundStyle(MekasaTheme.brand)
 
             VStack(alignment: .leading, spacing: 16) {
-                ForEach(DashboardFixtures.activity) { item in
+                ForEach(session.activity) { item in
                     HStack(alignment: .top, spacing: 16) {
                         Circle()
                             .fill(item.kind == .warning
