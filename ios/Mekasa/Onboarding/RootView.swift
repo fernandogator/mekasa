@@ -22,7 +22,7 @@ struct RootView: View {
             case .invite:
                 InviteView()
             case .done:
-                HomeStubView()
+                MainShellView()
             }
         }
         .animation(.easeInOut(duration: 0.25), value: session.onboardingStep)
