@@ -1,6 +1,6 @@
 # Project MEKASA
 
-- **Current Phase:** 1 — Backend API Foundation (thin onboarding slice)
+- **Current Phase:** 3 — iOS App (onboarding scaffold)
 - **Last Updated:** 2026-09-07
 
 > **WARNING:** This file must be reconciled against the actual codebase at the
@@ -13,7 +13,7 @@
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
 | auth | deployed (Firebase verify) | unit + Cloud Run smoke | — | Real Google/email ID tokens from iOS; keep `ALLOW_TEST_AUTH=false` in prod |
-| household | in progress (Firestore code) | unit | — | Redeploy Cloud Run with `HOUSEHOLD_PERSISTENCE=firestore`; smoke against `mekasa-db` |
+| household | deployed (Firestore) | unit + smoke | — | Confirm live Cloud Run revision uses `HOUSEHOLD_PERSISTENCE=firestore` |
 | inventory | not started | unknown | — | Scaffold inventory CRUD per REQ-004–REQ-008 |
 | shopping-list | not started | unknown | — | Scaffold list generation per REQ-011–REQ-014 |
 | spending | not started | unknown | — | Scaffold category tracking per REQ-015–REQ-018 |
@@ -30,13 +30,10 @@
 | Cloud Run URL | `https://mekasa-api-934775015882.us-central1.run.app` |
 | Project | `hackathon2025-472017` |
 | Region | `us-central1` |
-| Firestore DB | `mekasa-db` @ `nam5` (Standard, Restrictive) — **not wired in API yet** |
+| Firestore DB | `mekasa-db` @ `nam5` (Standard, Restrictive) |
 | Service account | `mekasa-api@hackathon2025-472017.iam.gserviceaccount.com` |
 | Auth (prod) | Firebase ID token; `ALLOW_TEST_AUTH=false` |
-| Auth (smoke) | Temporarily enabled stub; smoke passed; stub disabled again |
-| Persistence | **In-memory only** (lost on new revision/restart) |
-
-**Smoke verified:** `/health`, `/v1/me` (stub then real reject), POST household, PUT address, GET nearby stores (stub), PUT store selection, GET current.
+| Persistence | Firestore when deployed with `HOUSEHOLD_PERSISTENCE=firestore` |
 
 ---
 
@@ -44,7 +41,7 @@
 
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
-| onboarding | not started | unknown | — | After Firestore + iOS path, or parallel later |
+| onboarding | not started | unknown | — | After iOS path, or parallel later |
 | dashboard | not started | unknown | — | Confirm UI-004 + Dashboard.jsx; expand DashboardUITest |
 | inventory-screen | not started | unknown | — | Await mockup + UI req coverage beyond AddItems |
 | scanner | not started | unknown | — | Confirm AddItems.jsx; expand ScannerUITest |
@@ -57,8 +54,8 @@
 
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
-| onboarding | not started | unknown | — | After Firestore persistence; full flow + Google/email auth |
-| dashboard | not started | unknown | — | Confirm UI-004 + Dashboard.jsx; expand DashboardUITest |
+| onboarding | in progress (SwiftUI scaffold) | stubs | — | Add Firebase iOS app + `GoogleService-Info.plist`; xcodegen; run on simulator |
+| dashboard | not started | unknown | — | After onboarding ships |
 | inventory-screen | not started | unknown | — | Await mockup + UI req coverage beyond AddItems |
 | scanner | not started | unknown | — | Confirm AddItems.jsx; expand ScannerUITest |
 | shopping-list-screen | not started | unknown | — | Confirm ShoppingList.jsx; add ShoppingList UI test stubs |
@@ -98,6 +95,14 @@
 
 ## Running Log
 
+### 2026-09-07 — iOS onboarding scaffold
+- Branched from merged `main` (Firestore PR #3).
+- SwiftUI flow: Welcome (Google + email) → Household → Address (CoreLocation) → Stores → Scan stub → Invite stub → Home stub.
+- API client points at live Cloud Run. XcodeGen wires Firebase + GoogleSignIn SPM.
+- DEBUG **Browse UI offline** walks the flow with local fixtures (no Firebase).
+- Needs Firebase iOS app + `GoogleService-Info.plist` on Mac for live auth (see `ios/README.md`).
+- PR: https://github.com/fernandogator/mekasa/pull/4
+
 ### 2026-09-07 — Firestore household repository wired (code)
 - Added `FirestoreHouseholdRepository` targeting named DB `mekasa-db`.
 - `HOUSEHOLD_PERSISTENCE=memory|firestore|auto` (prod deploy → firestore).
@@ -108,7 +113,6 @@
 - Deployed thin API: `https://mekasa-api-934775015882.us-central1.run.app`
 - GCP console setup complete: APIs, Firebase Auth (Google+email), Firestore `mekasa-db`/`nam5`, SA `mekasa-api` + local JSON key.
 - Smoke path passed with temporary `ALLOW_TEST_AUTH=true`; then set back to `false` (401 on stub token confirmed).
-- Household CRUD still **in-memory** on the *currently deployed* revision until redeploy.
 - Product decisions locked earlier: P0 mockups approved → iOS first → full onboarding → thin backend first → Firebase Auth + Cloud Run → ADR-002a Firestore.
 
 ### 2026-09-06 — ADR-002a accepted
@@ -130,10 +134,6 @@
 ### 2026-08-21 — Steps 11–12 document seeding
 - Seeded `docs/PRD.md`, `docs/spec-v1.0.md`, and `docs/architecture.md` from authoritative v1.0 sources (exact copy).
 - Rebuilt `traceability/matrix.md` and `matrix.csv` to match authoritative REQ/UI/NFR titles, Design Artifact paths, and Test File paths.
-- **Reconcile mismatches flagged (no code changes):**
-  - Spec references mockups not yet in repo: `OnboardingHouseholdSetup.jsx`, `SpendingReport.jsx`, `FamilyMembers.jsx`.
-  - UI-005 Test File paths say `TrashStationUITest.kt` / `TrashStationUITest.swift`; scaffold has `TrashStationModeUITest.kt` / `TrashStationModeUITest.swift`.
-  - Scaffold UI test stubs also exist for ShoppingList, Spending, Settings, Inventory, Scanner beyond the five UI-XXX entries — keep until Superdesign + UI req coverage expands.
 - Still no application code. Next: Superdesign session for real `design/mockups/` once Node/Superdesign available; then Phase 1 backend.
 
 ### 2026-08-20 — AI-SDLC scaffold session

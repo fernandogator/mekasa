@@ -3,15 +3,15 @@
 Household inventory management ("mi casa"). Native Android (Jetpack Compose) +
 iOS (SwiftUI) clients backed by a GCP Cloud Run REST API.
 
-This repository holds the AI-SDLC scaffold. Application code has not been written yet.
-
 ## Quick links
 
 | Doc | Purpose |
 |-----|---------|
 | `PROGRESS.md` | Phase tracker — reconcile every session |
 | `GUARDRAILS.md` | Non-negotiable project rules |
-| `docs/spec-v1.0.md` | Requirements (UI seeded; full PRD pending) |
+| `docs/spec-v1.0.md` | Requirements |
+| `ios/README.md` | iOS XcodeGen + Firebase setup |
+| `backend/README.md` | Thin onboarding API |
 | `design/` | User flows, design system, Superdesign mockups |
 | `traceability/` | Requirement ↔ test matrix |
 
@@ -32,8 +32,8 @@ Approved React/Tailwind mockups land in `design/mockups/` and link to `UI-XXX` i
 
 ```
 android/     # Jetpack Compose app (+ UI test stubs)
-ios/         # SwiftUI app (+ UI test stubs)
-backend/     # Cloud Run API (Python)
+ios/         # SwiftUI onboarding client (+ UI test stubs)
+backend/     # Cloud Run API (Python / FastAPI)
 design/      # Flows, tokens, mockups, baselines
 docs/        # PRD, spec, architecture, standards
 tests/       # Backend + integration tests
@@ -42,6 +42,6 @@ traceability/
 
 ## Status
 
-Phase 1 (Backend API Foundation) — thin onboarding API **deployed** to Cloud Run  
-(`https://mekasa-api-934775015882.us-central1.run.app`). Smoke-tested; Firestore persistence next.  
-See `PROGRESS.md` and `docs/gcp-firebase-setup.md`.
+- **Backend:** thin onboarding API on Cloud Run + Firestore household persistence (see `PROGRESS.md`).
+- **iOS:** onboarding flow scaffolded (Google + email auth, household, address, stores). Open `ios/README.md` to generate the Xcode project and add Firebase.
+- **Android:** UI test stubs only so far.

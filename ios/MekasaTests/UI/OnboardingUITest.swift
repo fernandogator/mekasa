@@ -1,27 +1,31 @@
-// Verifies: UI-002
+// Verifies: UI-003 (onboarding flow), UI-002 (store selection)
 // AC1, AC2, AC3
-// Design: design/mockups/OnboardingStoreSelection.jsx
+// Design: design/mockups/OnboardingHouseholdSetup.jsx, OnboardingStoreSelection.jsx
 
 import XCTest
 
 /// XCUITest + snapshot stubs for Onboarding.
 /// Layout + interaction + flow + semantic visual verification.
 /// Visual verification is structural (not pixel-exact).
+///
+/// Implemented screens (SwiftUI): Welcome → Household → Address → Stores →
+/// InitialScan stub → Invite stub → Home stub. Wire XCUITest once the app
+/// target builds in CI with Firebase SPM.
 final class OnboardingUITest: XCTestCase {
 
     func testLayout_keyElementsExistAndVisible() throws {
-        throw XCTSkip("Stub — implement when Onboarding view exists")
-        // Layout test: verify key elements exist and are visible
+        throw XCTSkip("Stub — run on device/simulator after xcodegen + Firebase SPM")
+        // Layout: Mekasa brand header, step progress, primary CTA
     }
 
     func testInteraction_tapsInputsAndNavigationTriggers() throws {
-        throw XCTSkip("Stub — implement when Onboarding view exists")
-        // Interaction test: verify taps, inputs, and navigation triggers
+        throw XCTSkip("Stub — run on device/simulator after xcodegen + Firebase SPM")
+        // Interaction: email/Google auth, household name, address confirm, store multi-select
     }
 
     func testFlow_navigatesToNextScreen() throws {
-        throw XCTSkip("Stub — implement when Onboarding view exists")
-        // Flow test: verify navigation to next screen completes correctly
+        throw XCTSkip("Stub — run on device/simulator after xcodegen + Firebase SPM")
+        // Flow: welcome → household → address → stores → scan → invite → home
     }
 
     func testVisual_semanticStructureMatchesBaseline() throws {
