@@ -28,6 +28,7 @@ final class AuthService: ObservableObject {
 
     func signIn(email: String, password: String) async throws -> (token: String, email: String?, name: String?) {
         #if canImport(FirebaseAuth)
+        try ensureFirebaseReady()
         let result = try await Auth.auth().signIn(withEmail: email, password: password)
         let token = try await result.user.getIDToken()
         return (token, result.user.email, result.user.displayName)
@@ -38,6 +39,7 @@ final class AuthService: ObservableObject {
 
     func signUp(email: String, password: String) async throws -> (token: String, email: String?, name: String?) {
         #if canImport(FirebaseAuth)
+        try ensureFirebaseReady()
         let result = try await Auth.auth().createUser(withEmail: email, password: password)
         let token = try await result.user.getIDToken()
         return (token, result.user.email, result.user.displayName)
@@ -48,6 +50,7 @@ final class AuthService: ObservableObject {
 
     func signInWithGoogle(presenting viewController: UIViewController) async throws -> (token: String, email: String?, name: String?) {
         #if canImport(GoogleSignIn) && canImport(FirebaseAuth)
+        try ensureFirebaseReady()
         guard let clientID = FirebaseAppHelper.googleClientID else {
             throw AuthServiceError.firebaseMissing
         }
@@ -70,10 +73,26 @@ final class AuthService: ObservableObject {
 
     func signOut() throws {
         #if canImport(FirebaseAuth)
-        try Auth.auth().signOut()
+        if FirebaseApp.app() != nil {
+            try Auth.auth().signOut()
+        }
         #endif
         #if canImport(GoogleSignIn)
         GIDSignIn.sharedInstance.signOut()
+        #endif
+    }
+
+    private func ensureFirebaseReady() throws {
+        #if canImport(FirebaseCore)
+        AppDelegate.configureFirebaseIfNeeded()
+        guard FirebaseApp.app() != nil else {
+            throw AuthServiceError.firebaseMissing
+        }
+        guard Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil else {
+            throw AuthServiceError.firebaseMissing
+        }
+        #else
+        throw AuthServiceError.firebaseMissing
         #endif
     }
 }
@@ -85,7 +104,7 @@ enum AuthServiceError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .firebaseMissing:
-            return "Add GoogleService-Info.plist and Firebase SPM packages (see ios/README.md)."
+            return "Firebase is not configured. Add GoogleService-Info.plist to the Mekasa target (Copy Bundle Resources), then Clean + Run. See ios/README.md."
         case .missingGoogleToken:
             return "Google Sign-In did not return an ID token."
         }

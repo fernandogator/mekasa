@@ -8,14 +8,11 @@ struct MekasaApp: App {
     // Satisfies: REQ-001 (Household Account Creation)
     // Spec version: 1.0
 
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     init() {
-        #if canImport(FirebaseCore)
-        // Always configure when Firebase SPM is linked. Requires
-        // GoogleService-Info.plist in the Mekasa target (Copy Bundle Resources).
-        if FirebaseApp.app() == nil {
-            FirebaseApp.configure()
-        }
-        #endif
+        // Belt-and-suspenders: configure before any SwiftUI view can touch Auth.
+        AppDelegate.configureFirebaseIfNeeded()
     }
 
     var body: some Scene {
