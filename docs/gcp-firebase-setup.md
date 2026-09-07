@@ -10,6 +10,20 @@
 | Firestore location | **`nam5` (United States multi-region)** |
 | Firestore edition / rules | Standard · Restrictive |
 | Auth for v1 onboarding | **Google + Email/Password first** (Apple later) |
+| Cloud Run service | `https://mekasa-api-934775015882.us-central1.run.app` |
+| Service account | `mekasa-api@hackathon2025-472017.iam.gserviceaccount.com` |
+
+## Status (2026-09-07)
+
+- [x] GCP project + APIs
+- [x] Firebase Auth (Google + Email)
+- [x] Firestore `mekasa-db` @ `nam5` (Standard, Restrictive)
+- [x] Service account + local JSON key
+- [x] Cloud Run deploy + onboarding smoke (in-memory)
+- [x] `ALLOW_TEST_AUTH=false` in prod
+- [ ] API persistence → Firestore
+- [ ] Cloud Run runtime SA binding (no key file in prod)
+- [ ] Real Firebase ID tokens from iOS
 
 ## Finish in the console (if not done yet)
 
