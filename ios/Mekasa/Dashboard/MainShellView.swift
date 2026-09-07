@@ -6,7 +6,7 @@ import SwiftUI
 struct MainShellView: View {
     @EnvironmentObject private var session: AppSession
     @State private var tab: MainTab = .home
-    @State private var showAddPlaceholder = false
+    @State private var showAddItems = false
 
     var body: some View {
         MekasaScreen {
@@ -32,25 +32,19 @@ struct MainShellView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 BottomNavBar(selected: $tab) {
-                    showAddPlaceholder = true
+                    showAddItems = true
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 24)
             }
         }
-        .sheet(isPresented: $showAddPlaceholder) {
+        .sheet(isPresented: $showAddItems) {
             NavigationStack {
-                ComingSoonTabView(
-                    title: "Add items",
-                    subtitle: "Barcode, receipt, and manual entry ship next."
-                )
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Close") { showAddPlaceholder = false }
-                    }
-                }
+                AddItemsView()
             }
-            .presentationDetents([.medium])
+            .environmentObject(session)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
     }
 }

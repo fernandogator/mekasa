@@ -1,6 +1,6 @@
 # Project MEKASA
 
-- **Current Phase:** 3 — iOS App (Dashboard)
+- **Current Phase:** 3 — iOS App (Add items)
 - **Last Updated:** 2026-09-07
 
 > **WARNING:** This file must be reconciled against the actual codebase at the
@@ -55,13 +55,13 @@
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
 | onboarding | ready (live auth verified) | stubs | — | Keep Firebase plist local; Google Sign-In OAuth client still optional |
-| dashboard | in progress (SwiftUI UI-004) | stubs | — | Wire inventory/spend APIs when backend endpoints exist |
-| inventory-screen | not started | unknown | — | Add items / scanner next |
-| scanner | not started | unknown | — | Confirm AddItems.jsx; expand ScannerUITest |
+| dashboard | ready (SwiftUI UI-004) | stubs | — | Wire spend APIs when backend endpoints exist |
+| inventory-screen | in progress (Add hub + local inventory) | unit (InventorySessionTests) | — | Backend inventory CRUD + live camera/OCR |
+| scanner | in progress (demo stubs) | stubs | — | Wire UPC API + Vision camera; expand ScannerUITest |
 | shopping-list-screen | not started | unknown | — | Confirm ShoppingList.jsx; expand ShoppingList UI tests |
 | spending-screen | not started | unknown | — | Confirm SpendingReport.jsx |
 | settings | not started | unknown | — | Family tab placeholder exists; expand FamilyMembers |
-| trash-station-mode | not started | unknown | — | Align TrashStation* test filename with UI-005 |
+| trash-station-mode | in progress (local consume) | stubs | — | Dedicated device mode + live barcode; UI-005 polish |
 
 ## Phase 4: UI Design and Visual Verification
 
@@ -94,6 +94,13 @@
 ---
 
 ## Running Log
+
+### 2026-09-07 — iOS Add items (REQ-004–008 client)
+- FAB opens `AddItemsView` hub matching `AddItems.jsx`.
+- **Type it in** saves to `AppSession.inventory` (local); merges same name/category.
+- Barcode / receipt / voice: demo → confirm before save; unknown barcode → manual fallback.
+- Trash station decrements local qty; Dashboard low-stock + activity reflect live inventory.
+- Camera/mic usage strings in `Info.plist`. Unit: `InventorySessionTests`.
 
 ### 2026-09-07 — iOS Dashboard (UI-004)
 - Replaced home stub with `DashboardView` + `MainShellView` (bottom nav + Add FAB).

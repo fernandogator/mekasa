@@ -15,8 +15,17 @@ final class AppSession: ObservableObject {
     @Published var lastError: String?
     /// DEBUG-only local walkthrough — skips network/Firebase.
     @Published var isUIPreview = false
+    /// Client-side inventory until backend CRUD exists (REQ-004–008).
+    @Published var inventory: [InventoryItem] = []
+    @Published var activity: [ActivityItem] = DashboardFixtures.activity
 
     var isSignedIn: Bool { idToken != nil }
+
+    var lowStockCount: Int {
+        let live = inventory.filter(\.isLowStock).count
+        if inventory.isEmpty { return DashboardFixtures.lowStockCount }
+        return live
+    }
 
     func startUIPreview() {
         isUIPreview = true
@@ -26,6 +35,8 @@ final class AppSession: ObservableObject {
         household = nil
         onboardingStep = .household
         lastError = nil
+        inventory = []
+        activity = DashboardFixtures.activity
     }
 
     func signOut() {
@@ -36,6 +47,63 @@ final class AppSession: ObservableObject {
         onboardingStep = .welcome
         lastError = nil
         isUIPreview = false
+        inventory = []
+        activity = DashboardFixtures.activity
+    }
+
+    func addInventoryItem(_ item: InventoryItem) {
+        var next = item
+        next.updatedAt = Date()
+        if let idx = inventory.firstIndex(where: {
+            $0.name.localizedCaseInsensitiveCompare(next.name) == .orderedSame
+                && $0.category == next.category
+        }) {
+            inventory[idx].quantity += next.quantity
+            if let price = next.pricePaid {
+                inventory[idx].pricePaid = price
+            }
+            inventory[idx].updatedAt = next.updatedAt
+            logActivity("Updated \(inventory[idx].name) (qty \(inventory[idx].quantity))", kind: .success)
+        } else {
+            inventory.insert(next, at: 0)
+            logActivity("Added \(next.name)", kind: .success)
+        }
+    }
+
+    enum ConsumeResult {
+        case decremented(name: String, remaining: Int)
+        case depleted(name: String)
+        case unknown
+    }
+
+    @discardableResult
+    func consumeInventoryItem(id: String) -> ConsumeResult {
+        guard let idx = inventory.firstIndex(where: { $0.id == id }) else {
+            return .unknown
+        }
+        let name = inventory[idx].name
+        inventory[idx].quantity = max(0, inventory[idx].quantity - 1)
+        inventory[idx].updatedAt = Date()
+        let qty = inventory[idx].quantity
+        if qty == 0 {
+            logActivity("\(name) marked as depleted", kind: .warning)
+            return .depleted(name: name)
+        }
+        logActivity("\(name) consumed (qty \(qty))", kind: .warning)
+        return .decremented(name: name, remaining: qty)
+    }
+
+    func logActivity(_ title: String, kind: ActivityItem.Kind) {
+        let item = ActivityItem(
+            id: UUID().uuidString,
+            title: title,
+            when: "Just now",
+            kind: kind
+        )
+        activity.insert(item, at: 0)
+        if activity.count > 20 {
+            activity = Array(activity.prefix(20))
+        }
     }
 }
 
