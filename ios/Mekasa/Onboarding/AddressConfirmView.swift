@@ -54,6 +54,15 @@ struct AddressConfirmView: View {
             }
         }
         .task {
+            if session.isUIPreview {
+                if address.isEmpty {
+                    address = "1842 Magnolia Ave, Austin, TX 78702"
+                    latitude = 30.2672
+                    longitude = -97.7431
+                    didDetect = true
+                }
+                return
+            }
             if let existing = session.household?.address {
                 address = existing
                 latitude = session.household?.latitude
@@ -80,8 +89,21 @@ struct AddressConfirmView: View {
     }
 
     private func save() async {
-        guard let token = session.idToken, let household = session.household else {
+        guard var household = session.household else {
             session.lastError = "Missing household."
+            return
+        }
+        let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        if session.isUIPreview {
+            household.address = trimmed
+            household.latitude = latitude ?? 30.2672
+            household.longitude = longitude ?? -97.7431
+            session.household = household
+            withAnimation { session.onboardingStep = .stores }
+            return
+        }
+        guard let token = session.idToken else {
+            session.lastError = "Not signed in."
             return
         }
         session.isBusy = true
@@ -89,7 +111,7 @@ struct AddressConfirmView: View {
         do {
             let updated = try await MekasaAPIClient.shared.updateAddress(
                 householdID: household.id,
-                address: address.trimmingCharacters(in: .whitespacesAndNewlines),
+                address: trimmed,
                 latitude: latitude,
                 longitude: longitude,
                 token: token

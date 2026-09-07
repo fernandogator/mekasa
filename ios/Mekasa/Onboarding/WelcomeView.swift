@@ -77,6 +77,14 @@ struct WelcomeView: View {
                             SecondaryButton(title: "Continue with email") {
                                 withAnimation(.easeInOut(duration: 0.25)) { showEmailForm = true }
                             }
+                            #if DEBUG
+                            Button("Browse UI offline") {
+                                withAnimation { session.startUIPreview() }
+                            }
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(MekasaTheme.textMuted)
+                            .padding(.top, 4)
+                            #endif
                         }
                     }
                 }

@@ -109,6 +109,12 @@ struct HouseholdSetupView: View {
     }
 
     private func createHousehold() async {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if session.isUIPreview {
+            session.household = PreviewFixtures.household(name: trimmed.isEmpty ? nil : trimmed)
+            withAnimation { session.onboardingStep = .address }
+            return
+        }
         guard let token = session.idToken else {
             session.lastError = "Not signed in."
             return
@@ -117,7 +123,6 @@ struct HouseholdSetupView: View {
         defer { session.isBusy = false }
         do {
             // Photo upload is not in the thin API yet — name only for now.
-            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
             let household = try await MekasaAPIClient.shared.createHousehold(
                 name: trimmed.isEmpty ? nil : trimmed,
                 photoURL: nil,

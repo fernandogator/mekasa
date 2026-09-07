@@ -13,8 +13,20 @@ final class AppSession: ObservableObject {
     @Published var onboardingStep: OnboardingStep = .welcome
     @Published var isBusy = false
     @Published var lastError: String?
+    /// DEBUG-only local walkthrough — skips network/Firebase.
+    @Published var isUIPreview = false
 
     var isSignedIn: Bool { idToken != nil }
+
+    func startUIPreview() {
+        isUIPreview = true
+        idToken = "preview"
+        email = "preview@mekasa.local"
+        displayName = "Preview"
+        household = nil
+        onboardingStep = .household
+        lastError = nil
+    }
 
     func signOut() {
         idToken = nil
@@ -23,6 +35,7 @@ final class AppSession: ObservableObject {
         household = nil
         onboardingStep = .welcome
         lastError = nil
+        isUIPreview = false
     }
 }
 

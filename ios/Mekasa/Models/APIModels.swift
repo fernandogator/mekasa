@@ -22,6 +22,44 @@ struct Household: Codable, Identifiable, Equatable {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
+
+    init(
+        id: String,
+        name: String?,
+        photoURL: String?,
+        ownerUID: String,
+        address: String?,
+        latitude: Double?,
+        longitude: Double?,
+        storeIDs: [String],
+        createdAt: Date?,
+        updatedAt: Date?
+    ) {
+        self.id = id
+        self.name = name
+        self.photoURL = photoURL
+        self.ownerUID = ownerUID
+        self.address = address
+        self.latitude = latitude
+        self.longitude = longitude
+        self.storeIDs = storeIDs
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decodeIfPresent(String.self, forKey: .name)
+        photoURL = try c.decodeIfPresent(String.self, forKey: .photoURL)
+        ownerUID = try c.decode(String.self, forKey: .ownerUID)
+        address = try c.decodeIfPresent(String.self, forKey: .address)
+        latitude = try c.decodeIfPresent(Double.self, forKey: .latitude)
+        longitude = try c.decodeIfPresent(Double.self, forKey: .longitude)
+        storeIDs = try c.decodeIfPresent([String].self, forKey: .storeIDs) ?? []
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
+        updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt)
+    }
 }
 
 struct Store: Codable, Identifiable, Equatable, Hashable {

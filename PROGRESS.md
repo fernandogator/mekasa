@@ -98,7 +98,10 @@
 ### 2026-09-07 — iOS onboarding scaffold
 - Branched from merged `main` (Firestore PR #3).
 - SwiftUI flow: Welcome (Google + email) → Household → Address (CoreLocation) → Stores → Scan stub → Invite stub → Home stub.
-- API client points at live Cloud Run. Needs Firebase iOS app + SPM packages on Mac (see `ios/README.md`).
+- API client points at live Cloud Run. XcodeGen wires Firebase + GoogleSignIn SPM.
+- DEBUG **Browse UI offline** walks the flow with local fixtures (no Firebase).
+- Needs Firebase iOS app + `GoogleService-Info.plist` on Mac for live auth (see `ios/README.md`).
+- PR: https://github.com/fernandogator/mekasa/pull/4
 
 ### 2026-09-07 — Firestore household repository wired (code)
 - Added `FirestoreHouseholdRepository` targeting named DB `mekasa-db`.

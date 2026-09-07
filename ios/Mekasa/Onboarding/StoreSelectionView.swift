@@ -105,7 +105,14 @@ struct StoreSelectionView: View {
     }
 
     private func load() async {
-        guard !loaded, let token = session.idToken, let household = session.household else { return }
+        guard !loaded, let household = session.household else { return }
+        if session.isUIPreview {
+            stores = PreviewFixtures.nearbyStores
+            selected = Set(household.storeIDs)
+            loaded = true
+            return
+        }
+        guard let token = session.idToken else { return }
         session.isBusy = true
         defer { session.isBusy = false }
         do {
@@ -119,7 +126,14 @@ struct StoreSelectionView: View {
     }
 
     private func confirm() async {
-        guard let token = session.idToken, let household = session.household else { return }
+        guard var household = session.household else { return }
+        if session.isUIPreview {
+            household.storeIDs = Array(selected)
+            session.household = household
+            withAnimation { session.onboardingStep = .initialScan }
+            return
+        }
+        guard let token = session.idToken else { return }
         session.isBusy = true
         defer { session.isBusy = false }
         do {
