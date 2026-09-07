@@ -20,6 +20,10 @@ targets:
     platform: iOS
     sources:
       - path: Mekasa
+      # Present only on your Mac (gitignored). Re-run xcodegen after adding it.
+      - path: Mekasa/GoogleService-Info.plist
+        optional: true
+        buildPhase: resources
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.fernandogator.mekasa
       INFOPLIST_FILE: Mekasa/Info.plist
@@ -27,6 +31,7 @@ targets:
       CURRENT_PROJECT_VERSION: 1
       MARKETING_VERSION: "1.0.0"
       DEVELOPMENT_TEAM: ""
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       OTHER_LDFLAGS: "$(inherited) -ObjC"
     dependencies:
       - package: Firebase
