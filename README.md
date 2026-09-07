@@ -42,5 +42,6 @@ traceability/
 
 ## Status
 
-Phase 1 (Backend API Foundation) — **thin onboarding API scaffolded** under `backend/`.  
-GCP/Firebase project setup checklist: `docs/gcp-firebase-setup.md`. See `PROGRESS.md`.
+Phase 1 (Backend API Foundation) — thin onboarding API **deployed** to Cloud Run  
+(`https://mekasa-api-934775015882.us-central1.run.app`). Smoke-tested; Firestore persistence next.  
+See `PROGRESS.md` and `docs/gcp-firebase-setup.md`.
