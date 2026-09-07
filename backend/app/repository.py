@@ -1,4 +1,4 @@
-"""In-memory household repository for the thin onboarding API."""
+"""Household repository factory and in-memory implementation."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from threading import Lock
 from typing import Protocol
 from uuid import uuid4
 
+from app.config import Settings, get_settings
 from app.models import (
     AddressUpdateRequest,
     HouseholdCreateRequest,
@@ -47,6 +48,8 @@ class InMemoryHouseholdRepository:
     Satisfies: REQ-001, REQ-002, REQ-003
     Acceptance criteria: AC1–AC5
     Spec version: 1.0
+
+    Used for unit tests and local runs without Firestore credentials.
     """
 
     def __init__(self) -> None:
@@ -150,18 +153,41 @@ def stub_nearby_stores(
     ]
 
 
+def resolve_persistence_mode(settings: Settings) -> str:
+    """Return ``memory`` or ``firestore`` from settings."""
+    mode = (settings.household_persistence or "auto").strip().lower()
+    if mode in {"memory", "firestore"}:
+        return mode
+    # auto
+    if settings.environment == "prod":
+        return "firestore"
+    return "memory"
+
+
 _repo: HouseholdRepository | None = None
+_repo_mode: str | None = None
 
 
 def get_household_repository() -> HouseholdRepository:
-    """Process-wide repository (in-memory until Firestore is wired)."""
-    global _repo
-    if _repo is None:
+    """Process-wide repository (memory or Firestore)."""
+    global _repo, _repo_mode
+    settings = get_settings()
+    mode = resolve_persistence_mode(settings)
+    if _repo is not None and _repo_mode == mode:
+        return _repo
+
+    if mode == "firestore":
+        from app.firestore_repository import FirestoreHouseholdRepository
+
+        _repo = FirestoreHouseholdRepository.from_settings(settings)
+    else:
         _repo = InMemoryHouseholdRepository()
+    _repo_mode = mode
     return _repo
 
 
 def reset_household_repository() -> None:
-    """Reset in-memory state for tests."""
-    global _repo
+    """Reset repository state for tests (forces in-memory)."""
+    global _repo, _repo_mode
     _repo = InMemoryHouseholdRepository()
+    _repo_mode = "memory"

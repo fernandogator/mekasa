@@ -6,9 +6,9 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import Settings, get_settings
+from app.firebase_app import ensure_firebase_app
 
 _bearer = HTTPBearer(auto_error=False)
-_firebase_ready = False
 
 
 @dataclass(frozen=True)
@@ -18,46 +18,6 @@ class AuthUser:
     uid: str
     email: str | None = None
     name: str | None = None
-
-
-def _ensure_firebase(settings: Settings) -> None:
-    """Initialize firebase-admin once."""
-    global _firebase_ready
-    if _firebase_ready:
-        return
-    try:
-        import firebase_admin
-        from firebase_admin import credentials
-    except ImportError as exc:  # pragma: no cover
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="firebase-admin is not installed",
-        ) from exc
-
-    if firebase_admin._apps:
-        _firebase_ready = True
-        return
-
-    project_id = settings.firebase_project_id or settings.gcp_project_id
-    if not project_id and not settings.google_application_credentials:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Firebase is not configured. Set FIREBASE_PROJECT_ID / "
-                "GCP_PROJECT_ID and credentials, or set ALLOW_TEST_AUTH=true."
-            ),
-        )
-
-    if settings.google_application_credentials:
-        cred = credentials.Certificate(settings.google_application_credentials)
-        firebase_admin.initialize_app(
-            cred, {"projectId": project_id} if project_id else None
-        )
-    else:
-        firebase_admin.initialize_app(
-            options={"projectId": project_id} if project_id else None
-        )
-    _firebase_ready = True
 
 
 def verify_bearer_token(
@@ -83,11 +43,23 @@ def verify_bearer_token(
         uid = token.removeprefix("test:").strip() or "test-user"
         return AuthUser(uid=uid, email=f"{uid}@example.com", name="Test User")
 
-    _ensure_firebase(settings)
+    project_id = settings.firebase_project_id or settings.gcp_project_id
+    if not project_id and not settings.google_application_credentials:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Firebase is not configured. Set FIREBASE_PROJECT_ID / "
+                "GCP_PROJECT_ID and credentials, or set ALLOW_TEST_AUTH=true."
+            ),
+        )
+
     try:
+        ensure_firebase_app(settings)
         from firebase_admin import auth as firebase_auth
 
         decoded = firebase_auth.verify_id_token(token)
+    except HTTPException:
+        raise
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

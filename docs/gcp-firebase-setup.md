@@ -21,8 +21,8 @@
 - [x] Service account + local JSON key
 - [x] Cloud Run deploy + onboarding smoke (in-memory)
 - [x] `ALLOW_TEST_AUTH=false` in prod
-- [ ] API persistence → Firestore
-- [ ] Cloud Run runtime SA binding (no key file in prod)
+- [ ] API persistence → Firestore (**code ready — redeploy required**)
+- [ ] Cloud Run runtime SA binding (included in updated deploy script)
 - [ ] Real Firebase ID tokens from iOS
 
 ## Finish in the console (if not done yet)

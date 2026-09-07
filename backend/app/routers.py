@@ -26,10 +26,15 @@ api_router = APIRouter(prefix="/v1", tags=["onboarding"])
 @health_router.get("/health", response_model=HealthResponse)
 def health(settings: Settings = Depends(get_settings)) -> HealthResponse:
     """Liveness check for Cloud Run."""
+    from app.repository import resolve_persistence_mode
+
+    mode = resolve_persistence_mode(settings)
     return HealthResponse(
         status="ok",
         service=settings.app_name,
         environment=settings.environment,
+        persistence=mode,
+        firestore_database=settings.firestore_database_id if mode == "firestore" else None,
     )
 
 
