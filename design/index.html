@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mekasa — UI demos</title>
+    <style>
+      :root {
+        --brand: #171e19;
+        --muted: #6d7a76;
+        --surface: #eeebe3;
+        --accent: #ca0013;
+      }
+      body {
+        margin: 0;
+        font-family: "Nunito", system-ui, sans-serif;
+        background: var(--surface);
+        color: var(--brand);
+        padding: 48px 24px;
+      }
+      main { max-width: 520px; margin: 0 auto; }
+      h1 { font-size: 2rem; font-weight: 900; margin: 0 0 8px; }
+      p { color: var(--muted); font-weight: 600; line-height: 1.5; }
+      ul { list-style: none; padding: 0; margin: 32px 0; }
+      li { margin: 0 0 12px; }
+      a {
+        display: block;
+        padding: 16px 20px;
+        background: #fff;
+        color: var(--brand);
+        text-decoration: none;
+        font-weight: 800;
+        border-radius: 16px;
+        border: 1px solid rgba(183, 198, 194, 0.35);
+      }
+      a:hover { border-color: var(--accent); }
+      .note { font-size: 0.9rem; }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <main>
+      <h1>Mekasa</h1>
+      <p>Static UI mockups (GitHub Pages). Design artifacts for the native apps — not the production app.</p>
+      <ul>
+        <li><a href="pages/dashboard.html">Dashboard</a></li>
+        <li><a href="pages/onboarding-household.html">Onboarding — household</a></li>
+        <li><a href="pages/store-selection.html">Onboarding — stores</a></li>
+        <li><a href="pages/shopping-list.html">Shopping list</a></li>
+        <li><a href="pages/add-items.html">Add items</a></li>
+        <li><a href="pages/trash-station.html">Trash station</a></li>
+        <li><a href="pages/spending-report.html">Spending report</a></li>
+        <li><a href="pages/family-members.html">Family members</a></li>
+      </ul>
+      <p class="note">Pages is deployed from <code>main</code> at repo root, so paths include <code>/design/…</code>.</p>
+    </main>
+  </body>
+</html>

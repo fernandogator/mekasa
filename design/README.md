@@ -64,10 +64,16 @@ All screens are **390×844** (mobile-first, iPhone SE/13 mini) with full navigat
 
 ### View on GitHub Pages
 
-Once deployed (see Deployment section below), view live at:
-```
-https://fernandogator.github.io/mekasa/design/pages/dashboard.html
-```
+GitHub Pages is set to **Deploy from a branch → `main` → `/ (root)`**.
+That is correct for this repo: keep the folder as **root**, not `/design`.
+
+| Entry | URL |
+|-------|-----|
+| Site root (redirects) | https://fernandogator.github.io/mekasa/ |
+| Screen index | https://fernandogator.github.io/mekasa/design/ |
+| Dashboard demo | https://fernandogator.github.io/mekasa/design/pages/dashboard.html |
+
+Do **not** switch the Pages folder to `/design` unless you also update these links (paths would drop the `/design` prefix).
 
 ---
 
