@@ -1,7 +1,7 @@
 import Foundation
 
 /// HTTP client for the Mekasa Cloud Run API.
-/// Satisfies: REQ-001, REQ-002, REQ-003, NFR-002
+/// Satisfies: REQ-001–REQ-009, NFR-002
 /// Spec version: 1.0
 actor MekasaAPIClient {
     static let shared = MekasaAPIClient()
@@ -11,7 +11,19 @@ actor MekasaAPIClient {
 
     private let decoder: JSONDecoder = {
         let d = JSONDecoder()
-        d.dateDecodingStrategy = .iso8601
+        d.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let value = try container.decode(String.self)
+            if let date = ISO8601DateFormatter.mekasaFractional.date(from: value)
+                ?? ISO8601DateFormatter.mekasa.date(from: value)
+            {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Invalid ISO8601 date: \(value)"
+            )
+        }
         return d
     }()
 
@@ -87,6 +99,119 @@ actor MekasaAPIClient {
         )
     }
 
+    // MARK: - Inventory (REQ-004–REQ-009)
+
+    func listInventory(householdID: String, token: String) async throws -> InventoryListResponse {
+        try await request(
+            path: "/v1/households/\(householdID)/inventory",
+            method: "GET",
+            token: token
+        )
+    }
+
+    func createInventoryItem(
+        householdID: String,
+        item: InventoryItem,
+        token: String
+    ) async throws -> InventoryItemDTO {
+        try await request(
+            path: "/v1/households/\(householdID)/inventory",
+            method: "POST",
+            token: token,
+            body: InventoryItemCreateBody(from: item)
+        )
+    }
+
+    func getInventoryItem(
+        householdID: String,
+        itemID: String,
+        token: String
+    ) async throws -> InventoryItemDTO {
+        try await request(
+            path: "/v1/households/\(householdID)/inventory/\(itemID)",
+            method: "GET",
+            token: token
+        )
+    }
+
+    func updateInventoryItem(
+        householdID: String,
+        itemID: String,
+        quantity: Int? = nil,
+        lowStockThreshold: Int? = nil,
+        name: String? = nil,
+        category: String? = nil,
+        pricePaid: Double? = nil,
+        barcode: String? = nil,
+        token: String
+    ) async throws -> InventoryItemDTO {
+        struct Body: Encodable {
+            let name: String?
+            let category: String?
+            let quantity: Int?
+            let low_stock_threshold: Int?
+            let price_paid: Double?
+            let barcode: String?
+        }
+        return try await request(
+            path: "/v1/households/\(householdID)/inventory/\(itemID)",
+            method: "PATCH",
+            token: token,
+            body: Body(
+                name: name,
+                category: category,
+                quantity: quantity,
+                low_stock_threshold: lowStockThreshold,
+                price_paid: pricePaid,
+                barcode: barcode
+            )
+        )
+    }
+
+    func deleteInventoryItem(householdID: String, itemID: String, token: String) async throws {
+        _ = try await rawRequest(
+            path: "/v1/households/\(householdID)/inventory/\(itemID)",
+            method: "DELETE",
+            token: token,
+            body: nil as String?
+        )
+    }
+
+    func consumeInventoryItem(
+        householdID: String,
+        itemID: String,
+        amount: Int = 1,
+        token: String
+    ) async throws -> InventoryItemDTO {
+        struct Body: Encodable {
+            let amount: Int
+        }
+        return try await request(
+            path: "/v1/households/\(householdID)/inventory/\(itemID)/consume",
+            method: "POST",
+            token: token,
+            body: Body(amount: amount)
+        )
+    }
+
+    func consumeInventoryByBarcode(
+        householdID: String,
+        barcode: String,
+        amount: Int = 1,
+        token: String
+    ) async throws -> InventoryItemDTO {
+        struct Body: Encodable {
+            let barcode: String
+            let amount: Int
+        }
+        return try await request(
+            path: "/v1/households/\(householdID)/inventory/consume-by-barcode",
+            method: "POST",
+            token: token,
+            body: Body(barcode: barcode, amount: amount)
+        )
+    }
+
     private func request<T: Decodable, B: Encodable>(
         path: String,
         method: String,
@@ -132,6 +257,20 @@ actor MekasaAPIClient {
         }
         return (data, http)
     }
+}
+
+private extension ISO8601DateFormatter {
+    static let mekasa: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    static let mekasaFractional: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
 }
 
 enum APIError: LocalizedError {

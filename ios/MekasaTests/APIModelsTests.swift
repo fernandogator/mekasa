@@ -57,4 +57,58 @@ final class APIModelsTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(PreviewFixtures.nearbyStores.count, 3)
         XCTAssertEqual(PreviewFixtures.household().id, "preview-household")
     }
+
+    func testInventoryItemDTODecodesAndMapsLocal() throws {
+        let json = """
+        {
+          "id": "item_1",
+          "household_id": "hh_1",
+          "name": "Whole Milk",
+          "category": "Dairy",
+          "quantity": 2,
+          "low_stock_threshold": 1,
+          "price_paid": 3.49,
+          "barcode": "041220576037",
+          "source": "manual",
+          "created_by_uid": "uid_1",
+          "updated_by_uid": "uid_1",
+          "created_at": "2026-09-08T02:00:00.123456Z",
+          "updated_at": "2026-09-08T02:00:00.123456Z"
+        }
+        """.data(using: .utf8)!
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let value = try container.decode(String.self)
+            let fractional = ISO8601DateFormatter()
+            fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let plain = ISO8601DateFormatter()
+            plain.formatOptions = [.withInternetDateTime]
+            if let date = fractional.date(from: value) ?? plain.date(from: value) {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: value)
+        }
+        let dto = try decoder.decode(InventoryItemDTO.self, from: json)
+        XCTAssertEqual(dto.householdId, "hh_1")
+        XCTAssertEqual(dto.lowStockThreshold, 1)
+        let local = dto.toLocal()
+        XCTAssertEqual(local.name, "Whole Milk")
+        XCTAssertEqual(local.quantity, 2)
+        XCTAssertEqual(local.source, .manual)
+        XCTAssertEqual(local.barcode, "041220576037")
+    }
+
+    func testInventoryListResponseDecodes() throws {
+        let json = """
+        {
+          "household_id": "hh_1",
+          "items": []
+        }
+        """.data(using: .utf8)!
+        let response = try JSONDecoder().decode(InventoryListResponse.self, from: json)
+        XCTAssertEqual(response.householdId, "hh_1")
+        XCTAssertTrue(response.items.isEmpty)
+    }
 }

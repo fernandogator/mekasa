@@ -5,10 +5,10 @@ SwiftUI client for Mekasa v1.0.
 **Shipped so far**
 - Onboarding: Welcome → Household → Address → Stores → scan/invite stubs
 - Home: **Dashboard** (UI-004) with bottom nav + Add FAB
-- **Add items** hub (FAB): Type it in (local inventory), barcode/receipt/voice demo→confirm, trash station consume
+- **Add items** hub (FAB): Type it in / confirm flows sync to Cloud Run inventory (Firestore) when signed in
 - **Shopping list** (List tab): check off, approve/deny requests, add custom; low-stock auto-adds
 
-Talks to Cloud Run for auth/household; inventory + shopping list are **local to the device** until backend CRUD exists.
+Talks to Cloud Run for auth/household/**inventory**; shopping list is still local until list APIs exist.
 
 ## Live API
 
@@ -80,6 +80,6 @@ Signing → your Team → Run on an **iPhone Simulator** (not “Any iOS Device�
 ## Spec mapping
 
 - UI-003 Onboarding · REQ-001 Auth · REQ-002 Household · REQ-003 Address/Stores  
-- UI-004 Dashboard + Add items hub · REQ-004–REQ-008 (client stubs; manual save local)  
+- UI-004 Dashboard + Add items hub · REQ-004–REQ-008 (inventory sync to API when signed in)  
 - Shopping list · REQ-011–REQ-014 (client staging; low-stock auto-add)  
 - Design: `design/mockups/OnboardingHouseholdSetup.jsx`, `OnboardingStoreSelection.jsx`, `Dashboard.jsx`, `AddItems.jsx`, `ShoppingList.jsx`

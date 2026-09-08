@@ -92,7 +92,9 @@ struct ManualEntryView: View {
                 dismiss()
             }
         } message: {
-            Text("Saved to this household’s inventory on this device.")
+            Text(session.canSyncInventory
+                  ? "Saved to your household inventory."
+                  : "Saved on this device (sign in to sync).")
         }
     }
 

@@ -50,7 +50,9 @@ struct ItemConfirmView: View {
                 dismiss()
             }
         } message: {
-            Text("Items are on this device until inventory sync ships.")
+            Text(session.canSyncInventory
+                  ? "Saved to your household inventory."
+                  : "Saved on this device (sign in to sync).")
         }
     }
 
