@@ -4,7 +4,7 @@
 import XCTest
 
 /// XCUITest stubs for live barcode scanner + UPC lookup.
-/// Implemented SwiftUI: `BarcodeCameraView` (VisionKit) + `BarcodeScanView`
+/// Implemented SwiftUI: `BarcodeScanView` (VisionKit `BarcodeCameraView` + UPC lookup)
 /// looking up via `GET /v1/barcode/{code}` (Open Food Facts).
 final class ScannerUITest: XCTestCase {
 

@@ -69,6 +69,8 @@ xcodegen generate
 open Mekasa.xcodeproj
 ```
 
+After pulling new Swift files, always re-run `xcodegen generate` (the `.xcodeproj` is generated, not committed). Then **Product → Clean Build Folder**.
+
 SPM (via `project.yml`): FirebaseCore, FirebaseAuth, GoogleSignIn.
 
 Signing → your Team → Run on an **iPhone Simulator** (not “Any iOS Device”).
