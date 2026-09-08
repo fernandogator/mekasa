@@ -69,7 +69,9 @@ xcodegen generate
 open Mekasa.xcodeproj
 ```
 
-After pulling new Swift files, always re-run `xcodegen generate` (the `.xcodeproj` is generated, not committed). Then **Product → Clean Build Folder**.
+After pulling Swift file adds/removes, always re-run `xcodegen generate` (the `.xcodeproj` is generated, not committed). Then **Product → Clean Build Folder**.
+
+If Xcode reports `Build input file cannot be found: …/BarcodeCameraView.swift`, the project still references a path that changed on disk — run `xcodegen generate` again (or pull the restore that puts that file back).
 
 SPM (via `project.yml`): FirebaseCore, FirebaseAuth, GoogleSignIn.
 
