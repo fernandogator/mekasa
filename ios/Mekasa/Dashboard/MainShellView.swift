@@ -16,10 +16,7 @@ struct MainShellView: View {
                     case .home:
                         DashboardView()
                     case .list:
-                        ComingSoonTabView(
-                            title: "Shopping list",
-                            subtitle: "List generation lands next. Your selected stores are ready."
-                        )
+                        ShoppingListView()
                     case .spend:
                         ComingSoonTabView(
                             title: "Spending",
