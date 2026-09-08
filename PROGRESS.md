@@ -1,7 +1,7 @@
 # Project MEKASA
 
-- **Current Phase:** 3 — iOS App (Add items)
-- **Last Updated:** 2026-09-07
+- **Current Phase:** 3 — iOS App (Shopping list)
+- **Last Updated:** 2026-09-08
 
 > **WARNING:** This file must be reconciled against the actual codebase at the
 > start of every session. Never trust this file without verification.
@@ -58,7 +58,7 @@
 | dashboard | ready (SwiftUI UI-004) | stubs | — | Wire spend APIs when backend endpoints exist |
 | inventory-screen | in progress (Add hub + local inventory) | unit (InventorySessionTests) | — | Backend inventory CRUD + live camera/OCR |
 | scanner | in progress (demo stubs) | stubs | — | Wire UPC API + Vision camera; expand ScannerUITest |
-| shopping-list-screen | not started | unknown | — | Confirm ShoppingList.jsx; expand ShoppingList UI tests |
+| shopping-list-screen | in progress (SwiftUI list + local) | unit (ShoppingListSessionTests) | — | Backend list sync; expand ShoppingListUITest |
 | spending-screen | not started | unknown | — | Confirm SpendingReport.jsx |
 | settings | not started | unknown | — | Family tab placeholder exists; expand FamilyMembers |
 | trash-station-mode | in progress (local consume) | stubs | — | Dedicated device mode + live barcode; UI-005 polish |
@@ -94,6 +94,12 @@
 ---
 
 ## Running Log
+
+### 2026-09-08 — iOS Shopping list (REQ-011–014 client)
+- List tab shows `ShoppingListView` matching `ShoppingList.jsx`.
+- Check off items, approve/deny pending requests, add custom items.
+- Empty inventory seeds demo rows; low-stock inventory auto-adds (REQ-011).
+- Unit: `ShoppingListSessionTests`.
 
 ### 2026-09-07 — iOS Add items (REQ-004–008 client)
 - FAB opens `AddItemsView` hub matching `AddItems.jsx`.

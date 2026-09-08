@@ -1,5 +1,4 @@
-// Verifies: UI-003
-// AC1, AC2, AC3
+// Verifies: REQ-011–REQ-014 · Shopping list
 // Design: design/mockups/ShoppingList.jsx
 
 import XCTest
@@ -7,21 +6,25 @@ import XCTest
 /// XCUITest + snapshot stubs for ShoppingList.
 /// Layout + interaction + flow + semantic visual verification.
 /// Visual verification is structural (not pixel-exact).
+///
+/// Implemented SwiftUI: `ShoppingListView` (check off, approve/deny, add custom;
+/// auto-seed from fixtures / low-stock inventory via `AppSession`).
+/// Wire XCUITest once the app target builds in CI with Firebase SPM.
 final class ShoppingListUITest: XCTestCase {
 
     func testLayout_keyElementsExistAndVisible() throws {
-        throw XCTSkip("Stub — implement when ShoppingList view exists")
-        // Layout test: verify key elements exist and are visible
+        throw XCTSkip("Stub — run on device/simulator after xcodegen + Firebase SPM")
+        // Layout: weekday list title, household subtitle, list rows, Add custom item
     }
 
     func testInteraction_tapsInputsAndNavigationTriggers() throws {
-        throw XCTSkip("Stub — implement when ShoppingList view exists")
-        // Interaction test: verify taps, inputs, and navigation triggers
+        throw XCTSkip("Stub — run on device/simulator after xcodegen + Firebase SPM")
+        // Interaction: toggle checkbox; approve/deny pending; add custom sheet
     }
 
     func testFlow_navigatesToNextScreen() throws {
-        throw XCTSkip("Stub — implement when ShoppingList view exists")
-        // Flow test: verify navigation to next screen completes correctly
+        throw XCTSkip("Stub — run on device/simulator after xcodegen + Firebase SPM")
+        // Flow: List tab → shopping list; low-stock inventory appears on list
     }
 
     func testVisual_semanticStructureMatchesBaseline() throws {
