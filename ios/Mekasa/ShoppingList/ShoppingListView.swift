@@ -22,6 +22,7 @@ struct ShoppingListView: View {
             .padding(.top, 56)
             .padding(.bottom, 140)
         }
+        .accessibilityIdentifier(TestIdentifiers.shoppingListView)
         .overlay(alignment: .top) {
             if let toast {
                 Text(toast)
@@ -41,6 +42,7 @@ struct ShoppingListView: View {
             session.ensureShoppingListSeeded()
         }
         .task {
+            guard !session.isUITesting else { return }
             if session.canSyncShoppingList {
                 await session.refreshShoppingList(syncLowStock: true)
             }
@@ -100,6 +102,7 @@ struct ShoppingListView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(MekasaTheme.surfaceElevated)
                     .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+                    .accessibilityIdentifier(TestIdentifiers.emptyStateView)
             } else {
                 VStack(spacing: 4) {
                     ForEach(session.shoppingList) { item in
@@ -114,6 +117,7 @@ struct ShoppingListView: View {
                         .stroke(MekasaTheme.brandMuted.opacity(0.25), lineWidth: 1)
                 )
                 .shadow(color: .black.opacity(0.08), radius: 24, y: 12)
+                .accessibilityIdentifier(TestIdentifiers.itemList)
             }
         }
     }
@@ -133,15 +137,18 @@ struct ShoppingListView: View {
         } label: {
             HStack(spacing: 16) {
                 checkbox(checked: item.isChecked)
+                    .accessibilityIdentifier(TestIdentifiers.itemThumbnail)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.name)
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .strikethrough(item.isChecked)
                         .foregroundStyle(MekasaTheme.brand)
+                        .accessibilityIdentifier(TestIdentifiers.itemTitle)
                     if !item.displayQuantity.isEmpty {
                         Text(item.displayQuantity)
                             .font(.system(size: 12, weight: .semibold, design: .rounded))
                             .foregroundStyle(MekasaTheme.textMuted)
+                            .accessibilityIdentifier(TestIdentifiers.itemSubtitle)
                     }
                 }
                 .opacity(item.isChecked ? 0.5 : 1)
@@ -152,6 +159,7 @@ struct ShoppingListView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(item.name), \(item.isChecked ? "purchased" : "not purchased")")
+        .accessibilityIdentifier(TestIdentifiers.itemCell)
     }
 
     private func pendingRow(_ item: ShoppingListItem) -> some View {
@@ -169,6 +177,7 @@ struct ShoppingListView: View {
                     Text(item.name)
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundStyle(MekasaTheme.brand)
+                        .accessibilityIdentifier(TestIdentifiers.requestedItemLabel)
                     Text("Needs approval")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .tracking(0.6)
@@ -182,6 +191,7 @@ struct ShoppingListView: View {
                 Text("\(item.displayQuantity) • Requested by \(item.requestedBy ?? "member")")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color(red: 0xc4 / 255, green: 0x5c / 255, blue: 0x12 / 255))
+                    .accessibilityIdentifier(TestIdentifiers.requestorLabel)
             }
 
             Spacer(minLength: 0)
@@ -200,6 +210,7 @@ struct ShoppingListView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Deny \(item.name)")
+            .accessibilityIdentifier(TestIdentifiers.rejectButton)
 
             Button {
                 session.approveShoppingRequest(id: item.id)
@@ -214,10 +225,12 @@ struct ShoppingListView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Approve \(item.name)")
+            .accessibilityIdentifier(TestIdentifiers.approveButton)
         }
         .padding(12)
         .background(Color(red: 1, green: 0xf5 / 255, blue: 0xf0 / 255))
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .accessibilityIdentifier(TestIdentifiers.requestCell)
     }
 
     private func checkbox(checked: Bool) -> some View {
@@ -257,6 +270,7 @@ struct ShoppingListView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Add custom item")
+        .accessibilityIdentifier(TestIdentifiers.addItemButton)
     }
 
     private var addCustomSheet: some View {

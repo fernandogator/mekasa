@@ -8,11 +8,8 @@ name: Mekasa CI
 
 on:
   push:
-    paths:
-      - "mekasa/**"
+    branches: [main]
   pull_request:
-    paths:
-      - "mekasa/**"
   workflow_dispatch:
 
 permissions:
@@ -24,52 +21,78 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: test
+  test-backend:
+    name: test-backend
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mekasa
     steps:
       - uses: actions/checkout@v4
-      - name: Run unit, integration, UI, and snapshot tests
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend deps and run unit tests
         run: |
-          echo "TODO: run backend unit tests"
-          echo "TODO: run integration tests under tests/"
-          echo "TODO: run Android Compose UI + screenshot tests"
-          echo "TODO: run iOS XCUITest + swift-snapshot-testing"
-          # Placeholder until application code exists
-          true
+          python -m pip install -r backend/requirements.txt
+          PYTHONPATH=backend python -m pytest tests/backend -q
+
+  ios-ui:
+    name: ios-ui
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Run structural UI tests
+        run: |
+          xcodebuild test \
+            -scheme Mekasa \
+            -destination 'platform=iOS Simulator,name=iPhone 13 Pro' \
+            -testPlan StructuralTests \
+            -resultBundlePath TestResults/structural.xcresult \
+          || xcodebuild test \
+            -scheme Mekasa \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -testPlan StructuralTests \
+            -resultBundlePath TestResults/structural.xcresult
+      - name: Run snapshot tests
+        run: |
+          xcodebuild test \
+            -scheme Mekasa \
+            -destination 'platform=iOS Simulator,name=iPhone 13 Pro' \
+            -testPlan SnapshotTests \
+            -resultBundlePath TestResults/snapshots.xcresult \
+          || xcodebuild test \
+            -scheme Mekasa \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -testPlan SnapshotTests \
+            -resultBundlePath TestResults/snapshots.xcresult
 
   build:
     name: build
-    needs: test
+    needs: [test-backend]
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mekasa
     steps:
       - uses: actions/checkout@v4
-      - name: Build Android and backend artifacts
+      - name: Build backend image (placeholder)
         run: |
-          echo "TODO: ./gradlew assembleDebug (android/)"
           echo "TODO: build Cloud Run container image (backend/)"
           true
 
   visual-verify:
     name: visual-verify
-    needs: build
+    needs: [build, ios-ui]
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mekasa
     steps:
       - uses: actions/checkout@v4
-      - name: Semantic UI verification against baselines
+      - name: Semantic UI verification note
         run: |
-          echo "TODO: compare structural layout to design/baselines/{android,ios}"
-          echo "Fail only on structural layout divergence; ignore test-data content diffs"
-          true
+          echo "Layer 3 vision gate is manual: Scripts/verify_ui_vision.py"
+          echo "Layer 1+2 run on the ios-ui macOS job."
 
   deploy-dev:
     name: deploy-dev
@@ -77,9 +100,6 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: mekasa-dev
-    defaults:
-      run:
-        working-directory: mekasa
     steps:
       - uses: actions/checkout@v4
       - name: Deploy backend to GCP dev
@@ -87,7 +107,6 @@ jobs:
           echo "TODO: deploy Cloud Run service to mekasa-dev"
           true
 
-  # REQUIRED human approval gate before prod — no exceptions
   manual-approve:
     name: manual-approve
     needs: deploy-dev
@@ -102,26 +121,9 @@ jobs:
     needs: manual-approve
     runs-on: ubuntu-latest
     environment: mekasa-prod
-    defaults:
-      run:
-        working-directory: mekasa
     steps:
       - uses: actions/checkout@v4
       - name: Deploy to production after human approval
         run: |
           echo "TODO: deploy Cloud Run service to mekasa-prod"
-          true
-
-  publish-spec:
-    name: publish-spec
-    needs: deploy-prod
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mekasa
-    steps:
-      - uses: actions/checkout@v4
-      - name: Verify spec version matches deployed code version
-        run: |
-          echo "TODO: assert docs/spec-v1.0.md version equals deployed artifact version"
           true

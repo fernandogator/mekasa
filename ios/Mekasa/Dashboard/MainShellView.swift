@@ -35,6 +35,7 @@ struct MainShellView: View {
                 .padding(.bottom, 24)
             }
         }
+        .accessibilityIdentifier(TestIdentifiers.mainShellView)
         .sheet(isPresented: $showAddItems) {
             NavigationStack {
                 AddItemsView()
@@ -44,6 +45,7 @@ struct MainShellView: View {
             .presentationDragIndicator(.visible)
         }
         .task {
+            guard !session.isUITesting else { return }
             await session.refreshInventory()
             await session.refreshShoppingList(syncLowStock: true)
         }
@@ -82,7 +84,9 @@ private struct BottomNavBar: View {
             .buttonStyle(.plain)
             .offset(y: -22)
             .accessibilityLabel("Add items")
+            .accessibilityIdentifier(TestIdentifiers.addItemButton)
         }
+        .accessibilityIdentifier(TestIdentifiers.bottomNavBar)
     }
 
     private func navButton(_ tab: MainTab) -> some View {
@@ -96,6 +100,7 @@ private struct BottomNavBar: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(tab.title)
+        .accessibilityIdentifier(tab == .home ? TestIdentifiers.homeTab : (tab == .list ? TestIdentifiers.listTab : tab.title))
     }
 }
 
