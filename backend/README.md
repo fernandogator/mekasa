@@ -8,6 +8,7 @@ Python FastAPI service for Cloud Run. Covers:
 - Nearby store list + selection (`REQ-003`; Places stub until API key is wired)
 - Household **inventory CRUD + consume** (`REQ-004`–`REQ-009` persistence slice)
 - Household **shopping list** CRUD + low-stock sync (`REQ-011`–`REQ-014`)
+- **Barcode / UPC lookup** via Open Food Facts (`REQ-004`)
 
 ## Local run
 
@@ -61,6 +62,7 @@ PYTHONPATH=. ALLOW_TEST_AUTH=true pytest ../tests/backend -q
 | POST | `…/shopping-list/{item_id}/approve` | yes | Approve pending request |
 | POST | `…/shopping-list/{item_id}/reject` | yes | Reject pending request |
 | POST | `…/shopping-list/sync-from-inventory` | yes | Auto-add low-stock items |
+| GET | `/v1/barcode/{code}` | yes | Open Food Facts UPC lookup (`found` false if unknown) |
 
 ## Environment
 

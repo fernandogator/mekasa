@@ -307,6 +307,16 @@ actor MekasaAPIClient {
         )
     }
 
+    // MARK: - Barcode lookup (REQ-004)
+
+    func lookupBarcode(code: String, token: String) async throws -> BarcodeLookupDTO {
+        try await request(
+            path: "/v1/barcode/\(code)",
+            method: "GET",
+            token: token
+        )
+    }
+
     private func request<T: Decodable, B: Encodable>(
         path: String,
         method: String,
