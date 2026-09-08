@@ -246,7 +246,7 @@ class ShoppingListSyncResponse(BaseModel):
 
 class BarcodeLookupResponse(BaseModel):
     """
-    Satisfies: REQ-004
+    Satisfies: REQ-004, ADR-006 (image step 1 + placeholder)
     Acceptance criteria: AC1, AC2
     Spec version: 1.0
     """
@@ -257,5 +257,6 @@ class BarcodeLookupResponse(BaseModel):
     brand: str | None = None
     category: str | None = None
     quantity: int = 1
+    image_url: str | None = None
     source: Literal["openfoodfacts", "none"] = "none"
 

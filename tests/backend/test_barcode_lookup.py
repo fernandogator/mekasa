@@ -54,6 +54,8 @@ def test_barcode_lookup_found(client: TestClient) -> None:
             "brands": "Ferrero",
             "categories": "Spreads",
             "categories_tags": ["en:breakfasts", "en:spreads"],
+            "image_front_url": "https://images.openfoodfacts.org/nutella.jpg",
+            "image_url": "https://images.openfoodfacts.org/nutella-fallback.jpg",
         },
     }
 
@@ -71,6 +73,36 @@ def test_barcode_lookup_found(client: TestClient) -> None:
     assert "Nutella" in body["name"]
     assert body["source"] == "openfoodfacts"
     assert body["category"]
+    assert body["image_url"] == "https://images.openfoodfacts.org/nutella.jpg"
+
+
+def test_barcode_lookup_uses_category_placeholder_without_off_image(client: TestClient) -> None:
+    """ADR-006 step 3: category placeholder when OFF has no image."""
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.raise_for_status = MagicMock()
+    mock_response.json.return_value = {
+        "status": 1,
+        "code": "012345678905",
+        "product": {
+            "product_name": "Organic Black Beans",
+            "brands": "Test Brand",
+            "categories_tags": ["en:canned-beans"],
+        },
+    }
+
+    mock_client = AsyncMock()
+    mock_client.get.return_value = mock_response
+    mock_client.aclose = AsyncMock()
+
+    with patch("app.barcode_lookup.httpx.AsyncClient", return_value=mock_client):
+        response = client.get("/v1/barcode/012345678905", headers=_auth())
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["found"] is True
+    assert body["image_url"]
+    assert "placehold.co" in body["image_url"]
 
 
 def test_barcode_lookup_unknown(client: TestClient) -> None:
@@ -94,3 +126,4 @@ def test_barcode_lookup_unknown(client: TestClient) -> None:
     body = response.json()
     assert body["found"] is False
     assert body["barcode"] == "000000000000"
+    assert body["image_url"] is None
