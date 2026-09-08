@@ -1,11 +1,12 @@
-# Mekasa API (thin onboarding slice)
+# Mekasa API
 
-Python FastAPI service for Cloud Run. This slice covers:
+Python FastAPI service for Cloud Run. Covers:
 
 - Firebase Auth JWT verification (`Authorization: Bearer <idToken>`)
 - Create / fetch household (`REQ-001`, `REQ-002`)
 - Confirm home address (`REQ-003`)
 - Nearby store list + selection (`REQ-003`; Places stub until API key is wired)
+- Household **inventory CRUD + consume** (`REQ-004`–`REQ-009` persistence slice)
 
 ## Local run
 
@@ -46,6 +47,13 @@ PYTHONPATH=. ALLOW_TEST_AUTH=true pytest ../tests/backend -q
 | PUT | `/v1/households/{id}/address` | yes | Confirm address |
 | GET | `/v1/households/{id}/stores/nearby` | yes | Stub/Places nearby stores |
 | PUT | `/v1/households/{id}/stores` | yes | Persist selected store ids |
+| GET | `/v1/households/{id}/inventory` | yes | List inventory items |
+| POST | `/v1/households/{id}/inventory` | yes | Create or merge item |
+| GET | `/v1/households/{id}/inventory/{item_id}` | yes | Get one item |
+| PATCH | `/v1/households/{id}/inventory/{item_id}` | yes | Update item fields |
+| DELETE | `/v1/households/{id}/inventory/{item_id}` | yes | Delete item |
+| POST | `/v1/households/{id}/inventory/{item_id}/consume` | yes | Decrement quantity |
+| POST | `/v1/households/{id}/inventory/consume-by-barcode` | yes | Decrement by barcode (404 if unknown) |
 
 ## Environment
 
@@ -73,6 +81,8 @@ See [`docs/gcp-firebase-setup.md`](../docs/gcp-firebase-setup.md).
 | `HOUSEHOLD_PERSISTENCE=auto` | `prod` → firestore, otherwise memory |
 
 Deploy script sets firestore mode and runs Cloud Run as `mekasa-api@…`.
+
+Inventory documents live at `households/{id}/inventory_items/{item_id}`. Create merges by barcode or same name+category (qty adds). Consume never goes below 0.
 
 ## Deploy
 
