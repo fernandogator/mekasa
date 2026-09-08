@@ -94,3 +94,84 @@ struct UserProfile: Codable {
     let email: String?
     let name: String?
 }
+
+/// API inventory item (snake_case JSON from Cloud Run).
+/// Satisfies: REQ-004–REQ-009
+/// Spec version: 1.0
+struct InventoryItemDTO: Codable, Equatable, Identifiable {
+    let id: String
+    let householdId: String
+    let name: String
+    let category: String
+    let quantity: Int
+    let lowStockThreshold: Int
+    let pricePaid: Double?
+    let barcode: String?
+    let source: String
+    let createdByUid: String?
+    let updatedByUid: String?
+    let createdAt: Date?
+    let updatedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, category, quantity, barcode, source
+        case householdId = "household_id"
+        case lowStockThreshold = "low_stock_threshold"
+        case pricePaid = "price_paid"
+        case createdByUid = "created_by_uid"
+        case updatedByUid = "updated_by_uid"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+
+    func toLocal() -> InventoryItem {
+        InventoryItem(
+            id: id,
+            name: name,
+            category: category,
+            quantity: quantity,
+            lowStockThreshold: lowStockThreshold,
+            pricePaid: pricePaid,
+            barcode: barcode,
+            source: InventorySource(rawValue: source) ?? .manual,
+            updatedAt: updatedAt ?? Date()
+        )
+    }
+}
+
+struct InventoryListResponse: Codable {
+    let householdId: String
+    let items: [InventoryItemDTO]
+
+    enum CodingKeys: String, CodingKey {
+        case items
+        case householdId = "household_id"
+    }
+}
+
+struct InventoryItemCreateBody: Encodable {
+    let name: String
+    let category: String
+    let quantity: Int
+    let lowStockThreshold: Int
+    let pricePaid: Double?
+    let barcode: String?
+    let source: String
+
+    enum CodingKeys: String, CodingKey {
+        case name, category, quantity, barcode, source
+        case lowStockThreshold = "low_stock_threshold"
+        case pricePaid = "price_paid"
+    }
+
+    init(from item: InventoryItem) {
+        name = item.name
+        category = item.category
+        quantity = item.quantity
+        lowStockThreshold = item.lowStockThreshold
+        pricePaid = item.pricePaid
+        barcode = item.barcode
+        source = item.source.rawValue
+    }
+}
+

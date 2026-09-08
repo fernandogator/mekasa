@@ -65,6 +65,18 @@ final class InventorySessionTests: XCTestCase {
         XCTAssertEqual(session.lowStockCount, 1)
     }
 
+    @MainActor
+    func testAddInventoryItem_skipsAPIWithoutHousehold() {
+        let session = AppSession()
+        session.idToken = "preview"
+        session.isUIPreview = true
+        XCTAssertFalse(session.canSyncInventory)
+        session.addInventoryItem(
+            InventoryItem(name: "Local Only", category: "Other", quantity: 1, source: .manual)
+        )
+        XCTAssertEqual(session.inventory.count, 1)
+    }
+
     func testDemoCatalog_knownBarcodeLookup() {
         let item = InventoryDemoCatalog.lookup(barcode: InventoryDemoCatalog.sampleBarcode)
         XCTAssertEqual(item?.name, "Organic Oat Milk")

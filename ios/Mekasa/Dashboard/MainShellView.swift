@@ -43,6 +43,9 @@ struct MainShellView: View {
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
+        .task {
+            await session.refreshInventory()
+        }
     }
 }
 

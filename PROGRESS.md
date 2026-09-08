@@ -1,6 +1,6 @@
 # Project MEKASA
 
-- **Current Phase:** 3 — iOS App (Shopping list)
+- **Current Phase:** 3 — iOS inventory API sync
 - **Last Updated:** 2026-09-08
 
 > **WARNING:** This file must be reconciled against the actual codebase at the
@@ -14,7 +14,7 @@
 |--------|--------|---------------|------------|-----------|
 | auth | deployed (Firebase verify) | unit + Cloud Run smoke | — | Real Google/email ID tokens from iOS; keep `ALLOW_TEST_AUTH=false` in prod |
 | household | deployed (Firestore) | unit + smoke | — | Confirm live Cloud Run revision uses `HOUSEHOLD_PERSISTENCE=firestore` |
-| inventory | scaffolded (CRUD + consume API) | unit (test_inventory_api) | — | Redeploy Cloud Run; wire iOS client to API |
+| inventory | deployed (CRUD + consume) | unit | — | Barcode/OCR lookup endpoints later |
 | shopping-list | not started | unknown | — | Scaffold list generation per REQ-011–REQ-014 |
 | spending | not started | unknown | — | Scaffold category tracking per REQ-015–REQ-018 |
 | sync | not started | unknown | — | Scaffold realtime sync per REQ-020 |
@@ -56,7 +56,7 @@
 |--------|--------|---------------|------------|-----------|
 | onboarding | ready (live auth verified) | stubs | — | Keep Firebase plist local; Google Sign-In OAuth client still optional |
 | dashboard | ready (SwiftUI UI-004) | stubs | — | Wire spend APIs when backend endpoints exist |
-| inventory-screen | in progress (Add hub + local inventory) | unit (InventorySessionTests) | — | Backend inventory CRUD + live camera/OCR |
+| inventory-screen | in progress (Add hub + API sync) | unit (InventorySessionTests) | — | Inventory list UI; live camera/OCR |
 | scanner | in progress (demo stubs) | stubs | — | Wire UPC API + Vision camera; expand ScannerUITest |
 | shopping-list-screen | in progress (SwiftUI list + local) | unit (ShoppingListSessionTests) | — | Backend list sync; expand ShoppingListUITest |
 | spending-screen | not started | unknown | — | Confirm SpendingReport.jsx |
@@ -94,6 +94,12 @@
 ---
 
 ## Running Log
+
+### 2026-09-08 — iOS inventory API sync
+- `MekasaAPIClient` inventory list/create/consume (+ patch/delete helpers).
+- `AppSession` optimistic local add/consume; persists to Cloud Run when signed in with household.
+- `MainShellView` refreshes inventory on appear; Add Items copy reflects sync.
+- Unit: inventory DTO decode + `canSyncInventory` guard.
 
 ### 2026-09-08 — iOS Shopping list (REQ-011–014 client)
 - List tab shows `ShoppingListView` matching `ShoppingList.jsx`.

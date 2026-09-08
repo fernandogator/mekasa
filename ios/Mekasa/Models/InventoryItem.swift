@@ -1,7 +1,7 @@
 import Foundation
 
-/// Local household inventory item until backend CRUD exists.
-/// Satisfies: REQ-004–REQ-008 (client-side staging)
+/// Household inventory item (local cache of API / Firestore rows).
+/// Satisfies: REQ-004–REQ-008
 /// Spec version: 1.0
 struct InventoryItem: Identifiable, Equatable, Hashable {
     let id: String
