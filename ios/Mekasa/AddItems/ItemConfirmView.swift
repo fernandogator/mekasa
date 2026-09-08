@@ -31,6 +31,7 @@ struct ItemConfirmView: View {
                     .padding(.horizontal, 24)
                     .padding(.top, 12)
                     .padding(.bottom, 140)
+                    .accessibilityIdentifier(TestIdentifiers.itemDetailView)
                 }
 
                 StickyBottomBar(progress: nil) {
@@ -40,6 +41,7 @@ struct ItemConfirmView: View {
                         }
                         saved = true
                     }
+                    .accessibilityIdentifier(TestIdentifiers.saveButton)
                 }
             }
         }
@@ -60,10 +62,12 @@ struct ItemConfirmView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 14) {
                 productThumb(draft.wrappedValue.imageURL)
+                    .accessibilityIdentifier(TestIdentifiers.itemImage)
                 VStack(alignment: .leading, spacing: 6) {
                     TextField("Name", text: draft.name)
                         .font(.system(size: 18, weight: .heavy, design: .rounded))
                         .foregroundStyle(MekasaTheme.brand)
+                        .accessibilityIdentifier(TestIdentifiers.itemNameLabel)
                     Text(draft.wrappedValue.category)
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(MekasaTheme.textMuted)
@@ -102,6 +106,7 @@ struct ItemConfirmView: View {
                 .buttonStyle(.plain)
             }
             .foregroundStyle(MekasaTheme.brand)
+            .accessibilityIdentifier(TestIdentifiers.quantityControl)
         }
         .padding(20)
         .background(MekasaTheme.surfaceElevated)

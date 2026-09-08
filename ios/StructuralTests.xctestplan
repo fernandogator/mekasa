@@ -1,0 +1,30 @@
+{
+  "configurations" : [
+    {
+      "id" : "7A1B2C3D-1111-2222-3333-444455556666",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverageEnabled" : false,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:Mekasa.xcodeproj",
+      "identifier" : "Mekasa",
+      "name" : "Mekasa"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:Mekasa.xcodeproj",
+        "identifier" : "MekasaUITests",
+        "name" : "MekasaUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

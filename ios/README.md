@@ -71,9 +71,11 @@ open Mekasa.xcodeproj
 
 After pulling Swift file adds/removes, always re-run `xcodegen generate` (the `.xcodeproj` is generated, not committed). Then **Product → Clean Build Folder**.
 
-If Xcode reports `Build input file cannot be found: …/BarcodeCameraView.swift`, the project still references a path that changed on disk — run `xcodegen generate` again (or pull the restore that puts that file back).
+## UI testing (3 layers)
 
-SPM (via `project.yml`): FirebaseCore, FirebaseAuth, GoogleSignIn.
+See `ios/Tests/README.md`. Launch args: `--uitesting` (fixtures, no network), optional `--uitesting-empty`.
+
+SPM (via `project.yml`): FirebaseCore, FirebaseAuth, GoogleSignIn, SnapshotTesting.
 
 Signing → your Team → Run on an **iPhone Simulator** (not “Any iOS Device”).
 

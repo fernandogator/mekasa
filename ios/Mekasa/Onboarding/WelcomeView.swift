@@ -13,6 +13,7 @@ struct WelcomeView: View {
 
     var body: some View {
         MekasaScreen {
+
             VStack(spacing: 0) {
                 OnboardingHeader(step: .welcome)
                     .padding(.horizontal, 24)
@@ -98,6 +99,7 @@ struct WelcomeView: View {
                 }
             }
         }
+        .accessibilityIdentifier(TestIdentifiers.welcomeView)
     }
 
     private func applyAuth(token: String, email: String?, name: String?) async {

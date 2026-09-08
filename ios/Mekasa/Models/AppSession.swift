@@ -15,11 +15,15 @@ final class AppSession: ObservableObject {
     @Published var lastError: String?
     /// DEBUG-only local walkthrough — skips network/Firebase.
     @Published var isUIPreview = false
+    /// XCUITest / snapshot mode: fixtures only, no network, animations off.
+    @Published var isUITesting = false
     /// Household inventory (local cache; synced to API when signed in).
     @Published var inventory: [InventoryItem] = []
     @Published var activity: [ActivityItem] = DashboardFixtures.activity
     /// Client shopping list cache; synced to API when signed in (REQ-011–014).
     @Published var shoppingList: [ShoppingListItem] = []
+    /// Recent trash-station events (UI testing / trash log).
+    @Published var trashEvents: [TrashEvent] = []
     /// True after demo seed applied (empty inventory first open).
     var didSeedShoppingList = false
     /// In-flight creates keyed by name|category so consume can wait for server ids.
@@ -27,11 +31,13 @@ final class AppSession: ObservableObject {
 
     var isSignedIn: Bool { idToken != nil }
 
-    /// Live API sync when we have a real household + token (not UI preview).
+    /// Live API sync when we have a real household + token (not UI preview / UI testing).
     var canSyncInventory: Bool {
         !isUIPreview
+            && !isUITesting
             && idToken != nil
             && idToken != "preview"
+            && idToken != "uitesting"
             && household != nil
     }
 
@@ -49,6 +55,7 @@ final class AppSession: ObservableObject {
 
     func startUIPreview() {
         isUIPreview = true
+        isUITesting = false
         idToken = "preview"
         email = "preview@mekasa.local"
         displayName = "Preview"
@@ -58,7 +65,26 @@ final class AppSession: ObservableObject {
         inventory = []
         activity = DashboardFixtures.activity
         shoppingList = []
+        trashEvents = []
         didSeedShoppingList = false
+        pendingCreates = [:]
+    }
+
+    /// Launch argument `--uitesting`: deterministic fixtures, no network.
+    func startUITesting(emptyInventory: Bool = false) {
+        isUITesting = true
+        isUIPreview = true
+        idToken = "uitesting"
+        email = "uitesting@mekasa.local"
+        displayName = "UI Test"
+        household = TestFixtures.previewHousehold
+        onboardingStep = .done
+        lastError = nil
+        inventory = emptyInventory ? TestFixtures.emptyItemList : TestFixtures.standardItemList
+        activity = DashboardFixtures.activity
+        shoppingList = emptyInventory ? TestFixtures.emptyShoppingList : TestFixtures.standardShoppingList
+        trashEvents = emptyInventory ? TestFixtures.emptyTrashEvents : TestFixtures.standardTrashEvents
+        didSeedShoppingList = true
         pendingCreates = [:]
     }
 
@@ -70,9 +96,11 @@ final class AppSession: ObservableObject {
         onboardingStep = .welcome
         lastError = nil
         isUIPreview = false
+        isUITesting = false
         inventory = []
         activity = DashboardFixtures.activity
         shoppingList = []
+        trashEvents = []
         didSeedShoppingList = false
         pendingCreates = [:]
     }

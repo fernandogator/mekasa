@@ -26,6 +26,7 @@ struct ManualEntryView: View {
         MekasaScreen {
             VStack(spacing: 0) {
                 AddFlowHeader(title: "Type it in", onBack: { dismiss() })
+                    .accessibilityIdentifier(TestIdentifiers.cancelButton)
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
@@ -39,6 +40,7 @@ struct ManualEntryView: View {
                             text: $name,
                             autocapitalization: .words
                         )
+                        .accessibilityIdentifier(TestIdentifiers.nameField)
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Category")
@@ -57,8 +59,10 @@ struct ManualEntryView: View {
                                 .padding(.horizontal, 4)
                             }
                         }
+                        .accessibilityIdentifier(TestIdentifiers.categoryPicker)
 
                         quantityStepper
+                            .accessibilityIdentifier(TestIdentifiers.quantityField)
 
                         MekasaTextField(
                             label: "Price paid (optional)",
@@ -67,16 +71,19 @@ struct ManualEntryView: View {
                             keyboard: .decimalPad,
                             autocapitalization: .never
                         )
+                        .accessibilityIdentifier(TestIdentifiers.locationField)
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 12)
                     .padding(.bottom, 140)
+                    .accessibilityIdentifier(TestIdentifiers.addItemForm)
                 }
 
                 StickyBottomBar(progress: nil) {
                     PrimaryButton(title: "Add to inventory", disabled: !canSave) {
                         save()
                     }
+                    .accessibilityIdentifier(TestIdentifiers.saveButton)
                 }
             }
         }

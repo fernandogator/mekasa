@@ -25,6 +25,7 @@ struct AddItemsView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Close")
+                    .accessibilityIdentifier(TestIdentifiers.cancelButton)
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 16)
@@ -52,6 +53,7 @@ struct AddItemsView: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier(TestIdentifiers.scanButton)
 
                         NavigationLink {
                             ReceiptScanView()
@@ -88,6 +90,7 @@ struct AddItemsView: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier(TestIdentifiers.addItemButton)
 
                         NavigationLink {
                             TrashStationView()
@@ -100,6 +103,7 @@ struct AddItemsView: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier(TestIdentifiers.trashStationView)
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 8)
@@ -108,6 +112,7 @@ struct AddItemsView: View {
             }
         }
         .navigationBarHidden(true)
+        .accessibilityIdentifier(TestIdentifiers.addItemsHub)
     }
 
     private func pathRow(

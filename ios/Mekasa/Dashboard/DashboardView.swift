@@ -20,6 +20,7 @@ struct DashboardView: View {
             .padding(.top, 56)
             .padding(.bottom, 140)
         }
+        .accessibilityIdentifier(TestIdentifiers.dashboardView)
         .overlay(alignment: .top) {
             if let toast {
                 Text(toast)
@@ -159,6 +160,7 @@ struct DashboardView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(MekasaTheme.surfaceElevated)
                     .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+                    .accessibilityIdentifier(TestIdentifiers.emptyStateView)
             } else {
                 VStack(spacing: 4) {
                     ForEach(approvals) { request in
@@ -173,6 +175,7 @@ struct DashboardView: View {
                         .stroke(MekasaTheme.brandMuted.opacity(0.25), lineWidth: 1)
                 )
                 .shadow(color: .black.opacity(0.08), radius: 24, y: 12)
+                .accessibilityIdentifier(TestIdentifiers.requestQueue)
             }
         }
     }
@@ -185,14 +188,17 @@ struct DashboardView: View {
                 .frame(width: 40, height: 40)
                 .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
                 .clipShape(Circle())
+                .accessibilityIdentifier(TestIdentifiers.itemThumbnail)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(request.itemName)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(MekasaTheme.brand)
+                    .accessibilityIdentifier(TestIdentifiers.requestedItemLabel)
                 Text("Requested by \(request.requestedBy)")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(MekasaTheme.textMuted)
+                    .accessibilityIdentifier(TestIdentifiers.requestorLabel)
             }
 
             Spacer()
@@ -208,6 +214,7 @@ struct DashboardView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Deny \(request.itemName)")
+            .accessibilityIdentifier(TestIdentifiers.rejectButton)
 
             Button {
                 dismiss(request, approved: true)
@@ -221,8 +228,10 @@ struct DashboardView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Approve \(request.itemName)")
+            .accessibilityIdentifier(TestIdentifiers.approveButton)
         }
         .padding(12)
+        .accessibilityIdentifier(TestIdentifiers.requestCell)
     }
 
     private var recentActivitySection: some View {

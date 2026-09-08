@@ -25,7 +25,8 @@ struct RootView: View {
                 MainShellView()
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: session.onboardingStep)
+        .accessibilityIdentifier(TestIdentifiers.rootView)
+        .animation(session.isUITesting ? nil : .easeInOut(duration: 0.25), value: session.onboardingStep)
         .transition(.opacity.combined(with: .move(edge: .bottom)))
         .alert("Something went wrong", isPresented: Binding(
             get: { session.lastError != nil },

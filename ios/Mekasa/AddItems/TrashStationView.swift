@@ -12,15 +12,18 @@ struct TrashStationView: View {
         MekasaScreen {
             VStack(spacing: 0) {
                 AddFlowHeader(title: "Trash station", onBack: { dismiss() })
+                    .accessibilityIdentifier(TestIdentifiers.cancelButton)
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                         Text("Tap an item when you toss it. Quantity drops by 1 on this device.")
                             .font(MekasaTheme.bodyFont)
                             .foregroundStyle(MekasaTheme.textMuted)
+                            .accessibilityIdentifier(TestIdentifiers.scanPromptLabel)
 
                         if session.inventory.isEmpty {
                             emptyState
+                                .accessibilityIdentifier(TestIdentifiers.emptyStateView)
                         } else {
                             VStack(spacing: 8) {
                                 ForEach(session.inventory) { item in
@@ -31,14 +34,35 @@ struct TrashStationView: View {
                                     }
                                     .buttonStyle(.plain)
                                     .disabled(item.quantity <= 0)
+                                    .accessibilityIdentifier(TestIdentifiers.itemCell)
                                 }
                             }
+                            .accessibilityIdentifier(TestIdentifiers.itemList)
+                        }
+
+                        if let last = session.trashEvents.first {
+                            Text(last.itemName)
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundStyle(MekasaTheme.brand)
+                                .accessibilityIdentifier(TestIdentifiers.lastScannedItem)
+                        }
+
+                        if !session.trashEvents.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                ForEach(session.trashEvents) { event in
+                                    Text("\(event.itemName) (\(event.quantityDelta))")
+                                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                        .foregroundStyle(MekasaTheme.textMuted)
+                                }
+                            }
+                            .accessibilityIdentifier(TestIdentifiers.trashEventList)
                         }
 
                         SecondaryButton(title: "Simulate barcode dispose") {
                             simulateScan()
                         }
                         .padding(.top, 8)
+                        .accessibilityIdentifier(TestIdentifiers.scanButton)
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 12)
@@ -58,8 +82,9 @@ struct TrashStationView: View {
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
-            .animation(.easeInOut(duration: 0.25), value: toast)
+            .animation(session.isUITesting ? nil : .easeInOut(duration: 0.25), value: toast)
         }
+        .accessibilityIdentifier(TestIdentifiers.trashStationView)
         .navigationBarHidden(true)
     }
 
@@ -118,8 +143,26 @@ struct TrashStationView: View {
         let result = session.consumeInventoryItem(id: item.id)
         switch result {
         case .decremented(let name, let qty):
+            session.trashEvents.insert(
+                TrashEvent(
+                    id: "trash-\(item.id)-\(session.trashEvents.count)",
+                    itemName: name,
+                    quantityDelta: -1,
+                    scannedAt: "2026-01-15T12:00:00Z"
+                ),
+                at: 0
+            )
             showToast("\(name) → \(qty) left")
         case .depleted(let name):
+            session.trashEvents.insert(
+                TrashEvent(
+                    id: "trash-\(item.id)-gone",
+                    itemName: name,
+                    quantityDelta: -1,
+                    scannedAt: "2026-01-15T12:00:00Z"
+                ),
+                at: 0
+            )
             showToast("\(name) marked gone")
         case .unknown:
             showToast("Item not found")
