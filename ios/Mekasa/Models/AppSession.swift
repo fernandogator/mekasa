@@ -251,19 +251,31 @@ final class AppSession: ObservableObject {
         return .decremented(name: name, remaining: qty)
     }
 
-    private func upsertRemote(_ remote: InventoryItemDTO) {
+    private func upsertRemote(_ remote: InventoryItemDTO, preserveLowerLocalQuantity: Bool = false) {
         let local = remote.toLocal()
         if let idx = inventory.firstIndex(where: { $0.id == local.id }) {
-            inventory[idx] = local
+            inventory[idx] = merged(existing: inventory[idx], remote: local, preserveLower: preserveLowerLocalQuantity)
         } else if let idx = inventory.firstIndex(where: {
             $0.name.localizedCaseInsensitiveCompare(local.name) == .orderedSame
                 && $0.category.localizedCaseInsensitiveCompare(local.category) == .orderedSame
         }) {
-            inventory[idx] = local
+            inventory[idx] = merged(existing: inventory[idx], remote: local, preserveLower: preserveLowerLocalQuantity)
         } else {
             inventory.insert(local, at: 0)
         }
         syncShoppingListFromInventory()
+    }
+
+    private func merged(
+        existing: InventoryItem,
+        remote: InventoryItem,
+        preserveLower: Bool
+    ) -> InventoryItem {
+        var next = remote
+        if preserveLower {
+            next.quantity = min(existing.quantity, remote.quantity)
+        }
+        return next
     }
 
     private func persistCreate(_ item: InventoryItem) async -> InventoryItemDTO? {
@@ -274,7 +286,7 @@ final class AppSession: ObservableObject {
                 item: item,
                 token: token
             )
-            upsertRemote(remote)
+            upsertRemote(remote, preserveLowerLocalQuantity: true)
             return remote
         } catch {
             lastError = "Couldn’t sync \(item.name): \(error.localizedDescription)"
