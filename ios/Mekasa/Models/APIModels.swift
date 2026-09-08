@@ -175,3 +175,103 @@ struct InventoryItemCreateBody: Encodable {
     }
 }
 
+/// API shopping list row (snake_case JSON from Cloud Run).
+/// Satisfies: REQ-011–REQ-014
+/// Spec version: 1.0
+struct ShoppingListItemDTO: Codable, Equatable, Identifiable {
+    let id: String
+    let householdId: String
+    let name: String
+    let quantity: Int
+    let quantityLabel: String?
+    let isChecked: Bool
+    let needsApproval: Bool
+    let requestedBy: String?
+    let inventoryItemId: String?
+    let kind: String
+    let createdByUid: String?
+    let updatedByUid: String?
+    let createdAt: Date?
+    let updatedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, quantity, kind
+        case householdId = "household_id"
+        case quantityLabel = "quantity_label"
+        case isChecked = "is_checked"
+        case needsApproval = "needs_approval"
+        case requestedBy = "requested_by"
+        case inventoryItemId = "inventory_item_id"
+        case createdByUid = "created_by_uid"
+        case updatedByUid = "updated_by_uid"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+
+    func toLocal() -> ShoppingListItem {
+        ShoppingListItem(
+            id: id,
+            name: name,
+            quantity: quantity,
+            quantityLabel: quantityLabel,
+            isChecked: isChecked,
+            needsApproval: needsApproval,
+            requestedBy: requestedBy,
+            inventoryItemID: inventoryItemId,
+            kind: ShoppingListItem.Kind(rawValue: kind) ?? .custom
+        )
+    }
+}
+
+struct ShoppingListAPIResponse: Codable {
+    let householdId: String
+    let items: [ShoppingListItemDTO]
+
+    enum CodingKeys: String, CodingKey {
+        case items
+        case householdId = "household_id"
+    }
+}
+
+struct ShoppingListSyncAPIResponse: Codable {
+    let householdId: String
+    let added: [ShoppingListItemDTO]
+    let items: [ShoppingListItemDTO]
+
+    enum CodingKeys: String, CodingKey {
+        case added, items
+        case householdId = "household_id"
+    }
+}
+
+struct ShoppingListItemCreateBody: Encodable {
+    let name: String
+    let quantity: Int
+    let quantityLabel: String?
+    let isChecked: Bool
+    let needsApproval: Bool
+    let requestedBy: String?
+    let inventoryItemId: String?
+    let kind: String
+
+    enum CodingKeys: String, CodingKey {
+        case name, quantity, kind
+        case quantityLabel = "quantity_label"
+        case isChecked = "is_checked"
+        case needsApproval = "needs_approval"
+        case requestedBy = "requested_by"
+        case inventoryItemId = "inventory_item_id"
+    }
+
+    init(from item: ShoppingListItem) {
+        name = item.name
+        quantity = item.quantity
+        quantityLabel = item.quantityLabel
+        isChecked = item.isChecked
+        needsApproval = item.needsApproval
+        requestedBy = item.requestedBy
+        inventoryItemId = item.inventoryItemID
+        kind = item.kind.rawValue
+    }
+}
+

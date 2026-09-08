@@ -212,6 +212,101 @@ actor MekasaAPIClient {
         )
     }
 
+    // MARK: - Shopping list (REQ-011–REQ-014)
+
+    func listShoppingList(householdID: String, token: String) async throws -> ShoppingListAPIResponse {
+        try await request(
+            path: "/v1/households/\(householdID)/shopping-list",
+            method: "GET",
+            token: token
+        )
+    }
+
+    func createShoppingListItem(
+        householdID: String,
+        item: ShoppingListItem,
+        token: String
+    ) async throws -> ShoppingListItemDTO {
+        try await request(
+            path: "/v1/households/\(householdID)/shopping-list",
+            method: "POST",
+            token: token,
+            body: ShoppingListItemCreateBody(from: item)
+        )
+    }
+
+    func updateShoppingListItem(
+        householdID: String,
+        itemID: String,
+        isChecked: Bool? = nil,
+        quantity: Int? = nil,
+        name: String? = nil,
+        needsApproval: Bool? = nil,
+        kind: String? = nil,
+        token: String
+    ) async throws -> ShoppingListItemDTO {
+        struct Body: Encodable {
+            let name: String?
+            let quantity: Int?
+            let is_checked: Bool?
+            let needs_approval: Bool?
+            let kind: String?
+        }
+        return try await request(
+            path: "/v1/households/\(householdID)/shopping-list/\(itemID)",
+            method: "PATCH",
+            token: token,
+            body: Body(
+                name: name,
+                quantity: quantity,
+                is_checked: isChecked,
+                needs_approval: needsApproval,
+                kind: kind
+            )
+        )
+    }
+
+    func deleteShoppingListItem(householdID: String, itemID: String, token: String) async throws {
+        _ = try await rawRequest(
+            path: "/v1/households/\(householdID)/shopping-list/\(itemID)",
+            method: "DELETE",
+            token: token,
+            body: nil as String?
+        )
+    }
+
+    func approveShoppingListItem(
+        householdID: String,
+        itemID: String,
+        token: String
+    ) async throws -> ShoppingListItemDTO {
+        try await request(
+            path: "/v1/households/\(householdID)/shopping-list/\(itemID)/approve",
+            method: "POST",
+            token: token
+        )
+    }
+
+    func rejectShoppingListItem(householdID: String, itemID: String, token: String) async throws {
+        _ = try await rawRequest(
+            path: "/v1/households/\(householdID)/shopping-list/\(itemID)/reject",
+            method: "POST",
+            token: token,
+            body: nil as String?
+        )
+    }
+
+    func syncShoppingListFromInventory(
+        householdID: String,
+        token: String
+    ) async throws -> ShoppingListSyncAPIResponse {
+        try await request(
+            path: "/v1/households/\(householdID)/shopping-list/sync-from-inventory",
+            method: "POST",
+            token: token
+        )
+    }
+
     private func request<T: Decodable, B: Encodable>(
         path: String,
         method: String,

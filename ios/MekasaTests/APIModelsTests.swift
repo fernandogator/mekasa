@@ -111,4 +111,32 @@ final class APIModelsTests: XCTestCase {
         XCTAssertEqual(response.householdId, "hh_1")
         XCTAssertTrue(response.items.isEmpty)
     }
+
+    func testShoppingListItemDTODecodes() throws {
+        let json = """
+        {
+          "id": "sl_1",
+          "household_id": "hh_1",
+          "name": "Bananas",
+          "quantity": 3,
+          "quantity_label": null,
+          "is_checked": false,
+          "needs_approval": false,
+          "requested_by": null,
+          "inventory_item_id": "item_1",
+          "kind": "auto",
+          "created_by_uid": "uid_1",
+          "updated_by_uid": "uid_1",
+          "created_at": "2026-09-08T02:00:00Z",
+          "updated_at": "2026-09-08T02:00:00Z"
+        }
+        """.data(using: .utf8)!
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let dto = try decoder.decode(ShoppingListItemDTO.self, from: json)
+        let local = dto.toLocal()
+        XCTAssertEqual(local.name, "Bananas")
+        XCTAssertEqual(local.kind, .auto)
+        XCTAssertEqual(local.inventoryItemID, "item_1")
+    }
 }

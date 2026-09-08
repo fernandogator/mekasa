@@ -16,6 +16,11 @@ from app.models import (
     InventoryItemResponse,
     InventoryItemUpdateRequest,
     InventoryListResponse,
+    ShoppingListItemCreateRequest,
+    ShoppingListItemResponse,
+    ShoppingListItemUpdateRequest,
+    ShoppingListResponse,
+    ShoppingListSyncResponse,
     StoreSearchResponse,
     StoreSelectionRequest,
     UserProfile,
@@ -25,10 +30,15 @@ from app.repository import (
     get_household_repository,
     stub_nearby_stores,
 )
+from app.shopping_list_repository import (
+    ShoppingListRepository,
+    get_shopping_list_repository,
+)
 
 health_router = APIRouter(tags=["health"])
 api_router = APIRouter(prefix="/v1", tags=["onboarding"])
 inventory_router = APIRouter(prefix="/v1", tags=["inventory"])
+shopping_list_router = APIRouter(prefix="/v1", tags=["shopping-list"])
 
 
 @health_router.get("/health", response_model=HealthResponse)
@@ -318,3 +328,163 @@ def consume_inventory_by_barcode(
         return repo.consume_by_barcode(household_id, user.uid, payload)
     except (KeyError, PermissionError) as exc:
         raise _map_inventory_errors(exc) from exc
+
+
+@shopping_list_router.get(
+    "/households/{household_id}/shopping-list",
+    response_model=ShoppingListResponse,
+)
+def list_shopping_list(
+    household_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: ShoppingListRepository = Depends(get_shopping_list_repository),
+) -> ShoppingListResponse:
+    """
+    Satisfies: REQ-011–REQ-014
+    Spec version: 1.0
+    """
+    try:
+        items = repo.list_items(household_id, user.uid)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+    return ShoppingListResponse(household_id=household_id, items=items)
+
+
+@shopping_list_router.post(
+    "/households/{household_id}/shopping-list",
+    response_model=ShoppingListItemResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_shopping_list_item(
+    household_id: str,
+    payload: ShoppingListItemCreateRequest,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: ShoppingListRepository = Depends(get_shopping_list_repository),
+) -> ShoppingListItemResponse:
+    """
+    Satisfies: REQ-011, REQ-012
+    Spec version: 1.0
+    """
+    try:
+        return repo.create(household_id, user.uid, payload)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+
+
+@shopping_list_router.get(
+    "/households/{household_id}/shopping-list/{item_id}",
+    response_model=ShoppingListItemResponse,
+)
+def get_shopping_list_item(
+    household_id: str,
+    item_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: ShoppingListRepository = Depends(get_shopping_list_repository),
+) -> ShoppingListItemResponse:
+    try:
+        item = repo.get(household_id, item_id, user.uid)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return item
+
+
+@shopping_list_router.patch(
+    "/households/{household_id}/shopping-list/{item_id}",
+    response_model=ShoppingListItemResponse,
+)
+def update_shopping_list_item(
+    household_id: str,
+    item_id: str,
+    payload: ShoppingListItemUpdateRequest,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: ShoppingListRepository = Depends(get_shopping_list_repository),
+) -> ShoppingListItemResponse:
+    """
+    Satisfies: REQ-011, REQ-014
+    Spec version: 1.0
+    """
+    try:
+        return repo.update(household_id, item_id, user.uid, payload)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+
+
+@shopping_list_router.delete(
+    "/households/{household_id}/shopping-list/{item_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_shopping_list_item(
+    household_id: str,
+    item_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: ShoppingListRepository = Depends(get_shopping_list_repository),
+) -> None:
+    try:
+        repo.delete(household_id, item_id, user.uid)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+
+
+@shopping_list_router.post(
+    "/households/{household_id}/shopping-list/{item_id}/approve",
+    response_model=ShoppingListItemResponse,
+)
+def approve_shopping_list_item(
+    household_id: str,
+    item_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: ShoppingListRepository = Depends(get_shopping_list_repository),
+) -> ShoppingListItemResponse:
+    """
+    Satisfies: REQ-013 AC1
+    Spec version: 1.0
+    """
+    try:
+        return repo.approve(household_id, item_id, user.uid)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+
+
+@shopping_list_router.post(
+    "/households/{household_id}/shopping-list/{item_id}/reject",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def reject_shopping_list_item(
+    household_id: str,
+    item_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: ShoppingListRepository = Depends(get_shopping_list_repository),
+) -> None:
+    """
+    Satisfies: REQ-013 AC2
+    Spec version: 1.0
+    """
+    try:
+        repo.reject(household_id, item_id, user.uid)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+
+
+@shopping_list_router.post(
+    "/households/{household_id}/shopping-list/sync-from-inventory",
+    response_model=ShoppingListSyncResponse,
+)
+def sync_shopping_list_from_inventory(
+    household_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: ShoppingListRepository = Depends(get_shopping_list_repository),
+    inventory: InventoryRepository = Depends(get_inventory_repository),
+) -> ShoppingListSyncResponse:
+    """
+    Satisfies: REQ-011
+    Spec version: 1.0
+
+    Auto-adds low-stock inventory rows onto the shopping list.
+    """
+    try:
+        added, items = repo.sync_from_inventory(household_id, user.uid, inventory)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+    return ShoppingListSyncResponse(household_id=household_id, added=added, items=items)

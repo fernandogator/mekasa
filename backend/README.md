@@ -7,6 +7,7 @@ Python FastAPI service for Cloud Run. Covers:
 - Confirm home address (`REQ-003`)
 - Nearby store list + selection (`REQ-003`; Places stub until API key is wired)
 - Household **inventory CRUD + consume** (`REQ-004`–`REQ-009` persistence slice)
+- Household **shopping list** CRUD + low-stock sync (`REQ-011`–`REQ-014`)
 
 ## Local run
 
@@ -54,6 +55,12 @@ PYTHONPATH=. ALLOW_TEST_AUTH=true pytest ../tests/backend -q
 | DELETE | `/v1/households/{id}/inventory/{item_id}` | yes | Delete item |
 | POST | `/v1/households/{id}/inventory/{item_id}/consume` | yes | Decrement quantity |
 | POST | `/v1/households/{id}/inventory/consume-by-barcode` | yes | Decrement by barcode (404 if unknown) |
+| GET | `/v1/households/{id}/shopping-list` | yes | List shopping list rows |
+| POST | `/v1/households/{id}/shopping-list` | yes | Create or merge open row |
+| GET/PATCH/DELETE | `/v1/households/{id}/shopping-list/{item_id}` | yes | Read / update / delete |
+| POST | `…/shopping-list/{item_id}/approve` | yes | Approve pending request |
+| POST | `…/shopping-list/{item_id}/reject` | yes | Reject pending request |
+| POST | `…/shopping-list/sync-from-inventory` | yes | Auto-add low-stock items |
 
 ## Environment
 
@@ -83,6 +90,8 @@ See [`docs/gcp-firebase-setup.md`](../docs/gcp-firebase-setup.md).
 Deploy script sets firestore mode and runs Cloud Run as `mekasa-api@…`.
 
 Inventory documents live at `households/{id}/inventory_items/{item_id}`. Create merges by barcode or same name+category (qty adds). Consume never goes below 0.
+
+Shopping list documents live at `households/{id}/shopping_list_items/{item_id}`. Open rows merge by name; `sync-from-inventory` auto-adds low-stock inventory (REQ-011).
 
 ## Deploy
 

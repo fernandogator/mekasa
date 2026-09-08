@@ -1,7 +1,7 @@
 import Foundation
 
-/// Local shopping list row until backend list APIs exist.
-/// Satisfies: REQ-011–REQ-014 (client-side staging)
+/// Shopping list row (local cache of API / Firestore rows).
+/// Satisfies: REQ-011–REQ-014
 /// Spec version: 1.0
 struct ShoppingListItem: Identifiable, Equatable, Hashable {
     enum Kind: String, Equatable, Hashable {

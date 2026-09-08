@@ -18,7 +18,7 @@ final class AppSession: ObservableObject {
     /// Household inventory (local cache; synced to API when signed in).
     @Published var inventory: [InventoryItem] = []
     @Published var activity: [ActivityItem] = DashboardFixtures.activity
-    /// Client-side shopping list until backend list APIs exist (REQ-011–014).
+    /// Client shopping list cache; synced to API when signed in (REQ-011–014).
     @Published var shoppingList: [ShoppingListItem] = []
     /// True after demo seed applied (empty inventory first open).
     var didSeedShoppingList = false
@@ -34,6 +34,8 @@ final class AppSession: ObservableObject {
             && idToken != "preview"
             && household != nil
     }
+
+    var canSyncShoppingList: Bool { canSyncInventory }
 
     var lowStockCount: Int {
         let live = inventory.filter(\.isLowStock).count
@@ -87,7 +89,33 @@ final class AppSession: ObservableObject {
                 token: token
             )
             inventory = response.items.map { $0.toLocal() }
-            syncShoppingListFromInventory()
+            await refreshShoppingList(syncLowStock: true)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    /// Pull shopping list from Cloud Run / Firestore (optionally sync low-stock first).
+    func refreshShoppingList(syncLowStock: Bool = false) async {
+        guard canSyncShoppingList,
+              let token = idToken,
+              let householdID = household?.id
+        else { return }
+        do {
+            if syncLowStock {
+                let response = try await MekasaAPIClient.shared.syncShoppingListFromInventory(
+                    householdID: householdID,
+                    token: token
+                )
+                shoppingList = response.items.map { $0.toLocal() }
+            } else {
+                let response = try await MekasaAPIClient.shared.listShoppingList(
+                    householdID: householdID,
+                    token: token
+                )
+                shoppingList = response.items.map { $0.toLocal() }
+            }
+            didSeedShoppingList = true
         } catch {
             lastError = error.localizedDescription
         }
@@ -141,9 +169,14 @@ final class AppSession: ObservableObject {
         }
     }
 
-    /// Seed demo rows when the list is empty and there is no live inventory yet.
+    /// Seed demo rows when offline/preview; otherwise refresh from API.
     func ensureShoppingListSeeded() {
         guard !didSeedShoppingList else { return }
+        if canSyncShoppingList {
+            didSeedShoppingList = true
+            Task { await refreshShoppingList(syncLowStock: true) }
+            return
+        }
         didSeedShoppingList = true
         guard shoppingList.isEmpty, inventory.isEmpty else {
             syncShoppingListFromInventory()
@@ -154,6 +187,10 @@ final class AppSession: ObservableObject {
 
     /// REQ-011: low-stock inventory rows auto-appear on the list (no approval).
     func syncShoppingListFromInventory() {
+        if canSyncShoppingList {
+            Task { await refreshShoppingList(syncLowStock: true) }
+            return
+        }
         for item in inventory where item.isLowStock {
             let already = shoppingList.contains {
                 !$0.isChecked
@@ -181,18 +218,21 @@ final class AppSession: ObservableObject {
         guard let idx = shoppingList.firstIndex(where: { $0.id == id }) else { return }
         guard !shoppingList[idx].needsApproval else { return }
         shoppingList[idx].isChecked.toggle()
+        let checked = shoppingList[idx].isChecked
         let name = shoppingList[idx].name
-        if shoppingList[idx].isChecked {
+        if checked {
             logActivity("Purchased \(name)", kind: .success)
         }
+        guard canSyncShoppingList else { return }
+        Task { await persistShoppingPatch(itemID: id, isChecked: checked) }
     }
 
     func addCustomShoppingItem(name: String, quantity: Int) {
-        shoppingList.insert(
-            ShoppingListItem(name: name, quantity: max(1, quantity), kind: .custom),
-            at: 0
-        )
+        let item = ShoppingListItem(name: name, quantity: max(1, quantity), kind: .custom)
+        shoppingList.insert(item, at: 0)
         logActivity("Added \(name) to list", kind: .success)
+        guard canSyncShoppingList else { return }
+        Task { await persistShoppingCreate(item) }
     }
 
     func approveShoppingRequest(id: String) {
@@ -200,6 +240,8 @@ final class AppSession: ObservableObject {
         shoppingList[idx].needsApproval = false
         shoppingList[idx].kind = .custom
         logActivity("Approved \(shoppingList[idx].name)", kind: .success)
+        guard canSyncShoppingList else { return }
+        Task { await persistShoppingApprove(itemID: id) }
     }
 
     func rejectShoppingRequest(id: String) {
@@ -207,6 +249,8 @@ final class AppSession: ObservableObject {
         let name = shoppingList[idx].name
         shoppingList.remove(at: idx)
         logActivity("Denied \(name)", kind: .warning)
+        guard canSyncShoppingList else { return }
+        Task { await persistShoppingReject(itemID: id) }
     }
 
     // MARK: - Local inventory mutators
@@ -339,6 +383,78 @@ final class AppSession: ObservableObject {
                 }
             }
             lastError = "Couldn’t sync consume: \(error.localizedDescription)"
+        }
+    }
+
+    private func upsertShoppingRemote(_ remote: ShoppingListItemDTO) {
+        let local = remote.toLocal()
+        if let idx = shoppingList.firstIndex(where: { $0.id == local.id }) {
+            shoppingList[idx] = local
+        } else if let idx = shoppingList.firstIndex(where: {
+            !$0.isChecked
+                && $0.name.localizedCaseInsensitiveCompare(local.name) == .orderedSame
+        }) {
+            shoppingList[idx] = local
+        } else {
+            shoppingList.insert(local, at: 0)
+        }
+    }
+
+    private func persistShoppingCreate(_ item: ShoppingListItem) async {
+        guard let token = idToken, let householdID = household?.id else { return }
+        do {
+            let remote = try await MekasaAPIClient.shared.createShoppingListItem(
+                householdID: householdID,
+                item: item,
+                token: token
+            )
+            upsertShoppingRemote(remote)
+        } catch {
+            lastError = "Couldn’t sync list item: \(error.localizedDescription)"
+        }
+    }
+
+    private func persistShoppingPatch(itemID: String, isChecked: Bool) async {
+        guard let token = idToken, let householdID = household?.id else { return }
+        do {
+            let remote = try await MekasaAPIClient.shared.updateShoppingListItem(
+                householdID: householdID,
+                itemID: itemID,
+                isChecked: isChecked,
+                token: token
+            )
+            upsertShoppingRemote(remote)
+        } catch {
+            lastError = "Couldn’t sync purchase: \(error.localizedDescription)"
+            await refreshShoppingList()
+        }
+    }
+
+    private func persistShoppingApprove(itemID: String) async {
+        guard let token = idToken, let householdID = household?.id else { return }
+        do {
+            let remote = try await MekasaAPIClient.shared.approveShoppingListItem(
+                householdID: householdID,
+                itemID: itemID,
+                token: token
+            )
+            upsertShoppingRemote(remote)
+        } catch {
+            lastError = "Couldn’t sync approval: \(error.localizedDescription)"
+        }
+    }
+
+    private func persistShoppingReject(itemID: String) async {
+        guard let token = idToken, let householdID = household?.id else { return }
+        do {
+            try await MekasaAPIClient.shared.rejectShoppingListItem(
+                householdID: householdID,
+                itemID: itemID,
+                token: token
+            )
+        } catch {
+            lastError = "Couldn’t sync denial: \(error.localizedDescription)"
+            await refreshShoppingList()
         }
     }
 
