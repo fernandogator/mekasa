@@ -45,6 +45,7 @@ struct MainShellView: View {
         }
         .task {
             await session.refreshInventory()
+            await session.refreshShoppingList(syncLowStock: true)
         }
     }
 }

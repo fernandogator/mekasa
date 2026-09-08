@@ -192,5 +192,7 @@ def reset_household_repository() -> None:
     _repo = InMemoryHouseholdRepository()
     _repo_mode = "memory"
     from app.inventory_repository import reset_inventory_repository
+    from app.shopping_list_repository import reset_shopping_list_repository
 
     reset_inventory_repository()
+    reset_shopping_list_repository()

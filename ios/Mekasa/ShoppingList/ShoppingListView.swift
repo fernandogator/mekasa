@@ -39,7 +39,11 @@ struct ShoppingListView: View {
         .animation(.easeInOut(duration: 0.2), value: session.shoppingList)
         .onAppear {
             session.ensureShoppingListSeeded()
-            session.syncShoppingListFromInventory()
+        }
+        .task {
+            if session.canSyncShoppingList {
+                await session.refreshShoppingList(syncLowStock: true)
+            }
         }
         .sheet(isPresented: $showAddCustom) {
             addCustomSheet

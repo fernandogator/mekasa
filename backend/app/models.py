@@ -173,3 +173,73 @@ class InventoryConsumeByBarcodeRequest(BaseModel):
 
     barcode: str = Field(min_length=1, max_length=64)
     amount: int = Field(default=1, ge=1, le=999)
+
+
+ShoppingListKind = Literal["auto", "custom", "request"]
+
+
+class ShoppingListItemCreateRequest(BaseModel):
+    """
+    Satisfies: REQ-011, REQ-012
+    Spec version: 1.0
+    """
+
+    name: str = Field(min_length=1, max_length=120)
+    quantity: int = Field(default=1, ge=1, le=9999)
+    quantity_label: str | None = Field(default=None, max_length=40)
+    is_checked: bool = False
+    needs_approval: bool = False
+    requested_by: str | None = Field(default=None, max_length=80)
+    inventory_item_id: str | None = Field(default=None, max_length=64)
+    kind: ShoppingListKind = "custom"
+
+
+class ShoppingListItemUpdateRequest(BaseModel):
+    """
+    Satisfies: REQ-011, REQ-013, REQ-014
+    Spec version: 1.0
+    """
+
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    quantity: int | None = Field(default=None, ge=1, le=9999)
+    quantity_label: str | None = Field(default=None, max_length=40)
+    is_checked: bool | None = None
+    needs_approval: bool | None = None
+    requested_by: str | None = Field(default=None, max_length=80)
+    inventory_item_id: str | None = Field(default=None, max_length=64)
+    kind: ShoppingListKind | None = None
+
+
+class ShoppingListItemResponse(BaseModel):
+    """Household shopping list row."""
+
+    id: str
+    household_id: str
+    name: str
+    quantity: int
+    quantity_label: str | None = None
+    is_checked: bool = False
+    needs_approval: bool = False
+    requested_by: str | None = None
+    inventory_item_id: str | None = None
+    kind: ShoppingListKind
+    created_by_uid: str
+    updated_by_uid: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class ShoppingListResponse(BaseModel):
+    """List wrapper for shopping list items."""
+
+    household_id: str
+    items: list[ShoppingListItemResponse]
+
+
+class ShoppingListSyncResponse(BaseModel):
+    """Result of syncing low-stock inventory onto the shopping list."""
+
+    household_id: str
+    added: list[ShoppingListItemResponse]
+    items: list[ShoppingListItemResponse]
+

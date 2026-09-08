@@ -1,6 +1,6 @@
 # Project MEKASA
 
-- **Current Phase:** 3 — iOS inventory API sync
+- **Current Phase:** 3 — Shopping list API sync
 - **Last Updated:** 2026-09-08
 
 > **WARNING:** This file must be reconciled against the actual codebase at the
@@ -15,7 +15,7 @@
 | auth | deployed (Firebase verify) | unit + Cloud Run smoke | — | Real Google/email ID tokens from iOS; keep `ALLOW_TEST_AUTH=false` in prod |
 | household | deployed (Firestore) | unit + smoke | — | Confirm live Cloud Run revision uses `HOUSEHOLD_PERSISTENCE=firestore` |
 | inventory | deployed (CRUD + consume) | unit | — | Barcode/OCR lookup endpoints later |
-| shopping-list | not started | unknown | — | Scaffold list generation per REQ-011–REQ-014 |
+| shopping-list | scaffolded (CRUD + sync API) | unit (test_shopping_list_api) | — | Redeploy Cloud Run; iOS wired in same PR |
 | spending | not started | unknown | — | Scaffold category tracking per REQ-015–REQ-018 |
 | sync | not started | unknown | — | Scaffold realtime sync per REQ-020 |
 | ocr | not started | unknown | — | Wire Vision API receipt scan per REQ-005 |
@@ -58,7 +58,7 @@
 | dashboard | ready (SwiftUI UI-004) | stubs | — | Wire spend APIs when backend endpoints exist |
 | inventory-screen | in progress (Add hub + API sync) | unit (InventorySessionTests) | — | Inventory list UI; live camera/OCR |
 | scanner | in progress (demo stubs) | stubs | — | Wire UPC API + Vision camera; expand ScannerUITest |
-| shopping-list-screen | in progress (SwiftUI list + local) | unit (ShoppingListSessionTests) | — | Backend list sync; expand ShoppingListUITest |
+| shopping-list-screen | in progress (SwiftUI + API sync) | unit (ShoppingListSessionTests) | — | Expand ShoppingListUITest; member roles |
 | spending-screen | not started | unknown | — | Confirm SpendingReport.jsx |
 | settings | not started | unknown | — | Family tab placeholder exists; expand FamilyMembers |
 | trash-station-mode | in progress (local consume) | stubs | — | Dedicated device mode + live barcode; UI-005 polish |
@@ -94,6 +94,13 @@
 ---
 
 ## Running Log
+
+### 2026-09-08 — Shopping list API + iOS sync (REQ-011–014)
+- Backend: `/v1/households/{id}/shopping-list` CRUD, approve/reject, `sync-from-inventory`.
+- Firestore path `households/{id}/shopping_list_items/{item_id}`.
+- iOS List tab refreshes/syncs when signed in; custom add / check / approve / deny persist.
+- Unit: `test_shopping_list_api.py` (12 backend tests total green).
+- **Redeploy** Cloud Run for prod shopping list routes.
 
 ### 2026-09-08 — iOS inventory API sync
 - `MekasaAPIClient` inventory list/create/consume (+ patch/delete helpers).

@@ -6,9 +6,9 @@ SwiftUI client for Mekasa v1.0.
 - Onboarding: Welcome → Household → Address → Stores → scan/invite stubs
 - Home: **Dashboard** (UI-004) with bottom nav + Add FAB
 - **Add items** hub (FAB): Type it in / confirm flows sync to Cloud Run inventory (Firestore) when signed in
-- **Shopping list** (List tab): check off, approve/deny requests, add custom; low-stock auto-adds
+- **Shopping list** (List tab): check off, approve/deny, add custom — syncs to Cloud Run when signed in; low-stock auto-adds via API
 
-Talks to Cloud Run for auth/household/**inventory**; shopping list is still local until list APIs exist.
+Talks to Cloud Run for auth/household/**inventory**/**shopping list**.
 
 ## Live API
 
