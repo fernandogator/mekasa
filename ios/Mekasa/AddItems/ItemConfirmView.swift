@@ -58,13 +58,17 @@ struct ItemConfirmView: View {
 
     private func draftCard(_ draft: Binding<InventoryItem>) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            TextField("Name", text: draft.name)
-                .font(.system(size: 18, weight: .heavy, design: .rounded))
-                .foregroundStyle(MekasaTheme.brand)
-
-            Text(draft.wrappedValue.category)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(MekasaTheme.textMuted)
+            HStack(alignment: .top, spacing: 14) {
+                productThumb(draft.wrappedValue.imageURL)
+                VStack(alignment: .leading, spacing: 6) {
+                    TextField("Name", text: draft.name)
+                        .font(.system(size: 18, weight: .heavy, design: .rounded))
+                        .foregroundStyle(MekasaTheme.brand)
+                    Text(draft.wrappedValue.category)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(MekasaTheme.textMuted)
+                }
+            }
 
             HStack {
                 Text("Qty")
@@ -106,6 +110,38 @@ struct ItemConfirmView: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1)
         )
+    }
+
+    @ViewBuilder
+    private func productThumb(_ urlString: String?) -> some View {
+        let placeholder = RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .fill(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+            .frame(width: 64, height: 64)
+            .overlay {
+                Image(systemName: "photo")
+                    .foregroundStyle(MekasaTheme.brandMuted)
+            }
+
+        if let urlString, let url = URL(string: urlString) {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case let .success(image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 64, height: 64)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                case .failure:
+                    placeholder
+                case .empty:
+                    placeholder.overlay { ProgressView() }
+                @unknown default:
+                    placeholder
+                }
+            }
+        } else {
+            placeholder
+        }
     }
 }
 

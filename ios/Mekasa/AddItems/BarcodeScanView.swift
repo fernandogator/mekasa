@@ -186,7 +186,8 @@ struct BarcodeScanView: View {
                             category: result.category ?? InventoryCategory.other.rawValue,
                             quantity: result.quantity,
                             barcode: result.barcode,
-                            source: .barcode
+                            source: .barcode,
+                            imageURL: result.imageUrl
                         )
                     ]
                     statusMessage = "Found — confirm to add"

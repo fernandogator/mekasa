@@ -12,6 +12,7 @@ struct InventoryItem: Identifiable, Equatable, Hashable {
     var pricePaid: Double?
     var barcode: String?
     var source: InventorySource
+    var imageURL: String?
     var updatedAt: Date
 
     var isLowStock: Bool { quantity <= lowStockThreshold }
@@ -25,6 +26,7 @@ struct InventoryItem: Identifiable, Equatable, Hashable {
         pricePaid: Double? = nil,
         barcode: String? = nil,
         source: InventorySource,
+        imageURL: String? = nil,
         updatedAt: Date = Date()
     ) {
         self.id = id
@@ -35,6 +37,7 @@ struct InventoryItem: Identifiable, Equatable, Hashable {
         self.pricePaid = pricePaid
         self.barcode = barcode
         self.source = source
+        self.imageURL = imageURL
         self.updatedAt = updatedAt
     }
 }

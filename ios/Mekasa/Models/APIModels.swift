@@ -285,6 +285,12 @@ struct BarcodeLookupDTO: Codable, Equatable {
     let brand: String?
     let category: String?
     let quantity: Int
+    let imageUrl: String?
     let source: String
+
+    enum CodingKeys: String, CodingKey {
+        case barcode, found, name, brand, category, quantity, source
+        case imageUrl = "image_url"
+    }
 }
 
