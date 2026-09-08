@@ -14,7 +14,7 @@
 |--------|--------|---------------|------------|-----------|
 | auth | deployed (Firebase verify) | unit + Cloud Run smoke | — | Real Google/email ID tokens from iOS; keep `ALLOW_TEST_AUTH=false` in prod |
 | household | deployed (Firestore) | unit + smoke | — | Confirm live Cloud Run revision uses `HOUSEHOLD_PERSISTENCE=firestore` |
-| inventory | not started | unknown | — | Scaffold inventory CRUD per REQ-004–REQ-008 |
+| inventory | scaffolded (CRUD + consume API) | unit (test_inventory_api) | — | Redeploy Cloud Run; wire iOS client to API |
 | shopping-list | not started | unknown | — | Scaffold list generation per REQ-011–REQ-014 |
 | spending | not started | unknown | — | Scaffold category tracking per REQ-015–REQ-018 |
 | sync | not started | unknown | — | Scaffold realtime sync per REQ-020 |

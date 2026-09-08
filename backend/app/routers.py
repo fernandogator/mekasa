@@ -1,14 +1,21 @@
-"""HTTP routers for health and onboarding."""
+"""HTTP routers for health, onboarding, and inventory."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth import AuthUser, verify_bearer_token
 from app.config import Settings, get_settings
+from app.inventory_repository import InventoryRepository, get_inventory_repository
 from app.models import (
     AddressUpdateRequest,
     HealthResponse,
     HouseholdCreateRequest,
     HouseholdResponse,
+    InventoryConsumeByBarcodeRequest,
+    InventoryConsumeRequest,
+    InventoryItemCreateRequest,
+    InventoryItemResponse,
+    InventoryItemUpdateRequest,
+    InventoryListResponse,
     StoreSearchResponse,
     StoreSelectionRequest,
     UserProfile,
@@ -21,6 +28,7 @@ from app.repository import (
 
 health_router = APIRouter(tags=["health"])
 api_router = APIRouter(prefix="/v1", tags=["onboarding"])
+inventory_router = APIRouter(prefix="/v1", tags=["inventory"])
 
 
 @health_router.get("/health", response_model=HealthResponse)
@@ -152,3 +160,161 @@ def select_stores(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
     except PermissionError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
+
+
+def _map_inventory_errors(exc: Exception) -> HTTPException:
+    if isinstance(exc, KeyError):
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    if isinstance(exc, PermissionError):
+        return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    raise exc
+
+
+@inventory_router.get(
+    "/households/{household_id}/inventory",
+    response_model=InventoryListResponse,
+)
+def list_inventory(
+    household_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: InventoryRepository = Depends(get_inventory_repository),
+) -> InventoryListResponse:
+    """
+    Satisfies: REQ-006
+    Spec version: 1.0
+    """
+    try:
+        items = repo.list_items(household_id, user.uid)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+    return InventoryListResponse(household_id=household_id, items=items)
+
+
+@inventory_router.post(
+    "/households/{household_id}/inventory",
+    response_model=InventoryItemResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_inventory_item(
+    household_id: str,
+    payload: InventoryItemCreateRequest,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: InventoryRepository = Depends(get_inventory_repository),
+) -> InventoryItemResponse:
+    """
+    Satisfies: REQ-004, REQ-005, REQ-006, REQ-007
+    Spec version: 1.0
+    """
+    try:
+        return repo.create(household_id, user.uid, payload)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+
+
+@inventory_router.get(
+    "/households/{household_id}/inventory/{item_id}",
+    response_model=InventoryItemResponse,
+)
+def get_inventory_item(
+    household_id: str,
+    item_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: InventoryRepository = Depends(get_inventory_repository),
+) -> InventoryItemResponse:
+    """
+    Satisfies: REQ-006
+    Spec version: 1.0
+    """
+    try:
+        item = repo.get(household_id, item_id, user.uid)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return item
+
+
+@inventory_router.patch(
+    "/households/{household_id}/inventory/{item_id}",
+    response_model=InventoryItemResponse,
+)
+def update_inventory_item(
+    household_id: str,
+    item_id: str,
+    payload: InventoryItemUpdateRequest,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: InventoryRepository = Depends(get_inventory_repository),
+) -> InventoryItemResponse:
+    """
+    Satisfies: REQ-006, REQ-009
+    Spec version: 1.0
+    """
+    try:
+        return repo.update(household_id, item_id, user.uid, payload)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+
+
+@inventory_router.delete(
+    "/households/{household_id}/inventory/{item_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_inventory_item(
+    household_id: str,
+    item_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: InventoryRepository = Depends(get_inventory_repository),
+) -> None:
+    """
+    Satisfies: REQ-006
+    Spec version: 1.0
+    """
+    try:
+        repo.delete(household_id, item_id, user.uid)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+
+
+@inventory_router.post(
+    "/households/{household_id}/inventory/{item_id}/consume",
+    response_model=InventoryItemResponse,
+)
+def consume_inventory_item(
+    household_id: str,
+    item_id: str,
+    payload: InventoryConsumeRequest,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: InventoryRepository = Depends(get_inventory_repository),
+) -> InventoryItemResponse:
+    """
+    Satisfies: REQ-008
+    Acceptance criteria: AC2
+    Spec version: 1.0
+    """
+    try:
+        return repo.consume(household_id, item_id, user.uid, payload)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+
+
+@inventory_router.post(
+    "/households/{household_id}/inventory/consume-by-barcode",
+    response_model=InventoryItemResponse,
+)
+def consume_inventory_by_barcode(
+    household_id: str,
+    payload: InventoryConsumeByBarcodeRequest,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: InventoryRepository = Depends(get_inventory_repository),
+) -> InventoryItemResponse:
+    """
+    Satisfies: REQ-008
+    Acceptance criteria: AC2, AC3
+    Spec version: 1.0
+
+    Unknown barcodes return 404 (no negative quantity).
+    """
+    try:
+        return repo.consume_by_barcode(household_id, user.uid, payload)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc

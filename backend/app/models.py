@@ -90,3 +90,86 @@ class StoreSelectionRequest(BaseModel):
     """
 
     store_ids: list[str] = Field(min_length=1)
+
+
+InventorySource = Literal["manual", "barcode", "receipt", "voice"]
+
+
+class InventoryItemCreateRequest(BaseModel):
+    """
+    Satisfies: REQ-004, REQ-005, REQ-006, REQ-007
+    Acceptance criteria: REQ-006 AC1–AC2; confirm-before-save for scan/voice
+    Spec version: 1.0
+    """
+
+    name: str = Field(min_length=1, max_length=120)
+    category: str = Field(default="Other", min_length=1, max_length=60)
+    quantity: int = Field(default=1, ge=0, le=9999)
+    low_stock_threshold: int = Field(default=1, ge=0, le=9999)
+    price_paid: float | None = Field(default=None, ge=0)
+    barcode: str | None = Field(default=None, max_length=64)
+    source: InventorySource = "manual"
+
+
+class InventoryItemUpdateRequest(BaseModel):
+    """
+    Satisfies: REQ-006, REQ-009
+    Spec version: 1.0
+    """
+
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    category: str | None = Field(default=None, min_length=1, max_length=60)
+    quantity: int | None = Field(default=None, ge=0, le=9999)
+    low_stock_threshold: int | None = Field(default=None, ge=0, le=9999)
+    price_paid: float | None = Field(default=None, ge=0)
+    barcode: str | None = Field(default=None, max_length=64)
+
+
+class InventoryItemResponse(BaseModel):
+    """Household inventory item resource."""
+
+    id: str
+    household_id: str
+    name: str
+    category: str
+    quantity: int
+    low_stock_threshold: int
+    price_paid: float | None = None
+    barcode: str | None = None
+    source: InventorySource
+    created_by_uid: str
+    updated_by_uid: str
+    created_at: datetime
+    updated_at: datetime
+
+    @property
+    def is_low_stock(self) -> bool:
+        return self.quantity <= self.low_stock_threshold
+
+
+class InventoryListResponse(BaseModel):
+    """List wrapper for household inventory."""
+
+    household_id: str
+    items: list[InventoryItemResponse]
+
+
+class InventoryConsumeRequest(BaseModel):
+    """
+    Satisfies: REQ-008
+    Acceptance criteria: AC2
+    Spec version: 1.0
+    """
+
+    amount: int = Field(default=1, ge=1, le=999)
+
+
+class InventoryConsumeByBarcodeRequest(BaseModel):
+    """
+    Satisfies: REQ-008
+    Acceptance criteria: AC2, AC3
+    Spec version: 1.0
+    """
+
+    barcode: str = Field(min_length=1, max_length=64)
+    amount: int = Field(default=1, ge=1, le=999)
