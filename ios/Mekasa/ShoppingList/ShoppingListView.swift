@@ -64,7 +64,7 @@ struct ShoppingListView: View {
                         Circle()
                             .fill(MekasaTheme.success)
                             .frame(width: 8, height: 8)
-                        Text("on this device")
+                        Text(session.canSyncShoppingList ? "synced" : "on this device")
                     }
                 }
                 .font(.system(size: 12, weight: .bold, design: .rounded))
