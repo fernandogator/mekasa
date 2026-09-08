@@ -19,6 +19,7 @@ graph TD
   DB[(Cloud Firestore\nDatabase)]
   OCR[Cloud Vision API\nReceipt OCR]
   Barcode[Third-Party Barcode API\nUPC / Open Food Facts]
+  ImageAPI[Open Food Facts / UPC ItemDB\nImage API]
   Places[Google Places API\nStore Discovery]
   Secrets[GCP Secret Manager]
   Storage[Cloud Storage\nHome Photos]
@@ -28,6 +29,7 @@ graph TD
   API --> DB
   API --> OCR
   API --> Barcode
+  API --> ImageAPI
   API --> Places
   API --> Secrets
   API --> Storage
@@ -207,3 +209,74 @@ shopping area, and creates a better out-of-box experience.
 Trade-off: Requires location permission. Mitigated by clear
 explanation during onboarding and a manual address entry
 fallback if permission is denied.
+
+### ADR-006: UPC Product Image Lookup Strategy
+Date: 2026-09-08
+Status: Accepted
+Decision: Retrieve product images using a three-step waterfall:
+(1) Open Food Facts, (2) UPC ItemDB, (3) category placeholder.
+All lookups are performed server-side in the Cloud Run API.
+
+Context: After a barcode scan, Mekasa already resolves product
+name and category via a third-party UPC database (ADR-004). Users
+also need a product image next to each inventory item. Image
+lookup must stay on the Cloud Run API so API keys stay in Secret
+Manager and waterfall retry logic is centralized—never called
+directly from mobile clients.
+
+Options considered:
+
+**Option A — Open Food Facts**
+- Free, no API key required, open source
+- Best for food and grocery items (~3 million products globally)
+- Returns `image_url` and `image_front_url` fields
+- Endpoint: `https://world.openfoodfacts.org/api/v0/product/{barcode}.json`
+- Weakness: Community-contributed photos, variable quality
+- Weakness: Limited coverage for non-food household items
+
+**Option B — UPC ItemDB**
+- Free up to 100 requests/day; paid plans above that
+- General retail coverage beyond food (~1.5 million products)
+- Returns `items[0].images[]` array
+- Weakness: 100/day free tier may be limiting at scale
+- Weakness: Requires an API key (must live in GCP Secret Manager)
+
+**Option C — Nutritionix**
+- Free for modest usage
+- Strong on branded US grocery items
+- Includes nutrition data as a bonus
+- Weakness: Food-only, not general retail
+
+**Option D — Google Cloud Vision Web Detection**
+- Already in the Mekasa GCP stack (used for receipt OCR)
+- Image-first matching: user photo → similar product images on
+  the web — useful when no UPC database returns an image
+- Weakness: Not a UPC lookup — requires an image as input, not a
+  barcode string
+- Weakness: Higher per-call cost than static database lookups
+
+Rationale: A three-step waterfall maximizes free coverage for
+grocery scans while keeping a second source for non-food retail
+and a deterministic UI fallback. Open Food Facts is primary
+because it needs no key and will resolve most household food
+scans at zero cost. UPC ItemDB is the secondary step for broader
+retail coverage when Open Food Facts has no image. Category
+placeholders guarantee every inventory row still shows something
+useful. Cloud Vision Web Detection is deferred to a future ADR
+until production coverage proves insufficient, avoiding Vision
+API cost in v1.0.
+
+Implementation Notes:
+- Image lookup handler: `api/handlers/image_lookup.py`
+- Category placeholder map: `api/config/category_icons.py`
+- Secret name for UPC ItemDB key: `UPCITEMDB_API_KEY`
+- Waterfall must be a single internal function:
+  `get_product_image(upc: str, category: str) -> str`
+  returning a URL in all cases — never `None` or an exception
+- Add `UPCITEMDB_API_KEY` to the Secret Manager setup
+  instructions in `docs/runbook.md` when that file is created
+  (`docs/runbook.md` does not exist yet)
+
+Trade-off: Two external API dependencies instead of one.
+Mitigated by Open Food Facts requiring no key and UPC ItemDB
+free tier being sufficient for household-scale usage.
