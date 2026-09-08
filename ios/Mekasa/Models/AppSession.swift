@@ -18,6 +18,10 @@ final class AppSession: ObservableObject {
     /// Client-side inventory until backend CRUD exists (REQ-004–008).
     @Published var inventory: [InventoryItem] = []
     @Published var activity: [ActivityItem] = DashboardFixtures.activity
+    /// Client-side shopping list until backend list APIs exist (REQ-011–014).
+    @Published var shoppingList: [ShoppingListItem] = []
+    /// True after demo seed applied (empty inventory first open).
+    var didSeedShoppingList = false
 
     var isSignedIn: Bool { idToken != nil }
 
@@ -25,6 +29,10 @@ final class AppSession: ObservableObject {
         let live = inventory.filter(\.isLowStock).count
         if inventory.isEmpty { return DashboardFixtures.lowStockCount }
         return live
+    }
+
+    var openShoppingCount: Int {
+        shoppingList.filter { !$0.isChecked && !$0.needsApproval }.count
     }
 
     func startUIPreview() {
@@ -37,6 +45,8 @@ final class AppSession: ObservableObject {
         lastError = nil
         inventory = []
         activity = DashboardFixtures.activity
+        shoppingList = []
+        didSeedShoppingList = false
     }
 
     func signOut() {
@@ -49,6 +59,8 @@ final class AppSession: ObservableObject {
         isUIPreview = false
         inventory = []
         activity = DashboardFixtures.activity
+        shoppingList = []
+        didSeedShoppingList = false
     }
 
     func addInventoryItem(_ item: InventoryItem) {
@@ -68,6 +80,7 @@ final class AppSession: ObservableObject {
             inventory.insert(next, at: 0)
             logActivity("Added \(next.name)", kind: .success)
         }
+        syncShoppingListFromInventory()
     }
 
     enum ConsumeResult {
@@ -85,6 +98,7 @@ final class AppSession: ObservableObject {
         inventory[idx].quantity = max(0, inventory[idx].quantity - 1)
         inventory[idx].updatedAt = Date()
         let qty = inventory[idx].quantity
+        syncShoppingListFromInventory()
         if qty == 0 {
             logActivity("\(name) marked as depleted", kind: .warning)
             return .depleted(name: name)
@@ -104,6 +118,74 @@ final class AppSession: ObservableObject {
         if activity.count > 20 {
             activity = Array(activity.prefix(20))
         }
+    }
+
+    /// Seed demo rows when the list is empty and there is no live inventory yet.
+    func ensureShoppingListSeeded() {
+        guard !didSeedShoppingList else { return }
+        didSeedShoppingList = true
+        guard shoppingList.isEmpty, inventory.isEmpty else {
+            syncShoppingListFromInventory()
+            return
+        }
+        shoppingList = ShoppingListFixtures.demo
+    }
+
+    /// REQ-011: low-stock inventory rows auto-appear on the list (no approval).
+    func syncShoppingListFromInventory() {
+        for item in inventory where item.isLowStock {
+            let already = shoppingList.contains {
+                !$0.isChecked
+                    && (
+                        $0.inventoryItemID == item.id
+                            || $0.name.localizedCaseInsensitiveCompare(item.name) == .orderedSame
+                    )
+            }
+            guard !already else { continue }
+            let needed = max(1, item.lowStockThreshold - item.quantity + 1)
+            shoppingList.insert(
+                ShoppingListItem(
+                    name: item.name,
+                    quantity: needed,
+                    inventoryItemID: item.id,
+                    kind: .auto
+                ),
+                at: 0
+            )
+            logActivity("\(item.name) added to shopping list", kind: .warning)
+        }
+    }
+
+    func toggleShoppingItemChecked(id: String) {
+        guard let idx = shoppingList.firstIndex(where: { $0.id == id }) else { return }
+        guard !shoppingList[idx].needsApproval else { return }
+        shoppingList[idx].isChecked.toggle()
+        let name = shoppingList[idx].name
+        if shoppingList[idx].isChecked {
+            logActivity("Purchased \(name)", kind: .success)
+        }
+    }
+
+    func addCustomShoppingItem(name: String, quantity: Int) {
+        shoppingList.insert(
+            ShoppingListItem(name: name, quantity: max(1, quantity), kind: .custom),
+            at: 0
+        )
+        logActivity("Added \(name) to list", kind: .success)
+    }
+
+    func approveShoppingRequest(id: String) {
+        guard let idx = shoppingList.firstIndex(where: { $0.id == id }) else { return }
+        shoppingList[idx].needsApproval = false
+        shoppingList[idx].kind = .custom
+        logActivity("Approved \(shoppingList[idx].name)", kind: .success)
+    }
+
+    func rejectShoppingRequest(id: String) {
+        guard let idx = shoppingList.firstIndex(where: { $0.id == id }) else { return }
+        let name = shoppingList[idx].name
+        shoppingList.remove(at: idx)
+        logActivity("Denied \(name)", kind: .warning)
     }
 }
 
