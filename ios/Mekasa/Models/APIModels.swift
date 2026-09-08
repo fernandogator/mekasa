@@ -275,3 +275,16 @@ struct ShoppingListItemCreateBody: Encodable {
     }
 }
 
+/// Open Food Facts barcode lookup result.
+/// Satisfies: REQ-004
+/// Spec version: 1.0
+struct BarcodeLookupDTO: Codable, Equatable {
+    let barcode: String
+    let found: Bool
+    let name: String?
+    let brand: String?
+    let category: String?
+    let quantity: Int
+    let source: String
+}
+

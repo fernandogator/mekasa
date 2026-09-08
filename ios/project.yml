@@ -46,6 +46,10 @@ targets:
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
+        NSCameraUsageDescription: Mekasa uses the camera to scan barcodes and receipts.
+        NSMicrophoneUsageDescription: Mekasa uses the microphone so you can add items by voice.
+        NSLocationWhenInUseUsageDescription: Mekasa uses your location to suggest your home address and nearby stores.
+        NSPhotoLibraryUsageDescription: Mekasa uses your photo library so you can add a household photo.
   MekasaTests:
     type: bundle.unit-test
     platform: iOS

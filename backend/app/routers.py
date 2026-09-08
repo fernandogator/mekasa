@@ -3,10 +3,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth import AuthUser, verify_bearer_token
+from app.barcode_lookup import lookup_barcode
 from app.config import Settings, get_settings
 from app.inventory_repository import InventoryRepository, get_inventory_repository
 from app.models import (
     AddressUpdateRequest,
+    BarcodeLookupResponse,
     HealthResponse,
     HouseholdCreateRequest,
     HouseholdResponse,
@@ -39,6 +41,7 @@ health_router = APIRouter(tags=["health"])
 api_router = APIRouter(prefix="/v1", tags=["onboarding"])
 inventory_router = APIRouter(prefix="/v1", tags=["inventory"])
 shopping_list_router = APIRouter(prefix="/v1", tags=["shopping-list"])
+barcode_router = APIRouter(prefix="/v1", tags=["barcode"])
 
 
 @health_router.get("/health", response_model=HealthResponse)
@@ -488,3 +491,20 @@ def sync_shopping_list_from_inventory(
     except (KeyError, PermissionError) as exc:
         raise _map_inventory_errors(exc) from exc
     return ShoppingListSyncResponse(household_id=household_id, added=added, items=items)
+
+
+@barcode_router.get("/barcode/{code}", response_model=BarcodeLookupResponse)
+async def lookup_barcode_endpoint(
+    code: str,
+    user: AuthUser = Depends(verify_bearer_token),
+) -> BarcodeLookupResponse:
+    """
+    Satisfies: REQ-004
+    Acceptance criteria: AC1, AC2
+    Spec version: 1.0
+
+    Looks up a UPC/EAN via Open Food Facts. Unknown codes return found=false
+    so the client can fall back to manual entry.
+    """
+    _ = user
+    return await lookup_barcode(code)

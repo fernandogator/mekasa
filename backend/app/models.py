@@ -243,3 +243,19 @@ class ShoppingListSyncResponse(BaseModel):
     added: list[ShoppingListItemResponse]
     items: list[ShoppingListItemResponse]
 
+
+class BarcodeLookupResponse(BaseModel):
+    """
+    Satisfies: REQ-004
+    Acceptance criteria: AC1, AC2
+    Spec version: 1.0
+    """
+
+    barcode: str
+    found: bool
+    name: str | None = None
+    brand: str | None = None
+    category: str | None = None
+    quantity: int = 1
+    source: Literal["openfoodfacts", "none"] = "none"
+

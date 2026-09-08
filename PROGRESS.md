@@ -1,6 +1,6 @@
 # Project MEKASA
 
-- **Current Phase:** 3 — Shopping list API sync
+- **Current Phase:** 3 — Live barcode + UPC lookup
 - **Last Updated:** 2026-09-08
 
 > **WARNING:** This file must be reconciled against the actual codebase at the
@@ -19,7 +19,7 @@
 | spending | not started | unknown | — | Scaffold category tracking per REQ-015–REQ-018 |
 | sync | not started | unknown | — | Scaffold realtime sync per REQ-020 |
 | ocr | not started | unknown | — | Wire Vision API receipt scan per REQ-005 |
-| barcode | not started | unknown | — | Integrate UPC lookup per REQ-004 |
+| barcode | deployed (Open Food Facts lookup) | unit (test_barcode_lookup) | — | Redeploy Cloud Run; live camera on device |
 | places | not started | unknown | — | Replace store stub with Places API (REQ-003) |
 | notifications | not started | unknown | — | Scaffold push notifications per PRD §8 |
 
@@ -57,7 +57,7 @@
 | onboarding | ready (live auth verified) | stubs | — | Keep Firebase plist local; Google Sign-In OAuth client still optional |
 | dashboard | ready (SwiftUI UI-004) | stubs | — | Wire spend APIs when backend endpoints exist |
 | inventory-screen | in progress (Add hub + API sync) | unit (InventorySessionTests) | — | Inventory list UI; live camera/OCR |
-| scanner | in progress (demo stubs) | stubs | — | Wire UPC API + Vision camera; expand ScannerUITest |
+| scanner | in progress (live camera + UPC API) | stubs | — | Expand ScannerUITest on device |
 | shopping-list-screen | in progress (SwiftUI + API sync) | unit (ShoppingListSessionTests) | — | Expand ShoppingListUITest; member roles |
 | spending-screen | not started | unknown | — | Confirm SpendingReport.jsx |
 | settings | not started | unknown | — | Family tab placeholder exists; expand FamilyMembers |
@@ -94,6 +94,11 @@
 ---
 
 ## Running Log
+
+### 2026-09-08 — Live barcode camera + UPC lookup (REQ-004)
+- Backend `GET /v1/barcode/{code}` via Open Food Facts (found=false → manual fallback).
+- iOS VisionKit `BarcodeCameraView` + typed UPC lookup; confirm before save.
+- Simulator keeps Simulate / Look up code paths. **Redeploy Cloud Run** for barcode route.
 
 ### 2026-09-08 — Shopping list API + iOS sync (REQ-011–014)
 - Backend: `/v1/households/{id}/shopping-list` CRUD, approve/reject, `sync-from-inventory`.
