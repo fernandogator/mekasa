@@ -71,9 +71,15 @@ open Mekasa.xcodeproj
 
 After pulling Swift file adds/removes, always re-run `xcodegen generate` (the `.xcodeproj` is generated, not committed). Then **Product → Clean Build Folder**.
 
-## UI testing (3 layers)
+## Tests
 
-See `ios/Tests/README.md`. Launch args: `--uitesting` (fixtures, no network), optional `--uitesting-empty`.
+```bash
+cd ios && xcodegen generate
+# Unit (default): SessionExpiry, API models, … — requires -testPlan UnitTests if you pin a plan
+xcodebuild test -scheme Mekasa -destination 'platform=iOS Simulator,name=iPhone 16' -testPlan UnitTests
+```
+
+UI layers (structural / snapshots / vision): see `ios/Tests/README.md`. Launch args: `--uitesting` (fixtures, no network), optional `--uitesting-empty`.
 
 SPM (via `project.yml`): FirebaseCore, FirebaseAuth, GoogleSignIn, SnapshotTesting.
 

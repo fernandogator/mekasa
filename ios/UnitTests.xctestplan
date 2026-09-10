@@ -1,0 +1,37 @@
+{
+  "configurations" : [
+    {
+      "id" : "9C3D4E5F-1111-2222-3333-444455556666",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverageEnabled" : false,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:Mekasa.xcodeproj",
+      "identifier" : "Mekasa",
+      "name" : "Mekasa"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "skippedTests" : [
+        "UI001SnapshotTests",
+        "UI002SnapshotTests",
+        "UI003SnapshotTests",
+        "UI004SnapshotTests",
+        "UI005SnapshotTests"
+      ],
+      "target" : {
+        "containerPath" : "container:Mekasa.xcodeproj",
+        "identifier" : "MekasaTests",
+        "name" : "MekasaTests"
+      }
+    }
+  ],
+  "version" : 1
+}
