@@ -87,6 +87,8 @@ schemes:
     test:
       config: Debug
       testPlans:
+        - path: UnitTests.xctestplan
+          defaultPlan: true
         - path: StructuralTests.xctestplan
           defaultPlan: false
         - path: SnapshotTests.xctestplan
