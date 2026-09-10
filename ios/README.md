@@ -18,6 +18,26 @@ Talks to Cloud Run for auth/household/**inventory**/**shopping list**/**barcode 
 
 `com.fernandogator.mekasa`
 
+## Versioning
+
+Every app build gets a **unique build number**. Marketing version starts at **1.0.0**.
+
+| Field | Source | Notes |
+|-------|--------|--------|
+| `CFBundleShortVersionString` | `Config/MarketingVersion.xcconfig` | User-facing, starts `1.0.0` |
+| `CFBundleVersion` | auto via `scripts/ensure_unique_build_number.sh` | Unique per build (CI uses `GITHUB_RUN_NUMBER`) |
+
+Xcode runs the stamp script automatically as a pre-build phase. Override with `MEKASA_BUILD_NUMBER=42 ./scripts/ensure_unique_build_number.sh`.
+
+Bump marketing for a release:
+
+```bash
+cd ios
+./scripts/bump_marketing_version.sh patch   # 1.0.0 → 1.0.1
+./scripts/bump_marketing_version.sh minor   # 1.0.1 → 1.1.0
+./scripts/bump_marketing_version.sh major   # 1.1.0 → 2.0.0
+```
+
 ## Fix Firebase “default app has not yet been configured”
 
 That log means **`GoogleService-Info.plist` is not inside the built `.app`**.
