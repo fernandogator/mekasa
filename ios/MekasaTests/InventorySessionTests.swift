@@ -24,7 +24,7 @@ final class InventorySessionTests: XCTestCase {
             InventoryItem(name: "Milk", category: "Dairy", quantity: 1, source: .manual)
         )
         session.addInventoryItem(
-            InventoryItem(name: "milk", category: "Dairy", quantity: 2, price: .barcode)
+            InventoryItem(name: "milk", category: "Dairy", quantity: 2, source: .barcode)
         )
         XCTAssertEqual(session.inventory.count, 1)
         XCTAssertEqual(session.inventory[0].quantity, 3)
