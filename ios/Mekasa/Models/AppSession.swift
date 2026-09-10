@@ -284,6 +284,86 @@ final class AppSession: ObservableObject {
         return result
     }
 
+
+    /// Trash station: consume by barcode via API when signed in, else local match.
+    @discardableResult
+    func consumeInventoryByBarcode(_ barcode: String) async -> ConsumeResult {
+        let code = barcode.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !code.isEmpty else { return .unknown }
+
+        if canSyncInventory, let token = idToken, let householdID = household?.id {
+            do {
+                let result = try await MekasaAPIClient.shared.consumeInventoryByBarcode(
+                    householdID: householdID,
+                    barcode: code,
+                    amount: 1,
+                    token: token
+                )
+                if result.found, let remote = result.item {
+                    upsertRemote(remote)
+                    await refreshShoppingList(syncLowStock: true)
+                    if remote.quantity == 0 {
+                        return .depleted(name: remote.name)
+                    }
+                    return .decremented(name: remote.name, remaining: remote.quantity)
+                }
+                if let event = result.unknownEvent {
+                    trashEvents.insert(
+                        TrashEvent(
+                            id: event.id,
+                            itemName: "Unknown (\(event.barcode))",
+                            quantityDelta: 0,
+                            scannedAt: ISO8601DateFormatter().string(from: Date())
+                        ),
+                        at: 0
+                    )
+                    logActivity("Unknown trash scan \(event.barcode)", kind: .warning)
+                }
+                return .unknown
+            } catch {
+                handleAPIFailure(error)
+                return .unknown
+            }
+        }
+
+        if let match = inventory.first(where: { $0.barcode == code }) {
+            return consumeInventoryItem(id: match.id)
+        }
+        trashEvents.insert(
+            TrashEvent(
+                id: UUID().uuidString,
+                itemName: "Unknown (\(code))",
+                quantityDelta: 0,
+                scannedAt: ISO8601DateFormatter().string(from: Date())
+            ),
+            at: 0
+        )
+        logActivity("Unknown trash scan \(code)", kind: .warning)
+        return .unknown
+    }
+
+    func updateLowStockThreshold(itemID: String, threshold: Int) {
+        guard let idx = inventory.firstIndex(where: { $0.id == itemID }) else { return }
+        inventory[idx].lowStockThreshold = max(0, threshold)
+        inventory[idx].updatedAt = Date()
+        syncShoppingListFromInventory()
+        guard canSyncInventory, let token = idToken, let householdID = household?.id else { return }
+        Task {
+            do {
+                let remote = try await MekasaAPIClient.shared.updateInventoryItem(
+                    householdID: householdID,
+                    itemID: itemID,
+                    lowStockThreshold: threshold,
+                    token: token
+                )
+                upsertRemote(remote)
+                await refreshShoppingList(syncLowStock: true)
+            } catch {
+                handleAPIFailure(error)
+            }
+        }
+    }
+
     func logActivity(_ title: String, kind: ActivityItem.Kind) {
         let item = ActivityItem(
             id: UUID().uuidString,
@@ -505,13 +585,17 @@ final class AppSession: ObservableObject {
             }
             if let barcode = keyItem?.barcode, !barcode.isEmpty {
                 do {
-                    let remote = try await MekasaAPIClient.shared.consumeInventoryByBarcode(
+                    let result = try await MekasaAPIClient.shared.consumeInventoryByBarcode(
                         householdID: householdID,
                         barcode: barcode,
                         amount: 1,
                         token: token
                     )
-                    upsertRemote(remote)
+                    if result.found, let remote = result.item {
+                        upsertRemote(remote)
+                    } else if let event = result.unknownEvent {
+                        logActivity("Unknown trash scan \(event.barcode)", kind: .warning)
+                    }
                     return
                 } catch {
                     if SessionExpiry.isUnauthorized(error) {

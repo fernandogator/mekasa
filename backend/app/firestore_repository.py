@@ -121,6 +121,17 @@ class FirestoreHouseholdRepository:
         self._col.document(household_id).update(updates)
         return household.model_copy(update=updates)
 
+    def update_photo_url(
+        self, household_id: str, owner_uid: str, photo_url: str
+    ) -> HouseholdResponse:
+        household = self._require_owner(household_id, owner_uid)
+        updates = {
+            "photo_url": photo_url,
+            "updated_at": _utcnow(),
+        }
+        self._col.document(household_id).update(updates)
+        return household.model_copy(update=updates)
+
     def _require_owner(self, household_id: str, owner_uid: str) -> HouseholdResponse:
         household = self.get(household_id)
         if household is None:

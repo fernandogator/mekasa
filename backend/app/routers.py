@@ -1,6 +1,6 @@
 """HTTP routers for health, onboarding, and inventory."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.auth import AuthUser, verify_bearer_token
 from app.barcode_lookup import lookup_barcode
@@ -11,13 +11,24 @@ from app.models import (
     BarcodeLookupResponse,
     HealthResponse,
     HouseholdCreateRequest,
+    HouseholdInviteAcceptRequest,
+    HouseholdInviteCreateRequest,
+    HouseholdInviteResponse,
+    HouseholdInvitesResponse,
+    HouseholdMemberResponse,
+    HouseholdMemberRoleUpdateRequest,
+    HouseholdMembersResponse,
+    HouseholdPhotoResponse,
     HouseholdResponse,
     InventoryConsumeByBarcodeRequest,
+    InventoryConsumeByBarcodeResult,
     InventoryConsumeRequest,
     InventoryItemCreateRequest,
     InventoryItemResponse,
     InventoryItemUpdateRequest,
     InventoryListResponse,
+    ReceiptScanRequest,
+    ReceiptScanResponse,
     ShoppingListItemCreateRequest,
     ShoppingListItemResponse,
     ShoppingListItemUpdateRequest,
@@ -25,13 +36,18 @@ from app.models import (
     ShoppingListSyncResponse,
     StoreSearchResponse,
     StoreSelectionRequest,
+    UnknownBarcodeEvent,
     UserProfile,
 )
+from app.members_repository import MembersRepository, get_members_repository
+from app.places_lookup import fetch_nearby_stores
+from app.receipt_ocr import parse_receipt_image
 from app.repository import (
     HouseholdRepository,
     get_household_repository,
     stub_nearby_stores,
 )
+from app.unknown_barcode_log import list_unknown_barcodes, log_unknown_barcode
 from app.shopping_list_repository import (
     ShoppingListRepository,
     get_shopping_list_repository,
@@ -127,7 +143,7 @@ def update_address(
     "/households/{household_id}/stores/nearby",
     response_model=StoreSearchResponse,
 )
-def list_nearby_stores(
+async def list_nearby_stores(
     household_id: str,
     user: AuthUser = Depends(verify_bearer_token),
     repo: HouseholdRepository = Depends(get_household_repository),
@@ -143,14 +159,29 @@ def list_nearby_stores(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     if household.owner_uid != user.uid:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    radius = settings.store_search_radius_miles
     stores = stub_nearby_stores(
         latitude=household.latitude,
         longitude=household.longitude,
-        radius_miles=settings.store_search_radius_miles,
+        radius_miles=radius,
     )
+    api_key = (settings.google_places_api_key or "").strip()
+    if api_key and household.latitude is not None and household.longitude is not None:
+        try:
+            places = await fetch_nearby_stores(
+                latitude=household.latitude,
+                longitude=household.longitude,
+                radius_miles=radius,
+                api_key=api_key,
+            )
+            if places:
+                stores = places
+        except Exception:
+            # Keep stub list if Places is misconfigured or unreachable.
+            pass
     return StoreSearchResponse(
         household_id=household_id,
-        radius_miles=settings.store_search_radius_miles,
+        radius_miles=radius,
         stores=stores,
     )
 
@@ -312,25 +343,52 @@ def consume_inventory_item(
 
 @inventory_router.post(
     "/households/{household_id}/inventory/consume-by-barcode",
-    response_model=InventoryItemResponse,
+    response_model=InventoryConsumeByBarcodeResult,
 )
 def consume_inventory_by_barcode(
     household_id: str,
     payload: InventoryConsumeByBarcodeRequest,
     user: AuthUser = Depends(verify_bearer_token),
     repo: InventoryRepository = Depends(get_inventory_repository),
-) -> InventoryItemResponse:
+) -> InventoryConsumeByBarcodeResult:
     """
     Satisfies: REQ-008
     Acceptance criteria: AC2, AC3
     Spec version: 1.0
 
-    Unknown barcodes return 404 (no negative quantity).
+    Known barcodes decrement quantity (floor at 0). Unknown barcodes are logged
+    and returned as found=false without creating negative inventory.
     """
     try:
-        return repo.consume_by_barcode(household_id, user.uid, payload)
-    except (KeyError, PermissionError) as exc:
+        item = repo.consume_by_barcode(household_id, user.uid, payload)
+        return InventoryConsumeByBarcodeResult(found=True, item=item)
+    except KeyError:
+        event = log_unknown_barcode(
+            household_id=household_id,
+            barcode=payload.barcode,
+            scanned_by_uid=user.uid,
+        )
+        return InventoryConsumeByBarcodeResult(found=False, unknown_event=event)
+    except PermissionError as exc:
         raise _map_inventory_errors(exc) from exc
+
+
+@inventory_router.get(
+    "/households/{household_id}/trash-scans/unknown",
+    response_model=list[UnknownBarcodeEvent],
+)
+def list_unknown_barcode_events(
+    household_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: HouseholdRepository = Depends(get_household_repository),
+) -> list[UnknownBarcodeEvent]:
+    """List unknown trash-station scans for a household (REQ-008 AC3)."""
+    household = repo.get(household_id)
+    if household is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    if household.owner_uid != user.uid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    return list_unknown_barcodes(household_id)
 
 
 @shopping_list_router.get(
@@ -508,3 +566,193 @@ async def lookup_barcode_endpoint(
     """
     _ = user
     return await lookup_barcode(code)
+
+
+@api_router.post(
+    "/households/{household_id}/receipts/scan",
+    response_model=ReceiptScanResponse,
+)
+def scan_receipt(
+    household_id: str,
+    payload: ReceiptScanRequest,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: HouseholdRepository = Depends(get_household_repository),
+) -> ReceiptScanResponse:
+    """
+    Satisfies: REQ-005
+    Acceptance criteria: AC1
+    Spec version: 1.0
+    """
+    household = repo.get(household_id)
+    if household is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    if household.owner_uid != user.uid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    if not payload.image_base64 and not payload.raw_text:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="image_or_text_required")
+    result = parse_receipt_image(
+        image_base64=payload.image_base64,
+        raw_text=payload.raw_text,
+        allow_stub=True,
+    )
+    return ReceiptScanResponse(
+        household_id=household_id,
+        engine=result.engine,
+        items=result.items,
+    )
+
+
+@api_router.post(
+    "/households/{household_id}/photo",
+    response_model=HouseholdResponse,
+)
+async def upload_household_photo(
+    household_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: HouseholdRepository = Depends(get_household_repository),
+    file: UploadFile = File(...),
+) -> HouseholdResponse:
+    """
+    Satisfies: REQ-002
+    Acceptance criteria: AC2, AC3
+    Spec version: 1.0
+
+    Thin upload: stores a data-URL when GCS is not configured so local/dev works.
+    """
+    import base64
+
+    household = repo.get(household_id)
+    if household is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    if household.owner_uid != user.uid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="empty_file")
+    if len(content) > 5_000_000:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="file_too_large")
+    content_type = file.content_type or "image/jpeg"
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="image_required")
+    encoded = base64.b64encode(content).decode("ascii")
+    photo_url = f"data:{content_type};base64,{encoded}"
+    try:
+        return repo.update_photo_url(household_id, user.uid, photo_url)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
+
+
+@api_router.get(
+    "/households/{household_id}/members",
+    response_model=HouseholdMembersResponse,
+)
+def list_household_members(
+    household_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    members: MembersRepository = Depends(get_members_repository),
+) -> HouseholdMembersResponse:
+    """
+    Satisfies: REQ-019
+    Spec version: 1.0
+    """
+    try:
+        rows = members.list_members(household_id, user.uid)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
+    return HouseholdMembersResponse(household_id=household_id, members=rows)
+
+
+@api_router.post(
+    "/households/{household_id}/invites",
+    response_model=HouseholdInviteResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_household_invite(
+    household_id: str,
+    payload: HouseholdInviteCreateRequest,
+    user: AuthUser = Depends(verify_bearer_token),
+    members: MembersRepository = Depends(get_members_repository),
+) -> HouseholdInviteResponse:
+    """
+    Satisfies: REQ-019
+    Acceptance criteria: AC1, AC2, AC3
+    Spec version: 1.0
+    """
+    try:
+        return members.create_invite(household_id, user.uid, payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@api_router.get(
+    "/households/{household_id}/invites",
+    response_model=HouseholdInvitesResponse,
+)
+def list_household_invites(
+    household_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    members: MembersRepository = Depends(get_members_repository),
+) -> HouseholdInvitesResponse:
+    """List household invites (owner)."""
+    try:
+        rows = members.list_invites(household_id, user.uid)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
+    return HouseholdInvitesResponse(household_id=household_id, invites=rows)
+
+
+@api_router.post(
+    "/invites/accept",
+    response_model=HouseholdMemberResponse,
+)
+def accept_household_invite(
+    payload: HouseholdInviteAcceptRequest,
+    user: AuthUser = Depends(verify_bearer_token),
+    members: MembersRepository = Depends(get_members_repository),
+) -> HouseholdMemberResponse:
+    """
+    Satisfies: REQ-019 AC2
+    Spec version: 1.0
+    """
+    try:
+        return members.accept_invite(payload.token, user.uid, user.name)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@api_router.patch(
+    "/households/{household_id}/members/{member_uid}",
+    response_model=HouseholdMemberResponse,
+)
+def update_household_member_role(
+    household_id: str,
+    member_uid: str,
+    payload: HouseholdMemberRoleUpdateRequest,
+    user: AuthUser = Depends(verify_bearer_token),
+    members: MembersRepository = Depends(get_members_repository),
+) -> HouseholdMemberResponse:
+    """
+    Satisfies: REQ-019 AC3
+    Spec version: 1.0
+    """
+    try:
+        return members.update_role(household_id, member_uid, user.uid, payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+

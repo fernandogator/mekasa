@@ -199,7 +199,7 @@ actor MekasaAPIClient {
         barcode: String,
         amount: Int = 1,
         token: String
-    ) async throws -> InventoryItemDTO {
+    ) async throws -> ConsumeByBarcodeResultDTO {
         struct Body: Encodable {
             let barcode: String
             let amount: Int
@@ -209,6 +209,118 @@ actor MekasaAPIClient {
             method: "POST",
             token: token,
             body: Body(barcode: barcode, amount: amount)
+        )
+    }
+
+    func scanReceipt(
+        householdID: String,
+        imageBase64: String? = nil,
+        rawText: String? = nil,
+        token: String
+    ) async throws -> ReceiptScanResponseDTO {
+        struct Body: Encodable {
+            let image_base64: String?
+            let raw_text: String?
+        }
+        return try await request(
+            path: "/v1/households/\(householdID)/receipts/scan",
+            method: "POST",
+            token: token,
+            body: Body(image_base64: imageBase64, raw_text: rawText)
+        )
+    }
+
+    func uploadHouseholdPhoto(
+        householdID: String,
+        imageData: Data,
+        mimeType: String = "image/jpeg",
+        token: String
+    ) async throws -> Household {
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var body = Data()
+        let filename = "home.jpg"
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append(
+            "Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!
+        )
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(imageData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+
+        guard let url = URL(string: "/v1/households/\(householdID)/photo", relativeTo: baseURL)?.absoluteURL else {
+            throw APIError.invalidResponse
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.httpBody = body
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+        guard (200 ..< 300).contains(http.statusCode) else {
+            let detail = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
+            let error = APIError.from(status: http.statusCode, detail: detail)
+            if error.isUnauthorized {
+                await MainActor.run {
+                    NotificationCenter.default.post(name: .mekasaSessionUnauthorized, object: nil)
+                }
+            }
+            throw error
+        }
+        return try decoder.decode(Household.self, from: data)
+    }
+
+    func listHouseholdMembers(householdID: String, token: String) async throws -> HouseholdMembersResponseDTO {
+        try await request(
+            path: "/v1/households/\(householdID)/members",
+            method: "GET",
+            token: token
+        )
+    }
+
+    func createHouseholdInvite(
+        householdID: String,
+        name: String,
+        email: String?,
+        phone: String?,
+        role: String,
+        token: String
+    ) async throws -> HouseholdInviteDTO {
+        struct Body: Encodable {
+            let name: String
+            let email: String?
+            let phone: String?
+            let role: String
+        }
+        return try await request(
+            path: "/v1/households/\(householdID)/invites",
+            method: "POST",
+            token: token,
+            body: Body(name: name, email: email, phone: phone, role: role)
+        )
+    }
+
+    func listHouseholdInvites(householdID: String, token: String) async throws -> HouseholdInvitesResponseDTO {
+        try await request(
+            path: "/v1/households/\(householdID)/invites",
+            method: "GET",
+            token: token
+        )
+    }
+
+    func updateHouseholdMemberRole(
+        householdID: String,
+        memberUID: String,
+        role: String,
+        token: String
+    ) async throws -> HouseholdMemberDTO {
+        struct Body: Encodable { let role: String }
+        return try await request(
+            path: "/v1/households/\(householdID)/members/\(memberUID)",
+            method: "PATCH",
+            token: token,
+            body: Body(role: role)
         )
     }
 

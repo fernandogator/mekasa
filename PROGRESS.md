@@ -18,9 +18,9 @@
 | shopping-list | scaffolded (CRUD + sync API) | unit (test_shopping_list_api) | — | Redeploy Cloud Run; iOS wired in same PR |
 | spending | not started | unknown | — | Scaffold category tracking per REQ-015–REQ-018 |
 | sync | not started | unknown | — | Scaffold realtime sync per REQ-020 |
-| ocr | not started | unknown | — | Wire Vision API receipt scan per REQ-005 |
+| ocr | done | unknown | — | Wire Vision API receipt scan per REQ-005 |
 | barcode | deployed (Open Food Facts lookup) | unit (test_barcode_lookup) | — | Redeploy Cloud Run; live camera on device |
-| places | not started | unknown | — | Replace store stub with Places API (REQ-003) |
+| places | done | unknown | — | Replace store stub with Places API (REQ-003) |
 | notifications | not started | unknown | — | Scaffold push notifications per PRD §8 |
 
 ### Live thin API (2026-09-07)
@@ -48,7 +48,7 @@
 | shopping-list-screen | not started | unknown | — | Confirm ShoppingList.jsx; add ShoppingList UI test stubs |
 | spending-screen | not started | unknown | — | Confirm SpendingReport.jsx |
 | settings | not started | unknown | — | Confirm FamilyMembers.jsx |
-| trash-station-mode | not started | unknown | — | Align TrashStation* test filename with UI-005 |
+| trash-station-mode | done | unknown | — | Align TrashStation* test filename with UI-005 |
 
 ## Phase 3: iOS App
 

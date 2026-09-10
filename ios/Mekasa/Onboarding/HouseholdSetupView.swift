@@ -122,18 +122,39 @@ struct HouseholdSetupView: View {
         session.isBusy = true
         defer { session.isBusy = false }
         do {
-            // Photo upload is not in the thin API yet — name only for now.
-            let household = try await MekasaAPIClient.shared.createHousehold(
+            var household = try await MekasaAPIClient.shared.createHousehold(
                 name: trimmed.isEmpty ? nil : trimmed,
                 photoURL: nil,
                 token: token
             )
+            if let photoImage,
+               let jpeg = photoImage.jpegData(compressionQuality: 0.82)
+            {
+                household = try await MekasaAPIClient.shared.uploadHouseholdPhoto(
+                    householdID: household.id,
+                    imageData: jpeg,
+                    mimeType: "image/jpeg",
+                    token: token
+                )
+            }
             session.household = household
             withAnimation { session.onboardingStep = .address }
         } catch {
             // Resume if household already exists
             if let existing = try? await MekasaAPIClient.shared.currentHousehold(token: token) {
                 session.household = existing
+                if let photoImage,
+                   let jpeg = photoImage.jpegData(compressionQuality: 0.82),
+                   let token = session.idToken
+                {
+                    if let withPhoto = try? await MekasaAPIClient.shared.uploadHouseholdPhoto(
+                        householdID: existing.id,
+                        imageData: jpeg,
+                        token: token
+                    ) {
+                        session.household = withPhoto
+                    }
+                }
                 withAnimation { session.onboardingStep = .address }
             } else {
                 session.lastError = error.localizedDescription

@@ -109,14 +109,25 @@ def test_inventory_crud_and_consume(client: TestClient) -> None:
         headers=_auth(),
     )
     assert by_barcode.status_code == 200
-    assert by_barcode.json()["quantity"] == 0
+    body = by_barcode.json()
+    assert body["found"] is True
+    assert body["item"]["quantity"] == 0
 
     unknown = client.post(
         f"/v1/households/{household_id}/inventory/consume-by-barcode",
         json={"barcode": "000000000000"},
         headers=_auth(),
     )
-    assert unknown.status_code == 404
+    assert unknown.status_code == 200
+    unknown_body = unknown.json()
+    assert unknown_body["found"] is False
+    assert unknown_body["unknown_event"]["barcode"] == "000000000000"
+    events = client.get(
+        f"/v1/households/{household_id}/trash-scans/unknown",
+        headers=_auth(),
+    )
+    assert events.status_code == 200
+    assert any(event["barcode"] == "000000000000" for event in events.json())
 
     deleted = client.delete(
         f"/v1/households/{household_id}/inventory/{item_id}",
