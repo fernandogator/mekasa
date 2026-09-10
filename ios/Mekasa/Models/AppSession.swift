@@ -10,10 +10,14 @@ final class AppSession: ObservableObject {
     @Published var idToken: String?
     @Published var displayName: String?
     @Published var email: String?
+    /// Last successful sign-in email/username. Survives sign-out so Welcome can prefill it.
+    @Published private(set) var lastSignedInEmail: String?
     @Published var household: Household?
     @Published var onboardingStep: OnboardingStep = .welcome
     @Published var isBusy = false
     @Published var lastError: String?
+
+    private static let lastSignedInEmailKey = "mekasa.lastSignedInEmail"
     /// DEBUG-only local walkthrough — skips network/Firebase.
     @Published var isUIPreview = false
     /// XCUITest / snapshot mode: fixtures only, no network, animations off.
@@ -34,6 +38,10 @@ final class AppSession: ObservableObject {
     private var isHandlingSessionExpiry = false
 
     var isSignedIn: Bool { idToken != nil }
+
+    init() {
+        lastSignedInEmail = Self.loadLastSignedInEmail()
+    }
 
     /// Live API sync when we have a real household + token (not UI preview / UI testing).
     var canSyncInventory: Bool {
@@ -92,7 +100,20 @@ final class AppSession: ObservableObject {
         pendingCreates = [:]
     }
 
+    /// Remember the username/email used at sign-in so Welcome can prefill after sign-out.
+    /// Satisfies: REQ-022 AC5
+    func rememberSignedInEmail(_ value: String?) {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty else { return }
+        lastSignedInEmail = trimmed
+        UserDefaults.standard.set(trimmed, forKey: Self.lastSignedInEmailKey)
+    }
+
     func signOut(expiredSessionMessage: String? = nil) {
+        // Keep lastSignedInEmail so Welcome can prefill the username field.
+        if let email, !email.isEmpty {
+            rememberSignedInEmail(email)
+        }
         idToken = nil
         displayName = nil
         email = nil
@@ -107,6 +128,12 @@ final class AppSession: ObservableObject {
         trashEvents = []
         didSeedShoppingList = false
         pendingCreates = [:]
+    }
+
+    private static func loadLastSignedInEmail() -> String? {
+        let value = UserDefaults.standard.string(forKey: lastSignedInEmailKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return (value?.isEmpty == false) ? value : nil
     }
 
     /// Wire 401 + Firebase auth-state monitoring. Call once from app launch.

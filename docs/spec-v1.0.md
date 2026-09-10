@@ -310,3 +310,5 @@ Acceptance Criteria:
   ready for a new sign-in, with a clear "session expired" message
 - AC4: Firebase Auth becoming unauthenticated while a session was active
   also returns the user to Welcome / Sign in
+- AC5: After sign-out (including session expiry), the last signed-in
+  username/email is remembered and prefilled on the Welcome sign-in form
