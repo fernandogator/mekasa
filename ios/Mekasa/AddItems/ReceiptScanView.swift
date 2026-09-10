@@ -1,20 +1,18 @@
+import PhotosUI
 import SwiftUI
 
-/// Receipt scan path. OCR backend comes next; demo haul confirm now.
-/// Satisfies: REQ-005 AC2 (review before save)
+/// Receipt scan path with backend OCR + confirm (REQ-005).
 /// Spec version: 1.0
 struct ReceiptScanView: View {
+    @EnvironmentObject private var session: AppSession
     @Environment(\.dismiss) private var dismiss
+
+    @State private var photoItem: PhotosPickerItem?
+    @State private var isScanning = false
+    @State private var statusMessage = "Photograph a receipt or run the demo haul."
     @State private var showConfirm = false
-    @State private var sampleItems: [InventoryItem] = InventoryDemoCatalog.sampleReceiptLines.map { name, category, price in
-        InventoryItem(
-            name: name,
-            category: category,
-            quantity: 1,
-            pricePaid: price,
-            source: .receipt
-        )
-    }
+    @State private var drafts: [InventoryItem] = []
+    @State private var engineLabel: String?
 
     var body: some View {
         MekasaScreen {
@@ -37,54 +35,97 @@ struct ReceiptScanView: View {
                             }
                         }
 
-                        Text("Backend OCR isn’t live yet. Run a demo haul to practice the confirm step.")
+                        Text(statusMessage)
                             .font(MekasaTheme.bodyFont)
                             .foregroundStyle(MekasaTheme.textMuted)
 
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Demo haul")
+                        if let engineLabel {
+                            Text("Engine: \(engineLabel)")
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
-                                .tracking(1)
-                                .textCase(.uppercase)
                                 .foregroundStyle(MekasaTheme.textMuted)
-                            ForEach(sampleItems) { item in
-                                HStack {
-                                    Text(item.name)
-                                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                                    Spacer()
-                                    if let price = item.pricePaid {
-                                        Text(String(format: "$%.2f", price))
-                                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                            .foregroundStyle(MekasaTheme.textMuted)
-                                    }
-                                }
-                                .foregroundStyle(MekasaTheme.brand)
-                                .padding(.vertical, 6)
-                            }
                         }
-                        .padding(20)
-                        .background(MekasaTheme.surfaceElevated)
-                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1)
-                        )
+
+                        PhotosPicker(selection: $photoItem, matching: .images) {
+                            Text("Choose receipt photo")
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(MekasaTheme.brand)
+                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        }
+                        .disabled(isScanning)
+                        .onChange(of: photoItem) { _, item in
+                            guard let item else { return }
+                            Task { await scanPhoto(item) }
+                        }
+
+                        SecondaryButton(title: isScanning ? "Scanning…" : "Use demo haul") {
+                            Task { await scanDemo() }
+                        }
+                        .disabled(isScanning)
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 12)
                     .padding(.bottom, 140)
                 }
-
-                StickyBottomBar(progress: nil) {
-                    PrimaryButton(title: "Review demo items") {
-                        showConfirm = true
-                    }
-                }
             }
         }
         .navigationBarHidden(true)
         .navigationDestination(isPresented: $showConfirm) {
-            ItemConfirmView(drafts: sampleItems, title: "Confirm haul")
+            ItemConfirmView(drafts: drafts, title: "Confirm haul")
+        }
+    }
+
+    private func scanDemo() async {
+        await runScan(imageBase64: nil, rawText: """
+        BANANAS 1.29
+        WHOLE MILK 3.49
+        SOURDOUGH LOAF 4.99
+        SUBTOTAL 9.77
+        TOTAL 9.77
+        """)
+    }
+
+    private func scanPhoto(_ item: PhotosPickerItem) async {
+        guard let data = try? await item.loadTransferable(type: Data.self) else {
+            statusMessage = "Couldn’t read that photo."
+            return
+        }
+        await runScan(imageBase64: data.base64EncodedString(), rawText: nil)
+    }
+
+    private func runScan(imageBase64: String?, rawText: String?) async {
+        isScanning = true
+        defer { isScanning = false }
+
+        if session.isUIPreview || session.isUITesting || session.idToken == nil || session.household?.id == nil {
+            drafts = InventoryDemoCatalog.sampleReceiptLines.map { name, category, price in
+                InventoryItem(name: name, category: category, quantity: 1, pricePaid: price, source: .receipt)
+            }
+            engineLabel = "demo"
+            statusMessage = "Review the demo haul, then save."
+            showConfirm = true
+            return
+        }
+
+        guard let token = session.idToken, let householdID = session.household?.id else { return }
+        do {
+            let response = try await MekasaAPIClient.shared.scanReceipt(
+                householdID: householdID,
+                imageBase64: imageBase64,
+                rawText: rawText,
+                token: token
+            )
+            drafts = response.items.map { $0.toLocal() }
+            engineLabel = response.engine
+            statusMessage = drafts.isEmpty
+                ? "No line items found — try another photo or demo haul."
+                : "Review \(drafts.count) parsed items, then save."
+            showConfirm = !drafts.isEmpty
+        } catch {
+            session.handleAPIFailure(error)
+            statusMessage = error.localizedDescription
         }
     }
 }

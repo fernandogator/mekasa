@@ -6,14 +6,14 @@ Last updated: 2026-08-21
 | Requirement ID | Description | Design Artifact | Test Case ID | Test File | Status | Last Verified |
 |----------------|-------------|-----------------|--------------|-----------|--------|---------------|
 | REQ-001 | Household Account Creation | — | pending | pending | not tested | — |
-| REQ-002 | Household Naming and Photo | design/mockups/OnboardingHouseholdSetup.jsx | pending | pending | not tested | — |
-| REQ-003 | Home Address Detection and Store Discovery | design/mockups/OnboardingStoreSelection.jsx | pending | pending | not tested | — |
+| REQ-002 | Household Naming and Photo | design/mockups/OnboardingHouseholdSetup.jsx | done | done | unit (backend photo) | HouseholdSetupView + Dashboard backdrop |
+| REQ-003 | Home Address Detection and Store Discovery | design/mockups/OnboardingStoreSelection.jsx | done | done | unit (places/stub) | StoreSelectionView + Places lookup |
 | REQ-004 | Barcode Scanning and Product Lookup | design/mockups/AddItems.jsx | pending | pending | not tested | — |
-| REQ-005 | Receipt Scanning and Bulk Entry | design/mockups/AddItems.jsx | pending | pending | not tested | — |
+| REQ-005 | Receipt Scanning and Bulk Entry | design/mockups/AddItems.jsx | done | done | unit (OCR parse) | ReceiptScanView + ItemConfirmView |
 | REQ-006 | Manual Item Entry | design/mockups/AddItems.jsx | pending | pending | not tested | — |
 | REQ-007 | Voice Input for Item Entry | design/mockups/AddItems.jsx | pending | pending | not tested | — |
-| REQ-008 | Trash Station Consumption Scanning | design/mockups/TrashStationMode.jsx | pending | pending | not tested | — |
-| REQ-009 | Low Stock Threshold — Manual | design/mockups/Dashboard.jsx | pending | pending | not tested | — |
+| REQ-008 | Trash Station Consumption Scanning | design/mockups/TrashStationMode.jsx | done | done | unit (consume+unknown) | TrashStationView barcode consume |
+| REQ-009 | Low Stock Threshold — Manual | design/mockups/Dashboard.jsx | done | done | unit (PATCH threshold) | ItemDetailView |
 | REQ-010 | Low Stock Threshold — Learned | — | pending | pending | not tested | — |
 | REQ-011 | Automatic Shopping List Addition | design/mockups/ShoppingList.jsx | pending | pending | not tested | — |
 | REQ-012 | Child Shopping Request Submission | design/mockups/ShoppingList.jsx | pending | pending | not tested | — |
@@ -23,7 +23,7 @@ Last updated: 2026-08-21
 | REQ-016 | Price Estimation Fallback | — | pending | pending | not tested | — |
 | REQ-017 | Spending Categorization | — | pending | pending | not tested | — |
 | REQ-018 | Spending History Reporting | design/mockups/SpendingReport.jsx | pending | pending | not tested | — |
-| REQ-019 | Household Member Invitation | design/mockups/FamilyMembers.jsx | pending | pending | not tested | — |
+| REQ-019 | Household Member Invitation | design/mockups/FamilyMembers.jsx | done | done | unit (invites API) | InviteView + FamilyMembersView |
 | REQ-020 | Real-Time Multi-Device Sync | — | pending | pending | not tested | — |
 | REQ-022 | Expired Session Auto Sign-Out | design/mockups/OnboardingHouseholdSetup.jsx | SessionExpiryTests / test_auth_session | ios/MekasaTests/SessionExpiryTests.swift; tests/backend/test_auth_session.py | implemented | 2026-09-10 |
 | UI-001 | Native Android Interface | design/mockups/ (all screens) | pending | android/src/test/ui/ | not tested | — |

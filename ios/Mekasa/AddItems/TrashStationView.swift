@@ -1,12 +1,16 @@
 import SwiftUI
 
-/// Trash station: decrement local inventory (REQ-008 client stub).
+/// Trash station: scan barcode to decrement inventory (REQ-008 / UI-005).
 /// Spec version: 1.0
 /// Design: design/mockups/TrashStationMode.jsx
 struct TrashStationView: View {
     @EnvironmentObject private var session: AppSession
     @Environment(\.dismiss) private var dismiss
     @State private var toast: String?
+    @State private var isBusy = false
+    @State private var cameraError: String?
+
+    private var cameraAvailable: Bool { BarcodeCameraView.isSupported }
 
     var body: some View {
         MekasaScreen {
@@ -16,24 +20,33 @@ struct TrashStationView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        Text("Tap an item when you toss it. Quantity drops by 1 on this device.")
+                        Text("Scan a barcode when you toss it. Quantity drops by 1 immediately.")
                             .font(MekasaTheme.bodyFont)
                             .foregroundStyle(MekasaTheme.textMuted)
                             .accessibilityIdentifier(TestIdentifiers.scanPromptLabel)
+
+                        cameraPane
+                            .accessibilityIdentifier(TestIdentifiers.scanButton)
+
+                        if let cameraError {
+                            Text(cameraError)
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundStyle(MekasaTheme.accent)
+                        }
 
                         if session.inventory.isEmpty {
                             emptyState
                                 .accessibilityIdentifier(TestIdentifiers.emptyStateView)
                         } else {
                             VStack(spacing: 8) {
-                                ForEach(session.inventory) { item in
+                                ForEach(session.inventory.filter { $0.quantity > 0 }) { item in
                                     Button {
-                                        consume(item)
+                                        Task { await consume(itemID: item.id, fallbackName: item.name) }
                                     } label: {
                                         trashRow(item)
                                     }
                                     .buttonStyle(.plain)
-                                    .disabled(item.quantity <= 0)
+                                    .disabled(isBusy)
                                     .accessibilityIdentifier(TestIdentifiers.itemCell)
                                 }
                             }
@@ -49,7 +62,7 @@ struct TrashStationView: View {
 
                         if !session.trashEvents.isEmpty {
                             VStack(alignment: .leading, spacing: 8) {
-                                ForEach(session.trashEvents) { event in
+                                ForEach(session.trashEvents.prefix(8)) { event in
                                     Text("\(event.itemName) (\(event.quantityDelta))")
                                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                                         .foregroundStyle(MekasaTheme.textMuted)
@@ -58,11 +71,14 @@ struct TrashStationView: View {
                             .accessibilityIdentifier(TestIdentifiers.trashEventList)
                         }
 
-                        SecondaryButton(title: "Simulate barcode dispose") {
-                            simulateScan()
+                        if !cameraAvailable {
+                            SecondaryButton(title: "Simulate known dispose") {
+                                Task { await simulateKnown() }
+                            }
+                            SecondaryButton(title: "Simulate unknown barcode") {
+                                Task { await handleBarcode("000000000000") }
+                            }
                         }
-                        .padding(.top, 8)
-                        .accessibilityIdentifier(TestIdentifiers.scanButton)
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 12)
@@ -88,12 +104,48 @@ struct TrashStationView: View {
         .navigationBarHidden(true)
     }
 
+    @ViewBuilder
+    private var cameraPane: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Color.black.opacity(0.85))
+                .frame(height: 220)
+            if cameraAvailable {
+                BarcodeCameraView(
+                    onCode: { code in
+                        Task { await handleBarcode(code) }
+                    },
+                    onError: { message in
+                        cameraError = message
+                    }
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .frame(height: 220)
+            } else {
+                VStack(spacing: 8) {
+                    Image(systemName: "barcode.viewfinder")
+                        .font(.system(size: 36, weight: .semibold))
+                        .foregroundStyle(.white)
+                    Text("Camera unavailable — use simulate buttons")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+            }
+            if isBusy {
+                ProgressView()
+                    .tint(.white)
+            }
+        }
+    }
+
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Nothing to mark gone yet")
                 .font(.system(size: 18, weight: .heavy, design: .rounded))
                 .foregroundStyle(MekasaTheme.brand)
-            Text("Add items from Type it in or a demo scan, then come back here.")
+            Text("Add items from Type it in or a barcode scan, then come back here.")
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .foregroundStyle(MekasaTheme.textMuted)
         }
@@ -101,10 +153,6 @@ struct TrashStationView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(MekasaTheme.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1)
-        )
     }
 
     private func trashRow(_ item: InventoryItem) -> some View {
@@ -132,49 +180,61 @@ struct TrashStationView: View {
         .padding(16)
         .background(MekasaTheme.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1)
-        )
-        .accessibilityLabel("Dispose \(item.name)")
     }
 
-    private func consume(_ item: InventoryItem) {
-        let result = session.consumeInventoryItem(id: item.id)
+    private func handleBarcode(_ code: String) async {
+        guard !isBusy else { return }
+        isBusy = true
+        defer { isBusy = false }
+        let result = await session.consumeInventoryByBarcode(code)
+        apply(result, barcode: code)
+    }
+
+    private func consume(itemID: String, fallbackName: String) async {
+        guard !isBusy else { return }
+        isBusy = true
+        defer { isBusy = false }
+        let result = session.consumeInventoryItem(id: itemID)
+        apply(result, barcode: fallbackName)
+    }
+
+    private func simulateKnown() async {
+        if let first = session.inventory.first(where: { $0.quantity > 0 && ($0.barcode?.isEmpty == false) }) {
+            await handleBarcode(first.barcode!)
+        } else if let first = session.inventory.first(where: { $0.quantity > 0 }) {
+            await consume(itemID: first.id, fallbackName: first.name)
+        } else {
+            showToast("No known items — scan logged as unknown")
+            _ = await session.consumeInventoryByBarcode("000000000000")
+        }
+    }
+
+    private func apply(_ result: AppSession.ConsumeResult, barcode: String) {
         switch result {
-        case .decremented(let name, let qty):
+        case let .decremented(name, qty):
             session.trashEvents.insert(
                 TrashEvent(
-                    id: "trash-\(item.id)-\(session.trashEvents.count)",
+                    id: UUID().uuidString,
                     itemName: name,
                     quantityDelta: -1,
-                    scannedAt: "2026-01-15T12:00:00Z"
+                    scannedAt: ISO8601DateFormatter().string(from: Date())
                 ),
                 at: 0
             )
             showToast("\(name) → \(qty) left")
-        case .depleted(let name):
+        case let .depleted(name):
             session.trashEvents.insert(
                 TrashEvent(
-                    id: "trash-\(item.id)-gone",
+                    id: UUID().uuidString,
                     itemName: name,
                     quantityDelta: -1,
-                    scannedAt: "2026-01-15T12:00:00Z"
+                    scannedAt: ISO8601DateFormatter().string(from: Date())
                 ),
                 at: 0
             )
             showToast("\(name) marked gone")
         case .unknown:
-            showToast("Item not found")
-        }
-    }
-
-    private func simulateScan() {
-        if let first = session.inventory.first(where: { $0.quantity > 0 }) {
-            consume(first)
-        } else {
-            showToast("No known items — unknown scan logged")
-            session.logActivity("Unknown trash scan (no match)", kind: .warning)
+            showToast("Unknown barcode logged — no negative qty")
         }
     }
 
@@ -193,7 +253,9 @@ struct TrashStationView: View {
     }
     .environmentObject({
         let s = AppSession()
-        s.addInventoryItem(InventoryItem(name: "Eggs", category: "Dairy", quantity: 2, source: .manual))
+        s.addInventoryItem(
+            InventoryItem(name: "Eggs", category: "Dairy", quantity: 2, barcode: "041220576037", source: .manual)
+        )
         return s
     }())
 }

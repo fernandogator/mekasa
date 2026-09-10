@@ -294,3 +294,117 @@ struct BarcodeLookupDTO: Codable, Equatable {
     }
 }
 
+/// Consume-by-barcode result (REQ-008).
+struct ConsumeByBarcodeResultDTO: Codable, Equatable {
+    let found: Bool
+    let item: InventoryItemDTO?
+    let unknownEvent: UnknownBarcodeEventDTO?
+
+    enum CodingKeys: String, CodingKey {
+        case found, item
+        case unknownEvent = "unknown_event"
+    }
+}
+
+struct UnknownBarcodeEventDTO: Codable, Equatable, Identifiable {
+    let id: String
+    let householdId: String
+    let barcode: String
+    let scannedByUid: String
+    let createdAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id, barcode
+        case householdId = "household_id"
+        case scannedByUid = "scanned_by_uid"
+        case createdAt = "created_at"
+    }
+}
+
+struct ReceiptLineItemDTO: Codable, Equatable {
+    let name: String
+    let category: String
+    let quantity: Int
+    let pricePaid: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case name, category, quantity
+        case pricePaid = "price_paid"
+    }
+
+    func toLocal() -> InventoryItem {
+        InventoryItem(
+            name: name,
+            category: category,
+            quantity: quantity,
+            pricePaid: pricePaid,
+            source: .receipt
+        )
+    }
+}
+
+struct ReceiptScanResponseDTO: Codable, Equatable {
+    let householdId: String
+    let engine: String
+    let items: [ReceiptLineItemDTO]
+
+    enum CodingKeys: String, CodingKey {
+        case engine, items
+        case householdId = "household_id"
+    }
+}
+
+struct HouseholdMemberDTO: Codable, Equatable, Identifiable {
+    var id: String { uid }
+    let uid: String
+    let householdId: String
+    let name: String?
+    let email: String?
+    let phone: String?
+    let role: String
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case uid, name, email, phone, role, status
+        case householdId = "household_id"
+    }
+}
+
+struct HouseholdMembersResponseDTO: Codable, Equatable {
+    let householdId: String
+    let members: [HouseholdMemberDTO]
+
+    enum CodingKeys: String, CodingKey {
+        case members
+        case householdId = "household_id"
+    }
+}
+
+struct HouseholdInviteDTO: Codable, Equatable, Identifiable {
+    let id: String
+    let householdId: String
+    let name: String
+    let email: String?
+    let phone: String?
+    let role: String
+    let token: String
+    let status: String
+    let inviteLink: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, email, phone, role, token, status
+        case householdId = "household_id"
+        case inviteLink = "invite_link"
+    }
+}
+
+struct HouseholdInvitesResponseDTO: Codable, Equatable {
+    let householdId: String
+    let invites: [HouseholdInviteDTO]
+
+    enum CodingKeys: String, CodingKey {
+        case invites
+        case householdId = "household_id"
+    }
+}
+

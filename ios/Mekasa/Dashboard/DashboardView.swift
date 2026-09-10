@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Home dashboard: low stock, pending approvals, recent activity.
 /// Satisfies: UI-004 AC1–AC2 (AC3 photo backdrop when photo_url exists)
@@ -7,20 +8,28 @@ struct DashboardView: View {
     @EnvironmentObject private var session: AppSession
     @State private var approvals = DashboardFixtures.approvals
     @State private var toast: String?
+    @State private var selectedItemID: String?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 32) {
-                header
-                statsRow
-                needsApprovalSection
-                recentActivitySection
+        ZStack {
+            householdBackdrop
+            ScrollView {
+                VStack(alignment: .leading, spacing: 32) {
+                    header
+                    statsRow
+                    lowStockSection
+                    needsApprovalSection
+                    recentActivitySection
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 56)
+                .padding(.bottom, 140)
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 56)
-            .padding(.bottom, 140)
         }
         .accessibilityIdentifier(TestIdentifiers.dashboardView)
+        .navigationDestination(item: $selectedItemID) { itemID in
+            ItemDetailView(itemID: itemID)
+        }
         .overlay(alignment: .top) {
             if let toast {
                 Text(toast)
@@ -36,6 +45,69 @@ struct DashboardView: View {
         }
         .animation(.easeInOut(duration: 0.25), value: toast)
         .animation(.easeInOut(duration: 0.2), value: approvals)
+    }
+
+    @ViewBuilder
+    private var householdBackdrop: some View {
+        if let urlString = session.household?.photoURL {
+            if urlString.hasPrefix("data:"),
+               let b64 = urlString.split(separator: ",").last,
+               let data = Data(base64Encoded: String(b64)),
+               let image = UIImage(data: data) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .opacity(0.18)
+                    .ignoresSafeArea()
+            } else if let url = URL(string: urlString) {
+                AsyncImage(url: url) { phase in
+                    if case let .success(image) = phase {
+                        image.resizable().scaledToFill().opacity(0.18).ignoresSafeArea()
+                    }
+                }
+            }
+        }
+    }
+
+    private var lowStockItems: [InventoryItem] {
+        session.inventory.filter(\.isLowStock)
+    }
+
+    private var lowStockSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Low stock")
+                .font(.system(size: 20, weight: .heavy, design: .rounded))
+                .foregroundStyle(MekasaTheme.brand)
+            if lowStockItems.isEmpty {
+                Text("Nothing below threshold right now.")
+                    .font(MekasaTheme.bodyFont)
+                    .foregroundStyle(MekasaTheme.textMuted)
+            } else {
+                ForEach(lowStockItems) { item in
+                    Button {
+                        selectedItemID = item.id
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.name)
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundStyle(MekasaTheme.brand)
+                                Text("Qty \(item.quantity) · threshold \(item.lowStockThreshold)")
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(MekasaTheme.textMuted)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundStyle(MekasaTheme.textMuted)
+                        }
+                        .padding(14)
+                        .background(MekasaTheme.surfaceElevated)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
     }
 
     private var header: some View {

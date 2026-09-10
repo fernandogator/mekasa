@@ -260,3 +260,136 @@ class BarcodeLookupResponse(BaseModel):
     image_url: str | None = None
     source: Literal["openfoodfacts", "none"] = "none"
 
+
+MemberRole = Literal["owner", "member"]
+
+
+class ReceiptLineItem(BaseModel):
+    """Parsed receipt line awaiting user confirmation (REQ-005)."""
+
+    name: str = Field(min_length=1, max_length=120)
+    category: str = Field(default="Other", min_length=1, max_length=60)
+    quantity: int = Field(default=1, ge=1, le=9999)
+    price_paid: float | None = Field(default=None, ge=0)
+
+
+class ReceiptScanRequest(BaseModel):
+    """
+    Satisfies: REQ-005
+    Acceptance criteria: AC1
+    Spec version: 1.0
+
+    Provide either image_base64 or raw_text (tests / fallbacks).
+    """
+
+    image_base64: str | None = None
+    raw_text: str | None = None
+
+
+class ReceiptScanResponse(BaseModel):
+    """OCR result for client review."""
+
+    household_id: str
+    engine: str
+    items: list[ReceiptLineItem]
+
+
+class HouseholdPhotoResponse(BaseModel):
+    """Photo upload result (REQ-002)."""
+
+    household_id: str
+    photo_url: str
+
+
+class HouseholdInviteCreateRequest(BaseModel):
+    """
+    Satisfies: REQ-019
+    Acceptance criteria: AC1, AC3
+    Spec version: 1.0
+    """
+
+    name: str = Field(min_length=1, max_length=80)
+    email: str | None = Field(default=None, max_length=120)
+    phone: str | None = Field(default=None, max_length=40)
+    role: MemberRole = "member"
+
+
+class HouseholdInviteResponse(BaseModel):
+    """Pending or accepted household invite."""
+
+    id: str
+    household_id: str
+    name: str
+    email: str | None = None
+    phone: str | None = None
+    role: MemberRole
+    token: str
+    status: Literal["pending", "accepted", "revoked"] = "pending"
+    invited_by_uid: str
+    created_at: datetime
+    updated_at: datetime
+    invite_link: str | None = None
+
+
+class HouseholdInviteAcceptRequest(BaseModel):
+    """Accept an invite token for the authenticated user."""
+
+    token: str = Field(min_length=8, max_length=128)
+
+
+class HouseholdMemberResponse(BaseModel):
+    """Household member row (REQ-019)."""
+
+    uid: str
+    household_id: str
+    name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    role: MemberRole
+    status: Literal["active", "invited", "removed"] = "active"
+    created_at: datetime
+    updated_at: datetime
+
+
+class HouseholdMemberRoleUpdateRequest(BaseModel):
+    """
+    Satisfies: REQ-019 AC3
+    Spec version: 1.0
+    """
+
+    role: MemberRole
+
+
+class HouseholdMembersResponse(BaseModel):
+    """Members list wrapper."""
+
+    household_id: str
+    members: list[HouseholdMemberResponse]
+
+
+class HouseholdInvitesResponse(BaseModel):
+    """Invites list wrapper."""
+
+    household_id: str
+    invites: list[HouseholdInviteResponse]
+
+
+class UnknownBarcodeEvent(BaseModel):
+    """Logged unknown trash-station scan (REQ-008 AC3)."""
+
+    id: str
+    household_id: str
+    barcode: str
+    scanned_by_uid: str
+    created_at: datetime
+
+
+class InventoryConsumeByBarcodeResult(BaseModel):
+    """
+    Consume-by-barcode result that can represent unknown scans without negatives.
+    """
+
+    found: bool
+    item: InventoryItemResponse | None = None
+    unknown_event: UnknownBarcodeEvent | None = None
+

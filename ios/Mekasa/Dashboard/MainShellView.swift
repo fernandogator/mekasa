@@ -14,16 +14,16 @@ struct MainShellView: View {
                 Group {
                     switch tab {
                     case .home:
-                        DashboardView()
+                        NavigationStack { DashboardView() }
                     case .list:
-                        ShoppingListView()
+                        NavigationStack { ShoppingListView() }
                     case .spend:
                         ComingSoonTabView(
                             title: "Spending",
                             subtitle: "Weekly spend reports come after receipt capture."
                         )
                     case .family:
-                        FamilyPlaceholderView()
+                        NavigationStack { FamilyMembersView() }
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -119,38 +119,6 @@ private struct ComingSoonTabView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 24)
-        .padding(.top, 64)
-        .padding(.bottom, 120)
-    }
-}
-
-private struct FamilyPlaceholderView: View {
-    @EnvironmentObject private var session: AppSession
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Family")
-                .font(MekasaTheme.titleFont)
-                .foregroundStyle(MekasaTheme.brand)
-
-            Text("Invites and member roles ship next. You can sign out here for now.")
-                .font(MekasaTheme.bodyFont)
-                .foregroundStyle(MekasaTheme.textMuted)
-
-            if let email = session.email {
-                Text(email)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
-            }
-
-            Spacer()
-
-            SecondaryButton(title: "Sign out") {
-                try? AuthService.shared.signOut()
-                session.signOut()
-            }
-        }
         .padding(.horizontal, 24)
         .padding(.top, 64)
         .padding(.bottom, 120)

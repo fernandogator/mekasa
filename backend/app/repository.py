@@ -42,6 +42,11 @@ class HouseholdRepository(Protocol):
     ) -> HouseholdResponse:
         """Persist selected store ids."""
 
+    def update_photo_url(
+        self, household_id: str, owner_uid: str, photo_url: str
+    ) -> HouseholdResponse:
+        """Persist household photo URL (REQ-002)."""
+
 
 class InMemoryHouseholdRepository:
     """
@@ -104,6 +109,17 @@ class InMemoryHouseholdRepository:
         household = self._require_owner(household_id, owner_uid)
         updated = household.model_copy(
             update={"store_ids": list(store_ids), "updated_at": _utcnow()}
+        )
+        with self._lock:
+            self._items[household_id] = updated
+        return updated
+
+    def update_photo_url(
+        self, household_id: str, owner_uid: str, photo_url: str
+    ) -> HouseholdResponse:
+        household = self._require_owner(household_id, owner_uid)
+        updated = household.model_copy(
+            update={"photo_url": photo_url, "updated_at": _utcnow()}
         )
         with self._lock:
             self._items[household_id] = updated
@@ -196,3 +212,8 @@ def reset_household_repository() -> None:
 
     reset_inventory_repository()
     reset_shopping_list_repository()
+    from app.members_repository import reset_members_repository
+    from app.unknown_barcode_log import reset_unknown_barcode_events
+
+    reset_members_repository()
+    reset_unknown_barcode_events()
