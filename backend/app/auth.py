@@ -25,7 +25,7 @@ def verify_bearer_token(
     settings: Settings = Depends(get_settings),
 ) -> AuthUser:
     """
-    Satisfies: REQ-001, NFR-002
+    Satisfies: REQ-001, NFR-002, REQ-022
     Acceptance criteria: AC1, AC2, AC3
     Spec version: 1.0
 
@@ -45,12 +45,11 @@ def verify_bearer_token(
 
     project_id = settings.firebase_project_id or settings.gcp_project_id
     if not project_id and not settings.google_application_credentials:
+        # A bearer was presented but this environment cannot verify it.
+        # Return 401 so clients treat it as an expired/invalid session (REQ-022).
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Firebase is not configured. Set FIREBASE_PROJECT_ID / "
-                "GCP_PROJECT_ID and credentials, or set ALLOW_TEST_AUTH=true."
-            ),
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired Firebase ID token",
         )
 
     try:

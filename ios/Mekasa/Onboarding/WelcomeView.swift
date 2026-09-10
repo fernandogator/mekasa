@@ -2,13 +2,14 @@ import SwiftUI
 import UIKit
 
 /// Signup / sign-in (Google + email). Apple deferred.
-/// Satisfies: REQ-001 AC2–AC3, UI-003 AC1
+/// Satisfies: REQ-001 AC2–AC3, REQ-022 AC5, UI-003 AC1
 /// Spec version: 1.0
 struct WelcomeView: View {
     @EnvironmentObject private var session: AppSession
     @State private var email = ""
     @State private var password = ""
-    @State private var isSignUp = true
+    /// Default to sign-in; users opt in to create an account.
+    @State private var isSignUp = false
     @State private var showEmailForm = false
 
     var body: some View {
@@ -30,6 +31,14 @@ struct WelcomeView: View {
                             .font(MekasaTheme.bodyFont)
                             .foregroundStyle(MekasaTheme.textMuted)
 
+                        if let message = session.lastError,
+                           message.localizedCaseInsensitiveContains("session expired") {
+                            Text(message)
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundStyle(MekasaTheme.accent)
+                                .accessibilityIdentifier("SessionExpiredBanner")
+                        }
+
                         if showEmailForm {
                             MekasaTextField(
                                 label: "Email",
@@ -40,6 +49,7 @@ struct WelcomeView: View {
                             )
                             .textContentType(.emailAddress)
                             .autocorrectionDisabled()
+                            .accessibilityIdentifier("WelcomeEmailField")
 
                             MekasaTextField(
                                 label: "Password",
@@ -49,9 +59,10 @@ struct WelcomeView: View {
                             )
                             .textContentType(isSignUp ? .newPassword : .password)
 
-                            Toggle(isSignUp ? "Create a new account" : "I already have an account", isOn: $isSignUp)
+                            Toggle("Create a new account", isOn: $isSignUp)
                                 .font(MekasaTheme.bodyFont)
                                 .tint(MekasaTheme.accent)
+                                .accessibilityIdentifier("WelcomeCreateAccountToggle")
                         }
                     }
                     .padding(.horizontal, 24)
@@ -100,12 +111,31 @@ struct WelcomeView: View {
             }
         }
         .accessibilityIdentifier(TestIdentifiers.welcomeView)
+        .onAppear { prefillLastSignedInEmail() }
+        .onChange(of: session.lastSignedInEmail) { _ in
+            prefillLastSignedInEmail()
+        }
+        .onChange(of: session.onboardingStep) { step in
+            if step == .welcome {
+                prefillLastSignedInEmail()
+            }
+        }
+    }
+
+    /// Prefill email and open the sign-in form when we know the last username.
+    private func prefillLastSignedInEmail() {
+        guard let remembered = session.lastSignedInEmail, !remembered.isEmpty else { return }
+        email = remembered
+        isSignUp = false
+        showEmailForm = true
+        password = ""
     }
 
     private func applyAuth(token: String, email: String?, name: String?) async {
         session.idToken = token
         session.email = email
         session.displayName = name
+        session.rememberSignedInEmail(email ?? self.email)
         if let existing = try? await MekasaAPIClient.shared.currentHousehold(token: token) {
             session.household = existing
             withAnimation { session.onboardingStep = resumeStep(for: existing) }

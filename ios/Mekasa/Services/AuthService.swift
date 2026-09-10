@@ -78,6 +78,42 @@ final class AuthService: ObservableObject {
         #endif
     }
 
+    /// Force-refresh the Firebase ID token used as the Cloud Run bearer.
+    /// Satisfies: REQ-022 AC2
+    /// Spec version: 1.0
+    func refreshIDToken(forcingRefresh: Bool = true) async throws -> String {
+        try ensureFirebaseReady()
+        guard let user = Auth.auth().currentUser else {
+            throw AuthServiceError.sessionExpired
+        }
+        do {
+            return try await user.getIDToken(forcingRefresh: forcingRefresh)
+        } catch {
+            throw AuthErrorFormatter.wrap(error)
+        }
+    }
+
+    /// Observe Firebase Auth user changes (nil ⇒ signed out / session ended).
+    @discardableResult
+    func addAuthStateListener(_ handler: @escaping @MainActor (Bool) -> Void) -> AuthStateDidChangeListenerHandle? {
+        guard FirebaseBootstrap.isConfigured || {
+            FirebaseBootstrap.configure()
+            return FirebaseBootstrap.isConfigured
+        }() else {
+            return nil
+        }
+        return Auth.auth().addStateDidChangeListener { _, user in
+            Task { @MainActor in
+                handler(user != nil)
+            }
+        }
+    }
+
+    func removeAuthStateListener(_ handle: AuthStateDidChangeListenerHandle?) {
+        guard let handle, FirebaseBootstrap.isConfigured else { return }
+        Auth.auth().removeStateDidChangeListener(handle)
+    }
+
     private func ensureFirebaseReady() throws {
         FirebaseBootstrap.configure()
         guard FirebaseBootstrap.isConfigured else {
@@ -90,6 +126,7 @@ enum AuthServiceError: LocalizedError {
     case firebaseMissing
     case missingGoogleToken
     case missingGoogleClientID
+    case sessionExpired
     case firebaseAuthFailed(String)
 
     var errorDescription: String? {
@@ -100,6 +137,8 @@ enum AuthServiceError: LocalizedError {
             return "Google Sign-In did not return an ID token."
         case .missingGoogleClientID:
             return "GoogleService-Info.plist is missing CLIENT_ID. Enable Google Sign-In in Firebase and recreate the iOS OAuth client, then re-download the plist."
+        case .sessionExpired:
+            return "Your session expired. Please sign in again."
         case let .firebaseAuthFailed(detail):
             return detail
         }
