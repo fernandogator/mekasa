@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct MekasaApp: App {
-    // Satisfies: REQ-001 (Household Account Creation)
+    // Satisfies: REQ-001 (Household Account Creation), REQ-022 (Session expiry)
     // Spec version: 1.0
 
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
@@ -26,7 +26,10 @@ struct MekasaApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(session)
-                .onAppear { FirebaseBootstrap.configure() }
+                .onAppear {
+                    FirebaseBootstrap.configure()
+                    session.startSessionMonitoring()
+                }
         }
     }
 }

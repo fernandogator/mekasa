@@ -30,6 +30,14 @@ struct WelcomeView: View {
                             .font(MekasaTheme.bodyFont)
                             .foregroundStyle(MekasaTheme.textMuted)
 
+                        if let message = session.lastError,
+                           message.localizedCaseInsensitiveContains("session expired") {
+                            Text(message)
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundStyle(MekasaTheme.accent)
+                                .accessibilityIdentifier("SessionExpiredBanner")
+                        }
+
                         if showEmailForm {
                             MekasaTextField(
                                 label: "Email",

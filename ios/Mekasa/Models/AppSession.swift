@@ -1,8 +1,9 @@
 import Foundation
 import SwiftUI
+import FirebaseAuth
 
 /// App-wide session: auth token + onboarding household progress + inventory sync.
-/// Satisfies: REQ-001, REQ-004–REQ-009, UI-003
+/// Satisfies: REQ-001, REQ-004–REQ-009, REQ-022, UI-003
 /// Spec version: 1.0
 @MainActor
 final class AppSession: ObservableObject {
@@ -28,6 +29,9 @@ final class AppSession: ObservableObject {
     var didSeedShoppingList = false
     /// In-flight creates keyed by name|category so consume can wait for server ids.
     private var pendingCreates: [String: Task<InventoryItemDTO?, Never>] = [:]
+    private var unauthorizedObserver: NSObjectProtocol?
+    private var authStateHandle: AuthStateDidChangeListenerHandle?
+    private var isHandlingSessionExpiry = false
 
     var isSignedIn: Bool { idToken != nil }
 
@@ -88,13 +92,13 @@ final class AppSession: ObservableObject {
         pendingCreates = [:]
     }
 
-    func signOut() {
+    func signOut(expiredSessionMessage: String? = nil) {
         idToken = nil
         displayName = nil
         email = nil
         household = nil
         onboardingStep = .welcome
-        lastError = nil
+        lastError = expiredSessionMessage
         isUIPreview = false
         isUITesting = false
         inventory = []
@@ -103,6 +107,75 @@ final class AppSession: ObservableObject {
         trashEvents = []
         didSeedShoppingList = false
         pendingCreates = [:]
+    }
+
+    /// Wire 401 + Firebase auth-state monitoring. Call once from app launch.
+    /// Satisfies: REQ-022
+    /// Spec version: 1.0
+    func startSessionMonitoring() {
+        guard unauthorizedObserver == nil else { return }
+        unauthorizedObserver = NotificationCenter.default.addObserver(
+            forName: .mekasaSessionUnauthorized,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.handleUnauthorizedAPIResponse()
+            }
+        }
+        authStateHandle = AuthService.shared.addAuthStateListener { [weak self] isAuthenticated in
+            guard let self else { return }
+            // Ignore preview / UI-test fixtures and the moment we clear token ourselves.
+            guard !self.isUIPreview, !self.isUITesting else { return }
+            guard self.idToken != nil, self.idToken != "preview", self.idToken != "uitesting" else { return }
+            if !isAuthenticated {
+                self.endSessionBecauseExpired()
+            }
+        }
+    }
+
+    func stopSessionMonitoring() {
+        if let unauthorizedObserver {
+            NotificationCenter.default.removeObserver(unauthorizedObserver)
+            self.unauthorizedObserver = nil
+        }
+        AuthService.shared.removeAuthStateListener(authStateHandle)
+        authStateHandle = nil
+    }
+
+    /// Shared API failure path: expired sessions → Welcome; other errors → banner.
+    func handleAPIFailure(_ error: Error) {
+        if SessionExpiry.isUnauthorized(error) {
+            Task { await handleUnauthorizedAPIResponse() }
+            return
+        }
+        lastError = error.localizedDescription
+    }
+
+    /// On HTTP 401: try one Firebase token refresh; if that fails, force sign-out to Welcome.
+    func handleUnauthorizedAPIResponse() async {
+        guard !isUIPreview, !isUITesting else { return }
+        guard !isHandlingSessionExpiry else { return }
+        isHandlingSessionExpiry = true
+        defer { isHandlingSessionExpiry = false }
+
+        // Skip fixture tokens.
+        guard let token = idToken, token != "preview", token != "uitesting" else { return }
+
+        do {
+            let refreshed = try await AuthService.shared.refreshIDToken(forcingRefresh: true)
+            idToken = refreshed
+            // Soft notice — next request uses the fresh token.
+            lastError = nil
+        } catch {
+            endSessionBecauseExpired()
+        }
+    }
+
+    /// Clears Firebase + local session and returns to the sign-in screen.
+    func endSessionBecauseExpired() {
+        try? AuthService.shared.signOut()
+        signOut(expiredSessionMessage: SessionExpiry.userMessage)
     }
 
     /// Pull inventory from Cloud Run / Firestore.
@@ -119,7 +192,7 @@ final class AppSession: ObservableObject {
             inventory = response.items.map { $0.toLocal() }
             await refreshShoppingList(syncLowStock: true)
         } catch {
-            lastError = error.localizedDescription
+            handleAPIFailure(error)
         }
     }
 
@@ -145,7 +218,7 @@ final class AppSession: ObservableObject {
             }
             didSeedShoppingList = true
         } catch {
-            lastError = error.localizedDescription
+            handleAPIFailure(error)
         }
     }
 
@@ -361,6 +434,10 @@ final class AppSession: ObservableObject {
             upsertRemote(remote, preserveLowerLocalQuantity: true)
             return remote
         } catch {
+            if SessionExpiry.isUnauthorized(error) {
+                handleAPIFailure(error)
+                return nil
+            }
             lastError = "Couldn’t sync \(item.name): \(error.localizedDescription)"
             return nil
         }
@@ -395,6 +472,10 @@ final class AppSession: ObservableObject {
             upsertRemote(remote)
             return
         } catch {
+            if SessionExpiry.isUnauthorized(error) {
+                handleAPIFailure(error)
+                return
+            }
             if let barcode = keyItem?.barcode, !barcode.isEmpty {
                 do {
                     let remote = try await MekasaAPIClient.shared.consumeInventoryByBarcode(
@@ -406,6 +487,10 @@ final class AppSession: ObservableObject {
                     upsertRemote(remote)
                     return
                 } catch {
+                    if SessionExpiry.isUnauthorized(error) {
+                        handleAPIFailure(error)
+                        return
+                    }
                     lastError = "Couldn’t sync consume: \(error.localizedDescription)"
                     return
                 }
@@ -438,6 +523,10 @@ final class AppSession: ObservableObject {
             )
             upsertShoppingRemote(remote)
         } catch {
+            if SessionExpiry.isUnauthorized(error) {
+                handleAPIFailure(error)
+                return
+            }
             lastError = "Couldn’t sync list item: \(error.localizedDescription)"
         }
     }
@@ -453,6 +542,10 @@ final class AppSession: ObservableObject {
             )
             upsertShoppingRemote(remote)
         } catch {
+            if SessionExpiry.isUnauthorized(error) {
+                handleAPIFailure(error)
+                return
+            }
             lastError = "Couldn’t sync purchase: \(error.localizedDescription)"
             await refreshShoppingList()
         }
@@ -468,6 +561,10 @@ final class AppSession: ObservableObject {
             )
             upsertShoppingRemote(remote)
         } catch {
+            if SessionExpiry.isUnauthorized(error) {
+                handleAPIFailure(error)
+                return
+            }
             lastError = "Couldn’t sync approval: \(error.localizedDescription)"
         }
     }
@@ -481,6 +578,10 @@ final class AppSession: ObservableObject {
                 token: token
             )
         } catch {
+            if SessionExpiry.isUnauthorized(error) {
+                handleAPIFailure(error)
+                return
+            }
             lastError = "Couldn’t sync denial: \(error.localizedDescription)"
             await refreshShoppingList()
         }

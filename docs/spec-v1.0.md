@@ -293,3 +293,20 @@ Acceptance Criteria:
 - AC1: All secrets stored in GCP Secret Manager
 - AC2: No secrets in source control history
 - AC3: Secrets rotated on a defined schedule
+
+### REQ-022: Expired Session Auto Sign-Out
+Priority: P0
+Description: When the GCP / Firebase authenticated session expires
+or the API rejects the bearer token (HTTP 401), the app detects the
+failure, signs the user out, and returns them to the sign-in screen.
+Design Artifact: design/mockups/OnboardingHouseholdSetup.jsx (Welcome / Sign in)
+Test File: ios/MekasaTests/SessionExpiryTests.swift, tests/backend/test_auth_session.py
+Acceptance Criteria:
+- AC1: An API response of HTTP 401 for an authenticated call is treated
+  as a session failure
+- AC2: The client attempts one Firebase ID token refresh before ending
+  the session; if refresh fails, the user is signed out
+- AC3: After forced sign-out, the Welcome / Sign in screen is shown and
+  ready for a new sign-in, with a clear "session expired" message
+- AC4: Firebase Auth becoming unauthenticated while a session was active
+  also returns the user to Welcome / Sign in

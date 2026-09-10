@@ -25,6 +25,7 @@ Last updated: 2026-08-21
 | REQ-018 | Spending History Reporting | design/mockups/SpendingReport.jsx | pending | pending | not tested | — |
 | REQ-019 | Household Member Invitation | design/mockups/FamilyMembers.jsx | pending | pending | not tested | — |
 | REQ-020 | Real-Time Multi-Device Sync | — | pending | pending | not tested | — |
+| REQ-022 | Expired Session Auto Sign-Out | design/mockups/OnboardingHouseholdSetup.jsx | SessionExpiryTests / test_auth_session | ios/MekasaTests/SessionExpiryTests.swift; tests/backend/test_auth_session.py | implemented | 2026-09-10 |
 | UI-001 | Native Android Interface | design/mockups/ (all screens) | pending | android/src/test/ui/ | not tested | — |
 | UI-002 | Native iOS Interface | design/mockups/ (all screens) | pending | ios/MekasaTests/UI/ | not tested | — |
 | UI-003 | Onboarding Flow | design/mockups/OnboardingStoreSelection.jsx | pending | android/src/test/ui/OnboardingUITest.kt; ios/MekasaTests/UI/OnboardingUITest.swift | not tested | — |

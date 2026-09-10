@@ -358,7 +358,13 @@ actor MekasaAPIClient {
         }
         guard (200 ..< 300).contains(http.statusCode) else {
             let detail = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
-            throw APIError.server(status: http.statusCode, detail: detail)
+            let error = APIError.from(status: http.statusCode, detail: detail)
+            if error.isUnauthorized {
+                await MainActor.run {
+                    NotificationCenter.default.post(name: .mekasaSessionUnauthorized, object: nil)
+                }
+            }
+            throw error
         }
         return (data, http)
     }
@@ -378,14 +384,43 @@ private extension ISO8601DateFormatter {
     }()
 }
 
-enum APIError: LocalizedError {
+enum APIError: LocalizedError, Equatable {
     case invalidResponse
+    case unauthorized(detail: String)
     case server(status: Int, detail: String)
+
+    /// True when the Cloud Run / Firebase bearer session is rejected.
+    var isUnauthorized: Bool {
+        switch self {
+        case .unauthorized:
+            return true
+        case let .server(status, _):
+            return status == 401
+        case .invalidResponse:
+            return false
+        }
+    }
 
     var errorDescription: String? {
         switch self {
-        case .invalidResponse: return "Invalid response from server"
-        case let .server(_, detail): return detail
+        case .invalidResponse:
+            return "Invalid response from server"
+        case let .unauthorized(detail):
+            return detail
+        case let .server(_, detail):
+            return detail
         }
     }
+
+    static func from(status: Int, detail: String) -> APIError {
+        if status == 401 {
+            return .unauthorized(detail: detail)
+        }
+        return .server(status: status, detail: detail)
+    }
+}
+
+extension Notification.Name {
+    /// Posted on the main thread when an API call receives HTTP 401.
+    static let mekasaSessionUnauthorized = Notification.Name("mekasaSessionUnauthorized")
 }
