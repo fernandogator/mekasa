@@ -1,0 +1,3 @@
+// User-facing marketing version (CFBundleShortVersionString).
+// Bump deliberately for releases: 1.0.0 → 1.0.1 / 1.1.0 / 2.0.0
+MARKETING_VERSION = 1.0.0

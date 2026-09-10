@@ -28,15 +28,30 @@ targets:
       - path: Mekasa/GoogleService-Info.plist
         optional: true
         buildPhase: resources
+    configFiles:
+      Debug: Config/Version.xcconfig
+      Release: Config/Version.xcconfig
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.fernandogator.mekasa
       INFOPLIST_FILE: Mekasa/Info.plist
       TARGETED_DEVICE_FAMILY: "1"
-      CURRENT_PROJECT_VERSION: 1
-      MARKETING_VERSION: "1.0.0"
+      # MARKETING_VERSION + CURRENT_PROJECT_VERSION come from Config/Version.xcconfig
+      # (marketing starts at 1.0.0; build number is unique per build via preBuildScripts).
+      VERSIONING_SYSTEM: apple-generic
       DEVELOPMENT_TEAM: ""
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       OTHER_LDFLAGS: "$(inherited) -ObjC"
+    preBuildScripts:
+      - name: Ensure unique build number
+        basedOnDependencyAnalysis: false
+        script: |
+          /bin/bash "${SRCROOT}/scripts/ensure_unique_build_number.sh"
+    postBuildScripts:
+      - name: Stamp unique version into built Info.plist
+        basedOnDependencyAnalysis: false
+        script: |
+          PLIST="${TARGET_BUILD_DIR}/${INFOPLIST_PATH}"
+          /bin/bash "${SRCROOT}/scripts/ensure_unique_build_number.sh" --stamp-plist "${PLIST}"
     dependencies:
       - package: Firebase
         product: FirebaseCore
@@ -54,6 +69,8 @@ targets:
         NSMicrophoneUsageDescription: Mekasa uses the microphone so you can add items by voice.
         NSLocationWhenInUseUsageDescription: Mekasa uses your location to suggest your home address and nearby stores.
         NSPhotoLibraryUsageDescription: Mekasa uses your photo library so you can add a household photo.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
   MekasaTests:
     type: bundle.unit-test
     platform: iOS

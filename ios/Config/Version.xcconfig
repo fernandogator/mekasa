@@ -1,0 +1,10 @@
+// Version settings for the Mekasa app target.
+// CURRENT_PROJECT_VERSION is overridden every build by
+// scripts/ensure_unique_build_number.sh → GeneratedBuild.xcconfig
+
+#include "MarketingVersion.xcconfig"
+
+// Fallback when GeneratedBuild.xcconfig has not been produced yet.
+CURRENT_PROJECT_VERSION = 1
+
+#include? "GeneratedBuild.xcconfig"
