@@ -1,7 +1,7 @@
 import Foundation
 
 /// Fixed, deterministic fixtures for UI tests and `--uitesting` mode.
-/// Satisfies: UI-001–UI-005
+/// Satisfies: UI-001–UI-006
 /// Spec version: 1.0
 enum TestFixtures {
     /// Fixed calendar instant — never use `Date()` in fixtures.

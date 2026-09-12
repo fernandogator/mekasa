@@ -40,7 +40,8 @@ Acceptance Criteria:
 ### REQ-004: Barcode Scanning and Product Lookup
 Priority: P0
 Description: User scans a barcode and the app retrieves item name,
-category, and typical price from a third-party database.
+category, typical price, and product image URL from a third-party
+database (Open Food Facts primary; see ADR-004 / ADR image waterfall).
 Design Artifact: design/mockups/AddItems.jsx
 Acceptance Criteria:
 - AC1: Valid barcode returns product name and category within 5
@@ -48,6 +49,11 @@ Acceptance Criteria:
 - AC2: Unknown barcode prompts manual entry fallback
 - AC3: Item is added to inventory with quantity of 1 by default,
   adjustable before confirming
+- AC4: When the lookup provider returns a product image, the response
+  includes a usable `image_url` (or equivalent) persisted with the
+  inventory item for list thumbnails and item detail (UI-006)
+- AC5: Missing image does not fail the lookup; client shows a category
+  placeholder instead
 
 ### REQ-005: Receipt Scanning and Bulk Entry
 Priority: P0

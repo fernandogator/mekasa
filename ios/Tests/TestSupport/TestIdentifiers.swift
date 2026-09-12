@@ -1,7 +1,7 @@
 import Foundation
 
 /// Shared accessibility identifiers for SwiftUI views and XCUITests.
-/// Satisfies: UI-001–UI-005 (traceability / structural tests)
+/// Satisfies: UI-001–UI-006 (traceability / structural tests)
 /// Spec version: 1.0
 enum TestIdentifiers {
     // MARK: - Item List

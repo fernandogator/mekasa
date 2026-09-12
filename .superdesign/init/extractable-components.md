@@ -37,3 +37,17 @@ Candidates to extract AFTER Superdesign generates approved screens:
 - Description: Entry tile for barcode / receipt / voice / manual / trash-station
 - Extractable props: method (enum), title (string), subtitle (string)
 - Hardcoded: icon mapping, tile layout
+
+## ProductThumbnail (UI-006)
+- Source: pending (`InventoryList` / dashboard low-stock rows); iOS: `ProductThumbnail`
+- Category: basic
+- Description: 56×56 product image from OFF `image_url` with category placeholder fallback
+- Extractable props: imageUrl (string | null), size (number, default 56), cornerRadius (number, default 16)
+- Hardcoded: placeholder icon, sage wash fill, clip radius
+
+## ProductHeroImage (UI-006)
+- Source: pending (`ItemDetail`); iOS: `ProductHeroImage`
+- Category: basic
+- Description: Large product image; tap opens full-screen lightbox
+- Extractable props: imageUrl (string | null), title (string)
+- Hardcoded: max height ~280–320, contain fit, lightbox chrome

@@ -95,6 +95,12 @@
 
 ## Running Log
 
+### 2026-09-12 — UI-006 requirements everywhere
+- Inventory thumbnails + item detail recorded across PRD §7.1, REQ-004 AC4–AC5,
+  UI-006, architecture browse/barcode flows, user-flows, Superdesign init
+  (pages/routes/extractable), design-system, design README, matrix.md/csv,
+  Android + iOS UI test stubs, mockup stubs.
+
 ### 2026-09-12 — Inventory thumbnails + item detail sample (UI-006)
 - Added `design/pages/inventory-list.html` and `item-detail.html` — live Open Food Facts
   images (sample UPC `049000028911` Diet Coke); tap thumbnail → detail with lightbox.

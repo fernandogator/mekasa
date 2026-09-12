@@ -27,6 +27,21 @@ Entry: `design/mockups/TrashStationMode.jsx`
 Dependencies:
 - (none — stub returns null)
 
+## /inventory (UI-006)
+Entry: `design/mockups/InventoryList.jsx`
+Live sample: `design/pages/inventory-list.html`
+Dependencies:
+- Product thumbnail (OFF `image_front_small_url` / `image_url`)
+- Row tap → `/inventory/item-detail`
+
+## /inventory/item-detail (UI-006)
+Entry: `design/mockups/ItemDetail.jsx`
+Live sample: `design/pages/item-detail.html`
+Dependencies:
+- Product hero image (OFF `image_front_url`)
+- Lightbox on image tap
+- Quantity + low-stock threshold controls
+
 ## Shared context for any first design
 Also pass as context when generating:
 - `design/design-system.md`

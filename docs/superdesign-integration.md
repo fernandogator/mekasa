@@ -55,8 +55,9 @@ loads `mekasa/.agents/skills/superdesign/SKILL.md` when that skill is in scope.
 | Session prompt | `docs/superdesign-session-prompt.md` |
 | Design tokens | `design/design-system.md` |
 | User flows | `design/user-flows.md` |
-| Mockups (commit targets) | `design/mockups/{Dashboard,OnboardingStoreSelection,ShoppingList,AddItems,TrashStationMode}.jsx` |
-| Spec links | `docs/spec-v1.0.md` → UI-001…UI-005 |
+| Mockups (commit targets) | `design/mockups/{Dashboard,OnboardingStoreSelection,ShoppingList,AddItems,TrashStationMode,InventoryList,ItemDetail}.jsx` |
+| Live HTML samples (UI-006) | `design/pages/inventory-list.html`, `design/pages/item-detail.html` |
+| Spec links | `docs/spec-v1.0.md` → UI-001…UI-006 |
 | Traceability | `traceability/matrix.md` |
 
 ## Recommended workflow
@@ -68,7 +69,7 @@ loads `mekasa/.agents/skills/superdesign/SKILL.md` when that skill is in scope.
 3. **Design system first** — establish Mekasa brand tokens on the canvas; sync
    approved tokens into `design/design-system.md`.
 4. **Flow, then screens** — use Superdesign Flow for onboarding → dashboard, then
-   branch the five P0 mockups (UI-001…UI-005).
+   branch P0 mockups (UI-001…UI-006), including InventoryList + ItemDetail thumbnails.
 5. **Human approve** on the canvas URL (`canvas:` link from CLI output).
 6. **Export / commit** — replace placeholders in `design/mockups/*.jsx` with the
    approved React/Tailwind components; keep file names stable (spec + matrix

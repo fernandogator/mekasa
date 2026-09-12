@@ -17,6 +17,9 @@ flowchart TD
   Dashboard --> AddItems[Add Items]
   Dashboard --> Settings[Settings / Members]
 
+  InventoryScreen --> ItemDetail[Item Detail]
+  ItemDetail --> ImageLightbox[Product Image Lightbox]
+
   AddItems --> BarcodeScanner[Barcode Scanner]
   AddItems --> ReceiptScanner[Receipt Scanner]
   AddItems --> VoiceInput[Voice Input]

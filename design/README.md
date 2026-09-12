@@ -12,16 +12,21 @@ This folder contains the **complete design system**: 8 production-ready screens,
 
 All screens are **390×844** (mobile-first, iPhone SE/13 mini) with full navigation and view transitions.
 
-| # | Screen | Purpose | File |
-|---|--------|---------|------|
-| UI-001 | Dashboard | Home hub after onboarding | `pages/dashboard.html` |
-| UI-002 | Store Selection | Onboarding step 4 — choose stores | `pages/store-selection.html` |
-| UI-003 | Shopping List | Shared list with approval workflow | `pages/shopping-list.html` |
-| UI-004 | Add Items | Multi-method input hub (barcode, voice, manual) | `pages/add-items.html` |
+Spec IDs below match `docs/spec-v1.0.md` (permanent — never renumber).
+
+| Spec | Screen | Purpose | File |
+|------|--------|---------|------|
+| UI-004 | Dashboard | Home hub after onboarding (low-stock + thumbnails) | `pages/dashboard.html` |
+| UI-003 | Store Selection | Onboarding — choose stores | `pages/store-selection.html` |
+| — | Shopping List | Shared list with approval workflow | `pages/shopping-list.html` |
+| — | Add Items | Multi-method input hub (barcode, voice, manual) | `pages/add-items.html` |
 | UI-005 | Trash Station | Focused rapid depletion mode | `pages/trash-station.html` |
-| UI-006 | Household Setup | Onboarding step 2 — name & photo | `pages/onboarding-household.html` |
-| UI-007 | Spending Report | Category analytics & budget tracking | `pages/spending-report.html` |
-| UI-008 | Family Members | Household roster & member roles | `pages/family-members.html` |
+| **UI-006** | **Inventory list + item detail** | **OFF thumbnails; tap → large image + product details** | **`pages/inventory-list.html`, `pages/item-detail.html`** |
+| — | Household Setup | Onboarding — name & photo | `pages/onboarding-household.html` |
+| — | Spending Report | Category analytics & budget tracking | `pages/spending-report.html` |
+| — | Family Members | Household roster & member roles | `pages/family-members.html` |
+
+> **UI-006** is the inventory thumbnail / item-detail requirement. Sample pages load live Open Food Facts images (e.g. UPC `049000028911`).
 
 ### 📚 Documentation
 
