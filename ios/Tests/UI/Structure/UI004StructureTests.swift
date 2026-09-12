@@ -14,43 +14,53 @@ final class UI004StructureTests: XCTestCase {
         continueAfterFailure = false
         app = UITestLaunch.app()
         app.launch()
+        XCTAssertTrue(UITestLaunch.waitForShell(app), "Main shell did not appear under --uitesting")
     }
 
     func testDashboard_primaryContainersExist() {
         XCTAssertTrue(
-            app.otherElements[TestIdentifiers.dashboardView].waitForExistence(timeout: 5)
-                || app.scrollViews.firstMatch.waitForExistence(timeout: 5)
+            UITestLaunch.element(app, TestIdentifiers.dashboardView)
+                .waitForExistence(timeout: UITestLaunch.elementTimeout)
+                || app.scrollViews.firstMatch.waitForExistence(timeout: UITestLaunch.elementTimeout)
         )
-        XCTAssertTrue(app.buttons[TestIdentifiers.addItemButton].exists)
+        XCTAssertTrue(UITestLaunch.element(app, TestIdentifiers.addItemButton).exists)
     }
 
     func testDashboard_requestQueueOrEmptyStateExists() {
-        let queue = app.descendants(matching: .any)[TestIdentifiers.requestQueue]
-        let empty = app.descendants(matching: .any)[TestIdentifiers.emptyStateView]
+        let queue = UITestLaunch.element(app, TestIdentifiers.requestQueue)
+        let empty = UITestLaunch.element(app, TestIdentifiers.emptyStateView)
         XCTAssertTrue(
-            queue.waitForExistence(timeout: 5) || empty.waitForExistence(timeout: 2),
+            queue.waitForExistence(timeout: UITestLaunch.elementTimeout)
+                || empty.waitForExistence(timeout: 5),
             "Dashboard must show request queue or empty state"
         )
     }
 
     func testDashboard_addOpensHubThenScanPath() {
-        app.buttons[TestIdentifiers.addItemButton].tap()
-        let hub = app.descendants(matching: .any)[TestIdentifiers.addItemsHub]
-        XCTAssertTrue(hub.waitForExistence(timeout: 5))
-        let scan = app.descendants(matching: .any)[TestIdentifiers.scanButton]
-        XCTAssertTrue(scan.waitForExistence(timeout: 5))
+        UITestLaunch.element(app, TestIdentifiers.addItemButton).tap()
+        XCTAssertTrue(
+            UITestLaunch.element(app, TestIdentifiers.addItemsHub)
+                .waitForExistence(timeout: UITestLaunch.elementTimeout)
+        )
+        XCTAssertTrue(
+            UITestLaunch.element(app, TestIdentifiers.scanButton)
+                .waitForExistence(timeout: UITestLaunch.elementTimeout)
+        )
     }
 
     func testShoppingList_itemListStructure() {
-        let listTab = app.buttons[TestIdentifiers.listTab]
-        if listTab.waitForExistence(timeout: 3) {
+        let listTab = UITestLaunch.element(app, TestIdentifiers.listTab)
+        if listTab.waitForExistence(timeout: UITestLaunch.elementTimeout) {
             listTab.tap()
         }
-        let list = app.descendants(matching: .any)[TestIdentifiers.itemList]
-        let empty = app.descendants(matching: .any)[TestIdentifiers.emptyStateView]
-        XCTAssertTrue(list.waitForExistence(timeout: 5) || empty.waitForExistence(timeout: 2))
+        let list = UITestLaunch.element(app, TestIdentifiers.itemList)
+        let empty = UITestLaunch.element(app, TestIdentifiers.emptyStateView)
+        XCTAssertTrue(
+            list.waitForExistence(timeout: UITestLaunch.elementTimeout)
+                || empty.waitForExistence(timeout: 5)
+        )
         if list.exists {
-            XCTAssertTrue(app.descendants(matching: .any)[TestIdentifiers.itemCell].exists)
+            XCTAssertTrue(UITestLaunch.element(app, TestIdentifiers.itemCell).exists)
         }
     }
 }

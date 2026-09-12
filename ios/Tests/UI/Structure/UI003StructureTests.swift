@@ -10,12 +10,15 @@ import XCTest
 final class UI003StructureTests: XCTestCase {
     func testOnboarding_welcomeSkippedInUITestingMode() throws {
         // `--uitesting` jumps to MainShell with fixtures (deterministic).
-        // Full onboarding sequence is exercised in DEBUG UI preview + future step-flagged launches.
         let app = UITestLaunch.app()
         app.launch()
         XCTAssertTrue(
-            app.otherElements[TestIdentifiers.mainShellView].waitForExistence(timeout: 5)
-                || app.otherElements[TestIdentifiers.dashboardView].waitForExistence(timeout: 5)
+            UITestLaunch.waitForShell(app),
+            "Expected main shell when launched with --uitesting"
+        )
+        XCTAssertFalse(
+            UITestLaunch.element(app, TestIdentifiers.welcomeView).exists,
+            "Welcome should be skipped in UI testing mode"
         )
     }
 

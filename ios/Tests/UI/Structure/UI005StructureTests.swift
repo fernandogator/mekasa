@@ -14,32 +14,37 @@ final class UI005StructureTests: XCTestCase {
         continueAfterFailure = false
         app = UITestLaunch.app()
         app.launch()
+        XCTAssertTrue(UITestLaunch.waitForShell(app), "Main shell did not appear under --uitesting")
     }
 
     func testTrashStation_reachableFromAddHub() {
-        XCTAssertTrue(app.buttons[TestIdentifiers.addItemButton].waitForExistence(timeout: 5))
-        app.buttons[TestIdentifiers.addItemButton].tap()
-        let trashEntry = app.descendants(matching: .any)[TestIdentifiers.trashStationView]
-        XCTAssertTrue(trashEntry.waitForExistence(timeout: 5))
+        let add = UITestLaunch.element(app, TestIdentifiers.addItemButton)
+        XCTAssertTrue(add.waitForExistence(timeout: UITestLaunch.elementTimeout))
+        add.tap()
+        let trashEntry = UITestLaunch.element(app, TestIdentifiers.trashStationView)
+        XCTAssertTrue(trashEntry.waitForExistence(timeout: UITestLaunch.elementTimeout))
         trashEntry.tap()
         XCTAssertTrue(
-            app.descendants(matching: .any)[TestIdentifiers.scanPromptLabel].waitForExistence(timeout: 5)
+            UITestLaunch.element(app, TestIdentifiers.scanPromptLabel)
+                .waitForExistence(timeout: UITestLaunch.elementTimeout)
         )
         XCTAssertTrue(
-            app.descendants(matching: .any)[TestIdentifiers.itemList].exists
-                || app.descendants(matching: .any)[TestIdentifiers.emptyStateView].exists
+            UITestLaunch.element(app, TestIdentifiers.itemList).exists
+                || UITestLaunch.element(app, TestIdentifiers.emptyStateView).exists
         )
-        XCTAssertTrue(app.descendants(matching: .any)[TestIdentifiers.scanButton].exists)
+        XCTAssertTrue(UITestLaunch.element(app, TestIdentifiers.scanButton).exists)
     }
 
     func testTrashStation_emptyStateWhenNoInventory() {
         app.terminate()
         app = UITestLaunch.app(empty: true)
         app.launch()
-        app.buttons[TestIdentifiers.addItemButton].tap()
-        app.descendants(matching: .any)[TestIdentifiers.trashStationView].tap()
+        XCTAssertTrue(UITestLaunch.waitForShell(app))
+        UITestLaunch.element(app, TestIdentifiers.addItemButton).tap()
+        UITestLaunch.element(app, TestIdentifiers.trashStationView).tap()
         XCTAssertTrue(
-            app.descendants(matching: .any)[TestIdentifiers.emptyStateView].waitForExistence(timeout: 5)
+            UITestLaunch.element(app, TestIdentifiers.emptyStateView)
+                .waitForExistence(timeout: UITestLaunch.elementTimeout)
         )
     }
 }
