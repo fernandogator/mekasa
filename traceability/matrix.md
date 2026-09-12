@@ -31,6 +31,7 @@ Last updated: 2026-08-21
 | UI-003 | Onboarding Flow | design/mockups/OnboardingStoreSelection.jsx | pending | android/src/test/ui/OnboardingUITest.kt; ios/MekasaTests/UI/OnboardingUITest.swift | not tested | — |
 | UI-004 | Home Dashboard | design/mockups/Dashboard.jsx | pending | android/src/test/ui/DashboardUITest.kt; ios/MekasaTests/UI/DashboardUITest.swift | not tested | — |
 | UI-005 | Trash Station Mode | design/mockups/TrashStationMode.jsx | pending | android/src/test/ui/TrashStationUITest.kt; ios/MekasaTests/UI/TrashStationUITest.swift | not tested | — |
+| UI-006 | Inventory List Thumbnails and Item Detail | design/pages/inventory-list.html; design/pages/item-detail.html | pending | ios/MekasaTests/UI/InventoryScreenUITest.swift | not tested | — |
 | NFR-001 | Scan Performance | — | pending | pending | not tested | — |
 | NFR-002 | Data Privacy | — | pending | pending | not tested | — |
 | NFR-003 | Offline Resilience | — | pending | pending | not tested | — |

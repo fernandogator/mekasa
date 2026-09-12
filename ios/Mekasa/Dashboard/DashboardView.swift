@@ -87,7 +87,9 @@ struct DashboardView: View {
                     Button {
                         selectedItemID = item.id
                     } label: {
-                        HStack {
+                        HStack(spacing: 14) {
+                            ProductThumbnail(urlString: item.imageURL, size: 56, cornerRadius: 16)
+                                .accessibilityIdentifier(TestIdentifiers.itemThumbnail)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.name)
                                     .font(.system(size: 16, weight: .bold, design: .rounded))
@@ -105,6 +107,7 @@ struct DashboardView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityHint("Opens item details")
                 }
             }
         }

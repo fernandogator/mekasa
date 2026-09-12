@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="view-transition" content="same-origin" />
+  <title>Mekasa — Item detail</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    body { margin: 0; background: #eeebe3; }
+    @view-transition { navigation: auto; }
+  </style>
+</head>
+<body>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+  :root {
+    --color-brand: #171e19;
+    --color-brand-muted: #b7c6c2;
+    --color-surface: #eeebe3;
+    --color-surface-elevated: #ffffff;
+    --color-text: #171e19;
+    --color-text-muted: #6d7a76;
+    --color-accent: #ca0013;
+    --color-overlay: rgba(183, 198, 194, 0.20);
+  }
+  .mekasa-screen {
+    font-family: Nunito, sans-serif;
+    background-color: var(--color-surface);
+    color: var(--color-text);
+  }
+  .mekasa-screen .text-brand { color: var(--color-brand); }
+  .mekasa-screen .text-muted { color: var(--color-text-muted); }
+  .mekasa-screen .bg-surface-elevated { background-color: var(--color-surface-elevated); }
+  .mekasa-screen .border-muted { border-color: rgba(183, 198, 194, 0.3); }
+  .mekasa-screen .sage-blob {
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: var(--color-overlay);
+    filter: blur(40px);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .hero {
+    width: 100%;
+    aspect-ratio: 1;
+    max-height: 320px;
+    object-fit: contain;
+    background: #f1f4f3;
+    border-radius: 32px;
+    cursor: zoom-in;
+  }
+  .hero-fallback {
+    width: 100%;
+    aspect-ratio: 1;
+    max-height: 320px;
+    border-radius: 32px;
+    background: #f1f4f3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    font-size: 48px;
+  }
+  .detail-card {
+    background: var(--color-surface-elevated);
+    border-radius: 28px;
+    padding: 20px;
+    border: 1px solid rgba(183, 198, 194, 0.3);
+  }
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(23, 30, 25, 0.92);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 24px;
+    cursor: zoom-out;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 16px;
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up { animation: fade-up 0.4s ease both; }
+</style>
+
+<div class="mekasa-screen w-full min-h-screen flex flex-col relative overflow-hidden">
+  <div class="sage-blob"></div>
+
+  <header class="shrink-0 pt-14 px-6 z-10 flex items-center gap-3">
+    <a href="inventory-list.html" class="w-10 h-10 rounded-full bg-surface-elevated border border-muted flex items-center justify-center shadow-sm" aria-label="Back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="m15 18-6-6 6-6"/></svg>
+    </a>
+    <div>
+      <p class="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">Item detail</p>
+      <h1 id="title" class="text-xl font-black text-brand leading-none">Loading…</h1>
+    </div>
+  </header>
+
+  <main class="flex-1 overflow-y-auto px-6 pt-6 pb-24 z-10 space-y-5 fade-up">
+    <div id="hero-wrap"></div>
+
+    <div class="detail-card space-y-3">
+      <div>
+        <p class="text-[11px] font-bold uppercase tracking-[0.12em] text-muted mb-1">Product</p>
+        <p id="name" class="text-2xl font-black text-brand leading-tight"></p>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-[0.12em] text-muted mb-1">Brand</p>
+          <p id="brand" class="font-bold text-brand"></p>
+        </div>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-[0.12em] text-muted mb-1">Category</p>
+          <p id="category" class="font-bold text-brand"></p>
+        </div>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-[0.12em] text-muted mb-1">UPC</p>
+          <p id="upc" class="font-mono font-bold text-brand text-sm"></p>
+        </div>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-[0.12em] text-muted mb-1">Package</p>
+          <p id="package" class="font-bold text-brand"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-card space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-[0.12em] text-muted mb-1">Quantity</p>
+          <p id="qty" class="text-3xl font-black text-brand">1</p>
+        </div>
+        <div class="text-right">
+          <p class="text-[11px] font-bold uppercase tracking-[0.12em] text-muted mb-1">Low-stock at</p>
+          <p id="threshold" class="text-3xl font-black text-brand">1</p>
+        </div>
+      </div>
+      <p id="stock-note" class="text-[13px] font-semibold text-muted"></p>
+    </div>
+
+    <p class="text-[12px] font-semibold text-muted text-center px-4">
+      Sample design page · image from Open Food Facts · tap the photo to enlarge
+    </p>
+  </main>
+</div>
+
+<div id="lightbox" class="lightbox" role="dialog" aria-label="Enlarged product image">
+  <img id="lightbox-img" alt="Product" />
+</div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const upc = params.get("upc") || "049000028911";
+
+  function setText(id, value, fallback = "—") {
+    document.getElementById(id).textContent = value && String(value).trim() ? value : fallback;
+  }
+
+  function render(data) {
+    document.title = `Mekasa — ${data.name}`;
+    setText("title", data.name);
+    setText("name", data.name);
+    setText("brand", data.brand);
+    setText("category", data.category);
+    setText("upc", data.upc);
+    setText("package", data.packageSize);
+    setText("qty", data.qty);
+    setText("threshold", data.threshold);
+
+    const qty = Number(data.qty) || 0;
+    const threshold = Number(data.threshold) || 0;
+    document.getElementById("stock-note").textContent =
+      qty <= threshold
+        ? "Low stock — this item would appear on the shopping list."
+        : "Stock is above the low-stock threshold.";
+
+    const wrap = document.getElementById("hero-wrap");
+    const hero = data.hero || data.thumb;
+    if (hero) {
+      wrap.innerHTML = `<img id="hero" class="hero" src="${hero}" alt="${data.name}" />`;
+      const img = document.getElementById("hero");
+      const lightbox = document.getElementById("lightbox");
+      const lightboxImg = document.getElementById("lightbox-img");
+      img.addEventListener("click", () => {
+        lightboxImg.src = hero;
+        lightbox.classList.add("open");
+      });
+      lightbox.addEventListener("click", () => lightbox.classList.remove("open"));
+    } else {
+      wrap.innerHTML = `<div class="hero-fallback">📦</div>`;
+    }
+  }
+
+  async function hydrateFromOFF(code) {
+    const fields = "product_name,product_name_en,brands,categories,image_front_url,image_url,image_front_small_url,quantity";
+    const res = await fetch(
+      `https://world.openfoodfacts.org/api/v2/product/${code}?fields=${fields}`,
+      { headers: { "User-Agent": "MekasaDesignDemo/1.0" } }
+    );
+    const data = await res.json();
+    if (data.status !== 1 || !data.product) throw new Error("not found");
+    const p = data.product;
+    const name = (p.product_name || p.product_name_en || "").trim();
+    const brand = (p.brands || "").split(",")[0].trim();
+    return {
+      upc: code,
+      name: name || brand || `UPC ${code}`,
+      brand: brand || "—",
+      category: (p.categories || "Other").split(",")[0].trim(),
+      packageSize: p.quantity || "—",
+      hero: p.image_front_url || p.image_url || p.image_front_small_url || "",
+      thumb: p.image_front_small_url || p.image_front_url || "",
+      qty: params.get("qty") || "2",
+      threshold: params.get("threshold") || "1",
+    };
+  }
+
+  (async () => {
+    // Prefer query params from inventory list; refresh hero from OFF if needed.
+    if (params.get("name") && (params.get("hero") || params.get("thumb"))) {
+      render({
+        upc,
+        name: params.get("name"),
+        brand: params.get("brand"),
+        category: params.get("category"),
+        packageSize: params.get("package"),
+        hero: params.get("hero"),
+        thumb: params.get("thumb"),
+        qty: params.get("qty") || "2",
+        threshold: params.get("threshold") || "1",
+      });
+      return;
+    }
+    try {
+      render(await hydrateFromOFF(upc));
+    } catch (e) {
+      setText("title", "Product not found");
+      setText("name", `Could not load UPC ${upc}`);
+      document.getElementById("hero-wrap").innerHTML = `<div class="hero-fallback">?</div>`;
+    }
+  })();
+</script>
+</body>
+</html>

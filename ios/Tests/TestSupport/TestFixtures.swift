@@ -83,14 +83,15 @@ enum TestFixtures {
         ),
         InventoryItem(
             id: "inv-6",
-            name: "Sparkling Water",
+            name: "Diet Coke Soft Drink",
             category: InventoryCategory.beverages.rawValue,
-            quantity: 4,
-            lowStockThreshold: 2,
-            pricePaid: 5.99,
-            barcode: nil,
-            source: .voice,
-            imageURL: "https://placehold.co/400x400/eeebe3/171e19/png?text=Beverages",
+            quantity: 1,
+            lowStockThreshold: 1,
+            pricePaid: 7.99,
+            barcode: "049000028911",
+            source: .barcode,
+            // Live Open Food Facts front image for UPC 049000028911 (sample verified 2026-09-12)
+            imageURL: "https://images.openfoodfacts.org/images/products/004/900/002/8911/front_en.24.400.jpg",
             updatedAt: fixedDate
         ),
         InventoryItem(

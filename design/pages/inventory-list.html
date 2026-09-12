@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="view-transition" content="same-origin" />
+  <title>Mekasa — Inventory</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    body { margin: 0; background: #eeebe3; }
+    @view-transition { navigation: auto; }
+  </style>
+</head>
+<body>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+  :root {
+    --color-brand: #171e19;
+    --color-brand-muted: #b7c6c2;
+    --color-surface: #eeebe3;
+    --color-surface-elevated: #ffffff;
+    --color-text: #171e19;
+    --color-text-muted: #6d7a76;
+    --color-accent: #ca0013;
+    --color-overlay: rgba(183, 198, 194, 0.20);
+  }
+  .mekasa-screen {
+    font-family: Nunito, sans-serif;
+    background-color: var(--color-surface);
+    color: var(--color-text);
+  }
+  .mekasa-screen .text-brand { color: var(--color-brand); }
+  .mekasa-screen .text-muted { color: var(--color-text-muted); }
+  .mekasa-screen .bg-surface-elevated { background-color: var(--color-surface-elevated); }
+  .mekasa-screen .border-muted { border-color: rgba(183, 198, 194, 0.3); }
+  .mekasa-screen .sage-blob {
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: var(--color-overlay);
+    filter: blur(40px);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .thumb {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    object-fit: cover;
+    background: #f1f4f3;
+    flex-shrink: 0;
+  }
+  .thumb-fallback {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: #f1f4f3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px;
+    border-radius: 24px;
+    transition: background 0.15s ease;
+  }
+  .row:hover { background: #f8f9f8; }
+  .row:active { transform: scale(0.99); }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up { animation: fade-up 0.35s ease both; }
+</style>
+
+<div class="mekasa-screen w-full min-h-screen flex flex-col relative overflow-hidden">
+  <div class="sage-blob"></div>
+
+  <header class="shrink-0 pt-14 px-6 z-10">
+    <a href="../index.html" class="text-[12px] font-bold uppercase tracking-[0.1em] text-muted mb-2 inline-block">← Demos</a>
+    <h1 class="text-3xl font-black text-brand leading-none mb-1">Inventory</h1>
+    <p class="text-[13px] font-semibold text-muted">Thumbnails from Open Food Facts · tap a product for details</p>
+  </header>
+
+  <main class="flex-1 overflow-y-auto px-6 pt-6 pb-24 z-10">
+    <div id="status" class="text-[13px] font-semibold text-muted mb-4">Loading sample UPCs…</div>
+    <div id="list" class="bg-surface-elevated rounded-[32px] p-2 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] border border-muted space-y-1"></div>
+  </main>
+</div>
+
+<script>
+  // Sample household inventory — includes the Diet Coke UPC we verified.
+  const SAMPLE_UPCS = [
+    { upc: "049000028911", qty: 2, threshold: 1 },   // Diet Coke (verified)
+    { upc: "049000042566", qty: 1, threshold: 1 },   // Coke Zero
+    { upc: "0016000275263", qty: 1, threshold: 1 },  // Cheerios
+    { upc: "0016000170032", qty: 3, threshold: 2 },  // Cheerios variant
+  ];
+
+  const OFF_FIELDS = "product_name,product_name_en,brands,categories,image_front_url,image_url,image_front_small_url,quantity";
+
+  async function lookup(upc) {
+    const url = `https://world.openfoodfacts.org/api/v2/product/${upc}?fields=${OFF_FIELDS}`;
+    const res = await fetch(url, { headers: { "User-Agent": "MekasaDesignDemo/1.0" } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.status !== 1 || !data.product) return null;
+    const p = data.product;
+    const name = (p.product_name || p.product_name_en || "").trim();
+    const brand = (p.brands || "").split(",")[0].trim();
+    const thumb = p.image_front_small_url || p.image_front_url || p.image_url || "";
+    const hero = p.image_front_url || p.image_url || p.image_front_small_url || "";
+    return {
+      upc,
+      name: name || brand || `UPC ${upc}`,
+      brand: brand || "—",
+      category: (p.categories || "Other").split(",")[0].trim(),
+      packageSize: p.quantity || "",
+      thumb,
+      hero,
+    };
+  }
+
+  function rowHTML(item, meta, index) {
+    const thumb = item.thumb
+      ? `<img class="thumb" src="${item.thumb}" alt="" loading="lazy" />`
+      : `<div class="thumb-fallback">📦</div>`;
+    const qs = new URLSearchParams({
+      upc: item.upc,
+      name: item.name,
+      brand: item.brand,
+      category: item.category,
+      package: item.packageSize,
+      hero: item.hero,
+      thumb: item.thumb,
+      qty: String(meta.qty),
+      threshold: String(meta.threshold),
+    });
+    return `
+      <a href="item-detail.html?${qs.toString()}" class="row fade-up" style="animation-delay:${index * 60}ms">
+        ${thumb}
+        <div class="flex-1 min-w-0">
+          <p class="font-bold text-[16px] text-brand truncate">${item.name}</p>
+          <p class="text-[12px] font-semibold text-muted truncate">${item.category} · qty ${meta.qty}</p>
+        </div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5 text-muted shrink-0"><path d="m9 18 6-6-6-6"/></svg>
+      </a>`;
+  }
+
+  (async () => {
+    const list = document.getElementById("list");
+    const status = document.getElementById("status");
+    const results = [];
+    for (const meta of SAMPLE_UPCS) {
+      try {
+        const item = await lookup(meta.upc);
+        if (item) results.push({ item, meta });
+      } catch (e) {
+        console.warn("lookup failed", meta.upc, e);
+      }
+    }
+    if (!results.length) {
+      status.textContent = "Could not load Open Food Facts products. Check network / CORS.";
+      return;
+    }
+    status.textContent = `${results.length} items · live Open Food Facts images`;
+    list.innerHTML = results.map(({ item, meta }, i) => rowHTML(item, meta, i)).join("");
+  })();
+</script>
+</body>
+</html>
