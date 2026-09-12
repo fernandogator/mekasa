@@ -22,12 +22,17 @@ targets:
     type: application
     platform: iOS
     sources:
+      # Exclude Firebase plist from the folder scan so a missing (gitignored) file
+      # cannot leave a dangling Copy Bundle Resources entry. Include it explicitly
+      # below only when present; CI copies Config/GoogleService-Info.ci.plist first.
       - path: Mekasa
+        excludes:
+          - GoogleService-Info.plist
       - path: Tests/TestSupport
-      # Present only on your Mac (gitignored). Re-run xcodegen after adding it.
       - path: Mekasa/GoogleService-Info.plist
         optional: true
         buildPhase: resources
+
     configFiles:
       Debug: Config/Version.xcconfig
       Release: Config/Version.xcconfig
