@@ -77,15 +77,27 @@ jobs:
           DEST=$(./scripts/resolve_ios_simulator.sh)
           echo "Using destination: $DEST"
           echo "destination=$DEST" >> "$GITHUB_OUTPUT"
+          # Boot once up front — parallel clones + cold boot were killing the
+          # sim runtime ((ipc/mig) server died) during structural UI tests.
+          UDID=$(echo "$DEST" | sed -n 's/.*id=\([^,]*\).*/\1/p')
+          if [ -n "${UDID:-}" ]; then
+            xcrun simctl boot "$UDID" 2>/dev/null || true
+            xcrun simctl bootstatus "$UDID" -b
+            echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          fi
       - name: Run structural UI tests
         run: |
           set -euo pipefail
           mkdir -p TestResults
           rm -rf TestResults/structural.xcresult
+          # Disable parallel test clones — macos-15 runners flake hard when
+          # XCUITest spins "Clone N of iPhone 16" destinations.
           xcodebuild test \
             -scheme Mekasa \
             -destination "${{ steps.sim.outputs.destination }}" \
             -testPlan StructuralTests \
+            -parallel-testing-enabled NO \
+            -maximum-parallel-testing-workers 1 \
             -resultBundlePath TestResults/structural.xcresult
       - name: Run snapshot tests
         run: |
@@ -96,6 +108,8 @@ jobs:
             -scheme Mekasa \
             -destination "${{ steps.sim.outputs.destination }}" \
             -testPlan SnapshotTests \
+            -parallel-testing-enabled NO \
+            -maximum-parallel-testing-workers 1 \
             -resultBundlePath TestResults/snapshots.xcresult
 
   build:

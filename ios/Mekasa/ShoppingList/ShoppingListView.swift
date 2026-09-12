@@ -117,6 +117,7 @@ struct ShoppingListView: View {
                         .stroke(MekasaTheme.brandMuted.opacity(0.25), lineWidth: 1)
                 )
                 .shadow(color: .black.opacity(0.08), radius: 24, y: 12)
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier(TestIdentifiers.itemList)
             }
         }

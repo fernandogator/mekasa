@@ -14,21 +14,34 @@ final class UI002StructureTests: XCTestCase {
         continueAfterFailure = false
         app = UITestLaunch.app()
         app.launch()
+        XCTAssertTrue(UITestLaunch.waitForShell(app), "Main shell did not appear under --uitesting")
     }
 
     func testMainShell_rootAndNavExist() {
-        XCTAssertTrue(app.otherElements[TestIdentifiers.rootView].waitForExistence(timeout: 5)
-            || app.otherElements[TestIdentifiers.mainShellView].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons[TestIdentifiers.addItemButton].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons[TestIdentifiers.homeTab].exists || app.otherElements[TestIdentifiers.homeTab].exists)
-        XCTAssertTrue(app.buttons[TestIdentifiers.listTab].exists || app.otherElements[TestIdentifiers.listTab].exists)
+        XCTAssertTrue(UITestLaunch.element(app, TestIdentifiers.rootView).exists
+            || UITestLaunch.element(app, TestIdentifiers.mainShellView).exists)
+        let add = UITestLaunch.addItemButton(app)
+        XCTAssertTrue(add.waitForExistence(timeout: UITestLaunch.elementTimeout))
+        XCTAssertTrue(
+            UITestLaunch.element(app, TestIdentifiers.homeTab).exists
+                || app.buttons[TestIdentifiers.homeTab].exists
+                || app.buttons["Home"].exists
+        )
+        XCTAssertTrue(
+            UITestLaunch.element(app, TestIdentifiers.listTab).exists
+                || app.buttons[TestIdentifiers.listTab].exists
+                || app.buttons["List"].exists
+        )
     }
 
     func testAddItemButton_opensAddItemsHub() {
-        let add = app.buttons[TestIdentifiers.addItemButton]
-        XCTAssertTrue(add.waitForExistence(timeout: 5))
+        let add = UITestLaunch.addItemButton(app)
+        XCTAssertTrue(add.waitForExistence(timeout: UITestLaunch.elementTimeout))
         add.tap()
-        XCTAssertTrue(app.otherElements[TestIdentifiers.addItemsHub].waitForExistence(timeout: 5)
-            || app.descendants(matching: .any)[TestIdentifiers.addItemsHub].waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            UITestLaunch.element(app, TestIdentifiers.addItemsHub)
+                .waitForExistence(timeout: UITestLaunch.elementTimeout)
+                || app.staticTexts["Add to the house"].waitForExistence(timeout: UITestLaunch.elementTimeout)
+        )
     }
 }

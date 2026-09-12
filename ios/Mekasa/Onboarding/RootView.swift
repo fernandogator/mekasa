@@ -25,6 +25,10 @@ struct RootView: View {
                 MainShellView()
             }
         }
+        // Keep children as distinct accessibility elements. Applying an identifier
+        // on this Group without `.contain` was rewriting every descendant's id to
+        // "RootView" (AddItemButton, HomeTab, etc. became unfindable in XCUITest).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(TestIdentifiers.rootView)
         .animation(session.isUITesting ? nil : .easeInOut(duration: 0.25), value: session.onboardingStep)
         .transition(.opacity.combined(with: .move(edge: .bottom)))
