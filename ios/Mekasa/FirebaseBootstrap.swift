@@ -12,10 +12,7 @@ enum FirebaseBootstrap {
         guard !didRun else { return }
         didRun = true
 
-        let plistInBundle = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil
-        print("[Mekasa] GoogleService-Info.plist in bundle: \(plistInBundle)")
-
-        guard plistInBundle else {
+        guard let plistPath = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") else {
             print(
                 """
                 [Mekasa] Firebase not configured — GoogleService-Info.plist is missing from the app bundle.
@@ -25,6 +22,15 @@ enum FirebaseBootstrap {
                 Offline UI preview still works without it.
                 """
             )
+            return
+        }
+        print("[Mekasa] GoogleService-Info.plist in bundle: true")
+
+        // CI installs Config/GoogleService-Info.ci.plist — never call FirebaseApp.configure()
+        // with placeholder credentials (can abort the process).
+        if let dict = NSDictionary(contentsOfFile: plistPath) as? [String: Any],
+           (dict["MEKASA_CI_STUB"] as? Bool) == true {
+            print("[Mekasa] Firebase skipped — CI stub plist (offline UI / structural tests)")
             return
         }
 
