@@ -35,6 +35,7 @@ struct MainShellView: View {
                 .padding(.bottom, 24)
             }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(TestIdentifiers.mainShellView)
         .sheet(isPresented: $showAddItems) {
             NavigationStack {
@@ -86,6 +87,7 @@ private struct BottomNavBar: View {
             .accessibilityLabel("Add items")
             .accessibilityIdentifier(TestIdentifiers.addItemButton)
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(TestIdentifiers.bottomNavBar)
     }
 

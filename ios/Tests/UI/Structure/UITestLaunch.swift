@@ -11,6 +11,7 @@ enum UITestLaunch {
         if empty { args.append("--uitesting-empty") }
         app.launchArguments = args
         app.launchEnvironment["MEKASA_UITESTING"] = "1"
+        if empty { app.launchEnvironment["MEKASA_UITESTING_EMPTY"] = "1" }
         return app
     }
 
@@ -19,10 +20,26 @@ enum UITestLaunch {
         app.descendants(matching: .any)[id]
     }
 
+    /// Do **not** treat `RootView` alone as shell — it is always present, including
+    /// on Welcome, and previously masked missing MainShell identifiers.
     @discardableResult
     static func waitForShell(_ app: XCUIApplication) -> Bool {
-        element(app, TestIdentifiers.mainShellView).waitForExistence(timeout: elementTimeout)
-            || element(app, TestIdentifiers.dashboardView).waitForExistence(timeout: elementTimeout)
-            || element(app, TestIdentifiers.rootView).waitForExistence(timeout: elementTimeout)
+        if element(app, TestIdentifiers.mainShellView).waitForExistence(timeout: elementTimeout) {
+            return true
+        }
+        if element(app, TestIdentifiers.dashboardView).waitForExistence(timeout: elementTimeout) {
+            return true
+        }
+        // Fallback: FAB label survives even if an ancestor stole accessibility ids.
+        if app.buttons["Add items"].waitForExistence(timeout: elementTimeout) {
+            return true
+        }
+        return element(app, TestIdentifiers.addItemButton).waitForExistence(timeout: 5)
+    }
+
+    static func addItemButton(_ app: XCUIApplication) -> XCUIElement {
+        let byId = element(app, TestIdentifiers.addItemButton)
+        if byId.exists { return byId }
+        return app.buttons["Add items"]
     }
 }

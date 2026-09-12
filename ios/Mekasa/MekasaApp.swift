@@ -10,13 +10,21 @@ struct MekasaApp: App {
 
     init() {
         FirebaseBootstrap.configure()
-        if CommandLine.arguments.contains("--uitesting") {
+        // Prefer ProcessInfo — CommandLine.arguments can miss XCUITest launch args
+        // depending on how the runner injects them. Also honor MEKASA_UITESTING env.
+        let args = ProcessInfo.processInfo.arguments
+        let env = ProcessInfo.processInfo.environment
+        let uiTesting = args.contains("--uitesting")
+            || env["MEKASA_UITESTING"] == "1"
+            || env["MEKASA_UITESTING"] == "true"
+        if uiTesting {
             UIView.setAnimationsEnabled(false)
         }
         let session = AppSession()
-        if CommandLine.arguments.contains("--uitesting") {
+        if uiTesting {
             session.startUITesting(
-                emptyInventory: CommandLine.arguments.contains("--uitesting-empty")
+                emptyInventory: args.contains("--uitesting-empty")
+                    || env["MEKASA_UITESTING_EMPTY"] == "1"
             )
         }
         _session = StateObject(wrappedValue: session)

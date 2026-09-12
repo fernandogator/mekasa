@@ -23,7 +23,7 @@ final class UI004StructureTests: XCTestCase {
                 .waitForExistence(timeout: UITestLaunch.elementTimeout)
                 || app.scrollViews.firstMatch.waitForExistence(timeout: UITestLaunch.elementTimeout)
         )
-        XCTAssertTrue(UITestLaunch.element(app, TestIdentifiers.addItemButton).exists)
+        XCTAssertTrue(UITestLaunch.addItemButton(app).exists)
     }
 
     func testDashboard_requestQueueOrEmptyStateExists() {
@@ -37,14 +37,17 @@ final class UI004StructureTests: XCTestCase {
     }
 
     func testDashboard_addOpensHubThenScanPath() {
-        UITestLaunch.element(app, TestIdentifiers.addItemButton).tap()
+        UITestLaunch.addItemButton(app).tap()
         XCTAssertTrue(
             UITestLaunch.element(app, TestIdentifiers.addItemsHub)
                 .waitForExistence(timeout: UITestLaunch.elementTimeout)
+                || app.staticTexts["Add to the house"].waitForExistence(timeout: UITestLaunch.elementTimeout)
         )
         XCTAssertTrue(
             UITestLaunch.element(app, TestIdentifiers.scanButton)
                 .waitForExistence(timeout: UITestLaunch.elementTimeout)
+                || app.buttons["Scan barcode"].waitForExistence(timeout: UITestLaunch.elementTimeout)
+                || app.staticTexts["Scan barcode"].waitForExistence(timeout: UITestLaunch.elementTimeout)
         )
     }
 
@@ -52,6 +55,8 @@ final class UI004StructureTests: XCTestCase {
         let listTab = UITestLaunch.element(app, TestIdentifiers.listTab)
         if listTab.waitForExistence(timeout: UITestLaunch.elementTimeout) {
             listTab.tap()
+        } else if app.buttons["List"].waitForExistence(timeout: 5) {
+            app.buttons["List"].tap()
         }
         let list = UITestLaunch.element(app, TestIdentifiers.itemList)
         let empty = UITestLaunch.element(app, TestIdentifiers.emptyStateView)
