@@ -112,6 +112,7 @@ struct AddItemsView: View {
             }
         }
         .navigationBarHidden(true)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(TestIdentifiers.addItemsHub)
     }
 

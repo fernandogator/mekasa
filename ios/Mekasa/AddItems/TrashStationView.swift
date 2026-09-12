@@ -50,6 +50,7 @@ struct TrashStationView: View {
                                     .accessibilityIdentifier(TestIdentifiers.itemCell)
                                 }
                             }
+                            .accessibilityElement(children: .contain)
                             .accessibilityIdentifier(TestIdentifiers.itemList)
                         }
 

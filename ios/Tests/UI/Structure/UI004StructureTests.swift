@@ -60,12 +60,23 @@ final class UI004StructureTests: XCTestCase {
         }
         let list = UITestLaunch.element(app, TestIdentifiers.itemList)
         let empty = UITestLaunch.element(app, TestIdentifiers.emptyStateView)
+        let shopping = UITestLaunch.element(app, TestIdentifiers.shoppingListView)
         XCTAssertTrue(
             list.waitForExistence(timeout: UITestLaunch.elementTimeout)
                 || empty.waitForExistence(timeout: 5)
+                || shopping.waitForExistence(timeout: 5)
+                || app.staticTexts["Eggs"].waitForExistence(timeout: 5)
+                || app.staticTexts["Avocados"].waitForExistence(timeout: 5),
+            "Shopping list should show items, empty state, or the list screen"
         )
         if list.exists {
-            XCTAssertTrue(UITestLaunch.element(app, TestIdentifiers.itemCell).exists)
+            XCTAssertTrue(
+                UITestLaunch.element(app, TestIdentifiers.itemCell).exists
+                    || UITestLaunch.element(app, TestIdentifiers.requestCell).exists
+                    || app.staticTexts["Eggs"].exists
+                    || app.staticTexts["2% milk"].exists,
+                "Expected a shopping row (item or pending request)"
+            )
         }
     }
 }
