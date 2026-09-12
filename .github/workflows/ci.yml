@@ -56,40 +56,47 @@ jobs:
         run: |
           chmod +x scripts/ensure_unique_build_number.sh
           ./scripts/ensure_unique_build_number.sh
+      # GoogleService-Info.plist is gitignored; XcodeGen still emitted a required
+      # Copy Bundle Resources entry when the optional path was missing. Install a
+      # CI stub before generate so the build can copy a real file (app skips Firebase).
+      - name: Install CI Firebase plist stub
+        run: |
+          if [ ! -f Mekasa/GoogleService-Info.plist ]; then
+            cp Config/GoogleService-Info.ci.plist Mekasa/GoogleService-Info.plist
+          fi
       - name: Generate Xcode project
         run: xcodegen generate
+      # Prefer a single unambiguous simulator: iPhone 16 on iOS 18.x (matches the
+      # Xcode 16 SDK). Avoid bare "name=iPhone 16" (multiple OS versions) and
+      # iPhone 15 (not installed on current macos-15 runners).
+      - name: Resolve iOS Simulator destination
+        id: sim
+        run: |
+          set -euo pipefail
+          chmod +x scripts/resolve_ios_simulator.sh
+          DEST=$(./scripts/resolve_ios_simulator.sh)
+          echo "Using destination: $DEST"
+          echo "destination=$DEST" >> "$GITHUB_OUTPUT"
       - name: Run structural UI tests
         run: |
           set -euo pipefail
           mkdir -p TestResults
-          run_structural() {
-            local dest="$1"
-            local bundle="$2"
-            rm -rf "$bundle"
-            xcodebuild test \
-              -scheme Mekasa \
-              -destination "$dest" \
-              -testPlan StructuralTests \
-              -resultBundlePath "$bundle"
-          }
-          run_structural 'platform=iOS Simulator,name=iPhone 16' TestResults/structural.xcresult \
-            || run_structural 'platform=iOS Simulator,name=iPhone 15' TestResults/structural-fallback.xcresult
+          rm -rf TestResults/structural.xcresult
+          xcodebuild test \
+            -scheme Mekasa \
+            -destination "${{ steps.sim.outputs.destination }}" \
+            -testPlan StructuralTests \
+            -resultBundlePath TestResults/structural.xcresult
       - name: Run snapshot tests
         run: |
           set -euo pipefail
           mkdir -p TestResults
-          run_snapshots() {
-            local dest="$1"
-            local bundle="$2"
-            rm -rf "$bundle"
-            xcodebuild test \
-              -scheme Mekasa \
-              -destination "$dest" \
-              -testPlan SnapshotTests \
-              -resultBundlePath "$bundle"
-          }
-          run_snapshots 'platform=iOS Simulator,name=iPhone 16' TestResults/snapshots.xcresult \
-            || run_snapshots 'platform=iOS Simulator,name=iPhone 15' TestResults/snapshots-fallback.xcresult
+          rm -rf TestResults/snapshots.xcresult
+          xcodebuild test \
+            -scheme Mekasa \
+            -destination "${{ steps.sim.outputs.destination }}" \
+            -testPlan SnapshotTests \
+            -resultBundlePath TestResults/snapshots.xcresult
 
   build:
     name: build
