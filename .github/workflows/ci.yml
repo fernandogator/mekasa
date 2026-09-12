@@ -37,12 +37,19 @@ jobs:
 
   ios-ui:
     name: ios-ui
-    runs-on: macos-14
+    # XcodeGen (Homebrew) emits project format 77 (Xcode 16+). macos-14's
+    # default Xcode 15.4 cannot open that format — use macos-15 + Xcode 16.
+    runs-on: macos-15
     defaults:
       run:
         working-directory: ios
     steps:
       - uses: actions/checkout@v4
+      - name: Select Xcode 16
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          # Any 16.x can open XcodeGen's project format 77; pin minor only if flakes appear.
+          xcode-version: "16"
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Stamp unique iOS build number
@@ -53,28 +60,36 @@ jobs:
         run: xcodegen generate
       - name: Run structural UI tests
         run: |
-          xcodebuild test \
-            -scheme Mekasa \
-            -destination 'platform=iOS Simulator,name=iPhone 13 Pro' \
-            -testPlan StructuralTests \
-            -resultBundlePath TestResults/structural.xcresult \
-          || xcodebuild test \
-            -scheme Mekasa \
-            -destination 'platform=iOS Simulator,name=iPhone 15' \
-            -testPlan StructuralTests \
-            -resultBundlePath TestResults/structural.xcresult
+          set -euo pipefail
+          mkdir -p TestResults
+          run_structural() {
+            local dest="$1"
+            local bundle="$2"
+            rm -rf "$bundle"
+            xcodebuild test \
+              -scheme Mekasa \
+              -destination "$dest" \
+              -testPlan StructuralTests \
+              -resultBundlePath "$bundle"
+          }
+          run_structural 'platform=iOS Simulator,name=iPhone 16' TestResults/structural.xcresult \
+            || run_structural 'platform=iOS Simulator,name=iPhone 15' TestResults/structural-fallback.xcresult
       - name: Run snapshot tests
         run: |
-          xcodebuild test \
-            -scheme Mekasa \
-            -destination 'platform=iOS Simulator,name=iPhone 13 Pro' \
-            -testPlan SnapshotTests \
-            -resultBundlePath TestResults/snapshots.xcresult \
-          || xcodebuild test \
-            -scheme Mekasa \
-            -destination 'platform=iOS Simulator,name=iPhone 15' \
-            -testPlan SnapshotTests \
-            -resultBundlePath TestResults/snapshots.xcresult
+          set -euo pipefail
+          mkdir -p TestResults
+          run_snapshots() {
+            local dest="$1"
+            local bundle="$2"
+            rm -rf "$bundle"
+            xcodebuild test \
+              -scheme Mekasa \
+              -destination "$dest" \
+              -testPlan SnapshotTests \
+              -resultBundlePath "$bundle"
+          }
+          run_snapshots 'platform=iOS Simulator,name=iPhone 16' TestResults/snapshots.xcresult \
+            || run_snapshots 'platform=iOS Simulator,name=iPhone 15' TestResults/snapshots-fallback.xcresult
 
   build:
     name: build

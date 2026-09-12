@@ -40,7 +40,8 @@ Acceptance Criteria:
 ### REQ-004: Barcode Scanning and Product Lookup
 Priority: P0
 Description: User scans a barcode and the app retrieves item name,
-category, and typical price from a third-party database.
+category, typical price, and product image URL from a third-party
+database (Open Food Facts primary; see ADR-004 / ADR image waterfall).
 Design Artifact: design/mockups/AddItems.jsx
 Acceptance Criteria:
 - AC1: Valid barcode returns product name and category within 5
@@ -48,6 +49,11 @@ Acceptance Criteria:
 - AC2: Unknown barcode prompts manual entry fallback
 - AC3: Item is added to inventory with quantity of 1 by default,
   adjustable before confirming
+- AC4: When the lookup provider returns a product image, the response
+  includes a usable `image_url` (or equivalent) persisted with the
+  inventory item for list thumbnails and item detail (UI-006)
+- AC5: Missing image does not fail the lookup; client shows a category
+  placeholder instead
 
 ### REQ-005: Receipt Scanning and Bulk Entry
 Priority: P0
@@ -261,6 +267,24 @@ Acceptance Criteria:
 - AC1: Simplified single-purpose UI for scanning only
 - AC2: No navigation or non-scanning elements visible
 - AC3: Scan confirmation is displayed briefly then resets
+
+### UI-006: Inventory List Thumbnails and Item Detail
+Priority: P0
+Design Artifact: design/pages/inventory-list.html, design/pages/item-detail.html
+User Flow: design/user-flows.md
+Test File: ios/MekasaTests/UI/InventoryScreenUITest.swift
+Description: Inventory rows show a product thumbnail from barcode lookup
+(Open Food Facts image URL when available). Tapping the row (or thumbnail)
+opens item detail with a larger product image and product metadata.
+Acceptance Criteria:
+- AC1: Each inventory row displays a thumbnail when `image_url` is known;
+  otherwise a category/placeholder image is shown
+- AC2: Item detail shows a large product image; tapping it opens a
+  full-screen enlarged view
+- AC3: Item detail shows at least name, category, UPC (when known),
+  quantity, and low-stock threshold
+- AC4: Thumbnail and detail images use the barcode lookup image URL
+  (REQ-004 / Open Food Facts) without blocking the UI on load failure
 
 ---
 

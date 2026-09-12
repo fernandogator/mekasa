@@ -19,6 +19,8 @@ Convention for Superdesign-generated React/Tailwind mockups in this folder.
 | `ShoppingList.jsx` | UI-003 | https://p.superdesign.dev/draft/b234a6ab-1837-48a9-84d1-a2ed870ae61c |
 | `AddItems.jsx` | UI-004 | https://p.superdesign.dev/draft/eee7d5dd-5cc6-4c4a-8c91-2717e1973660 |
 | `TrashStationMode.jsx` | UI-005 | https://p.superdesign.dev/draft/a8a15416-6c7a-4f32-b1b0-c233c57f0cd1 |
+| `InventoryList.jsx` | UI-006 | See `design/pages/inventory-list.html` (live OFF sample) |
+| `ItemDetail.jsx` | UI-006 | See `design/pages/item-detail.html` (live OFF sample) |
 | `OnboardingHouseholdSetup.jsx` | — | https://p.superdesign.dev/draft/cf8659c3-ef2d-4f9c-b097-f7774783a2f3 |
 | `SpendingReport.jsx` | — | https://p.superdesign.dev/draft/a45a3eab-e709-415e-8a81-19f333a3c88b |
 | `FamilyMembers.jsx` | — | https://p.superdesign.dev/draft/248f70a0-c51e-430f-9a3c-ed7d25f68606 |

@@ -1,7 +1,7 @@
 import Foundation
 
 /// Shared accessibility identifiers for SwiftUI views and XCUITests.
-/// Satisfies: UI-001–UI-005 (traceability / structural tests)
+/// Satisfies: UI-001–UI-006 (traceability / structural tests)
 /// Spec version: 1.0
 enum TestIdentifiers {
     // MARK: - Item List
@@ -18,6 +18,7 @@ enum TestIdentifiers {
     static let itemDetailView = "ItemDetailView"
     static let itemImage = "ItemImage"
     static let itemNameLabel = "ItemNameLabel"
+    static let itemBarcodeLabel = "ItemBarcodeLabel"
     static let editButton = "EditButton"
     static let deleteButton = "DeleteButton"
     static let quantityControl = "QuantityControl"

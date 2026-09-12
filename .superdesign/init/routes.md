@@ -10,6 +10,8 @@ and implemented later in native apps. Design mockup files map to screens as foll
 | Shopping List | `design/mockups/ShoppingList.jsx` | UI-003 | From dashboard |
 | Add Items | `design/mockups/AddItems.jsx` | UI-004 | Hub for scan/voice/manual/trash |
 | Trash Station Mode | `design/mockups/TrashStationMode.jsx` | UI-005 | From Add Items |
+| Inventory List | `design/mockups/InventoryList.jsx` | UI-006 | Thumbnails from OFF `image_url` |
+| Item Detail | `design/mockups/ItemDetail.jsx` | UI-006 | Large image + lightbox; from inventory row |
 
 ## Full onboarding + app flow (from `design/user-flows.md`)
 
@@ -28,6 +30,9 @@ flowchart TD
   Dashboard --> AddItems[Add Items]
   Dashboard --> Settings[Settings / Members]
 
+  InventoryScreen --> ItemDetail[Item Detail]
+  ItemDetail --> ImageLightbox[Product Image Lightbox]
+
   AddItems --> BarcodeScanner[Barcode Scanner]
   AddItems --> ReceiptScanner[Receipt Scanner]
   AddItems --> VoiceInput[Voice Input]
@@ -38,5 +43,8 @@ flowchart TD
 ```
 
 Screens without mockup files yet: Welcome, HouseholdSetup, AddressConfirm, InitialScan,
-InviteMembers, InventoryScreen, SpendingReport, Settings, BarcodeScanner, ReceiptScanner,
+InviteMembers, SpendingReport, Settings, BarcodeScanner, ReceiptScanner,
 VoiceInput, ManualEntry, RequestApproval.
+
+UI-006 samples (live OFF images): `design/pages/inventory-list.html`,
+`design/pages/item-detail.html`.

@@ -256,6 +256,19 @@ Screen
     └── FAB (persistent)
 ```
 
+## 🖼️ Product Images (UI-006 / REQ-004)
+
+Inventory rows and item detail use Open Food Facts (primary) product images.
+
+| Pattern | Spec | Rule |
+|---------|------|------|
+| List thumbnail | UI-006 AC1 | 56×56, 16px radius; `image_front_small_url` / `image_url` |
+| Detail hero | UI-006 AC2 | ~280–320 tall, object-fit contain; tap → lightbox |
+| Fallback | UI-006 AC1 / REQ-004 AC5 | Category placeholder; never block the row |
+| Persistence | REQ-004 AC4 | Store `image_url` with the inventory item |
+
+Screen map + mockup paths: see `design/design-system.md` and `design/mockups/README.md`.
+
 ## 🎯 Design Principles
 
 1. **Warm & Practical**: Household-focused, never cutesy

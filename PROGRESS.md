@@ -1,7 +1,7 @@
 # Project MEKASA
 
 - **Current Phase:** 3 — Live barcode + UPC lookup
-- **Last Updated:** 2026-09-08
+- **Last Updated:** 2026-09-12
 
 > **WARNING:** This file must be reconciled against the actual codebase at the
 > start of every session. Never trust this file without verification.
@@ -56,7 +56,7 @@
 |--------|--------|---------------|------------|-----------|
 | onboarding | ready (live auth verified) | stubs | — | Keep Firebase plist local; Google Sign-In OAuth client still optional |
 | dashboard | ready (SwiftUI UI-004) | stubs | — | Wire spend APIs when backend endpoints exist |
-| inventory-screen | in progress (Add hub + API sync) | unit (InventorySessionTests) | — | Inventory list UI; live camera/OCR |
+| inventory-screen | in progress (thumbnails + detail) | unit (InventorySessionTests) | — | Persist image_url on inventory API; full inventory list screen |
 | scanner | in progress (live camera + UPC API) | stubs | — | Expand ScannerUITest on device |
 | shopping-list-screen | in progress (SwiftUI + API sync) | unit (ShoppingListSessionTests) | — | Expand ShoppingListUITest; member roles |
 | spending-screen | not started | unknown | — | Confirm SpendingReport.jsx |
@@ -94,6 +94,19 @@
 ---
 
 ## Running Log
+
+### 2026-09-12 — UI-006 requirements everywhere
+- Inventory thumbnails + item detail recorded across PRD §7.1, REQ-004 AC4–AC5,
+  UI-006, architecture browse/barcode flows, user-flows, Superdesign init
+  (pages/routes/extractable), design-system, design README, matrix.md/csv,
+  Android + iOS UI test stubs, mockup stubs.
+
+### 2026-09-12 — Inventory thumbnails + item detail sample (UI-006)
+- Added `design/pages/inventory-list.html` and `item-detail.html` — live Open Food Facts
+  images (sample UPC `049000028911` Diet Coke); tap thumbnail → detail with lightbox.
+- iOS: `ProductThumbnail` / `ProductHeroImage` on low-stock list + item detail.
+- Spec/PRD/matrix: UI-006; fixtures use real OFF image for Diet Coke.
+- Next: persist `image_url` on inventory API documents; Superdesign polish for InventoryList/ItemDetail.
 
 ### 2026-09-08 — Live barcode camera + UPC lookup (REQ-004)
 - Backend `GET /v1/barcode/{code}` via Open Food Facts (found=false → manual fallback).

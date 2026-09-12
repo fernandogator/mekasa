@@ -41,9 +41,18 @@ graph TD
 
 ### Barcode Scan Flow
 Mobile client captures barcode → sends UPC to API → API queries
-third-party barcode database → returns product name, category,
-estimated price → client confirms → API writes to Firestore →
-real-time sync pushes to all household devices
+third-party barcode database (Open Food Facts primary) → returns
+product name, category, estimated price, and `image_url` → client
+confirms → API writes item + image URL to Firestore → real-time
+sync pushes to all household devices → inventory list shows
+thumbnail; item detail shows large image (tap to enlarge)
+
+### Inventory Browse Flow
+Dashboard / Inventory Screen shows rows with product thumbnails
+(from stored `image_url` or category placeholder) → user taps row
+→ Item Detail shows large product image, name, category, UPC,
+quantity, and low-stock threshold → tap image opens full-screen
+lightbox → back returns to list
 
 ### Receipt Scan Flow
 Mobile client captures receipt image → uploads to Cloud Storage →

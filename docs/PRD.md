@@ -46,6 +46,9 @@ children (Members). v1.0 supports exactly one household per account.
 
 ### 7.1 Inventory Input Methods
 - Barcode scanning: auto-lookup via third-party barcode database API
+  (Open Food Facts), including product name, category, and product image
+- Inventory list shows product thumbnails from lookup; tapping an item
+  opens a detail screen with a larger image and product metadata
 - Receipt scanning: backend OCR for bulk item entry
 - Manual entry
 - Voice input

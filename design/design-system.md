@@ -79,9 +79,20 @@ Atmosphere: sage wash blob on `--color-surface`, not a flat fill and not a card-
 | ShoppingList | UI-003 | `design/mockups/ShoppingList.jsx` |
 | AddItems | UI-004 | `design/mockups/AddItems.jsx` |
 | TrashStationMode | UI-005 | `design/mockups/TrashStationMode.jsx` |
+| InventoryList | UI-006 | `design/mockups/InventoryList.jsx` (+ `design/pages/inventory-list.html`) |
+| ItemDetail | UI-006 | `design/mockups/ItemDetail.jsx` (+ `design/pages/item-detail.html`) |
 | OnboardingHouseholdSetup | — | `design/mockups/OnboardingHouseholdSetup.jsx` |
 | SpendingReport | — | `design/mockups/SpendingReport.jsx` |
 | FamilyMembers | — | `design/mockups/FamilyMembers.jsx` |
+
+### Product image (UI-006 / REQ-004)
+
+| Token / pattern | Rule |
+|-----------------|------|
+| List thumbnail | 56×56pt (or 56px), 16px radius; OFF `image_front_small_url` preferred |
+| Detail hero | ~280–320px tall, contain; OFF `image_front_url` preferred |
+| Lightbox | Full-screen dark overlay; tap image or close to dismiss |
+| Fallback | Category placeholder when no `image_url` (never block the row) |
 
 ## Motion
 
