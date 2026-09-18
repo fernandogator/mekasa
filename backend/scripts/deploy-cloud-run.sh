@@ -24,6 +24,7 @@ gcloud services enable \
   secretmanager.googleapis.com \
   firestore.googleapis.com \
   identitytoolkit.googleapis.com \
+  vision.googleapis.com \
   --project "$PROJECT_ID"
 
 gcloud run deploy "$SERVICE" \
