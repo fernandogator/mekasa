@@ -7,3 +7,4 @@ httpx==0.28.1
 google-cloud-firestore==2.21.0
 python-multipart==0.0.20
 pytest==8.4.1
+google-cloud-vision==3.10.1
