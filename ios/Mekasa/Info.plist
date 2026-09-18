@@ -26,6 +26,17 @@
 	<string>Mekasa uses the microphone so you can add items by voice.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Mekasa uses your photo library so you can add a household photo.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.fernandogator.mekasa.invite</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>mekasa</string>
+			</array>
+		</dict>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

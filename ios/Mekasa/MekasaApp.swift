@@ -19,6 +19,12 @@ struct MekasaApp: App {
                 emptyInventory: CommandLine.arguments.contains("--uitesting-empty")
             )
         }
+        if CommandLine.arguments.contains("--trash-station") {
+            session.isTrashKioskMode = true
+            if session.onboardingStep != .welcome || session.isUITesting {
+                session.onboardingStep = .done
+            }
+        }
         _session = StateObject(wrappedValue: session)
     }
 
@@ -29,6 +35,11 @@ struct MekasaApp: App {
                 .onAppear {
                     FirebaseBootstrap.configure()
                     session.startSessionMonitoring()
+                    Task { await session.acceptPendingInviteIfNeeded() }
+                }
+                .onOpenURL { url in
+                    session.handleDeepLink(url)
+                    Task { await session.acceptPendingInviteIfNeeded() }
                 }
         }
     }

@@ -29,8 +29,15 @@ final class AppSession: ObservableObject {
     @Published var shoppingList: [ShoppingListItem] = []
     /// Recent trash-station events (UI testing / trash log).
     @Published var trashEvents: [TrashEvent] = []
+    /// Unknown barcodes logged at trash station (REQ-008 AC3).
+    @Published var unknownTrashScans: [UnknownBarcodeEventDTO] = []
+    /// Invite token from deep link (`mekasa://invite?token=…`) awaiting accept after sign-in.
+    @Published var pendingInviteToken: String?
+    /// Full-screen trash kiosk (UI-005) — launch with `--trash-station` or Family tab.
+    @Published var isTrashKioskMode = false
     /// True after demo seed applied (empty inventory first open).
     var didSeedShoppingList = false
+    private static let pendingInviteTokenKey = "mekasa.pendingInviteToken"
     /// In-flight creates keyed by name|category so consume can wait for server ids.
     private var pendingCreates: [String: Task<InventoryItemDTO?, Never>] = [:]
     private var unauthorizedObserver: NSObjectProtocol?
@@ -41,6 +48,7 @@ final class AppSession: ObservableObject {
 
     init() {
         lastSignedInEmail = Self.loadLastSignedInEmail()
+        pendingInviteToken = Self.loadPendingInviteToken()
     }
 
     /// Live API sync when we have a real household + token (not UI preview / UI testing).
@@ -96,8 +104,12 @@ final class AppSession: ObservableObject {
         activity = DashboardFixtures.activity
         shoppingList = emptyInventory ? TestFixtures.emptyShoppingList : TestFixtures.standardShoppingList
         trashEvents = emptyInventory ? TestFixtures.emptyTrashEvents : TestFixtures.standardTrashEvents
+        unknownTrashScans = []
         didSeedShoppingList = true
         pendingCreates = [:]
+        if CommandLine.arguments.contains("--trash-station") {
+            isTrashKioskMode = true
+        }
     }
 
     /// Remember the username/email used at sign-in so Welcome can prefill after sign-out.
@@ -126,8 +138,98 @@ final class AppSession: ObservableObject {
         activity = DashboardFixtures.activity
         shoppingList = []
         trashEvents = []
+        unknownTrashScans = []
+        isTrashKioskMode = false
         didSeedShoppingList = false
         pendingCreates = [:]
+    }
+
+    private static func loadPendingInviteToken() -> String? {
+        let value = UserDefaults.standard.string(forKey: pendingInviteTokenKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return (value?.isEmpty == false) ? value : nil
+    }
+
+    private func persistPendingInviteToken(_ token: String?) {
+        pendingInviteToken = token
+        if let token, !token.isEmpty {
+            UserDefaults.standard.set(token, forKey: Self.pendingInviteTokenKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: Self.pendingInviteTokenKey)
+        }
+    }
+
+    /// Handle `mekasa://invite?token=…`, `mekasa://invite/TOKEN`, or `mekasa://trash`.
+    func handleDeepLink(_ url: URL) {
+        guard url.scheme?.caseInsensitiveCompare("mekasa") == .orderedSame else { return }
+        let host = (url.host ?? "").lowercased()
+        if host == "trash" || url.path.lowercased().contains("trash") {
+            isTrashKioskMode = true
+            if onboardingStep == .done || isUITesting || isUIPreview {
+                onboardingStep = .done
+            }
+            return
+        }
+        if host == "invite" || url.path.lowercased().hasPrefix("/invite") {
+            if let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+               let token = items.first(where: { $0.name == "token" })?.value,
+               !token.isEmpty {
+                persistPendingInviteToken(token)
+                return
+            }
+            // mekasa://invite/TOKEN or mekasa:///invite/TOKEN
+            let pathToken = url.path
+                .split(separator: "/")
+                .map(String.init)
+                .first { $0.caseInsensitiveCompare("invite") != .orderedSame && !$0.isEmpty }
+            if let pathToken, pathToken != "preview" {
+                persistPendingInviteToken(pathToken)
+            }
+        }
+    }
+
+    /// Accept a pending invite after the user has a Firebase ID token (REQ-019).
+    func acceptPendingInviteIfNeeded() async {
+        guard let inviteToken = pendingInviteToken,
+              let token = idToken,
+              token != "preview",
+              token != "uitesting"
+        else { return }
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            let member = try await MekasaAPIClient.shared.acceptHouseholdInvite(
+                inviteToken: inviteToken,
+                idToken: token
+            )
+            let hh = try await MekasaAPIClient.shared.currentHousehold(token: token)
+            household = hh
+            onboardingStep = .done
+            persistPendingInviteToken(nil)
+            logActivity("Joined household as \(member.role)", kind: .success)
+            await refreshInventory()
+            await refreshShoppingList(syncLowStock: true)
+        } catch {
+            handleAPIFailure(error)
+        }
+    }
+
+    func refreshUnknownTrashScans() async {
+        guard canSyncInventory, let token = idToken, let householdID = household?.id else { return }
+        do {
+            unknownTrashScans = try await MekasaAPIClient.shared.listUnknownTrashScans(
+                householdID: householdID,
+                token: token
+            )
+        } catch let error as APIError {
+            // Owners only — members get 403; ignore quietly.
+            if case let .server(status, _) = error, status == 403 { return }
+            if error.isUnauthorized {
+                handleAPIFailure(error)
+            }
+        } catch {
+            // Non-critical list failure — leave existing cache.
+        }
     }
 
     private static func loadLastSignedInEmail() -> String? {

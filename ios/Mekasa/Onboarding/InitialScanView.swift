@@ -1,45 +1,77 @@
 import SwiftUI
 
-/// Free-form initial inventory scan placeholder (barcode/receipt later).
-/// Satisfies: UI-003 AC1 (scan step), PRD onboarding step 5
+/// Free-form initial inventory scan — barcode, receipt, or manual entry.
+/// Satisfies: UI-003 AC1 (scan step), PRD onboarding step 5, REQ-004–REQ-006
 /// Spec version: 1.0
 struct InitialScanView: View {
     @EnvironmentObject private var session: AppSession
 
     var body: some View {
-        MekasaScreen {
-            VStack(spacing: 0) {
-                OnboardingHeader(step: .initialScan)
-                    .padding(.top, 48)
+        NavigationStack {
+            MekasaScreen {
+                VStack(spacing: 0) {
+                    OnboardingHeader(step: .initialScan)
+                        .padding(.top, 48)
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        Text("Add what's already home.")
-                            .font(MekasaTheme.displayFont)
-                            .foregroundStyle(MekasaTheme.brand)
-                            .padding(.top, 36)
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 20) {
+                            Text("Add what's already home.")
+                                .font(MekasaTheme.displayFont)
+                                .foregroundStyle(MekasaTheme.brand)
+                                .padding(.top, 36)
 
-                        Text("Barcode and receipt scanning land next. For now, skip ahead or mark that you'll scan later.")
-                            .font(MekasaTheme.bodyFont)
-                            .foregroundStyle(MekasaTheme.textMuted)
+                            Text("Scan barcodes, snap a receipt, or type items in. You can always add more later from the + button.")
+                                .font(MekasaTheme.bodyFont)
+                                .foregroundStyle(MekasaTheme.textMuted)
 
-                        VStack(spacing: 12) {
-                            scanTile(icon: "barcode.viewfinder", title: "Scan barcodes", subtitle: "Coming soon")
-                            scanTile(icon: "doc.text.viewfinder", title: "Scan a receipt", subtitle: "Coming soon")
-                            scanTile(icon: "keyboard", title: "Add manually", subtitle: "Coming soon")
+                            VStack(spacing: 12) {
+                                NavigationLink {
+                                    BarcodeScanView()
+                                } label: {
+                                    scanTile(
+                                        icon: "barcode.viewfinder",
+                                        title: "Scan barcodes",
+                                        subtitle: "Look up UPC and confirm"
+                                    )
+                                }
+                                .buttonStyle(.plain)
+
+                                NavigationLink {
+                                    ReceiptScanView()
+                                } label: {
+                                    scanTile(
+                                        icon: "doc.text.viewfinder",
+                                        title: "Scan a receipt",
+                                        subtitle: "OCR line items to review"
+                                    )
+                                }
+                                .buttonStyle(.plain)
+
+                                NavigationLink {
+                                    ManualEntryView()
+                                } label: {
+                                    scanTile(
+                                        icon: "keyboard",
+                                        title: "Add manually",
+                                        subtitle: "Name, category, quantity"
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.top, 8)
                         }
-                        .padding(.top, 8)
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 140)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 140)
-                }
 
-                StickyBottomBar(progress: 5.0 / 6.0) {
-                    PrimaryButton(title: "I'm done for now") {
-                        withAnimation { session.onboardingStep = .invite }
+                    StickyBottomBar(progress: 5.0 / 6.0) {
+                        PrimaryButton(title: "I'm done for now") {
+                            withAnimation { session.onboardingStep = .invite }
+                        }
                     }
                 }
             }
+            .navigationBarHidden(true)
         }
     }
 
@@ -58,6 +90,9 @@ struct InitialScanView: View {
                     .foregroundStyle(MekasaTheme.textMuted)
             }
             Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(MekasaTheme.textMuted)
         }
         .padding(16)
         .background(MekasaTheme.surfaceElevated)

@@ -54,14 +54,14 @@
 
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
-| onboarding | ready (live auth verified) | stubs | — | Keep Firebase plist local; Google Sign-In OAuth client still optional |
-| dashboard | ready (SwiftUI UI-004) | stubs | — | Wire spend APIs when backend endpoints exist |
-| inventory-screen | in progress (Add hub + API sync) | unit (InventorySessionTests) | — | Inventory list UI; live camera/OCR |
-| scanner | in progress (live camera + UPC API) | stubs | — | Expand ScannerUITest on device |
-| shopping-list-screen | in progress (SwiftUI + API sync) | unit (ShoppingListSessionTests) | — | Expand ShoppingListUITest; member roles |
-| spending-screen | not started | unknown | — | Confirm SpendingReport.jsx |
-| settings | not started | unknown | — | Family tab placeholder exists; expand FamilyMembers |
-| trash-station-mode | in progress (local consume) | stubs | — | Dedicated device mode + live barcode; UI-005 polish |
+| onboarding | ready (scan step wired) | stubs + Features2to6Tests | — | Keep Firebase plist local; Apple Sign-In later |
+| dashboard | ready (live approvals + inventory link) | stubs | — | Notifications; bind spend card to spend API when ready |
+| inventory-screen | ready (list + detail + Add hub) | unit | — | Expand InventoryScreenUITest |
+| scanner | ready (barcode + receipt confirm prices) | stubs | — | Expand ScannerUITest on device |
+| shopping-list-screen | ready (API sync + dashboard approvals) | unit | — | Owner purchase gate (REQ-014) |
+| spending-screen | in progress (local price rollup) | stubs | — | Backend spend API (REQ-015–018) |
+| settings / family | ready (invites, roles, ShareLink, accept) | Features2to6Tests | — | Push/email delivery for invites |
+| trash-station-mode | ready (kiosk + unknown scans) | Features2to6Tests | — | Home-screen shortcut polish |
 
 ## Phase 4: UI Design and Visual Verification
 
@@ -94,6 +94,13 @@
 ---
 
 ## Running Log
+
+### 2026-09-18 — Remaining iOS features + UI polish
+- Invite accept deep link `mekasa://invite?token=` + Family ShareLink; trash kiosk `mekasa://trash` / `--trash-station`.
+- Onboarding InitialScan wired to barcode / receipt / manual.
+- Dashboard approvals from live shopping-list pending; inventory list + Spending local rollup.
+- Receipt confirm edits price; unknown trash-scan list; Places provider badge.
+- Unit: Features2to6Tests (deep link, invite share URL, approvals).
 
 ### 2026-09-08 — Live barcode camera + UPC lookup (REQ-004)
 - Backend `GET /v1/barcode/{code}` via Open Food Facts (found=false → manual fallback).

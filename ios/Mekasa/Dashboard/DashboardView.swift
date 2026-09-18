@@ -6,9 +6,18 @@ import UIKit
 /// Spec version: 1.0
 struct DashboardView: View {
     @EnvironmentObject private var session: AppSession
-    @State private var approvals = DashboardFixtures.approvals
+    @Binding var selectedTab: MainTab
     @State private var toast: String?
     @State private var selectedItemID: String?
+    @State private var showInventory = false
+
+    init(selectedTab: Binding<MainTab> = .constant(.home)) {
+        _selectedTab = selectedTab
+    }
+
+    private var pendingApprovals: [ShoppingListItem] {
+        session.shoppingList.filter { $0.needsApproval && !$0.isChecked }
+    }
 
     var body: some View {
         ZStack {
@@ -30,6 +39,9 @@ struct DashboardView: View {
         .navigationDestination(item: $selectedItemID) { itemID in
             ItemDetailView(itemID: itemID)
         }
+        .navigationDestination(isPresented: $showInventory) {
+            InventoryListView()
+        }
         .overlay(alignment: .top) {
             if let toast {
                 Text(toast)
@@ -44,7 +56,7 @@ struct DashboardView: View {
             }
         }
         .animation(.easeInOut(duration: 0.25), value: toast)
-        .animation(.easeInOut(duration: 0.2), value: approvals)
+        .animation(.easeInOut(duration: 0.2), value: pendingApprovals.map(\.id))
     }
 
     @ViewBuilder
@@ -75,9 +87,19 @@ struct DashboardView: View {
 
     private var lowStockSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Low stock")
-                .font(.system(size: 20, weight: .heavy, design: .rounded))
-                .foregroundStyle(MekasaTheme.brand)
+            HStack {
+                Text("Low stock")
+                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .foregroundStyle(MekasaTheme.brand)
+                Spacer()
+                Button("All inventory") {
+                    showInventory = true
+                }
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .textCase(.uppercase)
+                .tracking(0.8)
+                .foregroundStyle(MekasaTheme.textMuted)
+            }
             if lowStockItems.isEmpty {
                 Text("Nothing below threshold right now.")
                     .font(MekasaTheme.bodyFont)
@@ -137,11 +159,13 @@ struct DashboardView: View {
                         .clipShape(Circle())
                         .overlay(Circle().stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1))
                         .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
-                    Circle()
-                        .fill(MekasaTheme.accent)
-                        .frame(width: 8, height: 8)
-                        .overlay(Circle().stroke(Color.white, lineWidth: 1))
-                        .offset(x: -2, y: 2)
+                    if !pendingApprovals.isEmpty {
+                        Circle()
+                            .fill(MekasaTheme.accent)
+                            .frame(width: 8, height: 8)
+                            .overlay(Circle().stroke(Color.white, lineWidth: 1))
+                            .offset(x: -2, y: 2)
+                    }
                 }
             }
             .buttonStyle(.plain)
@@ -151,19 +175,36 @@ struct DashboardView: View {
 
     private var statsRow: some View {
         HStack(spacing: 16) {
-            statCard(
-                icon: "exclamationmark.circle",
-                iconBg: Color(red: 0xfc / 255, green: 0xe5 / 255, blue: 0xe7 / 255),
-                label: "Low Stock",
-                value: "\(session.lowStockCount) items"
-            )
-            statCard(
-                icon: "creditcard",
-                iconBg: Color(red: 0xea / 255, green: 0xf1 / 255, blue: 0xec / 255),
-                label: "Spend",
-                value: "$\(DashboardFixtures.weeklySpend)",
-                suffix: "/wk"
-            )
+            Button {
+                showInventory = true
+            } label: {
+                statCard(
+                    icon: "exclamationmark.circle",
+                    iconBg: Color(red: 0xfc / 255, green: 0xe5 / 255, blue: 0xe7 / 255),
+                    label: "Low Stock",
+                    value: "\(session.lowStockCount) items"
+                )
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                selectedTab = .spend
+            } label: {
+                statCard(
+                    icon: "creditcard",
+                    iconBg: Color(red: 0xea / 255, green: 0xf1 / 255, blue: 0xec / 255),
+                    label: "Spend",
+                    value: String(format: "$%.0f", localWeeklySpend),
+                    suffix: "/cap"
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var localWeeklySpend: Double {
+        session.inventory.reduce(0) { partial, item in
+            partial + (item.pricePaid ?? 0) * Double(max(item.quantity, 1))
         }
     }
 
@@ -216,7 +257,7 @@ struct DashboardView: View {
                     .foregroundStyle(MekasaTheme.brand)
                 Spacer()
                 Button("View All") {
-                    showToast("Full approval inbox comes next")
+                    selectedTab = .list
                 }
                 .font(.system(size: 13, weight: .bold, design: .rounded))
                 .textCase(.uppercase)
@@ -224,7 +265,7 @@ struct DashboardView: View {
                 .foregroundStyle(MekasaTheme.textMuted)
             }
 
-            if approvals.isEmpty {
+            if pendingApprovals.isEmpty {
                 Text("You're all caught up.")
                     .font(MekasaTheme.bodyFont)
                     .foregroundStyle(MekasaTheme.textMuted)
@@ -235,8 +276,8 @@ struct DashboardView: View {
                     .accessibilityIdentifier(TestIdentifiers.emptyStateView)
             } else {
                 VStack(spacing: 4) {
-                    ForEach(approvals) { request in
-                        approvalRow(request)
+                    ForEach(pendingApprovals) { item in
+                        approvalRow(item)
                     }
                 }
                 .padding(8)
@@ -252,9 +293,9 @@ struct DashboardView: View {
         }
     }
 
-    private func approvalRow(_ request: ApprovalRequest) -> some View {
+    private func approvalRow(_ item: ShoppingListItem) -> some View {
         HStack(spacing: 16) {
-            Image(systemName: request.symbolName)
+            Image(systemName: "cart")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(MekasaTheme.brand)
                 .frame(width: 40, height: 40)
@@ -263,11 +304,11 @@ struct DashboardView: View {
                 .accessibilityIdentifier(TestIdentifiers.itemThumbnail)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(request.itemName)
+                Text(item.name)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(MekasaTheme.brand)
                     .accessibilityIdentifier(TestIdentifiers.requestedItemLabel)
-                Text("Requested by \(request.requestedBy)")
+                Text("Requested by \(item.requestedBy ?? "member")")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(MekasaTheme.textMuted)
                     .accessibilityIdentifier(TestIdentifiers.requestorLabel)
@@ -276,7 +317,7 @@ struct DashboardView: View {
             Spacer()
 
             Button {
-                dismiss(request, approved: false)
+                dismiss(item, approved: false)
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .bold))
@@ -285,11 +326,11 @@ struct DashboardView: View {
                     .overlay(Circle().stroke(MekasaTheme.brandMuted.opacity(0.4), lineWidth: 1))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Deny \(request.itemName)")
+            .accessibilityLabel("Deny \(item.name)")
             .accessibilityIdentifier(TestIdentifiers.rejectButton)
 
             Button {
-                dismiss(request, approved: true)
+                dismiss(item, approved: true)
             } label: {
                 Image(systemName: "checkmark")
                     .font(.system(size: 14, weight: .bold))
@@ -299,7 +340,7 @@ struct DashboardView: View {
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Approve \(request.itemName)")
+            .accessibilityLabel("Approve \(item.name)")
             .accessibilityIdentifier(TestIdentifiers.approveButton)
         }
         .padding(12)
@@ -353,9 +394,14 @@ struct DashboardView: View {
         return "Your house"
     }
 
-    private func dismiss(_ request: ApprovalRequest, approved: Bool) {
-        approvals.removeAll { $0.id == request.id }
-        showToast(approved ? "Approved \(request.itemName)" : "Denied \(request.itemName)")
+    private func dismiss(_ item: ShoppingListItem, approved: Bool) {
+        if approved {
+            session.approveShoppingRequest(id: item.id)
+            showToast("Approved \(item.name)")
+        } else {
+            session.rejectShoppingRequest(id: item.id)
+            showToast("Denied \(item.name)")
+        }
     }
 
     private func showToast(_ message: String) {
