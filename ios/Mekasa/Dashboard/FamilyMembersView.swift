@@ -28,6 +28,24 @@ struct FamilyMembersView: View {
 
                 membersSection
                 inviteSection
+                trashKioskSection
+
+                if let pending = session.pendingInviteToken, !pending.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("You have a pending invite.")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundStyle(MekasaTheme.brand)
+                        PrimaryButton(title: "Accept invite", isLoading: session.isBusy) {
+                            Task {
+                                await session.acceptPendingInviteIfNeeded()
+                                await refresh()
+                            }
+                        }
+                    }
+                    .padding(16)
+                    .background(MekasaTheme.surfaceElevated)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                }
 
                 if let statusMessage {
                     Text(statusMessage)
@@ -114,7 +132,7 @@ struct FamilyMembersView: View {
                     .foregroundStyle(MekasaTheme.textMuted)
                     .padding(.top, 8)
                 ForEach(invites.filter { $0.status == "pending" }) { invite in
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 8) {
                         Text("\(invite.name) · \(invite.role)")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundStyle(MekasaTheme.brand)
@@ -124,12 +142,32 @@ struct FamilyMembersView: View {
                                 .foregroundStyle(MekasaTheme.textMuted)
                                 .textSelection(.enabled)
                         }
+                        if let shareURL = invite.shareURL {
+                            ShareLink(item: shareURL) {
+                                Label("Share invite", systemImage: "square.and.arrow.up")
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                            }
+                        }
                     }
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(MekasaTheme.surfaceElevated)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
+            }
+        }
+    }
+
+    private var trashKioskSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Trash station")
+                .font(.system(size: 18, weight: .heavy, design: .rounded))
+                .foregroundStyle(MekasaTheme.brand)
+            Text("Open full-screen dispose mode for a kitchen iPad or secondary phone.")
+                .font(MekasaTheme.bodyFont)
+                .foregroundStyle(MekasaTheme.textMuted)
+            SecondaryButton(title: "Open trash kiosk") {
+                session.isTrashKioskMode = true
             }
         }
     }

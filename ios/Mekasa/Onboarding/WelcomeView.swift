@@ -136,6 +136,10 @@ struct WelcomeView: View {
         session.email = email
         session.displayName = name
         session.rememberSignedInEmail(email ?? self.email)
+        await session.acceptPendingInviteIfNeeded()
+        if session.onboardingStep == .done, session.household != nil {
+            return
+        }
         if let existing = try? await MekasaAPIClient.shared.currentHousehold(token: token) {
             session.household = existing
             withAnimation { session.onboardingStep = resumeStep(for: existing) }

@@ -76,6 +76,12 @@ struct InviteView: View {
                                 .font(.system(size: 12, weight: .medium, design: .rounded))
                                 .foregroundStyle(MekasaTheme.textMuted)
                                 .textSelection(.enabled)
+                            if let url = URL(string: lastInviteLink) {
+                                ShareLink(item: url) {
+                                    Label("Share invite link", systemImage: "square.and.arrow.up")
+                                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                                }
+                            }
                         }
                     }
                     .padding(.horizontal, 24)
@@ -114,7 +120,7 @@ struct InviteView: View {
 
         if session.isUIPreview || session.idToken == nil || session.household?.id == nil {
             statusMessage = "Invite saved locally (preview)."
-            lastInviteLink = "mekasa://invite/preview"
+            lastInviteLink = "mekasa://invite?token=preview"
             if thenFinish { withAnimation { session.onboardingStep = .done } }
             return
         }
@@ -135,7 +141,7 @@ struct InviteView: View {
                 role: role.rawValue,
                 token: token
             )
-            lastInviteLink = invite.inviteLink
+            lastInviteLink = invite.shareURL?.absoluteString ?? invite.inviteLink
             statusMessage = "Invite created for \(invite.name)."
             name = ""
             inviteEmail = ""
