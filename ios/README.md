@@ -122,4 +122,5 @@ Signing → your Team → Run on **iPhone 17 Pro** simulator (not “Any iOS Dev
 - UI-003 Onboarding · REQ-001 Auth · REQ-002 Household · REQ-003 Address/Stores  
 - UI-004 Dashboard + Add items hub · REQ-004–REQ-008 (inventory sync to API when signed in)  
 - Shopping list · REQ-011–REQ-014 (client staging; low-stock auto-add)  
+- Voice add · REQ-007 (speech or sample phrase → catalog match → confirm)  
 - Design: `design/mockups/OnboardingHouseholdSetup.jsx`, `OnboardingStoreSelection.jsx`, `Dashboard.jsx`, `AddItems.jsx`, `ShoppingList.jsx`

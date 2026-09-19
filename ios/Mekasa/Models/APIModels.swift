@@ -314,14 +314,18 @@ struct ProductSearchHitDTO: Codable, Equatable, Identifiable {
         case imageUrl = "image_url"
     }
 
-    func toDraft(quantity: Int = 1, pricePaid: Double? = nil) -> InventoryItem {
+    func toDraft(
+        quantity: Int = 1,
+        pricePaid: Double? = nil,
+        source: InventorySource = .manual
+    ) -> InventoryItem {
         InventoryItem(
             name: name,
             category: category,
             quantity: quantity,
             pricePaid: pricePaid,
             barcode: barcode,
-            source: .manual,
+            source: source,
             imageURL: imageUrl
         )
     }

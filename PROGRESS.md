@@ -58,7 +58,7 @@
 | onboarding | ready (scan step wired) | stubs + Features2to6Tests | — | Keep Firebase plist local; Apple Sign-In later |
 | dashboard | ready (live approvals + inventory link) | stubs | — | Notifications; bind spend card to spend API when ready |
 | inventory-screen | ready (list + detail + Add hub) | unit | — | Expand InventoryScreenUITest |
-| scanner | ready (barcode + receipt confirm prices) | stubs | — | Expand ScannerUITest on device |
+| scanner | ready (barcode + receipt + voice match) | unit (VoicePhraseParserTests) | — | Expand ScannerUITest on device |
 | shopping-list-screen | ready (API sync + dashboard approvals) | unit | — | Owner purchase gate (REQ-014) |
 | spending-screen | ready (live week/month/year report + local fallback) | unit (DTO decode) | — | Expand SpendingScreenUITest |
 | settings / family | ready (invites, roles, ShareLink, accept) | Features2to6Tests | — | Push/email delivery for invites |
@@ -95,6 +95,14 @@
 ---
 
 ## Running Log
+
+### 2026-09-19 — Voice → product catalog match (REQ-007)
+- `VoiceSpeechRecognizer` (Speech + mic) transcribes spoken item names.
+- `VoicePhraseParser` extracts quantity (“two avocados”, “3 packs of oat milk”).
+- After hear/sample, signed-in clients call `GET /v1/products/search` and pick a variant
+  (same row UI as manual entry); **Add as spoken** still confirms free-form.
+- Sample phrases cover produce + brand search when mic/speech is unavailable.
+- Unit: `VoicePhraseParserTests`.
 
 ### 2026-09-18 — Backend spending + durable members
 - Purchase events + spending reports (`POST …/purchases`, `GET …/spending`, `PATCH …/purchases/{id}`) — REQ-015/017/018.
