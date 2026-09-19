@@ -141,4 +141,45 @@ final class APIModelsTests: XCTestCase {
         XCTAssertEqual(local.kind, .auto)
         XCTAssertEqual(local.inventoryItemID, "item_1")
     }
+
+    func testSpendingReportDecodes() throws {
+        let json = """
+        {
+          "household_id": "hh_1",
+          "period": "week",
+          "currency": "USD",
+          "total": 6.98,
+          "by_category": [
+            { "category": "Dairy", "total": 6.98 }
+          ],
+          "events": [
+            {
+              "id": "pe_1",
+              "household_id": "hh_1",
+              "name": "Whole Milk",
+              "category": "Dairy",
+              "price_paid": 3.49,
+              "quantity": 2,
+              "store_id": null,
+              "inventory_item_id": "item_1",
+              "source": "inventory",
+              "purchased_at": "2026-09-18T12:00:00Z",
+              "created_by_uid": "uid_1",
+              "created_at": "2026-09-18T12:00:00Z",
+              "updated_at": "2026-09-18T12:00:00Z"
+            }
+          ]
+        }
+        """.data(using: .utf8)!
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let report = try decoder.decode(SpendingReportDTO.self, from: json)
+        XCTAssertEqual(report.householdId, "hh_1")
+        XCTAssertEqual(report.period, .week)
+        XCTAssertEqual(report.total, 6.98, accuracy: 0.001)
+        XCTAssertEqual(report.byCategory.first?.category, "Dairy")
+        XCTAssertEqual(report.events.first?.lineTotal, 6.98, accuracy: 0.001)
+        XCTAssertEqual(report.events.first?.source, "inventory")
+    }
 }

@@ -48,6 +48,7 @@ struct MainShellView: View {
             guard !session.isUITesting else { return }
             await session.refreshInventory()
             await session.refreshShoppingList(syncLowStock: true)
+            await session.refreshSpending(period: .week)
         }
     }
 }

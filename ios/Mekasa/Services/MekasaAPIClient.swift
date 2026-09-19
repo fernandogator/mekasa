@@ -455,6 +455,22 @@ actor MekasaAPIClient {
         )
     }
 
+    // MARK: - Spending (REQ-015, REQ-017, REQ-018)
+
+    func getSpendingReport(
+        householdID: String,
+        period: SpendingPeriod = .week,
+        category: String? = nil,
+        token: String
+    ) async throws -> SpendingReportDTO {
+        var path = "/v1/households/\(householdID)/spending?period=\(period.rawValue)"
+        if let category, !category.isEmpty {
+            let encoded = category.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? category
+            path += "&category=\(encoded)"
+        }
+        return try await request(path: path, method: "GET", token: token)
+    }
+
     // MARK: - Barcode lookup (REQ-004)
 
     func lookupBarcode(code: String, token: String) async throws -> BarcodeLookupDTO {

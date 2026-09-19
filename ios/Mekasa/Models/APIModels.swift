@@ -422,3 +422,63 @@ struct HouseholdInvitesResponseDTO: Codable, Equatable {
     }
 }
 
+// MARK: - Spending (REQ-015, REQ-017, REQ-018)
+
+enum SpendingPeriod: String, Codable, Equatable, CaseIterable {
+    case week
+    case month
+    case year
+}
+
+struct PurchaseEventDTO: Codable, Equatable, Identifiable {
+    let id: String
+    let householdId: String
+    let name: String
+    let category: String
+    let pricePaid: Double
+    let quantity: Int
+    let storeId: String?
+    let inventoryItemId: String?
+    let source: String
+    let purchasedAt: Date?
+    let createdByUid: String
+    let createdAt: Date?
+    let updatedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, category, quantity, source
+        case householdId = "household_id"
+        case pricePaid = "price_paid"
+        case storeId = "store_id"
+        case inventoryItemId = "inventory_item_id"
+        case purchasedAt = "purchased_at"
+        case createdByUid = "created_by_uid"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+
+    var lineTotal: Double { pricePaid * Double(max(quantity, 1)) }
+}
+
+struct SpendingCategoryTotalDTO: Codable, Equatable, Identifiable {
+    var id: String { category }
+    let category: String
+    let total: Double
+}
+
+struct SpendingReportDTO: Codable, Equatable {
+    let householdId: String
+    let period: SpendingPeriod
+    let currency: String
+    let total: Double
+    let byCategory: [SpendingCategoryTotalDTO]
+    let events: [PurchaseEventDTO]
+
+    enum CodingKeys: String, CodingKey {
+        case period, currency, total, events
+        case householdId = "household_id"
+        case byCategory = "by_category"
+    }
+}
+
+
