@@ -319,32 +319,34 @@ struct DashboardView: View {
 
             Spacer()
 
-            Button {
-                dismiss(item, approved: false)
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(MekasaTheme.brand)
-                    .frame(width: 40, height: 40)
-                    .overlay(Circle().stroke(MekasaTheme.brandMuted.opacity(0.4), lineWidth: 1))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Deny \(item.name)")
-            .accessibilityIdentifier(TestIdentifiers.rejectButton)
+            if session.isHouseholdOwner {
+                Button {
+                    dismiss(item, approved: false)
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(MekasaTheme.brand)
+                        .frame(width: 40, height: 40)
+                        .overlay(Circle().stroke(MekasaTheme.brandMuted.opacity(0.4), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Deny \(item.name)")
+                .accessibilityIdentifier(TestIdentifiers.rejectButton)
 
-            Button {
-                dismiss(item, approved: true)
-            } label: {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 40, height: 40)
-                    .background(MekasaTheme.brand)
-                    .clipShape(Circle())
+                Button {
+                    dismiss(item, approved: true)
+                } label: {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(MekasaTheme.brand)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Approve \(item.name)")
+                .accessibilityIdentifier(TestIdentifiers.approveButton)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Approve \(item.name)")
-            .accessibilityIdentifier(TestIdentifiers.approveButton)
         }
         .padding(12)
         .accessibilityIdentifier(TestIdentifiers.requestCell)

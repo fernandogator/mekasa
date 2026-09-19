@@ -135,6 +135,7 @@ struct WelcomeView: View {
         session.idToken = token
         session.email = email
         session.displayName = name
+        session.userUID = AuthService.shared.currentUserUID
         session.rememberSignedInEmail(email ?? self.email)
         await session.acceptPendingInviteIfNeeded()
         if session.onboardingStep == .done, session.household != nil {

@@ -46,9 +46,13 @@ struct MainShellView: View {
         }
         .task {
             guard !session.isUITesting else { return }
+            if session.userUID == nil {
+                session.userUID = AuthService.shared.currentUserUID
+            }
             await session.refreshInventory()
             await session.refreshShoppingList(syncLowStock: true)
             await session.refreshSpending(period: .week)
+            await session.refreshMyMembership()
         }
     }
 }

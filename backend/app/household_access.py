@@ -39,3 +39,22 @@ def assert_household_owner(household_id: str, actor_uid: str) -> HouseholdRespon
     if is_household_owner(household, actor_uid):
         return household
     raise PermissionError(household_id)
+
+
+def can_mark_purchased(household_id: str, actor_uid: str) -> bool:
+    """
+    REQ-014: owners (and future buyer permission) may mark list items purchased.
+    """
+    household = get_household_or_404(household_id)
+    if is_household_owner(household, actor_uid):
+        return True
+    from app.members_repository import get_members_repository
+
+    return get_members_repository().has_permission(household_id, actor_uid, "buyer")
+
+
+def assert_can_mark_purchased(household_id: str, actor_uid: str) -> HouseholdResponse:
+    household = get_household_or_404(household_id)
+    if can_mark_purchased(household_id, actor_uid):
+        return household
+    raise PermissionError(household_id)

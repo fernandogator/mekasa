@@ -10,6 +10,12 @@ final class AppSession: ObservableObject {
     @Published var idToken: String?
     @Published var displayName: String?
     @Published var email: String?
+    /// Firebase Auth uid for the signed-in user (nil in pure preview until set).
+    @Published var userUID: String?
+    /// Role from members API (`owner` / `member`); used with household.ownerUID.
+    @Published var myMemberRole: String?
+    /// Extra capabilities from members API (REQ-014 AC3, e.g. `buyer`).
+    @Published var myPermissions: [String] = []
     /// Last successful sign-in email/username. Survives sign-out so Welcome can prefill it.
     @Published private(set) var lastSignedInEmail: String?
     @Published var household: Household?
@@ -67,6 +73,21 @@ final class AppSession: ObservableObject {
 
     var canSyncSpending: Bool { canSyncInventory }
 
+    /// Owners (or future buyer permission) may mark shopping items purchased (REQ-014).
+    var canMarkShoppingPurchased: Bool {
+        if isUIPreview || isUITesting { return true }
+        if myPermissions.contains("buyer") { return true }
+        return isHouseholdOwner
+    }
+
+    /// Document owner or member with owner role.
+    var isHouseholdOwner: Bool {
+        if isUIPreview || isUITesting { return true }
+        guard let uid = userUID else { return false }
+        if household?.ownerUID == uid { return true }
+        return myMemberRole == "owner"
+    }
+
     var lowStockCount: Int {
         let live = inventory.filter(\.isLowStock).count
         if inventory.isEmpty { return DashboardFixtures.lowStockCount }
@@ -83,6 +104,9 @@ final class AppSession: ObservableObject {
         idToken = "preview"
         email = "preview@mekasa.local"
         displayName = "Preview"
+        userUID = "preview-owner"
+        myMemberRole = "owner"
+        myPermissions = []
         household = nil
         onboardingStep = .household
         lastError = nil
@@ -102,6 +126,9 @@ final class AppSession: ObservableObject {
         idToken = "uitesting"
         email = "uitesting@mekasa.local"
         displayName = "UI Test"
+        userUID = "uitesting-owner"
+        myMemberRole = "owner"
+        myPermissions = []
         household = TestFixtures.previewHousehold
         onboardingStep = .done
         lastError = nil
@@ -135,6 +162,9 @@ final class AppSession: ObservableObject {
         idToken = nil
         displayName = nil
         email = nil
+        userUID = nil
+        myMemberRole = nil
+        myPermissions = []
         household = nil
         onboardingStep = .welcome
         lastError = expiredSessionMessage
@@ -353,8 +383,34 @@ final class AppSession: ObservableObject {
                 shoppingList = response.items.map { $0.toLocal() }
             }
             didSeedShoppingList = true
+            await refreshMyMembership()
         } catch {
             handleAPIFailure(error)
+        }
+    }
+
+    /// Refresh this user's role/permissions for purchase gating (REQ-014).
+    func refreshMyMembership() async {
+        guard canSyncInventory,
+              let token = idToken,
+              let householdID = household?.id,
+              let uid = userUID ?? AuthService.shared.currentUserUID
+        else { return }
+        userUID = uid
+        if household?.ownerUID == uid {
+            myMemberRole = "owner"
+        }
+        do {
+            let response = try await MekasaAPIClient.shared.listHouseholdMembers(
+                householdID: householdID,
+                token: token
+            )
+            if let me = response.members.first(where: { $0.uid == uid }) {
+                myMemberRole = me.role
+                myPermissions = me.permissions
+            }
+        } catch {
+            // Non-fatal — ownerUID comparison still works for document owners.
         }
     }
 
@@ -556,6 +612,10 @@ final class AppSession: ObservableObject {
     }
 
     func toggleShoppingItemChecked(id: String) {
+        guard canMarkShoppingPurchased else {
+            lastError = "Only household owners can mark items purchased."
+            return
+        }
         guard let idx = shoppingList.firstIndex(where: { $0.id == id }) else { return }
         guard !shoppingList[idx].needsApproval else { return }
         shoppingList[idx].isChecked.toggle()
@@ -569,14 +629,28 @@ final class AppSession: ObservableObject {
     }
 
     func addCustomShoppingItem(name: String, quantity: Int) {
-        let item = ShoppingListItem(name: name, quantity: max(1, quantity), kind: .custom)
+        let asRequest = !isHouseholdOwner && !isUIPreview && !isUITesting
+        let item = ShoppingListItem(
+            name: name,
+            quantity: max(1, quantity),
+            needsApproval: asRequest,
+            requestedBy: asRequest ? (displayName ?? "Member") : nil,
+            kind: asRequest ? .request : .custom
+        )
         shoppingList.insert(item, at: 0)
-        logActivity("Added \(name) to list", kind: .success)
+        logActivity(
+            asRequest ? "Requested \(name)" : "Added \(name) to list",
+            kind: .success
+        )
         guard canSyncShoppingList else { return }
         Task { await persistShoppingCreate(item) }
     }
 
     func approveShoppingRequest(id: String) {
+        guard isHouseholdOwner else {
+            lastError = "Only household owners can approve requests."
+            return
+        }
         guard let idx = shoppingList.firstIndex(where: { $0.id == id }) else { return }
         shoppingList[idx].needsApproval = false
         shoppingList[idx].kind = .custom
@@ -586,6 +660,10 @@ final class AppSession: ObservableObject {
     }
 
     func rejectShoppingRequest(id: String) {
+        guard isHouseholdOwner else {
+            lastError = "Only household owners can deny requests."
+            return
+        }
         guard let idx = shoppingList.firstIndex(where: { $0.id == id }) else { return }
         let name = shoppingList[idx].name
         shoppingList.remove(at: idx)

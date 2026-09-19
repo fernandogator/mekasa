@@ -29,6 +29,8 @@ def _utcnow() -> datetime:
 
 
 def _member_from(household_id: str, uid: str, data: dict[str, Any]) -> HouseholdMemberResponse:
+    raw_perms = data.get("permissions") or []
+    permissions = [str(p) for p in raw_perms] if isinstance(raw_perms, list) else []
     return HouseholdMemberResponse(
         uid=uid,
         household_id=household_id,
@@ -37,6 +39,7 @@ def _member_from(household_id: str, uid: str, data: dict[str, Any]) -> Household
         phone=data.get("phone"),
         role=data.get("role") or "member",
         status=data.get("status") or "active",
+        permissions=permissions,
         created_at=data["created_at"],
         updated_at=data["updated_at"],
     )
@@ -274,6 +277,16 @@ class FirestoreMembersRepository:
             return False
         data = snap.to_dict() or {}
         return data.get("status") == "active" and data.get("role") == role
+
+    def has_permission(self, household_id: str, actor_uid: str, permission: str) -> bool:
+        snap = self._members_col(household_id).document(actor_uid).get()
+        if not snap.exists:
+            return False
+        data = snap.to_dict() or {}
+        if data.get("status") != "active":
+            return False
+        perms = data.get("permissions") or []
+        return isinstance(perms, list) and permission in perms
 
     def primary_household_id_for_user(self, actor_uid: str) -> str | None:
         snaps = list(

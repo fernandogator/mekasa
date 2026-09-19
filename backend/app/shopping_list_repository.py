@@ -79,7 +79,7 @@ class InMemoryShoppingListRepository:
         self._lock = Lock()
 
     def list_items(self, household_id: str, owner_uid: str) -> list[ShoppingListItemResponse]:
-        self._require_owner(household_id, owner_uid)
+        self._require_member(household_id, owner_uid)
         with self._lock:
             items = list(self._items.get(household_id, {}).values())
         return sorted(items, key=lambda item: item.updated_at, reverse=True)
@@ -87,27 +87,28 @@ class InMemoryShoppingListRepository:
     def get(
         self, household_id: str, item_id: str, owner_uid: str
     ) -> ShoppingListItemResponse | None:
-        self._require_owner(household_id, owner_uid)
+        self._require_member(household_id, owner_uid)
         return self._items.get(household_id, {}).get(item_id)
 
     def create(
         self, household_id: str, owner_uid: str, payload: ShoppingListItemCreateRequest
     ) -> ShoppingListItemResponse:
-        self._require_owner(household_id, owner_uid)
+        self._require_member(household_id, owner_uid)
+        create_payload = self._member_create_payload(household_id, owner_uid, payload)
         with self._lock:
             bucket = self._items.setdefault(household_id, {})
-            if not payload.needs_approval and not payload.is_checked:
-                existing = self._find_open(bucket, payload.name, payload.inventory_item_id)
+            if not create_payload.needs_approval and not create_payload.is_checked:
+                existing = self._find_open(bucket, create_payload.name, create_payload.inventory_item_id)
                 if existing is not None:
                     updates = {
-                        "quantity": existing.quantity + payload.quantity,
+                        "quantity": existing.quantity + create_payload.quantity,
                         "updated_by_uid": owner_uid,
                         "updated_at": _utcnow(),
                     }
-                    if payload.quantity_label is not None:
-                        updates["quantity_label"] = payload.quantity_label
-                    if payload.inventory_item_id:
-                        updates["inventory_item_id"] = payload.inventory_item_id
+                    if create_payload.quantity_label is not None:
+                        updates["quantity_label"] = create_payload.quantity_label
+                    if create_payload.inventory_item_id:
+                        updates["inventory_item_id"] = create_payload.inventory_item_id
                     merged = existing.model_copy(update=updates)
                     bucket[existing.id] = merged
                     return merged
@@ -116,14 +117,14 @@ class InMemoryShoppingListRepository:
             item = ShoppingListItemResponse(
                 id=str(uuid4()),
                 household_id=household_id,
-                name=payload.name.strip(),
-                quantity=payload.quantity,
-                quantity_label=payload.quantity_label,
-                is_checked=payload.is_checked,
-                needs_approval=payload.needs_approval,
-                requested_by=payload.requested_by,
-                inventory_item_id=payload.inventory_item_id,
-                kind=payload.kind,
+                name=create_payload.name.strip(),
+                quantity=create_payload.quantity,
+                quantity_label=create_payload.quantity_label,
+                is_checked=create_payload.is_checked,
+                needs_approval=create_payload.needs_approval,
+                requested_by=create_payload.requested_by,
+                inventory_item_id=create_payload.inventory_item_id,
+                kind=create_payload.kind,
                 created_by_uid=owner_uid,
                 updated_by_uid=owner_uid,
                 created_at=now,
@@ -139,12 +140,16 @@ class InMemoryShoppingListRepository:
         owner_uid: str,
         payload: ShoppingListItemUpdateRequest,
     ) -> ShoppingListItemResponse:
-        self._require_owner(household_id, owner_uid)
+        self._require_member(household_id, owner_uid)
+        data = payload.model_dump(exclude_unset=True)
+        if "is_checked" in data:
+            from app.household_access import assert_can_mark_purchased
+
+            assert_can_mark_purchased(household_id, owner_uid)
         with self._lock:
             item = self._items.get(household_id, {}).get(item_id)
             if item is None:
                 raise KeyError(item_id)
-            data = payload.model_dump(exclude_unset=True)
             if "name" in data and data["name"] is not None:
                 data["name"] = data["name"].strip()
             data["updated_by_uid"] = owner_uid
@@ -154,7 +159,7 @@ class InMemoryShoppingListRepository:
             return updated
 
     def delete(self, household_id: str, item_id: str, owner_uid: str) -> None:
-        self._require_owner(household_id, owner_uid)
+        self._require_member(household_id, owner_uid)
         with self._lock:
             bucket = self._items.get(household_id, {})
             if item_id not in bucket:
@@ -164,6 +169,9 @@ class InMemoryShoppingListRepository:
     def approve(
         self, household_id: str, item_id: str, owner_uid: str
     ) -> ShoppingListItemResponse:
+        from app.household_access import assert_household_owner
+
+        assert_household_owner(household_id, owner_uid)
         return self.update(
             household_id,
             item_id,
@@ -172,12 +180,15 @@ class InMemoryShoppingListRepository:
         )
 
     def reject(self, household_id: str, item_id: str, owner_uid: str) -> None:
+        from app.household_access import assert_household_owner
+
+        assert_household_owner(household_id, owner_uid)
         self.delete(household_id, item_id, owner_uid)
 
     def sync_from_inventory(
         self, household_id: str, owner_uid: str, inventory: InventoryRepository
     ) -> tuple[list[ShoppingListItemResponse], list[ShoppingListItemResponse]]:
-        self._require_owner(household_id, owner_uid)
+        self._require_member(household_id, owner_uid)
         added: list[ShoppingListItemResponse] = []
         for inv in inventory.list_items(household_id, owner_uid):
             if inv.quantity > inv.low_stock_threshold:
@@ -198,10 +209,33 @@ class InMemoryShoppingListRepository:
                 added.append(row)
         return added, self.list_items(household_id, owner_uid)
 
-    def _require_owner(self, household_id: str, owner_uid: str) -> None:
+    def _require_member(self, household_id: str, owner_uid: str) -> None:
         from app.household_access import assert_household_member
 
         assert_household_member(household_id, owner_uid)
+
+    @staticmethod
+    def _member_create_payload(
+        household_id: str,
+        actor_uid: str,
+        payload: ShoppingListItemCreateRequest,
+    ) -> ShoppingListItemCreateRequest:
+        """Non-owners may only add requests (REQ-012 / REQ-014)."""
+        from app.household_access import get_household_or_404, is_household_owner
+
+        household = get_household_or_404(household_id)
+        if is_household_owner(household, actor_uid):
+            return payload
+        if payload.needs_approval and payload.kind == "request":
+            return payload
+        return payload.model_copy(
+            update={
+                "needs_approval": True,
+                "kind": "request",
+                "requested_by": payload.requested_by or "Member",
+                "is_checked": False,
+            }
+        )
 
     @staticmethod
     def _find_open(
