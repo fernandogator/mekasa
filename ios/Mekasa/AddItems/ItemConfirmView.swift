@@ -11,6 +11,7 @@ struct ItemConfirmView: View {
     var onFinished: (() -> Void)?
 
     @State private var saved = false
+    @State private var matchingDraftID: String?
 
     private var unidentifiedCount: Int {
         drafts.filter { !$0.isIdentified }.count
@@ -60,6 +61,13 @@ struct ItemConfirmView: View {
             }
         }
         .navigationBarHidden(true)
+        .navigationDestination(item: $matchingDraftID) { draftID in
+            ProductMatchPickerView(
+                initialQuery: drafts.first(where: { $0.id == draftID })?.name ?? ""
+            ) { hit in
+                applyMatch(hit, to: draftID)
+            }
+        }
         .alert("Saved", isPresented: $saved) {
             Button("Done") {
                 onFinished?()
@@ -78,9 +86,13 @@ struct ItemConfirmView: View {
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(MekasaTheme.brand)
             if unidentifiedCount > 0 {
-                Text("Unidentified lines keep the receipt name and a category image — edit before saving.")
-                    .font(MekasaTheme.bodyFont)
-                    .foregroundStyle(MekasaTheme.textMuted)
+                Text(
+                    session.canSyncInventory
+                        ? "Tap Find in catalog on unmatched lines to pick the right product."
+                        : "Unidentified lines keep the receipt name and a category image — edit before saving."
+                )
+                .font(MekasaTheme.bodyFont)
+                .foregroundStyle(MekasaTheme.textMuted)
             }
         }
         .padding(14)
@@ -133,6 +145,31 @@ struct ItemConfirmView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("Remove item")
                 }
+            }
+
+            if !draft.wrappedValue.isIdentified, session.canSyncInventory {
+                Button {
+                    matchingDraftID = draft.wrappedValue.id
+                } label: {
+                    Text("Find in catalog")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(MekasaTheme.brand)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(TestIdentifiers.scanButton)
+            } else if draft.wrappedValue.isIdentified, session.canSyncInventory {
+                Button {
+                    matchingDraftID = draft.wrappedValue.id
+                } label: {
+                    Text("Change match")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(MekasaTheme.textMuted)
+                }
+                .buttonStyle(.plain)
             }
 
             HStack {
@@ -210,6 +247,16 @@ struct ItemConfirmView: View {
                     lineWidth: 1
                 )
         )
+    }
+
+    private func applyMatch(_ hit: ProductSearchHitDTO, to draftID: String) {
+        guard let idx = drafts.firstIndex(where: { $0.id == draftID }) else { return }
+        drafts[idx].name = hit.name
+        drafts[idx].category = hit.category
+        drafts[idx].barcode = hit.barcode
+        drafts[idx].imageURL = hit.imageUrl
+        drafts[idx].isIdentified = true
+        matchingDraftID = nil
     }
 }
 

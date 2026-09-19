@@ -105,7 +105,7 @@ struct ManualEntryView: View {
                                     Button {
                                         selectHit(hit)
                                     } label: {
-                                        productHitRow(hit)
+                                        ProductSearchHitRow(hit: hit)
                                     }
                                     .buttonStyle(.plain)
                                     .accessibilityIdentifier(TestIdentifiers.itemCell)
