@@ -59,6 +59,7 @@ PYTHONPATH=. ALLOW_TEST_AUTH=true pytest ../tests/backend -q
 | POST | `/v1/households/{id}/inventory` | yes | Create or merge item |
 | GET | `/v1/households/{id}/inventory/{item_id}` | yes | Get one item |
 | PATCH | `/v1/households/{id}/inventory/{item_id}` | yes | Update item fields |
+| POST | `/v1/households/{id}/inventory/{item_id}/refresh-image` | yes | Fill missing `image_url` via OFF / category placeholder |
 | DELETE | `/v1/households/{id}/inventory/{item_id}` | yes | Delete item |
 | POST | `/v1/households/{id}/inventory/{item_id}/consume` | yes | Decrement quantity |
 | POST | `/v1/households/{id}/inventory/consume-by-barcode` | yes | Decrement by barcode (unknown → logged event) |

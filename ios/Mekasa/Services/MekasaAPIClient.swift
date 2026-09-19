@@ -171,6 +171,19 @@ actor MekasaAPIClient {
         )
     }
 
+    /// Persist a product image when the inventory row has none (UI-006 / ADR-006).
+    func refreshInventoryItemImage(
+        householdID: String,
+        itemID: String,
+        token: String
+    ) async throws -> InventoryItemDTO {
+        try await request(
+            path: "/v1/households/\(householdID)/inventory/\(itemID)/refresh-image",
+            method: "POST",
+            token: token
+        )
+    }
+
     func deleteInventoryItem(householdID: String, itemID: String, token: String) async throws {
         _ = try await rawRequest(
             path: "/v1/households/\(householdID)/inventory/\(itemID)",

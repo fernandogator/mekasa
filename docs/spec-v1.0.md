@@ -285,6 +285,9 @@ Acceptance Criteria:
   quantity, and low-stock threshold
 - AC4: Thumbnail and detail images use the barcode lookup image URL
   (REQ-004 / Open Food Facts) without blocking the UI on load failure
+- AC5: When item detail opens for a row with no stored `image_url`, the
+  client calls `POST .../inventory/{id}/refresh-image`; the API looks up
+  Open Food Facts (or a category placeholder) and persists `image_url`
 
 ---
 
