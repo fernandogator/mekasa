@@ -73,7 +73,7 @@ PYTHONPATH=. ALLOW_TEST_AUTH=true pytest ../tests/backend -q
 | POST | `/v1/households/{id}/purchases` | yes | Record purchase / price-paid event (REQ-015) |
 | GET | `/v1/households/{id}/spending` | yes | Spending report `?period=week\|month\|year&category=` |
 | PATCH | `/v1/households/{id}/purchases/{event_id}` | yes | Recategorize / edit purchase (REQ-017) |
-| POST | `/v1/households/{id}/receipts/scan` | yes | Receipt OCR |
+| POST | `/v1/households/{id}/receipts/scan` | yes | Receipt OCR + catalog enrich (`image_url`, `identified`) |
 | POST | `/v1/households/{id}/photo` | yes | Household photo (data-URL thin path) |
 | GET/POST | `/v1/households/{id}/members` / invites | yes | Family members + invites (REQ-019) |
 | POST | `/v1/invites/accept` | yes | Accept invite token |

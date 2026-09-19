@@ -64,6 +64,10 @@ Acceptance Criteria:
 - AC1: Receipt image is sent to backend OCR and returns parsed item list
 - AC2: User reviews and confirms or edits parsed items before saving
 - AC3: Prices from receipt are stored as price-paid per item
+- AC4: Each extracted line includes an `image_url` (catalog photo when
+  matched, otherwise a category placeholder)
+- AC5: Lines that cannot be matched to a known product are flagged
+  `identified=false` so the client can highlight them for review
 
 ### REQ-006: Manual Item Entry
 Priority: P1

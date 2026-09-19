@@ -208,4 +208,24 @@ final class APIModelsTests: XCTestCase {
         XCTAssertEqual(draft.quantity, 2)
         XCTAssertEqual(draft.source, .manual)
     }
+
+    func testReceiptLineItemDTODecodesEnrichment() throws {
+        let json = """
+        {
+          "name": "Whole Milk",
+          "category": "Dairy",
+          "quantity": 1,
+          "price_paid": 3.49,
+          "barcode": "041220576037",
+          "image_url": "https://images.openfoodfacts.org/milk.jpg",
+          "identified": true
+        }
+        """.data(using: .utf8)!
+        let dto = try JSONDecoder().decode(ReceiptLineItemDTO.self, from: json)
+        let local = dto.toLocal()
+        XCTAssertEqual(local.imageURL, "https://images.openfoodfacts.org/milk.jpg")
+        XCTAssertEqual(local.barcode, "041220576037")
+        XCTAssertTrue(local.isIdentified)
+        XCTAssertEqual(local.source, .receipt)
+    }
 }
