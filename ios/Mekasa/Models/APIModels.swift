@@ -321,8 +321,8 @@ struct ProductSearchHitDTO: Codable, Equatable, Identifiable {
             quantity: quantity,
             pricePaid: pricePaid,
             barcode: barcode,
-            imageURL: imageUrl,
-            source: .manual
+            source: .manual,
+            imageURL: imageUrl
         )
     }
 }
