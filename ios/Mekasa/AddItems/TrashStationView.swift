@@ -179,42 +179,6 @@ struct TrashStationView: View {
         }
     }
 
-    @ViewBuilder
-    private var cameraPane: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color.black.opacity(0.85))
-                .frame(height: 220)
-            if cameraAvailable {
-                BarcodeCameraView(
-                    onCode: { code in
-                        Task { await handleBarcode(code) }
-                    },
-                    onError: { message in
-                        cameraError = message
-                    }
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                .frame(height: 220)
-            } else {
-                VStack(spacing: 8) {
-                    Image(systemName: "barcode.viewfinder")
-                        .font(.system(size: 36, weight: .semibold))
-                        .foregroundStyle(.white)
-                    Text("Camera unavailable — use simulate buttons")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.8))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                }
-            }
-            if isBusy {
-                ProgressView()
-                    .tint(.white)
-            }
-        }
-    }
-
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Nothing to mark gone yet")
