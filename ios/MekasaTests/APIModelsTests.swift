@@ -182,4 +182,30 @@ final class APIModelsTests: XCTestCase {
         XCTAssertEqual(report.events.first?.lineTotal, 6.98, accuracy: 0.001)
         XCTAssertEqual(report.events.first?.source, "inventory")
     }
+
+    func testProductSearchResponseDecodes() throws {
+        let json = """
+        {
+          "query": "Oreos",
+          "results": [
+            {
+              "barcode": "0044000044853",
+              "name": "Oreo Double Stuf Chocolate Sandwich Cookies",
+              "brand": "Oreo",
+              "category": "Pantry",
+              "image_url": "https://images.openfoodfacts.org/oreo-double.jpg",
+              "source": "openfoodfacts"
+            }
+          ]
+        }
+        """.data(using: .utf8)!
+        let response = try JSONDecoder().decode(ProductSearchResponseDTO.self, from: json)
+        XCTAssertEqual(response.query, "Oreos")
+        XCTAssertEqual(response.results.count, 1)
+        let draft = response.results[0].toDraft(quantity: 2)
+        XCTAssertEqual(draft.name, "Oreo Double Stuf Chocolate Sandwich Cookies")
+        XCTAssertEqual(draft.barcode, "0044000044853")
+        XCTAssertEqual(draft.quantity, 2)
+        XCTAssertEqual(draft.source, .manual)
+    }
 }

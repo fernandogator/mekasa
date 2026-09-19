@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.auth import AuthUser, verify_bearer_token
-from app.barcode_lookup import lookup_barcode
+from app.barcode_lookup import lookup_barcode, search_products
 from app.config import Settings, get_settings
 from app.household_access import assert_household_member, assert_household_owner
 from app.inventory_image import refresh_item_image
@@ -29,6 +29,7 @@ from app.models import (
     InventoryItemResponse,
     InventoryItemUpdateRequest,
     InventoryListResponse,
+    ProductSearchResponse,
     PurchaseEventCreateRequest,
     PurchaseEventResponse,
     PurchaseEventUpdateRequest,
@@ -638,6 +639,23 @@ async def lookup_barcode_endpoint(
     """
     _ = user
     return await lookup_barcode(code)
+
+
+@barcode_router.get("/products/search", response_model=ProductSearchResponse)
+async def search_products_endpoint(
+    q: str,
+    limit: int = 8,
+    user: AuthUser = Depends(verify_bearer_token),
+) -> ProductSearchResponse:
+    """
+    Satisfies: REQ-006, REQ-007 AC2
+    Spec version: 1.0
+
+    Search Open Food Facts by product name (e.g. "Oreos") and return distinct
+    variants for the user to pick during manual or voice entry.
+    """
+    _ = user
+    return await search_products(q, limit=limit)
 
 
 @api_router.post(

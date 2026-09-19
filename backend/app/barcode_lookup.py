@@ -1,4 +1,4 @@
-"""Third-party barcode / UPC product lookup (Open Food Facts)."""
+"""Third-party barcode / UPC / name product lookup (Open Food Facts)."""
 
 from __future__ import annotations
 
@@ -7,9 +7,10 @@ import re
 import httpx
 
 from app.category_icons import category_placeholder_url
-from app.models import BarcodeLookupResponse
+from app.models import BarcodeLookupResponse, ProductSearchHit, ProductSearchResponse
 
 OFF_PRODUCT_URL = "https://world.openfoodfacts.org/api/v2/product/{code}"
+OFF_SEARCH_URL = "https://world.openfoodfacts.org/cgi/search.pl"
 USER_AGENT = "Mekasa/0.4 (https://github.com/fernandogator/mekasa)"
 
 _CATEGORY_MAP = (
@@ -19,7 +20,7 @@ _CATEGORY_MAP = (
     (("frozen",), "Frozen"),
     (("beverage", "drink", "juice", "soda", "water", "coffee", "tea"), "Beverages"),
     (("household", "cleaning", "detergent", "soap", "paper"), "Household"),
-    (("cereal", "pasta", "rice", "bread", "snack", "sauce", "oil", "pantry"), "Pantry"),
+    (("cereal", "pasta", "rice", "bread", "snack", "sauce", "oil", "pantry", "cookie", "biscuit"), "Pantry"),
 )
 
 
@@ -53,6 +54,22 @@ def _display_name(product: dict) -> str | None:
     return None
 
 
+def _brand(product: dict) -> str | None:
+    brand = (product.get("brands") or "").split(",")[0].strip()
+    return brand or None
+
+
+def _barcode(product: dict) -> str | None:
+    for key in ("code", "id"):
+        value = product.get(key)
+        if value is None:
+            continue
+        cleaned = re.sub(r"\D", "", str(value))
+        if len(cleaned) >= 6:
+            return cleaned
+    return None
+
+
 def _product_image_url(product: dict, category: str) -> str:
     """
     ADR-006 step 1 + step 3 (ItemDB deferred).
@@ -65,6 +82,21 @@ def _product_image_url(product: dict, category: str) -> str:
         if isinstance(value, str) and value.strip().startswith("http"):
             return value.strip()
     return category_placeholder_url(category)
+
+
+def _hit_from_product(product: dict) -> ProductSearchHit | None:
+    name = _display_name(product)
+    if not name:
+        return None
+    category = _map_category(product.get("categories_tags"), product.get("categories"))
+    return ProductSearchHit(
+        barcode=_barcode(product),
+        name=name,
+        brand=_brand(product),
+        category=category,
+        image_url=_product_image_url(product, category),
+        source="openfoodfacts",
+    )
 
 
 async def lookup_barcode(code: str, *, client: httpx.AsyncClient | None = None) -> BarcodeLookupResponse:
@@ -105,7 +137,7 @@ async def lookup_barcode(code: str, *, client: httpx.AsyncClient | None = None) 
             barcode=cleaned,
             found=True,
             name=name,
-            brand=(product.get("brands") or None),
+            brand=_brand(product),
             category=category,
             quantity=1,
             image_url=_product_image_url(product, category),
@@ -113,6 +145,73 @@ async def lookup_barcode(code: str, *, client: httpx.AsyncClient | None = None) 
         )
     except httpx.HTTPError:
         return BarcodeLookupResponse(barcode=cleaned, found=False, source="none")
+    finally:
+        if owns_client:
+            await http.aclose()
+
+
+async def search_products(
+    query: str,
+    *,
+    limit: int = 8,
+    client: httpx.AsyncClient | None = None,
+) -> ProductSearchResponse:
+    """
+    Satisfies: REQ-006, REQ-007 AC2
+    Spec version: 1.0
+
+    Full-text product search via Open Food Facts (legacy cgi/search.pl).
+    Returns distinct named variants for the user to pick (e.g. Oreo Double Stuf).
+    """
+    cleaned = " ".join((query or "").split()).strip()
+    limit = max(1, min(limit, 20))
+    if len(cleaned) < 2:
+        return ProductSearchResponse(query=cleaned, results=[])
+
+    owns_client = client is None
+    http = client or httpx.AsyncClient(timeout=10.0, headers={"User-Agent": USER_AGENT})
+    try:
+        # Fetch a wider page so we can dedupe near-identical rows.
+        page_size = min(40, max(limit * 3, limit))
+        response = await http.get(
+            OFF_SEARCH_URL,
+            params={
+                "search_terms": cleaned,
+                "search_simple": "1",
+                "action": "process",
+                "json": "1",
+                "page_size": str(page_size),
+            },
+        )
+        response.raise_for_status()
+        payload = response.json()
+        products = payload.get("products")
+        if not isinstance(products, list):
+            return ProductSearchResponse(query=cleaned, results=[])
+
+        results: list[ProductSearchHit] = []
+        seen_barcodes: set[str] = set()
+        seen_names: set[str] = set()
+        for product in products:
+            if not isinstance(product, dict):
+                continue
+            hit = _hit_from_product(product)
+            if hit is None:
+                continue
+            if hit.barcode and hit.barcode in seen_barcodes:
+                continue
+            name_key = hit.name.casefold()
+            if name_key in seen_names:
+                continue
+            if hit.barcode:
+                seen_barcodes.add(hit.barcode)
+            seen_names.add(name_key)
+            results.append(hit)
+            if len(results) >= limit:
+                break
+        return ProductSearchResponse(query=cleaned, results=results)
+    except httpx.HTTPError:
+        return ProductSearchResponse(query=cleaned, results=[])
     finally:
         if owns_client:
             await http.aclose()

@@ -103,6 +103,12 @@
 - Unit: 26 backend tests green (`test_spending_members_api`).
 - **Redeploy Cloud Run** for prod.
 
+### 2026-09-19 — Manual entry product variant search
+- Backend `GET /v1/products/search?q=` via Open Food Facts (distinct named variants).
+- iOS ManualEntry: **Find matching products** → pick Oreo Double Stuf / Thins / etc. → confirm.
+- Free-form **Add as typed** still works for produce / unknown items.
+- **Redeploy Cloud Run** for the search route.
+
 ### 2026-09-19 — iOS spending API sync
 - `GET /v1/households/{id}/spending` wired via `MekasaAPIClient` + `AppSession.refreshSpending`.
 - Spend tab shows period picker (week/month/year), category totals, recent purchases.
