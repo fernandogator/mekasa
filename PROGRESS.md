@@ -103,6 +103,10 @@
 - Unit: 26 backend tests green (`test_spending_members_api`).
 - **Redeploy Cloud Run** for prod.
 
+### 2026-09-19 — Resolve unidentified receipt lines
+- Confirm haul: **Find in catalog** / **Change match** opens product search picker.
+- Applying a hit sets name, category, barcode, image, and `isIdentified=true` (keeps price/qty).
+
 ### 2026-09-19 — Receipt scan enrichment (images + unidentified)
 - After OCR, each line is matched via Open Food Facts name search.
 - Response includes `image_url`, optional `barcode`, and `identified`.

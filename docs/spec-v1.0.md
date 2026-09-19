@@ -68,6 +68,9 @@ Acceptance Criteria:
   matched, otherwise a category placeholder)
 - AC5: Lines that cannot be matched to a known product are flagged
   `identified=false` so the client can highlight them for review
+- AC6: From the confirm haul screen, the user can search the product
+  catalog for an unidentified line and apply a match (name, image, UPC)
+  before saving
 
 ### REQ-006: Manual Item Entry
 Priority: P1
