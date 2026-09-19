@@ -198,7 +198,7 @@ struct DashboardView: View {
                     icon: "creditcard",
                     iconBg: Color(red: 0xea / 255, green: 0xf1 / 255, blue: 0xec / 255),
                     label: "Spend",
-                    value: String(format: "$%.0f", localWeeklySpend),
+                    value: String(format: "$%.0f", displayedSpend),
                     suffix: "/cap"
                 )
             }
@@ -206,10 +206,8 @@ struct DashboardView: View {
         }
     }
 
-    private var localWeeklySpend: Double {
-        session.inventory.reduce(0) { partial, item in
-            partial + (item.pricePaid ?? 0) * Double(max(item.quantity, 1))
-        }
+    private var displayedSpend: Double {
+        session.spendingReport?.total ?? session.localTrackedSpend
     }
 
     private func statCard(

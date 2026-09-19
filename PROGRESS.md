@@ -16,7 +16,7 @@
 | household | deployed (Firestore) | unit + smoke | — | Confirm live Cloud Run revision uses `HOUSEHOLD_PERSISTENCE=firestore` |
 | inventory | deployed (CRUD + consume + member ACL + refresh-image) | unit | — | Redeploy Cloud Run for refresh-image |
 | shopping-list | deployed (CRUD + sync + member ACL) | unit | — | Redeploy Cloud Run |
-| spending | done (purchase events + reports) | unit (test_spending_members_api) | — | Redeploy; wire iOS SpendingView |
+| spending | deployed (purchase events + reports) | unit (test_spending_members_api) | — | — |
 | sync | not started | unknown | — | Client Firestore listeners (REQ-020), not REST |
 | ocr | done | unit | — | Vision on Cloud Run when package + API enabled |
 | barcode | deployed (Open Food Facts lookup) | unit | — | — |
@@ -60,7 +60,7 @@
 | inventory-screen | ready (list + detail + Add hub) | unit | — | Expand InventoryScreenUITest |
 | scanner | ready (barcode + receipt confirm prices) | stubs | — | Expand ScannerUITest on device |
 | shopping-list-screen | ready (API sync + dashboard approvals) | unit | — | Owner purchase gate (REQ-014) |
-| spending-screen | in progress (local price rollup) | stubs | — | Backend spend API (REQ-015–018) |
+| spending-screen | ready (live week/month/year report + local fallback) | unit (DTO decode) | — | Expand SpendingScreenUITest |
 | settings / family | ready (invites, roles, ShareLink, accept) | Features2to6Tests | — | Push/email delivery for invites |
 | trash-station-mode | ready (kiosk + unknown scans) | Features2to6Tests | — | Home-screen shortcut polish |
 
@@ -102,6 +102,12 @@
 - Members/invites Firestore dual-mode; invited members can use inventory/shopping/`/households/current`.
 - Unit: 26 backend tests green (`test_spending_members_api`).
 - **Redeploy Cloud Run** for prod.
+
+### 2026-09-19 — iOS spending API sync
+- `GET /v1/households/{id}/spending` wired via `MekasaAPIClient` + `AppSession.refreshSpending`.
+- Spend tab shows period picker (week/month/year), category totals, recent purchases.
+- Dashboard Spend card uses live weekly total with local inventory fallback.
+- Unit: `APIModelsTests.testSpendingReportDecodes`.
 
 ### 2026-09-19 — Item detail image refresh
 - Backend `POST /v1/households/{id}/inventory/{item_id}/refresh-image` fills

@@ -31,6 +31,8 @@ final class AppSession: ObservableObject {
     @Published var trashEvents: [TrashEvent] = []
     /// Unknown barcodes logged at trash station (REQ-008 AC3).
     @Published var unknownTrashScans: [UnknownBarcodeEventDTO] = []
+    /// Latest spending report from Cloud Run (REQ-017 / REQ-018); nil until first successful refresh.
+    @Published var spendingReport: SpendingReportDTO?
     /// Invite token from deep link (`mekasa://invite?token=…`) awaiting accept after sign-in.
     @Published var pendingInviteToken: String?
     /// Full-screen trash kiosk (UI-005) — launch with `--trash-station` or Family tab.
@@ -63,6 +65,8 @@ final class AppSession: ObservableObject {
 
     var canSyncShoppingList: Bool { canSyncInventory }
 
+    var canSyncSpending: Bool { canSyncInventory }
+
     var lowStockCount: Int {
         let live = inventory.filter(\.isLowStock).count
         if inventory.isEmpty { return DashboardFixtures.lowStockCount }
@@ -86,6 +90,7 @@ final class AppSession: ObservableObject {
         activity = DashboardFixtures.activity
         shoppingList = []
         trashEvents = []
+        spendingReport = nil
         didSeedShoppingList = false
         pendingCreates = [:]
     }
@@ -105,6 +110,7 @@ final class AppSession: ObservableObject {
         shoppingList = emptyInventory ? TestFixtures.emptyShoppingList : TestFixtures.standardShoppingList
         trashEvents = emptyInventory ? TestFixtures.emptyTrashEvents : TestFixtures.standardTrashEvents
         unknownTrashScans = []
+        spendingReport = nil
         didSeedShoppingList = true
         pendingCreates = [:]
         if CommandLine.arguments.contains("--trash-station") {
@@ -139,6 +145,7 @@ final class AppSession: ObservableObject {
         shoppingList = []
         trashEvents = []
         unknownTrashScans = []
+        spendingReport = nil
         isTrashKioskMode = false
         didSeedShoppingList = false
         pendingCreates = [:]
@@ -348,6 +355,30 @@ final class AppSession: ObservableObject {
             didSeedShoppingList = true
         } catch {
             handleAPIFailure(error)
+        }
+    }
+
+    /// Pull spending report from Cloud Run (rolling week/month/year of purchase events).
+    func refreshSpending(period: SpendingPeriod = .week) async {
+        guard canSyncSpending,
+              let token = idToken,
+              let householdID = household?.id
+        else { return }
+        do {
+            spendingReport = try await MekasaAPIClient.shared.getSpendingReport(
+                householdID: householdID,
+                period: period,
+                token: token
+            )
+        } catch {
+            handleAPIFailure(error)
+        }
+    }
+
+    /// Local inventory price rollup used as offline / preview fallback for Spend UI.
+    var localTrackedSpend: Double {
+        inventory.reduce(0) { partial, item in
+            partial + (item.pricePaid ?? 0) * Double(max(item.quantity, 1))
         }
     }
 
