@@ -54,6 +54,9 @@ class MembersRepository(Protocol):
     def has_role(self, household_id: str, actor_uid: str, *, role: str) -> bool:
         """True if uid is active with the given role."""
 
+    def has_permission(self, household_id: str, actor_uid: str, permission: str) -> bool:
+        """True if active member lists the permission (REQ-014 AC3)."""
+
     def primary_household_id_for_user(self, actor_uid: str) -> str | None:
         """First household the user belongs to (accepted invite / membership)."""
 
@@ -210,6 +213,14 @@ class InMemoryMembersRepository:
             member is not None
             and member.status == "active"
             and member.role == role
+        )
+
+    def has_permission(self, household_id: str, actor_uid: str, permission: str) -> bool:
+        member = self._members.get(household_id, {}).get(actor_uid)
+        return (
+            member is not None
+            and member.status == "active"
+            and permission in (member.permissions or [])
         )
 
     def primary_household_id_for_user(self, actor_uid: str) -> str | None:

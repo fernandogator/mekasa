@@ -133,34 +133,48 @@ struct ShoppingListView: View {
     }
 
     private func standardRow(_ item: ShoppingListItem) -> some View {
-        Button {
-            session.toggleShoppingItemChecked(id: item.id)
-        } label: {
-            HStack(spacing: 16) {
-                checkbox(checked: item.isChecked)
-                    .accessibilityIdentifier(TestIdentifiers.itemThumbnail)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.name)
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .strikethrough(item.isChecked)
-                        .foregroundStyle(MekasaTheme.brand)
-                        .accessibilityIdentifier(TestIdentifiers.itemTitle)
-                    if !item.displayQuantity.isEmpty {
-                        Text(item.displayQuantity)
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .foregroundStyle(MekasaTheme.textMuted)
-                            .accessibilityIdentifier(TestIdentifiers.itemSubtitle)
-                    }
+        let canPurchase = session.canMarkShoppingPurchased
+        return Group {
+            if canPurchase {
+                Button {
+                    session.toggleShoppingItemChecked(id: item.id)
+                } label: {
+                    shoppingRowLabel(item, showCheckbox: true)
                 }
-                .opacity(item.isChecked ? 0.5 : 1)
-                Spacer()
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(item.name), \(item.isChecked ? "purchased" : "not purchased")")
+                .accessibilityIdentifier(TestIdentifiers.itemCell)
+            } else {
+                shoppingRowLabel(item, showCheckbox: true)
+                    .accessibilityLabel("\(item.name), view only")
+                    .accessibilityIdentifier(TestIdentifiers.itemCell)
             }
-            .padding(12)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(item.name), \(item.isChecked ? "purchased" : "not purchased")")
-        .accessibilityIdentifier(TestIdentifiers.itemCell)
+    }
+
+    private func shoppingRowLabel(_ item: ShoppingListItem, showCheckbox: Bool) -> some View {
+        HStack(spacing: 16) {
+            checkbox(checked: item.isChecked)
+                .opacity(session.canMarkShoppingPurchased ? 1 : 0.45)
+                .accessibilityIdentifier(TestIdentifiers.itemThumbnail)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.name)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .strikethrough(item.isChecked)
+                    .foregroundStyle(MekasaTheme.brand)
+                    .accessibilityIdentifier(TestIdentifiers.itemTitle)
+                if !item.displayQuantity.isEmpty {
+                    Text(item.displayQuantity)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(MekasaTheme.textMuted)
+                        .accessibilityIdentifier(TestIdentifiers.itemSubtitle)
+                }
+            }
+            .opacity(item.isChecked ? 0.5 : 1)
+            Spacer()
+        }
+        .padding(12)
+        .contentShape(Rectangle())
     }
 
     private func pendingRow(_ item: ShoppingListItem) -> some View {
@@ -197,36 +211,38 @@ struct ShoppingListView: View {
 
             Spacer(minLength: 0)
 
-            Button {
-                session.rejectShoppingRequest(id: item.id)
-                showToast("Denied \(item.name)")
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(MekasaTheme.brand)
-                    .frame(width: 40, height: 40)
-                    .background(Color.white)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(MekasaTheme.brandMuted.opacity(0.4), lineWidth: 1))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Deny \(item.name)")
-            .accessibilityIdentifier(TestIdentifiers.rejectButton)
+            if session.isHouseholdOwner {
+                Button {
+                    session.rejectShoppingRequest(id: item.id)
+                    showToast("Denied \(item.name)")
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(MekasaTheme.brand)
+                        .frame(width: 40, height: 40)
+                        .background(Color.white)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(MekasaTheme.brandMuted.opacity(0.4), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Deny \(item.name)")
+                .accessibilityIdentifier(TestIdentifiers.rejectButton)
 
-            Button {
-                session.approveShoppingRequest(id: item.id)
-                showToast("Approved \(item.name)")
-            } label: {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 40, height: 40)
-                    .background(MekasaTheme.brand)
-                    .clipShape(Circle())
+                Button {
+                    session.approveShoppingRequest(id: item.id)
+                    showToast("Approved \(item.name)")
+                } label: {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(MekasaTheme.brand)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Approve \(item.name)")
+                .accessibilityIdentifier(TestIdentifiers.approveButton)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Approve \(item.name)")
-            .accessibilityIdentifier(TestIdentifiers.approveButton)
         }
         .padding(12)
         .background(Color(red: 1, green: 0xf5 / 255, blue: 0xf0 / 255))
@@ -302,7 +318,7 @@ struct ShoppingListView: View {
 
                     Spacer()
                     PrimaryButton(
-                        title: "Add to list",
+                        title: session.isHouseholdOwner ? "Add to list" : "Request item",
                         disabled: customName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     ) {
                         session.addCustomShoppingItem(
@@ -310,7 +326,7 @@ struct ShoppingListView: View {
                             quantity: customQty
                         )
                         showAddCustom = false
-                        showToast("Added to list")
+                        showToast(session.isHouseholdOwner ? "Added to list" : "Requested")
                     }
                 }
                 .padding(24)

@@ -376,6 +376,8 @@ class HouseholdMemberResponse(BaseModel):
     phone: str | None = None
     role: MemberRole
     status: Literal["active", "invited", "removed"] = "active"
+    # REQ-014 AC3: future "buyer" (and similar) without a schema migration.
+    permissions: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

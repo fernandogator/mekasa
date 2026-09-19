@@ -59,7 +59,7 @@
 | dashboard | ready (live approvals + inventory link) | stubs | — | Notifications; bind spend card to spend API when ready |
 | inventory-screen | ready (list + detail + Add hub) | unit | — | Expand InventoryScreenUITest |
 | scanner | ready (barcode + receipt + voice match) | unit (VoicePhraseParserTests) | — | Expand ScannerUITest on device |
-| shopping-list-screen | ready (API sync + dashboard approvals) | unit | — | Owner purchase gate (REQ-014) |
+| shopping-list-screen | ready (API sync + owner purchase gate) | unit | — | Expand ShoppingList UI tests |
 | spending-screen | ready (live week/month/year report + local fallback) | unit (DTO decode) | — | Expand SpendingScreenUITest |
 | settings / family | ready (invites, roles, ShareLink, accept) | Features2to6Tests | — | Push/email delivery for invites |
 | trash-station-mode | ready (kiosk + unknown scans) | Features2to6Tests | — | Home-screen shortcut polish |
@@ -110,6 +110,13 @@
 - Members/invites Firestore dual-mode; invited members can use inventory/shopping/`/households/current`.
 - Unit: 26 backend tests green (`test_spending_members_api`).
 - **Redeploy Cloud Run** for prod.
+
+### 2026-09-19 — Shopping list owner purchase gate (REQ-014)
+- Backend: only owners (or future `buyer` permission) may set `is_checked`.
+- Non-owners creating list rows are forced into `needs_approval` requests.
+- Approve/reject are owner-only. Member `permissions` field added for AC3.
+- iOS: checkboxes / approve actions gated by `canMarkShoppingPurchased` / `isHouseholdOwner`.
+- **Redeploy Cloud Run** for the ACL change.
 
 ### 2026-09-19 — Resolve unidentified receipt lines
 - Confirm haul: **Find in catalog** / **Change match** opens product search picker.
