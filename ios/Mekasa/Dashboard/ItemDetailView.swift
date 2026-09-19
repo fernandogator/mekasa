@@ -22,6 +22,8 @@ struct ItemDetailView: View {
                 if let item {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 24) {
+                            ProductHeroImage(urlString: item.imageURL, title: item.name)
+
                             Text(item.name)
                                 .font(.system(size: 28, weight: .black, design: .rounded))
                                 .foregroundStyle(MekasaTheme.brand)
@@ -30,6 +32,13 @@ struct ItemDetailView: View {
                             Text(item.category)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                                 .foregroundStyle(MekasaTheme.textMuted)
+
+                            if let barcode = item.barcode, !barcode.isEmpty {
+                                Text("UPC \(barcode)")
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .foregroundStyle(MekasaTheme.textMuted)
+                                    .accessibilityIdentifier(TestIdentifiers.itemBarcodeLabel)
+                            }
 
                             stepperCard(title: "Quantity", value: $quantity) {
                                 quantity = max(0, quantity)
