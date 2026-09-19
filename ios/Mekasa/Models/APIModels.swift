@@ -107,6 +107,7 @@ struct InventoryItemDTO: Codable, Equatable, Identifiable {
     let lowStockThreshold: Int
     let pricePaid: Double?
     let barcode: String?
+    let imageURL: String?
     let source: String
     let createdByUid: String?
     let updatedByUid: String?
@@ -118,6 +119,7 @@ struct InventoryItemDTO: Codable, Equatable, Identifiable {
         case householdId = "household_id"
         case lowStockThreshold = "low_stock_threshold"
         case pricePaid = "price_paid"
+        case imageURL = "image_url"
         case createdByUid = "created_by_uid"
         case updatedByUid = "updated_by_uid"
         case createdAt = "created_at"
@@ -134,6 +136,7 @@ struct InventoryItemDTO: Codable, Equatable, Identifiable {
             pricePaid: pricePaid,
             barcode: barcode,
             source: InventorySource(rawValue: source) ?? .manual,
+            imageURL: imageURL,
             updatedAt: updatedAt ?? Date()
         )
     }
@@ -156,12 +159,14 @@ struct InventoryItemCreateBody: Encodable {
     let lowStockThreshold: Int
     let pricePaid: Double?
     let barcode: String?
+    let imageURL: String?
     let source: String
 
     enum CodingKeys: String, CodingKey {
         case name, category, quantity, barcode, source
         case lowStockThreshold = "low_stock_threshold"
         case pricePaid = "price_paid"
+        case imageURL = "image_url"
     }
 
     init(from item: InventoryItem) {
@@ -171,6 +176,7 @@ struct InventoryItemCreateBody: Encodable {
         lowStockThreshold = item.lowStockThreshold
         pricePaid = item.pricePaid
         barcode = item.barcode
+        imageURL = item.imageURL
         source = item.source.rawValue
     }
 }

@@ -115,6 +115,8 @@ class InMemoryInventoryRepository:
                     updates["price_paid"] = payload.price_paid
                 if payload.barcode:
                     updates["barcode"] = payload.barcode
+                if payload.image_url:
+                    updates["image_url"] = payload.image_url
                 merged = existing.model_copy(update=updates)
                 bucket[existing.id] = merged
                 return merged
@@ -129,6 +131,7 @@ class InMemoryInventoryRepository:
                 low_stock_threshold=payload.low_stock_threshold,
                 price_paid=payload.price_paid,
                 barcode=payload.barcode,
+                image_url=payload.image_url,
                 source=payload.source,
                 created_by_uid=owner_uid,
                 updated_by_uid=owner_uid,

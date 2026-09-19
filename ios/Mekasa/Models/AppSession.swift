@@ -579,6 +579,9 @@ final class AppSession: ObservableObject {
             if let barcode = next.barcode {
                 inventory[idx].barcode = barcode
             }
+            if let imageURL = next.imageURL {
+                inventory[idx].imageURL = imageURL
+            }
             inventory[idx].updatedAt = next.updatedAt
             logActivity("Updated \(inventory[idx].name) (qty \(inventory[idx].quantity))", kind: .success)
         } else {
@@ -628,6 +631,10 @@ final class AppSession: ObservableObject {
         var next = remote
         if preserveLower {
             next.quantity = min(existing.quantity, remote.quantity)
+        }
+        // Prefer whichever side still has a product image (scan confirm vs refresh).
+        if next.imageURL == nil {
+            next.imageURL = existing.imageURL
         }
         return next
     }

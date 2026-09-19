@@ -60,6 +60,7 @@ def test_inventory_crud_and_consume(client: TestClient) -> None:
             "low_stock_threshold": 1,
             "price_paid": 3.49,
             "barcode": "041220576037",
+            "image_url": "https://images.openfoodfacts.org/milk.jpg",
             "source": "manual",
         },
         headers=_auth(),
@@ -70,16 +71,24 @@ def test_inventory_crud_and_consume(client: TestClient) -> None:
     assert item["name"] == "Whole Milk"
     assert item["quantity"] == 2
     assert item["household_id"] == household_id
+    assert item["image_url"] == "https://images.openfoodfacts.org/milk.jpg"
 
     # Merge same name+category
     merged = client.post(
         f"/v1/households/{household_id}/inventory",
-        json={"name": "whole milk", "category": "Dairy", "quantity": 1, "source": "barcode"},
+        json={
+            "name": "whole milk",
+            "category": "Dairy",
+            "quantity": 1,
+            "source": "barcode",
+            "image_url": "https://images.openfoodfacts.org/milk-front.jpg",
+        },
         headers=_auth(),
     )
     assert merged.status_code == 201
     assert merged.json()["id"] == item_id
     assert merged.json()["quantity"] == 3
+    assert merged.json()["image_url"] == "https://images.openfoodfacts.org/milk-front.jpg"
 
     listed = client.get(f"/v1/households/{household_id}/inventory", headers=_auth())
     assert listed.status_code == 200

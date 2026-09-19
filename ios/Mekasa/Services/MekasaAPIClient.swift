@@ -143,6 +143,7 @@ actor MekasaAPIClient {
         category: String? = nil,
         pricePaid: Double? = nil,
         barcode: String? = nil,
+        imageURL: String? = nil,
         token: String
     ) async throws -> InventoryItemDTO {
         struct Body: Encodable {
@@ -152,6 +153,7 @@ actor MekasaAPIClient {
             let low_stock_threshold: Int?
             let price_paid: Double?
             let barcode: String?
+            let image_url: String?
         }
         return try await request(
             path: "/v1/households/\(householdID)/inventory/\(itemID)",
@@ -163,7 +165,8 @@ actor MekasaAPIClient {
                 quantity: quantity,
                 low_stock_threshold: lowStockThreshold,
                 price_paid: pricePaid,
-                barcode: barcode
+                barcode: barcode,
+                image_url: imageURL
             )
         )
     }

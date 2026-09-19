@@ -35,6 +35,8 @@ struct InventoryListView: View {
                         ForEach(sortedItems) { item in
                             NavigationLink(value: item.id) {
                                 HStack(spacing: 14) {
+                                    ProductThumbnail(urlString: item.imageURL, size: 56, cornerRadius: 16)
+                                        .accessibilityIdentifier(TestIdentifiers.itemThumbnail)
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(item.name)
                                             .font(.system(size: 16, weight: .bold, design: .rounded))

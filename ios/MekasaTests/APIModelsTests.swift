@@ -69,6 +69,7 @@ final class APIModelsTests: XCTestCase {
           "low_stock_threshold": 1,
           "price_paid": 3.49,
           "barcode": "041220576037",
+          "image_url": "https://images.openfoodfacts.org/milk.jpg",
           "source": "manual",
           "created_by_uid": "uid_1",
           "updated_by_uid": "uid_1",
@@ -98,6 +99,7 @@ final class APIModelsTests: XCTestCase {
         XCTAssertEqual(local.quantity, 2)
         XCTAssertEqual(local.source, .manual)
         XCTAssertEqual(local.barcode, "041220576037")
+        XCTAssertEqual(local.imageURL, "https://images.openfoodfacts.org/milk.jpg")
     }
 
     func testInventoryListResponseDecodes() throws {
