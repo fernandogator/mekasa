@@ -185,34 +185,6 @@ struct ManualEntryView: View {
         }
     }
 
-    private func productHitRow(_ hit: ProductSearchHitDTO) -> some View {
-        HStack(spacing: 12) {
-            ProductThumbnail(urlString: hit.imageUrl, size: 52, cornerRadius: 14)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(hit.name)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
-                    .multilineTextAlignment(.leading)
-                HStack(spacing: 6) {
-                    Text(hit.category)
-                    if let brand = hit.brand, !brand.isEmpty {
-                        Text("·")
-                        Text(brand)
-                    }
-                }
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(MekasaTheme.textMuted)
-            }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(MekasaTheme.brandMuted)
-        }
-        .padding(12)
-        .background(MekasaTheme.surfaceElevated)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-
     private var quantityStepper: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Quantity")
