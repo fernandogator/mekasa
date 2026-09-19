@@ -18,6 +18,10 @@ final class AuthService: ObservableObject {
         FirebaseBootstrap.isConfigured
     }
 
+    var currentUserUID: String? {
+        Auth.auth().currentUser?.uid
+    }
+
     func signIn(email: String, password: String) async throws -> (token: String, email: String?, name: String?) {
         try ensureFirebaseReady()
         do {

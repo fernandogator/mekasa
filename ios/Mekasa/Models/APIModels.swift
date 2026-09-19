@@ -437,10 +437,43 @@ struct HouseholdMemberDTO: Codable, Equatable, Identifiable {
     let phone: String?
     let role: String
     let status: String
+    let permissions: [String]
 
     enum CodingKeys: String, CodingKey {
-        case uid, name, email, phone, role, status
+        case uid, name, email, phone, role, status, permissions
         case householdId = "household_id"
+    }
+
+    init(
+        uid: String,
+        householdId: String,
+        name: String?,
+        email: String?,
+        phone: String?,
+        role: String,
+        status: String,
+        permissions: [String] = []
+    ) {
+        self.uid = uid
+        self.householdId = householdId
+        self.name = name
+        self.email = email
+        self.phone = phone
+        self.role = role
+        self.status = status
+        self.permissions = permissions
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        uid = try container.decode(String.self, forKey: .uid)
+        householdId = try container.decode(String.self, forKey: .householdId)
+        name = try container.decodeIfPresent(String.self, forKey: .name)
+        email = try container.decodeIfPresent(String.self, forKey: .email)
+        phone = try container.decodeIfPresent(String.self, forKey: .phone)
+        role = try container.decode(String.self, forKey: .role)
+        status = try container.decode(String.self, forKey: .status)
+        permissions = try container.decodeIfPresent([String].self, forKey: .permissions) ?? []
     }
 }
 
