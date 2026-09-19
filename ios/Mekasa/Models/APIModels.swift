@@ -396,6 +396,14 @@ struct HouseholdInviteDTO: Codable, Equatable, Identifiable {
         case householdId = "household_id"
         case inviteLink = "invite_link"
     }
+
+    /// App deep link preferred for share sheet; falls back to API https link.
+    var shareURL: URL? {
+        if let url = URL(string: "mekasa://invite?token=\(token)") {
+            return url
+        }
+        return inviteLink.flatMap(URL.init(string:))
+    }
 }
 
 struct HouseholdInvitesResponseDTO: Codable, Equatable {

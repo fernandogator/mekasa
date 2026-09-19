@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Multi-select nearby stores (stub list from API until Places is wired).
+/// Multi-select nearby stores (Google Places when configured, else stub list).
 /// Satisfies: REQ-003 AC4–AC5, UI-002 / UI-003
 /// Spec version: 1.0
 struct StoreSelectionView: View {
@@ -170,8 +170,23 @@ private struct StoreRow: View {
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(store.name)
-                        .font(.system(size: 16, weight: .heavy, design: .rounded))
+                    HStack(spacing: 8) {
+                        Text(store.name)
+                            .font(.system(size: 16, weight: .heavy, design: .rounded))
+                        if store.provider == "places" {
+                            Text("Places")
+                                .font(.system(size: 10, weight: .heavy, design: .rounded))
+                                .foregroundStyle(isSelected ? MekasaTheme.brandMuted : MekasaTheme.accent)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .overlay(
+                                    Capsule().stroke(
+                                        isSelected ? MekasaTheme.brandMuted : MekasaTheme.accent,
+                                        lineWidth: 1
+                                    )
+                                )
+                        }
+                    }
                     Text(String(format: "%.1f mi", store.distanceMiles))
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .tracking(0.8)

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from app.auth import AuthUser, verify_bearer_token
 from app.barcode_lookup import lookup_barcode
 from app.config import Settings, get_settings
+from app.household_access import assert_household_member, assert_household_owner
 from app.inventory_repository import InventoryRepository, get_inventory_repository
 from app.models import (
     AddressUpdateRequest,
@@ -27,6 +28,9 @@ from app.models import (
     InventoryItemResponse,
     InventoryItemUpdateRequest,
     InventoryListResponse,
+    PurchaseEventCreateRequest,
+    PurchaseEventResponse,
+    PurchaseEventUpdateRequest,
     ReceiptScanRequest,
     ReceiptScanResponse,
     ShoppingListItemCreateRequest,
@@ -34,6 +38,8 @@ from app.models import (
     ShoppingListItemUpdateRequest,
     ShoppingListResponse,
     ShoppingListSyncResponse,
+    SpendingPeriod,
+    SpendingReportResponse,
     StoreSearchResponse,
     StoreSelectionRequest,
     UnknownBarcodeEvent,
@@ -47,6 +53,7 @@ from app.repository import (
     get_household_repository,
     stub_nearby_stores,
 )
+from app.spending_repository import SpendingRepository, get_spending_repository
 from app.unknown_barcode_log import list_unknown_barcodes, log_unknown_barcode
 from app.shopping_list_repository import (
     ShoppingListRepository,
@@ -57,6 +64,7 @@ health_router = APIRouter(tags=["health"])
 api_router = APIRouter(prefix="/v1", tags=["onboarding"])
 inventory_router = APIRouter(prefix="/v1", tags=["inventory"])
 shopping_list_router = APIRouter(prefix="/v1", tags=["shopping-list"])
+spending_router = APIRouter(prefix="/v1", tags=["spending"])
 barcode_router = APIRouter(prefix="/v1", tags=["barcode"])
 
 
@@ -107,13 +115,18 @@ def create_household(
 def get_current_household(
     user: AuthUser = Depends(verify_bearer_token),
     repo: HouseholdRepository = Depends(get_household_repository),
+    members: MembersRepository = Depends(get_members_repository),
 ) -> HouseholdResponse:
     """
-    Satisfies: REQ-001
+    Satisfies: REQ-001, REQ-019
     Acceptance criteria: AC1
     Spec version: 1.0
     """
     household = repo.get_for_owner(user.uid)
+    if household is None:
+        member_household_id = members.primary_household_id_for_user(user.uid)
+        if member_household_id:
+            household = repo.get(member_household_id)
     if household is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No household")
     return household
@@ -157,8 +170,10 @@ async def list_nearby_stores(
     household = repo.get(household_id)
     if household is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
-    if household.owner_uid != user.uid:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    try:
+        assert_household_member(household_id, user.uid)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
     radius = settings.store_search_radius_miles
     stores = stub_nearby_stores(
         latitude=household.latitude,
@@ -244,15 +259,35 @@ def create_inventory_item(
     payload: InventoryItemCreateRequest,
     user: AuthUser = Depends(verify_bearer_token),
     repo: InventoryRepository = Depends(get_inventory_repository),
+    spending: SpendingRepository = Depends(get_spending_repository),
 ) -> InventoryItemResponse:
     """
-    Satisfies: REQ-004, REQ-005, REQ-006, REQ-007
+    Satisfies: REQ-004, REQ-005, REQ-006, REQ-007, REQ-015
     Spec version: 1.0
     """
     try:
-        return repo.create(household_id, user.uid, payload)
+        item = repo.create(household_id, user.uid, payload)
     except (KeyError, PermissionError) as exc:
         raise _map_inventory_errors(exc) from exc
+    if payload.price_paid is not None and payload.price_paid >= 0:
+        purchase_source = "receipt" if payload.source == "receipt" else "inventory"
+        try:
+            spending.create(
+                household_id,
+                user.uid,
+                PurchaseEventCreateRequest(
+                    name=item.name,
+                    category=item.category,
+                    price_paid=payload.price_paid,
+                    quantity=payload.quantity,
+                    inventory_item_id=item.id,
+                    source=purchase_source,
+                ),
+            )
+        except Exception:
+            # Spending is additive; inventory create must still succeed.
+            pass
+    return item
 
 
 @inventory_router.get(
@@ -386,8 +421,10 @@ def list_unknown_barcode_events(
     household = repo.get(household_id)
     if household is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
-    if household.owner_uid != user.uid:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    try:
+        assert_household_owner(household_id, user.uid)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
     return list_unknown_barcodes(household_id)
 
 
@@ -586,8 +623,10 @@ def scan_receipt(
     household = repo.get(household_id)
     if household is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
-    if household.owner_uid != user.uid:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    try:
+        assert_household_member(household_id, user.uid)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
     if not payload.image_base64 and not payload.raw_text:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="image_or_text_required")
     result = parse_receipt_image(
@@ -755,4 +794,78 @@ def update_household_member_role(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@spending_router.post(
+    "/households/{household_id}/purchases",
+    response_model=PurchaseEventResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_purchase_event(
+    household_id: str,
+    payload: PurchaseEventCreateRequest,
+    user: AuthUser = Depends(verify_bearer_token),
+    spending: SpendingRepository = Depends(get_spending_repository),
+) -> PurchaseEventResponse:
+    """
+    Satisfies: REQ-015 AC1–AC3, REQ-017 AC1
+    Spec version: 1.0
+    """
+    try:
+        return spending.create(household_id, user.uid, payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
+
+
+@spending_router.get(
+    "/households/{household_id}/spending",
+    response_model=SpendingReportResponse,
+)
+def get_spending_report(
+    household_id: str,
+    period: SpendingPeriod = "week",
+    category: str | None = None,
+    user: AuthUser = Depends(verify_bearer_token),
+    spending: SpendingRepository = Depends(get_spending_repository),
+) -> SpendingReportResponse:
+    """
+    Satisfies: REQ-017 AC2, REQ-018 AC1–AC2
+    Spec version: 1.0
+    """
+    try:
+        return spending.report(
+            household_id,
+            user.uid,
+            period=period,
+            category=category,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
+
+
+@spending_router.patch(
+    "/households/{household_id}/purchases/{event_id}",
+    response_model=PurchaseEventResponse,
+)
+def update_purchase_event(
+    household_id: str,
+    event_id: str,
+    payload: PurchaseEventUpdateRequest,
+    user: AuthUser = Depends(verify_bearer_token),
+    spending: SpendingRepository = Depends(get_spending_repository),
+) -> PurchaseEventResponse:
+    """
+    Satisfies: REQ-017 AC3
+    Spec version: 1.0
+    """
+    try:
+        return spending.update(household_id, event_id, user.uid, payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
 

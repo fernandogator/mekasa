@@ -199,11 +199,9 @@ class InMemoryShoppingListRepository:
         return added, self.list_items(household_id, owner_uid)
 
     def _require_owner(self, household_id: str, owner_uid: str) -> None:
-        household = self._households.get(household_id)
-        if household is None:
-            raise KeyError(household_id)
-        if household.owner_uid != owner_uid:
-            raise PermissionError(household_id)
+        from app.household_access import assert_household_member
+
+        assert_household_member(household_id, owner_uid)
 
     @staticmethod
     def _find_open(

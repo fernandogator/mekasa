@@ -14,14 +14,13 @@ struct MainShellView: View {
                 Group {
                     switch tab {
                     case .home:
-                        NavigationStack { DashboardView() }
+                        NavigationStack {
+                            DashboardView(selectedTab: $tab)
+                        }
                     case .list:
                         NavigationStack { ShoppingListView() }
                     case .spend:
-                        ComingSoonTabView(
-                            title: "Spending",
-                            subtitle: "Weekly spend reports come after receipt capture."
-                        )
+                        NavigationStack { SpendingView() }
                     case .family:
                         NavigationStack { FamilyMembersView() }
                     }
@@ -103,27 +102,6 @@ private struct BottomNavBar: View {
         .buttonStyle(.plain)
         .accessibilityLabel(tab.title)
         .accessibilityIdentifier(tab == .home ? TestIdentifiers.homeTab : (tab == .list ? TestIdentifiers.listTab : tab.title))
-    }
-}
-
-private struct ComingSoonTabView: View {
-    let title: String
-    let subtitle: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(MekasaTheme.titleFont)
-                .foregroundStyle(MekasaTheme.brand)
-            Text(subtitle)
-                .font(MekasaTheme.bodyFont)
-                .foregroundStyle(MekasaTheme.textMuted)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 24)
-        .padding(.top, 64)
-        .padding(.bottom, 120)
     }
 }
 

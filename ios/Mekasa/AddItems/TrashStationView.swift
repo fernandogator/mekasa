@@ -6,6 +6,7 @@ import SwiftUI
 struct TrashStationView: View {
     @EnvironmentObject private var session: AppSession
     @Environment(\.dismiss) private var dismiss
+    var kioskMode: Bool = false
     @State private var toast: String?
     @State private var isBusy = false
     @State private var cameraError: String?
@@ -15,12 +16,32 @@ struct TrashStationView: View {
     var body: some View {
         MekasaScreen {
             VStack(spacing: 0) {
-                AddFlowHeader(title: "Trash station", onBack: { dismiss() })
+                if kioskMode {
+                    HStack {
+                        Text("Trash station")
+                            .font(.system(size: 16, weight: .heavy, design: .rounded))
+                            .foregroundStyle(MekasaTheme.brand)
+                        Spacer()
+                        Button("Exit") {
+                            session.isTrashKioskMode = false
+                        }
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(MekasaTheme.accent)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 16)
+                    .padding(.bottom, 8)
                     .accessibilityIdentifier(TestIdentifiers.cancelButton)
+                } else {
+                    AddFlowHeader(title: "Trash station", onBack: { dismiss() })
+                        .accessibilityIdentifier(TestIdentifiers.cancelButton)
+                }
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        Text("Scan a barcode when you toss it. Quantity drops by 1 immediately.")
+                        Text(kioskMode
+                              ? "Dedicated dispose mode. Scan a barcode — quantity drops by 1 immediately."
+                              : "Scan a barcode when you toss it. Quantity drops by 1 immediately.")
                             .font(MekasaTheme.bodyFont)
                             .foregroundStyle(MekasaTheme.textMuted)
                             .accessibilityIdentifier(TestIdentifiers.scanPromptLabel)
@@ -72,6 +93,19 @@ struct TrashStationView: View {
                             .accessibilityIdentifier(TestIdentifiers.trashEventList)
                         }
 
+                        if !session.unknownTrashScans.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Unknown scans")
+                                    .font(.system(size: 16, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(MekasaTheme.brand)
+                                ForEach(session.unknownTrashScans.prefix(12)) { event in
+                                    Text(event.barcode)
+                                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                        .foregroundStyle(MekasaTheme.textMuted)
+                                }
+                            }
+                        }
+
                         if !cameraAvailable {
                             SecondaryButton(title: "Simulate known dispose") {
                                 Task { await simulateKnown() }
@@ -103,6 +137,46 @@ struct TrashStationView: View {
         }
         .accessibilityIdentifier(TestIdentifiers.trashStationView)
         .navigationBarHidden(true)
+        .task {
+            guard !session.isUITesting else { return }
+            await session.refreshUnknownTrashScans()
+        }
+    }
+
+    @ViewBuilder
+    private var cameraPane: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Color.black.opacity(0.85))
+                .frame(height: 220)
+            if cameraAvailable {
+                BarcodeCameraView(
+                    onCode: { code in
+                        Task { await handleBarcode(code) }
+                    },
+                    onError: { message in
+                        cameraError = message
+                    }
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .frame(height: 220)
+            } else {
+                VStack(spacing: 8) {
+                    Image(systemName: "barcode.viewfinder")
+                        .font(.system(size: 36, weight: .semibold))
+                        .foregroundStyle(.white)
+                    Text("Camera unavailable — use simulate buttons")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+            }
+            if isBusy {
+                ProgressView()
+                    .tint(.white)
+            }
+        }
     }
 
     @ViewBuilder
@@ -236,6 +310,7 @@ struct TrashStationView: View {
             showToast("\(name) marked gone")
         case .unknown:
             showToast("Unknown barcode logged — no negative qty")
+            Task { await session.refreshUnknownTrashScans() }
         }
     }
 

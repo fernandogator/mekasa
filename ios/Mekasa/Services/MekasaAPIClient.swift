@@ -212,6 +212,15 @@ actor MekasaAPIClient {
         )
     }
 
+    /// Unknown trash-station scans for owner review (REQ-008 AC3).
+    func listUnknownTrashScans(householdID: String, token: String) async throws -> [UnknownBarcodeEventDTO] {
+        try await request(
+            path: "/v1/households/\(householdID)/trash-scans/unknown",
+            method: "GET",
+            token: token
+        )
+    }
+
     func scanReceipt(
         householdID: String,
         imageBase64: String? = nil,
@@ -306,6 +315,17 @@ actor MekasaAPIClient {
             path: "/v1/households/\(householdID)/invites",
             method: "GET",
             token: token
+        )
+    }
+
+    /// Accept a household invite by token (REQ-019 AC2).
+    func acceptHouseholdInvite(inviteToken: String, idToken: String) async throws -> HouseholdMemberDTO {
+        struct Body: Encodable { let token: String }
+        return try await request(
+            path: "/v1/invites/accept",
+            method: "POST",
+            token: idToken,
+            body: Body(token: inviteToken)
         )
     }
 

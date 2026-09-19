@@ -45,4 +45,50 @@ final class Features2to6Tests: XCTestCase {
         session.updateLowStockThreshold(itemID: id, threshold: 3)
         XCTAssertEqual(session.inventory[0].lowStockThreshold, 3)
     }
+
+    @MainActor
+    func testDeepLinkInviteParsesQueryToken() {
+        let session = AppSession()
+        session.handleDeepLink(URL(string: "mekasa://invite?token=abc12345")!)
+        XCTAssertEqual(session.pendingInviteToken, "abc12345")
+    }
+
+    @MainActor
+    func testDeepLinkTrashEnablesKiosk() {
+        let session = AppSession()
+        session.onboardingStep = .done
+        session.handleDeepLink(URL(string: "mekasa://trash")!)
+        XCTAssertTrue(session.isTrashKioskMode)
+    }
+
+    func testInviteShareURLUsesAppScheme() throws {
+        let json = """
+        {
+          "id": "i1",
+          "household_id": "h1",
+          "name": "Sam",
+          "email": "sam@example.com",
+          "phone": null,
+          "role": "member",
+          "token": "tokensecret",
+          "status": "pending",
+          "invite_link": "https://mekasa.app/invite/tokensecret"
+        }
+        """.data(using: .utf8)!
+        let invite = try JSONDecoder().decode(HouseholdInviteDTO.self, from: json)
+        XCTAssertEqual(invite.shareURL?.absoluteString, "mekasa://invite?token=tokensecret")
+    }
+
+    @MainActor
+    func testPendingApprovalsComeFromShoppingList() {
+        let session = AppSession()
+        session.isUIPreview = true
+        session.shoppingList = [
+            ShoppingListItem(name: "Milk", needsApproval: true, requestedBy: "Maya", kind: .request),
+            ShoppingListItem(name: "Eggs", needsApproval: false, kind: .custom),
+        ]
+        let pending = session.shoppingList.filter { $0.needsApproval && !$0.isChecked }
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending.first?.name, "Milk")
+    }
 }
