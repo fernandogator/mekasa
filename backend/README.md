@@ -78,6 +78,7 @@ PYTHONPATH=. ALLOW_TEST_AUTH=true pytest ../tests/backend -q
 | GET/POST | `/v1/households/{id}/members` / invites | yes | Family members + invites (REQ-019) |
 | POST | `/v1/invites/accept` | yes | Accept invite token |
 | GET | `/v1/barcode/{code}` | yes | Open Food Facts UPC lookup (`found` false if unknown) |
+| GET | `/v1/products/search?q=&limit=` | yes | Name search → product variants (manual / voice pick list) |
 
 ## Environment
 

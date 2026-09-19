@@ -73,6 +73,9 @@ Acceptance Criteria:
 - AC1: Form includes name, category, quantity, and optional price
 - AC2: Item saves to shared household inventory immediately
 - AC3: Manual entry is accessible from the main inventory screen
+- AC4: When signed in, user can search the product catalog by typed name
+  (e.g. "Oreos") and pick a concrete variant (name, category, image, UPC)
+  before confirming; free-form "add as typed" remains available
 
 ### REQ-007: Voice Input for Item Entry
 Priority: P2

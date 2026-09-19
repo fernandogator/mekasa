@@ -264,6 +264,29 @@ class BarcodeLookupResponse(BaseModel):
     source: Literal["openfoodfacts", "none"] = "none"
 
 
+class ProductSearchHit(BaseModel):
+    """One product variant from a name search (REQ-006 / REQ-007 AC2)."""
+
+    barcode: str | None = None
+    name: str
+    brand: str | None = None
+    category: str
+    image_url: str | None = None
+    source: Literal["openfoodfacts"] = "openfoodfacts"
+
+
+class ProductSearchResponse(BaseModel):
+    """
+    Satisfies: REQ-006, REQ-007 AC2
+    Spec version: 1.0
+
+    Name search for manual / voice entry — pick a concrete product variant.
+    """
+
+    query: str
+    results: list[ProductSearchHit]
+
+
 MemberRole = Literal["owner", "member"]
 
 

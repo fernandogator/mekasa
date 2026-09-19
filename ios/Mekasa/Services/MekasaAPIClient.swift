@@ -481,6 +481,20 @@ actor MekasaAPIClient {
         )
     }
 
+    /// Name search for manual / voice entry — Oreo → Double Stuf, Thins, etc.
+    func searchProducts(
+        query: String,
+        limit: Int = 8,
+        token: String
+    ) async throws -> ProductSearchResponseDTO {
+        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        return try await request(
+            path: "/v1/products/search?q=\(encoded)&limit=\(limit)",
+            method: "GET",
+            token: token
+        )
+    }
+
     private func request<T: Decodable, B: Encodable>(
         path: String,
         method: String,

@@ -300,6 +300,38 @@ struct BarcodeLookupDTO: Codable, Equatable {
     }
 }
 
+struct ProductSearchHitDTO: Codable, Equatable, Identifiable {
+    var id: String { barcode ?? name }
+    let barcode: String?
+    let name: String
+    let brand: String?
+    let category: String
+    let imageUrl: String?
+    let source: String
+
+    enum CodingKeys: String, CodingKey {
+        case barcode, name, brand, category, source
+        case imageUrl = "image_url"
+    }
+
+    func toDraft(quantity: Int = 1, pricePaid: Double? = nil) -> InventoryItem {
+        InventoryItem(
+            name: name,
+            category: category,
+            quantity: quantity,
+            pricePaid: pricePaid,
+            barcode: barcode,
+            imageURL: imageUrl,
+            source: .manual
+        )
+    }
+}
+
+struct ProductSearchResponseDTO: Codable, Equatable {
+    let query: String
+    let results: [ProductSearchHitDTO]
+}
+
 /// Consume-by-barcode result (REQ-008).
 struct ConsumeByBarcodeResultDTO: Codable, Equatable {
     let found: Bool
