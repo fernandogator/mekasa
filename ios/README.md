@@ -93,17 +93,24 @@ After pulling Swift file adds/removes, always re-run `xcodegen generate` (the `.
 
 ## Tests
 
+Preferred local simulator (see `Config/PreferredSimulator.env`): **iPhone 17 Pro**.
+
 ```bash
 cd ios && xcodegen generate
-# Unit (default): SessionExpiry, API models, … — requires -testPlan UnitTests if you pin a plan
-xcodebuild test -scheme Mekasa -destination 'platform=iOS Simulator,name=iPhone 16' -testPlan UnitTests
+# Convenience wrapper (reads PreferredSimulator.env):
+./scripts/run_unit_tests.sh
+
+# Or explicitly:
+xcodebuild test -scheme Mekasa \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -testPlan UnitTests
 ```
 
 UI layers (structural / snapshots / vision): see `ios/Tests/README.md`. Launch args: `--uitesting` (fixtures, no network), optional `--uitesting-empty`.
 
 SPM (via `project.yml`): FirebaseCore, FirebaseAuth, GoogleSignIn, SnapshotTesting.
 
-Signing → your Team → Run on an **iPhone Simulator** (not “Any iOS Device”).
+Signing → your Team → Run on **iPhone 17 Pro** simulator (not “Any iOS Device”).
 
 ### DEBUG: offline UI walkthrough
 

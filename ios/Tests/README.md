@@ -12,10 +12,13 @@ Shared identifiers + fixtures: `Tests/TestSupport/` (compiled into the app targe
 ```bash
 cd ios && xcodegen generate
 
+# Preferred local simulator: iPhone 17 Pro (Config/PreferredSimulator.env)
+./scripts/run_unit_tests.sh
+
 # Unit tests (default plan — SessionExpiry, API models, inventory/shopping session, …)
-xcodebuild test -scheme Mekasa -destination 'platform=iOS Simulator,name=iPhone 16' -testPlan UnitTests
+xcodebuild test -scheme Mekasa -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -testPlan UnitTests
 # or: -only-testing:MekasaTests  (works because UnitTests is the default plan)
 
-xcodebuild test -scheme Mekasa -destination 'platform=iOS Simulator,name=iPhone 16' -testPlan StructuralTests
-xcodebuild test -scheme Mekasa -destination 'platform=iOS Simulator,name=iPhone 16' -testPlan SnapshotTests
+xcodebuild test -scheme Mekasa -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -testPlan StructuralTests
+xcodebuild test -scheme Mekasa -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -testPlan SnapshotTests
 ```
