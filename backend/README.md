@@ -12,6 +12,8 @@ Python FastAPI service for Cloud Run. Covers:
 - Trash consume-by-barcode with unknown-scan logging (`REQ-008`)
 - Household **inventory CRUD + consume** (`REQ-004`–`REQ-009` persistence slice)
 - Household **shopping list** CRUD + low-stock sync (`REQ-011`–`REQ-014`)
+- **Purchase events + spending reports** (`REQ-015`, `REQ-017`, `REQ-018`)
+- Durable **members/invites** (Firestore when prod) + member ACL on inventory/shopping
 - **Barcode / UPC lookup** via Open Food Facts (`REQ-004`)
 
 ## Local run
@@ -59,13 +61,21 @@ PYTHONPATH=. ALLOW_TEST_AUTH=true pytest ../tests/backend -q
 | PATCH | `/v1/households/{id}/inventory/{item_id}` | yes | Update item fields |
 | DELETE | `/v1/households/{id}/inventory/{item_id}` | yes | Delete item |
 | POST | `/v1/households/{id}/inventory/{item_id}/consume` | yes | Decrement quantity |
-| POST | `/v1/households/{id}/inventory/consume-by-barcode` | yes | Decrement by barcode (404 if unknown) |
+| POST | `/v1/households/{id}/inventory/consume-by-barcode` | yes | Decrement by barcode (unknown → logged event) |
+| GET | `/v1/households/{id}/trash-scans/unknown` | yes | Owner: unknown trash scans |
 | GET | `/v1/households/{id}/shopping-list` | yes | List shopping list rows |
 | POST | `/v1/households/{id}/shopping-list` | yes | Create or merge open row |
 | GET/PATCH/DELETE | `/v1/households/{id}/shopping-list/{item_id}` | yes | Read / update / delete |
 | POST | `…/shopping-list/{item_id}/approve` | yes | Approve pending request |
 | POST | `…/shopping-list/{item_id}/reject` | yes | Reject pending request |
 | POST | `…/shopping-list/sync-from-inventory` | yes | Auto-add low-stock items |
+| POST | `/v1/households/{id}/purchases` | yes | Record purchase / price-paid event (REQ-015) |
+| GET | `/v1/households/{id}/spending` | yes | Spending report `?period=week\|month\|year&category=` |
+| PATCH | `/v1/households/{id}/purchases/{event_id}` | yes | Recategorize / edit purchase (REQ-017) |
+| POST | `/v1/households/{id}/receipts/scan` | yes | Receipt OCR |
+| POST | `/v1/households/{id}/photo` | yes | Household photo (data-URL thin path) |
+| GET/POST | `/v1/households/{id}/members` / invites | yes | Family members + invites (REQ-019) |
+| POST | `/v1/invites/accept` | yes | Accept invite token |
 | GET | `/v1/barcode/{code}` | yes | Open Food Facts UPC lookup (`found` false if unknown) |
 
 ## Environment
@@ -95,9 +105,11 @@ See [`docs/gcp-firebase-setup.md`](../docs/gcp-firebase-setup.md).
 
 Deploy script sets firestore mode and runs Cloud Run as `mekasa-api@…`.
 
-Inventory documents live at `households/{id}/inventory_items/{item_id}`. Create merges by barcode or same name+category (qty adds). Consume never goes below 0.
+Inventory documents live at `households/{id}/inventory_items/{item_id}`. Create merges by barcode or same name+category (qty adds). Consume never goes below 0. Creating an inventory item with `price_paid` also writes a purchase event.
 
 Shopping list documents live at `households/{id}/shopping_list_items/{item_id}`. Open rows merge by name; `sync-from-inventory` auto-adds low-stock inventory (REQ-011).
+
+Purchase events live at `households/{id}/purchase_events/{event_id}` (REQ-015–018). Members + invites live under `households/{id}/members|invites` with `invite_tokens/{token}` and `user_memberships/{uid}/households/{id}` for durable join (REQ-019). Active members can read/write inventory and shopping list; invite create/role changes stay owner-only.
 
 ## Deploy
 

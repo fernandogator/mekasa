@@ -14,14 +14,15 @@
 |--------|--------|---------------|------------|-----------|
 | auth | deployed (Firebase verify) | unit + Cloud Run smoke | — | Real Google/email ID tokens from iOS; keep `ALLOW_TEST_AUTH=false` in prod |
 | household | deployed (Firestore) | unit + smoke | — | Confirm live Cloud Run revision uses `HOUSEHOLD_PERSISTENCE=firestore` |
-| inventory | deployed (CRUD + consume) | unit | — | Barcode/OCR lookup endpoints later |
-| shopping-list | scaffolded (CRUD + sync API) | unit (test_shopping_list_api) | — | Redeploy Cloud Run; iOS wired in same PR |
-| spending | not started | unknown | — | Scaffold category tracking per REQ-015–REQ-018 |
-| sync | not started | unknown | — | Scaffold realtime sync per REQ-020 |
-| ocr | done | unknown | — | Wire Vision API receipt scan per REQ-005 |
-| barcode | deployed (Open Food Facts lookup) | unit (test_barcode_lookup) | — | Redeploy Cloud Run; live camera on device |
-| places | done | unknown | — | Replace store stub with Places API (REQ-003) |
+| inventory | deployed (CRUD + consume + member ACL) | unit | — | — |
+| shopping-list | deployed (CRUD + sync + member ACL) | unit | — | Redeploy Cloud Run |
+| spending | done (purchase events + reports) | unit (test_spending_members_api) | — | Redeploy; wire iOS SpendingView |
+| sync | not started | unknown | — | Client Firestore listeners (REQ-020), not REST |
+| ocr | done | unit | — | Vision on Cloud Run when package + API enabled |
+| barcode | deployed (Open Food Facts lookup) | unit | — | — |
+| places | done | unit | — | Set `GOOGLE_PLACES_API_KEY` on Cloud Run |
 | notifications | not started | unknown | — | Scaffold push notifications per PRD §8 |
+| members/invites | done (Firestore dual-mode) | unit | — | Redeploy for durable invites |
 
 ### Live thin API (2026-09-07)
 
@@ -94,6 +95,13 @@
 ---
 
 ## Running Log
+
+### 2026-09-18 — Backend spending + durable members
+- Purchase events + spending reports (`POST …/purchases`, `GET …/spending`, `PATCH …/purchases/{id}`) — REQ-015/017/018.
+- Inventory create with `price_paid` also records a purchase event.
+- Members/invites Firestore dual-mode; invited members can use inventory/shopping/`/households/current`.
+- Unit: 26 backend tests green (`test_spending_members_api`).
+- **Redeploy Cloud Run** for prod.
 
 ### 2026-09-18 — Remaining iOS features + UI polish
 - Invite accept deep link `mekasa://invite?token=` + Family ShareLink; trash kiosk `mekasa://trash` / `--trash-station`.

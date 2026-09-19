@@ -48,6 +48,15 @@ class MembersRepository(Protocol):
     ) -> HouseholdMemberResponse:
         """Owner updates another member's role."""
 
+    def is_active_participant(self, household_id: str, actor_uid: str) -> bool:
+        """True if uid is an active member (not necessarily owner)."""
+
+    def has_role(self, household_id: str, actor_uid: str, *, role: str) -> bool:
+        """True if uid is active with the given role."""
+
+    def primary_household_id_for_user(self, actor_uid: str) -> str | None:
+        """First household the user belongs to (accepted invite / membership)."""
+
 
 class InMemoryMembersRepository:
     """
@@ -191,19 +200,52 @@ class InMemoryMembersRepository:
             self._members[household_id][member_uid] = updated
             return updated
 
+    def is_active_participant(self, household_id: str, actor_uid: str) -> bool:
+        member = self._members.get(household_id, {}).get(actor_uid)
+        return member is not None and member.status == "active"
 
-_members_repo: InMemoryMembersRepository | None = None
+    def has_role(self, household_id: str, actor_uid: str, *, role: str) -> bool:
+        member = self._members.get(household_id, {}).get(actor_uid)
+        return (
+            member is not None
+            and member.status == "active"
+            and member.role == role
+        )
+
+    def primary_household_id_for_user(self, actor_uid: str) -> str | None:
+        for household_id, bucket in self._members.items():
+            member = bucket.get(actor_uid)
+            if member is not None and member.status == "active":
+                return household_id
+        return None
+
+
+_members_repo: MembersRepository | None = None
+_members_repo_mode: str | None = None
 
 
 def get_members_repository() -> MembersRepository:
-    """Process-wide members repository (in-memory for now)."""
-    global _members_repo
-    if _members_repo is None:
+    """Process-wide members repository (memory or Firestore)."""
+    global _members_repo, _members_repo_mode
+    from app.config import get_settings
+    from app.repository import resolve_persistence_mode
+
+    settings = get_settings()
+    mode = resolve_persistence_mode(settings)
+    if _members_repo is not None and _members_repo_mode == mode:
+        return _members_repo
+    if mode == "firestore":
+        from app.firestore_members_repository import FirestoreMembersRepository
+
+        _members_repo = FirestoreMembersRepository.from_settings(settings)
+    else:
         _members_repo = InMemoryMembersRepository()
+    _members_repo_mode = mode
     return _members_repo
 
 
 def reset_members_repository() -> None:
     """Reset for tests."""
-    global _members_repo
+    global _members_repo, _members_repo_mode
     _members_repo = InMemoryMembersRepository()
+    _members_repo_mode = "memory"
