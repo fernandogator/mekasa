@@ -393,3 +393,73 @@ class InventoryConsumeByBarcodeResult(BaseModel):
     item: InventoryItemResponse | None = None
     unknown_event: UnknownBarcodeEvent | None = None
 
+
+PurchaseSource = Literal["receipt", "manual", "estimated", "inventory"]
+SpendingPeriod = Literal["week", "month", "year"]
+
+
+class PurchaseEventCreateRequest(BaseModel):
+    """
+    Satisfies: REQ-015 AC1–AC3, REQ-017 AC1
+    Spec version: 1.0
+    """
+
+    name: str = Field(min_length=1, max_length=120)
+    category: str = Field(min_length=1, max_length=60)
+    price_paid: float = Field(ge=0)
+    quantity: int = Field(default=1, ge=1)
+    store_id: str | None = Field(default=None, max_length=120)
+    inventory_item_id: str | None = Field(default=None, max_length=80)
+    source: PurchaseSource = "manual"
+    purchased_at: datetime | None = None
+
+
+class PurchaseEventUpdateRequest(BaseModel):
+    """
+    Satisfies: REQ-017 AC3
+    Spec version: 1.0
+    """
+
+    category: str | None = Field(default=None, min_length=1, max_length=60)
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    price_paid: float | None = Field(default=None, ge=0)
+
+
+class PurchaseEventResponse(BaseModel):
+    """One purchase / price-paid event (REQ-015)."""
+
+    id: str
+    household_id: str
+    name: str
+    category: str
+    price_paid: float
+    quantity: int
+    store_id: str | None = None
+    inventory_item_id: str | None = None
+    source: PurchaseSource
+    purchased_at: datetime
+    created_by_uid: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class SpendingCategoryTotal(BaseModel):
+    """Category rollup for spending reports."""
+
+    category: str
+    total: float
+
+
+class SpendingReportResponse(BaseModel):
+    """
+    Satisfies: REQ-017 AC2, REQ-018 AC1–AC2
+    Spec version: 1.0
+    """
+
+    household_id: str
+    period: SpendingPeriod
+    currency: str = "USD"
+    total: float
+    by_category: list[SpendingCategoryTotal]
+    events: list[PurchaseEventResponse]
+

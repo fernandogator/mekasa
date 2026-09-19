@@ -14,14 +14,15 @@
 |--------|--------|---------------|------------|-----------|
 | auth | deployed (Firebase verify) | unit + Cloud Run smoke | — | Real Google/email ID tokens from iOS; keep `ALLOW_TEST_AUTH=false` in prod |
 | household | deployed (Firestore) | unit + smoke | — | Confirm live Cloud Run revision uses `HOUSEHOLD_PERSISTENCE=firestore` |
-| inventory | deployed (CRUD + consume) | unit | — | Barcode/OCR lookup endpoints later |
-| shopping-list | scaffolded (CRUD + sync API) | unit (test_shopping_list_api) | — | Redeploy Cloud Run; iOS wired in same PR |
-| spending | not started | unknown | — | Scaffold category tracking per REQ-015–REQ-018 |
-| sync | not started | unknown | — | Scaffold realtime sync per REQ-020 |
-| ocr | done | unknown | — | Wire Vision API receipt scan per REQ-005 |
-| barcode | deployed (Open Food Facts lookup) | unit (test_barcode_lookup) | — | Redeploy Cloud Run; live camera on device |
-| places | done | unknown | — | Replace store stub with Places API (REQ-003) |
+| inventory | deployed (CRUD + consume + member ACL) | unit | — | — |
+| shopping-list | deployed (CRUD + sync + member ACL) | unit | — | Redeploy Cloud Run |
+| spending | done (purchase events + reports) | unit (test_spending_members_api) | — | Redeploy; wire iOS SpendingView |
+| sync | not started | unknown | — | Client Firestore listeners (REQ-020), not REST |
+| ocr | done | unit | — | Vision on Cloud Run when package + API enabled |
+| barcode | deployed (Open Food Facts lookup) | unit | — | — |
+| places | done | unit | — | Set `GOOGLE_PLACES_API_KEY` on Cloud Run |
 | notifications | not started | unknown | — | Scaffold push notifications per PRD §8 |
+| members/invites | done (Firestore dual-mode) | unit | — | Redeploy for durable invites |
 
 ### Live thin API (2026-09-07)
 
@@ -54,14 +55,14 @@
 
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
-| onboarding | ready (live auth verified) | stubs | — | Keep Firebase plist local; Google Sign-In OAuth client still optional |
-| dashboard | ready (SwiftUI UI-004) | stubs | — | Wire spend APIs when backend endpoints exist |
-| inventory-screen | in progress (thumbnails + detail) | unit (InventorySessionTests) | — | Persist image_url on inventory API; full inventory list screen |
-| scanner | in progress (live camera + UPC API) | stubs | — | Expand ScannerUITest on device |
-| shopping-list-screen | in progress (SwiftUI + API sync) | unit (ShoppingListSessionTests) | — | Expand ShoppingListUITest; member roles |
-| spending-screen | not started | unknown | — | Confirm SpendingReport.jsx |
-| settings | not started | unknown | — | Family tab placeholder exists; expand FamilyMembers |
-| trash-station-mode | in progress (local consume) | stubs | — | Dedicated device mode + live barcode; UI-005 polish |
+| onboarding | ready (scan step wired) | stubs + Features2to6Tests | — | Keep Firebase plist local; Apple Sign-In later |
+| dashboard | ready (live approvals + inventory link) | stubs | — | Notifications; bind spend card to spend API when ready |
+| inventory-screen | ready (list + detail + Add hub) | unit | — | Expand InventoryScreenUITest |
+| scanner | ready (barcode + receipt confirm prices) | stubs | — | Expand ScannerUITest on device |
+| shopping-list-screen | ready (API sync + dashboard approvals) | unit | — | Owner purchase gate (REQ-014) |
+| spending-screen | in progress (local price rollup) | stubs | — | Backend spend API (REQ-015–018) |
+| settings / family | ready (invites, roles, ShareLink, accept) | Features2to6Tests | — | Push/email delivery for invites |
+| trash-station-mode | ready (kiosk + unknown scans) | Features2to6Tests | — | Home-screen shortcut polish |
 
 ## Phase 4: UI Design and Visual Verification
 
@@ -95,18 +96,19 @@
 
 ## Running Log
 
-### 2026-09-12 — UI-006 requirements everywhere
-- Inventory thumbnails + item detail recorded across PRD §7.1, REQ-004 AC4–AC5,
-  UI-006, architecture browse/barcode flows, user-flows, Superdesign init
-  (pages/routes/extractable), design-system, design README, matrix.md/csv,
-  Android + iOS UI test stubs, mockup stubs.
+### 2026-09-18 — Backend spending + durable members
+- Purchase events + spending reports (`POST …/purchases`, `GET …/spending`, `PATCH …/purchases/{id}`) — REQ-015/017/018.
+- Inventory create with `price_paid` also records a purchase event.
+- Members/invites Firestore dual-mode; invited members can use inventory/shopping/`/households/current`.
+- Unit: 26 backend tests green (`test_spending_members_api`).
+- **Redeploy Cloud Run** for prod.
 
-### 2026-09-12 — Inventory thumbnails + item detail sample (UI-006)
-- Added `design/pages/inventory-list.html` and `item-detail.html` — live Open Food Facts
-  images (sample UPC `049000028911` Diet Coke); tap thumbnail → detail with lightbox.
-- iOS: `ProductThumbnail` / `ProductHeroImage` on low-stock list + item detail.
-- Spec/PRD/matrix: UI-006; fixtures use real OFF image for Diet Coke.
-- Next: persist `image_url` on inventory API documents; Superdesign polish for InventoryList/ItemDetail.
+### 2026-09-18 — Remaining iOS features + UI polish
+- Invite accept deep link `mekasa://invite?token=` + Family ShareLink; trash kiosk `mekasa://trash` / `--trash-station`.
+- Onboarding InitialScan wired to barcode / receipt / manual.
+- Dashboard approvals from live shopping-list pending; inventory list + Spending local rollup.
+- Receipt confirm edits price; unknown trash-scan list; Places provider badge.
+- Unit: Features2to6Tests (deep link, invite share URL, approvals).
 
 ### 2026-09-08 — Live barcode camera + UPC lookup (REQ-004)
 - Backend `GET /v1/barcode/{code}` via Open Food Facts (found=false → manual fallback).

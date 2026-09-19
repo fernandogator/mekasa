@@ -107,6 +107,35 @@ struct ItemConfirmView: View {
             }
             .foregroundStyle(MekasaTheme.brand)
             .accessibilityIdentifier(TestIdentifiers.quantityControl)
+
+            HStack {
+                Text("Price")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(MekasaTheme.textMuted)
+                Spacer()
+                TextField(
+                    "0.00",
+                    text: Binding(
+                        get: {
+                            draft.wrappedValue.pricePaid.map { String(format: "%.2f", $0) } ?? ""
+                        },
+                        set: { raw in
+                            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if trimmed.isEmpty {
+                                draft.wrappedValue.pricePaid = nil
+                            } else if let value = Double(trimmed) {
+                                draft.wrappedValue.pricePaid = value
+                            }
+                        }
+                    )
+                )
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(MekasaTheme.brand)
+                .frame(maxWidth: 120)
+                .accessibilityIdentifier(TestIdentifiers.locationField)
+            }
         }
         .padding(20)
         .background(MekasaTheme.surfaceElevated)

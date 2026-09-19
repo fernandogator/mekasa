@@ -21,6 +21,10 @@ struct RootView: View {
                 InitialScanView()
             case .invite:
                 InviteView()
+            case .done where session.isTrashKioskMode:
+                NavigationStack {
+                    TrashStationView(kioskMode: true)
+                }
             case .done:
                 MainShellView()
             }
