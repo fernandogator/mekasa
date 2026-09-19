@@ -11,7 +11,7 @@ Last updated: 2026-09-12
 | REQ-004 | Barcode Scanning and Product Lookup | design/mockups/AddItems.jsx | pending | pending | not tested | — |
 | REQ-005 | Receipt Scanning and Bulk Entry | design/mockups/AddItems.jsx | done | done | unit (OCR parse) | ReceiptScanView + ItemConfirmView |
 | REQ-006 | Manual Item Entry | design/mockups/AddItems.jsx | pending | pending | not tested | — |
-| REQ-007 | Voice Input for Item Entry | design/mockups/AddItems.jsx | pending | pending | not tested | — |
+| REQ-007 | Voice Input for Item Entry | design/mockups/AddItems.jsx | VoicePhraseParserTests | ios/MekasaTests/VoicePhraseParserTests.swift | unit (phrase parse + match draft) | 2026-09-19 |
 | REQ-008 | Trash Station Consumption Scanning | design/mockups/TrashStationMode.jsx | done | done | unit (consume+unknown) | TrashStationView barcode consume |
 | REQ-009 | Low Stock Threshold — Manual | design/mockups/Dashboard.jsx | done | done | unit (PATCH threshold) | ItemDetailView |
 | REQ-010 | Low Stock Threshold — Learned | — | pending | pending | not tested | — |
