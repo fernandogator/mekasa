@@ -49,7 +49,7 @@ from app.models import (
 )
 from app.members_repository import MembersRepository, get_members_repository
 from app.places_lookup import fetch_nearby_stores
-from app.receipt_ocr import parse_receipt_image
+from app.receipt_ocr import enrich_receipt_items, parse_receipt_image
 from app.repository import (
     HouseholdRepository,
     get_household_repository,
@@ -662,7 +662,7 @@ async def search_products_endpoint(
     "/households/{household_id}/receipts/scan",
     response_model=ReceiptScanResponse,
 )
-def scan_receipt(
+async def scan_receipt(
     household_id: str,
     payload: ReceiptScanRequest,
     user: AuthUser = Depends(verify_bearer_token),
@@ -670,8 +670,12 @@ def scan_receipt(
 ) -> ReceiptScanResponse:
     """
     Satisfies: REQ-005
-    Acceptance criteria: AC1
+    Acceptance criteria: AC1, AC2
     Spec version: 1.0
+
+    OCR parses line items, then each line is matched against Open Food Facts
+    for a product image / barcode. Unmatched lines keep the OCR name and a
+    category placeholder image with identified=false.
     """
     household = repo.get(household_id)
     if household is None:
@@ -687,10 +691,11 @@ def scan_receipt(
         raw_text=payload.raw_text,
         allow_stub=True,
     )
+    items = await enrich_receipt_items(result.items)
     return ReceiptScanResponse(
         household_id=household_id,
         engine=result.engine,
-        items=result.items,
+        items=items,
     )
 
 

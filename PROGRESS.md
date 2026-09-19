@@ -103,6 +103,12 @@
 - Unit: 26 backend tests green (`test_spending_members_api`).
 - **Redeploy Cloud Run** for prod.
 
+### 2026-09-19 — Receipt scan enrichment (images + unidentified)
+- After OCR, each line is matched via Open Food Facts name search.
+- Response includes `image_url`, optional `barcode`, and `identified`.
+- Confirm haul UI shows recognition summary, “Not identified” badges, and thumbs.
+- **Redeploy Cloud Run** for enriched receipt scan.
+
 ### 2026-09-19 — Manual entry product variant search
 - Backend `GET /v1/products/search?q=` via Open Food Facts (distinct named variants).
 - iOS ManualEntry: **Find matching products** → pick Oreo Double Stuf / Thins / etc. → confirm.

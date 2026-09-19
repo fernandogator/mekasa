@@ -364,10 +364,43 @@ struct ReceiptLineItemDTO: Codable, Equatable {
     let category: String
     let quantity: Int
     let pricePaid: Double?
+    let barcode: String?
+    let imageUrl: String?
+    let identified: Bool
 
     enum CodingKeys: String, CodingKey {
-        case name, category, quantity
+        case name, category, quantity, barcode, identified
         case pricePaid = "price_paid"
+        case imageUrl = "image_url"
+    }
+
+    init(
+        name: String,
+        category: String,
+        quantity: Int,
+        pricePaid: Double?,
+        barcode: String? = nil,
+        imageUrl: String? = nil,
+        identified: Bool = false
+    ) {
+        self.name = name
+        self.category = category
+        self.quantity = quantity
+        self.pricePaid = pricePaid
+        self.barcode = barcode
+        self.imageUrl = imageUrl
+        self.identified = identified
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decode(String.self, forKey: .name)
+        category = try container.decode(String.self, forKey: .category)
+        quantity = try container.decode(Int.self, forKey: .quantity)
+        pricePaid = try container.decodeIfPresent(Double.self, forKey: .pricePaid)
+        barcode = try container.decodeIfPresent(String.self, forKey: .barcode)
+        imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
+        identified = try container.decodeIfPresent(Bool.self, forKey: .identified) ?? false
     }
 
     func toLocal() -> InventoryItem {
@@ -376,7 +409,10 @@ struct ReceiptLineItemDTO: Codable, Equatable {
             category: category,
             quantity: quantity,
             pricePaid: pricePaid,
-            source: .receipt
+            barcode: barcode,
+            source: .receipt,
+            imageURL: imageUrl,
+            isIdentified: identified
         )
     }
 }

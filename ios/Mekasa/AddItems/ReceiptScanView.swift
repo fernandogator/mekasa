@@ -101,10 +101,21 @@ struct ReceiptScanView: View {
 
         if session.isUIPreview || session.isUITesting || session.idToken == nil || session.household?.id == nil {
             drafts = InventoryDemoCatalog.sampleReceiptLines.map { name, category, price in
-                InventoryItem(name: name, category: category, quantity: 1, pricePaid: price, source: .receipt)
+                InventoryItem(
+                    name: name,
+                    category: category,
+                    quantity: 1,
+                    pricePaid: price,
+                    source: .receipt,
+                    imageURL: Self.placeholderURL(for: category),
+                    isIdentified: name != "Sourdough Loaf"
+                )
             }
             engineLabel = "demo"
-            statusMessage = "Review the demo haul, then save."
+            let unidentified = drafts.filter { !$0.isIdentified }.count
+            statusMessage = unidentified == 0
+                ? "Review the demo haul, then save."
+                : "Review the demo haul — \(unidentified) item needs review."
             showConfirm = true
             return
         }
@@ -119,14 +130,24 @@ struct ReceiptScanView: View {
             )
             drafts = response.items.map { $0.toLocal() }
             engineLabel = response.engine
-            statusMessage = drafts.isEmpty
-                ? "No line items found — try another photo or demo haul."
-                : "Review \(drafts.count) parsed items, then save."
+            let unidentified = drafts.filter { !$0.isIdentified }.count
+            if drafts.isEmpty {
+                statusMessage = "No line items found — try another photo or demo haul."
+            } else if unidentified > 0 {
+                statusMessage = "Found \(drafts.count) items — \(unidentified) not identified in the catalog."
+            } else {
+                statusMessage = "Review \(drafts.count) recognized items, then save."
+            }
             showConfirm = !drafts.isEmpty
         } catch {
             session.handleAPIFailure(error)
             statusMessage = error.localizedDescription
         }
+    }
+
+    private static func placeholderURL(for category: String) -> String {
+        let label = category.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "Item"
+        return "https://placehold.co/400x400/eeebe3/171e19/png?text=\(label)"
     }
 }
 

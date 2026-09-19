@@ -12,6 +12,14 @@ struct ItemConfirmView: View {
 
     @State private var saved = false
 
+    private var unidentifiedCount: Int {
+        drafts.filter { !$0.isIdentified }.count
+    }
+
+    private var identifiedCount: Int {
+        drafts.count - unidentifiedCount
+    }
+
     var body: some View {
         MekasaScreen {
             VStack(spacing: 0) {
@@ -22,7 +30,10 @@ struct ItemConfirmView: View {
                         Text("Review before anything saves.")
                             .font(MekasaTheme.bodyFont)
                             .foregroundStyle(MekasaTheme.textMuted)
-                            .padding(.bottom, 4)
+
+                        if drafts.count > 1 || unidentifiedCount > 0 {
+                            recognitionSummary
+                        }
 
                         ForEach($drafts) { $draft in
                             draftCard($draft)
@@ -35,7 +46,10 @@ struct ItemConfirmView: View {
                 }
 
                 StickyBottomBar(progress: nil) {
-                    PrimaryButton(title: drafts.count == 1 ? "Add to inventory" : "Add \(drafts.count) items") {
+                    PrimaryButton(
+                        title: drafts.count == 1 ? "Add to inventory" : "Add \(drafts.count) items",
+                        disabled: drafts.isEmpty
+                    ) {
                         for draft in drafts {
                             session.addInventoryItem(draft)
                         }
@@ -58,12 +72,38 @@ struct ItemConfirmView: View {
         }
     }
 
+    private var recognitionSummary: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("\(identifiedCount) recognized · \(unidentifiedCount) need review")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(MekasaTheme.brand)
+            if unidentifiedCount > 0 {
+                Text("Unidentified lines keep the receipt name and a category image — edit before saving.")
+                    .font(MekasaTheme.bodyFont)
+                    .foregroundStyle(MekasaTheme.textMuted)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(MekasaTheme.surfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityIdentifier(TestIdentifiers.emptyStateView)
+    }
+
     private func draftCard(_ draft: Binding<InventoryItem>) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 14) {
-                productThumb(draft.wrappedValue.imageURL)
+                ProductThumbnail(urlString: draft.wrappedValue.imageURL, size: 64, cornerRadius: 16)
                     .accessibilityIdentifier(TestIdentifiers.itemImage)
                 VStack(alignment: .leading, spacing: 6) {
+                    if !draft.wrappedValue.isIdentified {
+                        Text("Not identified")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .tracking(0.6)
+                            .textCase(.uppercase)
+                            .foregroundStyle(MekasaTheme.accent)
+                            .accessibilityIdentifier(TestIdentifiers.scanPromptLabel)
+                    }
                     TextField("Name", text: draft.name)
                         .font(.system(size: 18, weight: .heavy, design: .rounded))
                         .foregroundStyle(MekasaTheme.brand)
@@ -71,6 +111,27 @@ struct ItemConfirmView: View {
                     Text(draft.wrappedValue.category)
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(MekasaTheme.textMuted)
+                    if let barcode = draft.wrappedValue.barcode, !barcode.isEmpty {
+                        Text("UPC \(barcode)")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(MekasaTheme.textMuted)
+                            .accessibilityIdentifier(TestIdentifiers.itemBarcodeLabel)
+                    }
+                }
+                Spacer(minLength: 0)
+                if drafts.count > 1 {
+                    Button {
+                        drafts.removeAll { $0.id == draft.wrappedValue.id }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(MekasaTheme.textMuted)
+                            .frame(width: 28, height: 28)
+                            .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Remove item")
                 }
             }
 
@@ -142,40 +203,13 @@ struct ItemConfirmView: View {
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1)
+                .stroke(
+                    draft.wrappedValue.isIdentified
+                        ? MekasaTheme.brandMuted.opacity(0.3)
+                        : MekasaTheme.accent.opacity(0.55),
+                    lineWidth: 1
+                )
         )
-    }
-
-    @ViewBuilder
-    private func productThumb(_ urlString: String?) -> some View {
-        let placeholder = RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .fill(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
-            .frame(width: 64, height: 64)
-            .overlay {
-                Image(systemName: "photo")
-                    .foregroundStyle(MekasaTheme.brandMuted)
-            }
-
-        if let urlString, let url = URL(string: urlString) {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case let .success(image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 64, height: 64)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                case .failure:
-                    placeholder
-                case .empty:
-                    placeholder.overlay { ProgressView() }
-                @unknown default:
-                    placeholder
-                }
-            }
-        } else {
-            placeholder
-        }
     }
 }
 

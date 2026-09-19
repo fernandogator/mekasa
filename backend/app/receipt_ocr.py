@@ -1,12 +1,18 @@
-"""Receipt OCR parsing via Cloud Vision with a deterministic stub fallback (REQ-005)."""
+"""Receipt OCR parsing via Cloud Vision with catalog enrichment (REQ-005)."""
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import re
 from dataclasses import dataclass
 
+from app.barcode_lookup import search_products
+from app.category_icons import category_placeholder_url
 from app.models import ReceiptLineItem
+
+# Cap concurrent OFF lookups so a long receipt does not stampede the API.
+_ENRICH_CONCURRENCY = 4
 
 
 @dataclass(frozen=True)
@@ -37,6 +43,24 @@ _SKIP_PREFIXES = (
     "phone",
 )
 
+_CATEGORY_KEYWORDS = (
+    (("banana", "apple", "avocado", "lettuce", "produce", "fruit", "veg"), "Produce"),
+    (("milk", "cheese", "yogurt", "butter", "cream", "dairy"), "Dairy"),
+    (("bread", "loaf", "cereal", "pasta", "rice", "cookie", "oreo", "snack"), "Pantry"),
+    (("chicken", "beef", "pork", "meat", "turkey", "fish"), "Meat"),
+    (("frozen", "ice cream"), "Frozen"),
+    (("soda", "juice", "water", "coffee", "tea", "beverage"), "Beverages"),
+    (("soap", "paper", "detergent", "cleaner"), "Household"),
+)
+
+
+def _guess_category(name: str) -> str:
+    lowered = name.casefold()
+    for needles, label in _CATEGORY_KEYWORDS:
+        if any(needle in lowered for needle in needles):
+            return label
+    return "Other"
+
 
 def parse_receipt_text(text: str) -> list[ReceiptLineItem]:
     """Heuristic line-item extraction from OCR / stub text."""
@@ -55,12 +79,16 @@ def parse_receipt_text(text: str) -> list[ReceiptLineItem]:
         if len(name) < 2:
             continue
         price = float(match.group("price"))
+        display = name.title() if name.isupper() else name
+        category = _guess_category(display)
         items.append(
             ReceiptLineItem(
-                name=name.title() if name.isupper() else name,
-                category="Other",
+                name=display,
+                category=category,
                 quantity=1,
                 price_paid=price,
+                image_url=category_placeholder_url(category),
+                identified=False,
             )
         )
     return items
@@ -69,9 +97,30 @@ def parse_receipt_text(text: str) -> list[ReceiptLineItem]:
 def stub_receipt_items() -> list[ReceiptLineItem]:
     """Deterministic demo haul used when Vision is unavailable."""
     return [
-        ReceiptLineItem(name="Bananas", category="Produce", quantity=1, price_paid=1.29),
-        ReceiptLineItem(name="Whole Milk", category="Dairy", quantity=1, price_paid=3.49),
-        ReceiptLineItem(name="Sourdough Loaf", category="Pantry", quantity=1, price_paid=4.99),
+        ReceiptLineItem(
+            name="Bananas",
+            category="Produce",
+            quantity=1,
+            price_paid=1.29,
+            image_url=category_placeholder_url("Produce"),
+            identified=False,
+        ),
+        ReceiptLineItem(
+            name="Whole Milk",
+            category="Dairy",
+            quantity=1,
+            price_paid=3.49,
+            image_url=category_placeholder_url("Dairy"),
+            identified=False,
+        ),
+        ReceiptLineItem(
+            name="Sourdough Loaf",
+            category="Pantry",
+            quantity=1,
+            price_paid=4.99,
+            image_url=category_placeholder_url("Pantry"),
+            identified=False,
+        ),
     ]
 
 
@@ -95,6 +144,79 @@ def _vision_annotate(image_bytes: bytes) -> str:
     return annotation.text if annotation and annotation.text else ""
 
 
+def _tokens(value: str) -> set[str]:
+    return {part for part in re.split(r"[^a-z0-9]+", value.casefold()) if len(part) >= 2}
+
+
+def _is_strong_match(ocr_name: str, hit_name: str) -> bool:
+    """Require overlapping tokens so weak OFF hits stay unidentified."""
+    ocr = _tokens(ocr_name)
+    hit = _tokens(hit_name)
+    if not ocr or not hit:
+        return False
+    if ocr_name.casefold() in hit_name.casefold() or hit_name.casefold() in ocr_name.casefold():
+        return True
+    overlap = ocr & hit
+    # At least one meaningful token, and majority of OCR tokens when short.
+    if not overlap:
+        return False
+    if len(ocr) <= 2:
+        return len(overlap) == len(ocr)
+    return len(overlap) >= max(1, len(ocr) // 2)
+
+
+async def enrich_receipt_item(item: ReceiptLineItem) -> ReceiptLineItem:
+    """
+    Match a parsed line against Open Food Facts.
+
+    Always returns an image_url (catalog photo or category placeholder).
+    Sets identified=True only when a strong name match is found.
+    """
+    placeholder = category_placeholder_url(item.category)
+    try:
+        search = await search_products(item.name, limit=3)
+    except Exception:
+        return item.model_copy(
+            update={
+                "image_url": item.image_url or placeholder,
+                "identified": False,
+            }
+        )
+
+    for hit in search.results:
+        if not _is_strong_match(item.name, hit.name):
+            continue
+        return item.model_copy(
+            update={
+                "name": hit.name[:120],
+                "category": hit.category or item.category,
+                "barcode": hit.barcode,
+                "image_url": hit.image_url or placeholder,
+                "identified": True,
+            }
+        )
+
+    return item.model_copy(
+        update={
+            "image_url": item.image_url or placeholder,
+            "identified": False,
+        }
+    )
+
+
+async def enrich_receipt_items(items: list[ReceiptLineItem]) -> list[ReceiptLineItem]:
+    """Enrich lines in parallel with a small concurrency limit."""
+    if not items:
+        return []
+    semaphore = asyncio.Semaphore(_ENRICH_CONCURRENCY)
+
+    async def _one(item: ReceiptLineItem) -> ReceiptLineItem:
+        async with semaphore:
+            return await enrich_receipt_item(item)
+
+    return list(await asyncio.gather(*(_one(item) for item in items)))
+
+
 def parse_receipt_image(
     *,
     image_base64: str | None = None,
@@ -107,6 +229,7 @@ def parse_receipt_image(
 
     Prefer Vision OCR when image bytes are present and the client library works.
     ``raw_text`` supports tests without GCP credentials. Falls back to stub haul.
+    Catalog enrichment is applied separately by the router (async OFF lookup).
     """
     if raw_text and raw_text.strip():
         items = parse_receipt_text(raw_text)

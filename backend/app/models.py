@@ -297,6 +297,9 @@ class ReceiptLineItem(BaseModel):
     category: str = Field(default="Other", min_length=1, max_length=60)
     quantity: int = Field(default=1, ge=1, le=9999)
     price_paid: float | None = Field(default=None, ge=0)
+    barcode: str | None = Field(default=None, max_length=64)
+    image_url: str | None = Field(default=None, max_length=2048)
+    identified: bool = False
 
 
 class ReceiptScanRequest(BaseModel):

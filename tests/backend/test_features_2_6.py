@@ -113,19 +113,29 @@ def test_receipt_scan_parses_raw_text(client: TestClient) -> None:
     Satisfies: REQ-005 AC1
     Spec version: 1.0
     """
+    from unittest.mock import AsyncMock, patch
+
+    from app.models import ProductSearchResponse
+
     household_id = _household(client)
-    scanned = client.post(
-        f"/v1/households/{household_id}/receipts/scan",
-        json={
-            "raw_text": "BANANAS 1.29\nWHOLE MILK 3.49\nSUBTOTAL 4.78\nTOTAL 4.78\n"
-        },
-        headers=_auth(),
-    )
+    with patch(
+        "app.receipt_ocr.search_products",
+        new=AsyncMock(return_value=ProductSearchResponse(query="x", results=[])),
+    ):
+        scanned = client.post(
+            f"/v1/households/{household_id}/receipts/scan",
+            json={
+                "raw_text": "BANANAS 1.29\nWHOLE MILK 3.49\nSUBTOTAL 4.78\nTOTAL 4.78\n"
+            },
+            headers=_auth(),
+        )
     assert scanned.status_code == 200
     body = scanned.json()
     assert body["engine"] == "text"
     assert len(body["items"]) == 2
     assert body["items"][0]["price_paid"] == 1.29
+    assert body["items"][0]["image_url"]
+    assert body["items"][0]["identified"] is False
 
 
 def test_household_photo_upload(client: TestClient) -> None:
