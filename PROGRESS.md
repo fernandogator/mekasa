@@ -1,7 +1,7 @@
 # Project MEKASA
 
 - **Current Phase:** 3 — Live barcode + UPC lookup
-- **Last Updated:** 2026-09-12
+- **Last Updated:** 2026-09-19
 
 > **WARNING:** This file must be reconciled against the actual codebase at the
 > start of every session. Never trust this file without verification.
@@ -14,7 +14,7 @@
 |--------|--------|---------------|------------|-----------|
 | auth | deployed (Firebase verify) | unit + Cloud Run smoke | — | Real Google/email ID tokens from iOS; keep `ALLOW_TEST_AUTH=false` in prod |
 | household | deployed (Firestore) | unit + smoke | — | Confirm live Cloud Run revision uses `HOUSEHOLD_PERSISTENCE=firestore` |
-| inventory | deployed (CRUD + consume + member ACL) | unit | — | — |
+| inventory | deployed (CRUD + consume + member ACL + refresh-image) | unit | — | Redeploy Cloud Run for refresh-image |
 | shopping-list | deployed (CRUD + sync + member ACL) | unit | — | Redeploy Cloud Run |
 | spending | done (purchase events + reports) | unit (test_spending_members_api) | — | Redeploy; wire iOS SpendingView |
 | sync | not started | unknown | — | Client Firestore listeners (REQ-020), not REST |
@@ -102,6 +102,12 @@
 - Members/invites Firestore dual-mode; invited members can use inventory/shopping/`/households/current`.
 - Unit: 26 backend tests green (`test_spending_members_api`).
 - **Redeploy Cloud Run** for prod.
+
+### 2026-09-19 — Item detail image refresh
+- Backend `POST /v1/households/{id}/inventory/{item_id}/refresh-image` fills
+  missing `image_url` via Open Food Facts (or category placeholder) and persists it.
+- iOS `ItemDetailView` calls refresh on appear when `imageURL` is nil.
+- **Redeploy Cloud Run** for the new route.
 
 ### 2026-09-18 — Remaining iOS features + UI polish
 - Invite accept deep link `mekasa://invite?token=` + Family ShareLink; trash kiosk `mekasa://trash` / `--trash-station`.

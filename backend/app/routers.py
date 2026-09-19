@@ -6,6 +6,7 @@ from app.auth import AuthUser, verify_bearer_token
 from app.barcode_lookup import lookup_barcode
 from app.config import Settings, get_settings
 from app.household_access import assert_household_member, assert_household_owner
+from app.inventory_image import refresh_item_image
 from app.inventory_repository import InventoryRepository, get_inventory_repository
 from app.models import (
     AddressUpdateRequest,
@@ -330,6 +331,40 @@ def update_inventory_item(
     """
     try:
         return repo.update(household_id, item_id, user.uid, payload)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+
+
+@inventory_router.post(
+    "/households/{household_id}/inventory/{item_id}/refresh-image",
+    response_model=InventoryItemResponse,
+)
+async def refresh_inventory_item_image(
+    household_id: str,
+    item_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: InventoryRepository = Depends(get_inventory_repository),
+) -> InventoryItemResponse:
+    """
+    Satisfies: UI-006, ADR-006
+    Spec version: 1.0
+
+    When an inventory row has no image_url, look up a product image (barcode →
+    Open Food Facts, else category placeholder) and persist it. Items that
+    already have an image are returned unchanged.
+    """
+    try:
+        item = repo.get(household_id, item_id, user.uid)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    def _update(payload: InventoryItemUpdateRequest) -> InventoryItemResponse:
+        return repo.update(household_id, item_id, user.uid, payload)
+
+    try:
+        return await refresh_item_image(item, update=_update)
     except (KeyError, PermissionError) as exc:
         raise _map_inventory_errors(exc) from exc
 

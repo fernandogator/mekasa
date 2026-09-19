@@ -80,6 +80,9 @@ struct ItemDetailView: View {
                 quantity = item.quantity
             }
         }
+        .task(id: itemID) {
+            await refetchMissingImageIfNeeded()
+        }
     }
 
     private func stepperCard(title: String, value: Binding<Int>, onChange: @escaping () -> Void) -> some View {
@@ -146,6 +149,33 @@ struct ItemDetailView: View {
             await session.refreshShoppingList(syncLowStock: true)
         } catch {
             session.handleAPIFailure(error)
+        }
+    }
+
+    /// Backend fills `image_url` via OFF / category placeholder when the row has none.
+    private func refetchMissingImageIfNeeded() async {
+        guard let item,
+              item.imageURL == nil || item.imageURL?.isEmpty == true,
+              session.canSyncInventory,
+              let token = session.idToken,
+              let householdID = session.household?.id
+        else { return }
+
+        do {
+            let remote = try await MekasaAPIClient.shared.refreshInventoryItemImage(
+                householdID: householdID,
+                itemID: item.id,
+                token: token
+            )
+            guard remote.imageURL != nil else { return }
+            if let idx = session.inventory.firstIndex(where: { $0.id == remote.id }) {
+                session.inventory[idx] = remote.toLocal()
+            }
+        } catch {
+            // Opportunistic enrich — only escalate session expiry.
+            if SessionExpiry.isUnauthorized(error) {
+                session.handleAPIFailure(error)
+            }
         }
     }
 }
