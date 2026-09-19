@@ -40,6 +40,7 @@ def _to_item(household_id: str, doc_id: str, data: dict[str, Any]) -> InventoryI
         low_stock_threshold=int(data.get("low_stock_threshold") or 1),
         price_paid=data.get("price_paid"),
         barcode=data.get("barcode"),
+        image_url=data.get("image_url"),
         source=data.get("source") or "manual",
         created_by_uid=str(data["created_by_uid"]),
         updated_by_uid=str(data["updated_by_uid"]),
@@ -111,6 +112,8 @@ class FirestoreInventoryRepository:
                 updates["price_paid"] = payload.price_paid
             if payload.barcode:
                 updates["barcode"] = payload.barcode
+            if payload.image_url:
+                updates["image_url"] = payload.image_url
             self._col(household_id).document(existing.id).update(updates)
             return existing.model_copy(update=updates)
 
@@ -123,6 +126,7 @@ class FirestoreInventoryRepository:
             "low_stock_threshold": payload.low_stock_threshold,
             "price_paid": payload.price_paid,
             "barcode": payload.barcode,
+            "image_url": payload.image_url,
             "source": payload.source,
             "created_by_uid": owner_uid,
             "updated_by_uid": owner_uid,

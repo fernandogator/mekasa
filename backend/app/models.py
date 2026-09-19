@@ -108,6 +108,7 @@ class InventoryItemCreateRequest(BaseModel):
     low_stock_threshold: int = Field(default=1, ge=0, le=9999)
     price_paid: float | None = Field(default=None, ge=0)
     barcode: str | None = Field(default=None, max_length=64)
+    image_url: str | None = Field(default=None, max_length=2048)
     source: InventorySource = "manual"
 
 
@@ -123,6 +124,7 @@ class InventoryItemUpdateRequest(BaseModel):
     low_stock_threshold: int | None = Field(default=None, ge=0, le=9999)
     price_paid: float | None = Field(default=None, ge=0)
     barcode: str | None = Field(default=None, max_length=64)
+    image_url: str | None = Field(default=None, max_length=2048)
 
 
 class InventoryItemResponse(BaseModel):
@@ -136,6 +138,7 @@ class InventoryItemResponse(BaseModel):
     low_stock_threshold: int
     price_paid: float | None = None
     barcode: str | None = None
+    image_url: str | None = None
     source: InventorySource
     created_by_uid: str
     updated_by_uid: str
