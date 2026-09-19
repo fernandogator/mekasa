@@ -7,8 +7,9 @@ SwiftUI client for Mekasa v1.0.
 - Home: **Dashboard** (UI-004) with bottom nav + Add FAB
 - **Add items** hub (FAB): Type it in / confirm sync to Cloud Run; **Scan barcode** uses live camera + Open Food Facts UPC lookup
 - **Shopping list** (List tab): check off, approve/deny, add custom — syncs to Cloud Run when signed in; low-stock auto-adds via API
+- **Spending** (Spend tab): week/month/year report from purchase events; Dashboard card shows weekly total
 
-Talks to Cloud Run for auth/household/**inventory**/**shopping list**/**barcode lookup**.
+Talks to Cloud Run for auth/household/**inventory**/**shopping list**/**spending**/**barcode lookup**.
 
 ## Live API
 
