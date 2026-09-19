@@ -495,6 +495,35 @@ actor MekasaAPIClient {
         )
     }
 
+    // MARK: - Push devices (PRD §8)
+
+    func registerDevice(
+        fcmToken: String,
+        platform: String = "ios",
+        idToken: String
+    ) async throws -> DeviceRegistrationDTO {
+        struct Body: Encodable {
+            let fcm_token: String
+            let platform: String
+        }
+        return try await request(
+            path: "/v1/devices",
+            method: "POST",
+            token: idToken,
+            body: Body(fcm_token: fcmToken, platform: platform)
+        )
+    }
+
+    func deleteDeviceToken(token: String, idToken: String) async throws {
+        let encoded = token.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? token
+        _ = try await rawRequest(
+            path: "/v1/devices?fcm_token=\(encoded)",
+            method: "DELETE",
+            token: idToken,
+            body: nil as String?
+        )
+    }
+
     private func request<T: Decodable, B: Encodable>(
         path: String,
         method: String,

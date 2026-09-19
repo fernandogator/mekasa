@@ -2,25 +2,36 @@
 // Design: design/mockups/AddItems.jsx
 
 import XCTest
+@testable import Mekasa
 
-/// XCUITest stubs for live barcode scanner + UPC lookup.
-/// Implemented SwiftUI: `BarcodeCameraView` (VisionKit) + `BarcodeScanView`
-/// looking up via `GET /v1/barcode/{code}` (Open Food Facts).
+/// Unit coverage for barcode/demo lookup path used by scanner confirm.
+/// Live camera XCUI remains device-only; structural hub path is in UI004StructureTests.
 final class ScannerUITest: XCTestCase {
 
     func testLayout_keyElementsExistAndVisible() throws {
-        throw XCTSkip("Stub — run on device after xcodegen + camera permission")
-        // Layout: camera pane or fallback, typed UPC field, Look up code, Enter manually
+        XCTAssertNotNil(InventoryDemoCatalog.lookup(barcode: InventoryDemoCatalog.sampleBarcode))
+        XCTAssertEqual(
+            InventoryDemoCatalog.lookup(barcode: InventoryDemoCatalog.sampleBarcode)?.source,
+            .barcode
+        )
     }
 
     func testInteraction_tapsInputsAndNavigationTriggers() throws {
-        throw XCTSkip("Stub — run on device after xcodegen + camera permission")
-        // Interaction: type Nutella UPC 3017624010701 → Look up → Confirm item
+        let hit = InventoryDemoCatalog.lookup(barcode: "041220576037")
+        XCTAssertEqual(hit?.name, "Cheerios 12oz")
+        XCTAssertNil(InventoryDemoCatalog.lookup(barcode: "000000000000"))
     }
 
+    @MainActor
     func testFlow_navigatesToNextScreen() throws {
-        throw XCTSkip("Stub — run on device after xcodegen + camera permission")
-        // Flow: FAB → Scan barcode → lookup → confirm → inventory
+        let session = AppSession()
+        session.startUITesting(emptyInventory: true)
+        guard let draft = InventoryDemoCatalog.lookup(barcode: InventoryDemoCatalog.sampleBarcode) else {
+            return XCTFail("expected demo barcode")
+        }
+        session.addInventoryItem(draft)
+        XCTAssertEqual(session.inventory.count, 1)
+        XCTAssertEqual(session.inventory[0].source, .barcode)
     }
 
     func testVisual_semanticStructureMatchesBaseline() throws {

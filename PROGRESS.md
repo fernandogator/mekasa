@@ -17,11 +17,11 @@
 | inventory | deployed (CRUD + consume + member ACL + refresh-image) | unit | — | Redeploy Cloud Run for refresh-image |
 | shopping-list | deployed (CRUD + sync + member ACL) | unit | — | Redeploy Cloud Run |
 | spending | deployed (purchase events + reports) | unit (test_spending_members_api) | — | — |
-| sync | not started | unknown | — | Client Firestore listeners (REQ-020), not REST |
+| sync | ready (iOS Firestore listeners + rules) | unit (FirestoreDocumentMapperTests) | — | Deploy firestore.rules to mekasa-db |
 | ocr | done | unit | — | Vision on Cloud Run when package + API enabled |
 | barcode | deployed (Open Food Facts lookup) | unit | — | — |
 | places | done | unit | — | Set `GOOGLE_PLACES_API_KEY` on Cloud Run |
-| notifications | not started | unknown | — | Scaffold push notifications per PRD §8 |
+| notifications | scaffold (FCM devices + invite hooks) | unit (test_devices_push) | — | APNs key in Firebase + redeploy Cloud Run |
 | members/invites | done (Firestore dual-mode) | unit | — | Redeploy for durable invites |
 
 ### Live thin API (2026-09-07)
@@ -61,7 +61,7 @@
 | scanner | ready (barcode + receipt + voice match) | unit (VoicePhraseParserTests) | — | Expand ScannerUITest on device |
 | shopping-list-screen | ready (API sync + owner purchase gate) | unit | — | Expand ShoppingList UI tests |
 | spending-screen | ready (live week/month/year report + local fallback) | unit (DTO decode) | — | Expand SpendingScreenUITest |
-| settings / family | ready (invites, roles, ShareLink, accept) | Features2to6Tests | — | Push/email delivery for invites |
+| settings / family | ready (invites, roles, ShareLink, accept) | Features2to6Tests | — | APNs delivery for invites (device tokens live) |
 | trash-station-mode | ready (kiosk + unknown scans) | Features2to6Tests | — | Home-screen shortcut polish |
 
 ## Phase 4: UI Design and Visual Verification
@@ -95,6 +95,17 @@
 ---
 
 ## Running Log
+
+### 2026-09-19 — Realtime sync + push scaffold (REQ-020 / PRD §8)
+- iOS: `FirebaseFirestore` + `HouseholdSyncService` listeners on `inventory_items` /
+  `shopping_list_items` (named DB `mekasa-db`); offline persistence enabled.
+- Mutations remain on Cloud Run; listeners reconcile local caches.
+- `firestore.rules` + `firebase.json` — member read, client writes denied.
+- Push: `POST/DELETE /v1/devices`, FCM best-effort on invite create/accept;
+  iOS `FirebaseMessaging` + APNs registration.
+- ShoppingList / Scanner unit stubs filled; Apple Sign-In button reserved on Welcome.
+- Unit: `FirestoreDocumentMapperTests`, `test_devices_push` (41 backend tests green).
+- **Deploy Firestore rules** + **redeploy Cloud Run** (devices + invite push) + APNs key.
 
 ### 2026-09-19 — Voice → product catalog match (REQ-007)
 - `VoiceSpeechRecognizer` (Speech + mic) transcribes spoken item names.

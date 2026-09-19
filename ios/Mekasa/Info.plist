@@ -28,6 +28,10 @@
 	<string>Mekasa uses speech recognition to turn what you say into grocery items.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Mekasa uses your photo library so you can add a household photo.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

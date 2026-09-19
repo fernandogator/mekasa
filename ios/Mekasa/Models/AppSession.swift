@@ -51,6 +51,9 @@ final class AppSession: ObservableObject {
     private var unauthorizedObserver: NSObjectProtocol?
     private var authStateHandle: AuthStateDidChangeListenerHandle?
     private var isHandlingSessionExpiry = false
+    private var deepLinkObserver: NSObjectProtocol?
+    /// True while Firestore inventory/shopping listeners are attached (REQ-020).
+    @Published private(set) var isRealtimeSyncActive = false
 
     var isSignedIn: Bool { idToken != nil }
 
@@ -117,6 +120,7 @@ final class AppSession: ObservableObject {
         spendingReport = nil
         didSeedShoppingList = false
         pendingCreates = [:]
+        stopRealtimeSync()
     }
 
     /// Launch argument `--uitesting`: deterministic fixtures, no network.
@@ -143,6 +147,7 @@ final class AppSession: ObservableObject {
         if CommandLine.arguments.contains("--trash-station") {
             isTrashKioskMode = true
         }
+        stopRealtimeSync()
     }
 
     /// Remember the username/email used at sign-in so Welcome can prefill after sign-out.
@@ -158,6 +163,11 @@ final class AppSession: ObservableObject {
         // Keep lastSignedInEmail so Welcome can prefill the username field.
         if let email, !email.isEmpty {
             rememberSignedInEmail(email)
+        }
+        let tokenForPush = idToken
+        stopRealtimeSync()
+        Task {
+            await PushRegistrationService.shared.clearRegistration(idToken: tokenForPush)
         }
         idToken = nil
         displayName = nil
@@ -246,6 +256,8 @@ final class AppSession: ObservableObject {
             logActivity("Joined household as \(member.role)", kind: .success)
             await refreshInventory()
             await refreshShoppingList(syncLowStock: true)
+            updateRealtimeSync()
+            PushRegistrationService.shared.requestPermissionAndRegister(idToken: token)
         } catch {
             handleAPIFailure(error)
         }
@@ -297,6 +309,23 @@ final class AppSession: ObservableObject {
             if !isAuthenticated {
                 self.endSessionBecauseExpired()
             }
+        }
+        if deepLinkObserver == nil {
+            deepLinkObserver = NotificationCenter.default.addObserver(
+                forName: .mekasaOpenDeepLink,
+                object: nil,
+                queue: .main
+            ) { [weak self] note in
+                guard let url = note.object as? URL else { return }
+                Task { @MainActor in
+                    self?.handleDeepLink(url)
+                    await self?.acceptPendingInviteIfNeeded()
+                }
+            }
+        }
+        updateRealtimeSync()
+        if canSyncInventory {
+            PushRegistrationService.shared.requestPermissionAndRegister(idToken: idToken)
         }
     }
 
@@ -357,9 +386,39 @@ final class AppSession: ObservableObject {
             )
             inventory = response.items.map { $0.toLocal() }
             await refreshShoppingList(syncLowStock: true)
+            updateRealtimeSync()
+            PushRegistrationService.shared.requestPermissionAndRegister(idToken: token)
         } catch {
             handleAPIFailure(error)
         }
+    }
+
+    /// Attach or detach Firestore listeners for inventory + shopping list (REQ-020).
+    func updateRealtimeSync() {
+        guard canSyncInventory, let householdID = household?.id else {
+            stopRealtimeSync()
+            return
+        }
+        HouseholdSyncService.shared.start(
+            householdID: householdID,
+            onInventory: { [weak self] items in
+                guard let self, self.canSyncInventory else { return }
+                self.inventory = items
+                self.isRealtimeSyncActive = HouseholdSyncService.shared.isListening
+            },
+            onShoppingList: { [weak self] items in
+                guard let self, self.canSyncShoppingList else { return }
+                self.shoppingList = items
+                self.didSeedShoppingList = true
+                self.isRealtimeSyncActive = HouseholdSyncService.shared.isListening
+            }
+        )
+        isRealtimeSyncActive = HouseholdSyncService.shared.isListening
+    }
+
+    func stopRealtimeSync() {
+        HouseholdSyncService.shared.stop()
+        isRealtimeSyncActive = false
     }
 
     /// Pull shopping list from Cloud Run / Firestore (optionally sync low-stock first).

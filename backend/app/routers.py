@@ -1,16 +1,19 @@
 """HTTP routers for health, onboarding, and inventory."""
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 
 from app.auth import AuthUser, verify_bearer_token
 from app.barcode_lookup import lookup_barcode, search_products
 from app.config import Settings, get_settings
+from app.devices_repository import DevicesRepository, get_devices_repository
 from app.household_access import assert_household_member, assert_household_owner
 from app.inventory_image import refresh_item_image
 from app.inventory_repository import InventoryRepository, get_inventory_repository
 from app.models import (
     AddressUpdateRequest,
     BarcodeLookupResponse,
+    DeviceRegistrationRequest,
+    DeviceRegistrationResponse,
     HealthResponse,
     HouseholdCreateRequest,
     HouseholdInviteAcceptRequest,
@@ -49,6 +52,7 @@ from app.models import (
 )
 from app.members_repository import MembersRepository, get_members_repository
 from app.places_lookup import fetch_nearby_stores
+from app.push_notify import notify_invite_accepted, notify_invite_created
 from app.receipt_ocr import enrich_receipt_items, parse_receipt_image
 from app.repository import (
     HouseholdRepository,
@@ -773,6 +777,7 @@ def create_household_invite(
     payload: HouseholdInviteCreateRequest,
     user: AuthUser = Depends(verify_bearer_token),
     members: MembersRepository = Depends(get_members_repository),
+    devices: DevicesRepository = Depends(get_devices_repository),
 ) -> HouseholdInviteResponse:
     """
     Satisfies: REQ-019
@@ -780,13 +785,27 @@ def create_household_invite(
     Spec version: 1.0
     """
     try:
-        return members.create_invite(household_id, user.uid, payload)
+        invite = members.create_invite(household_id, user.uid, payload)
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
     except PermissionError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    try:
+        household_members = members.list_members(household_id, user.uid)
+        owner_uids = [m.uid for m in household_members if m.role == "owner"]
+        tokens = devices.list_tokens_for_uids(owner_uids or [user.uid])
+        notify_invite_created(
+            owner_tokens=tokens,
+            invitee_name=invite.name,
+            invite_link=invite.invite_link,
+        )
+    except Exception:
+        # Push is best-effort; invite create already succeeded.
+        pass
+    return invite
 
 
 @api_router.get(
@@ -816,17 +835,62 @@ def accept_household_invite(
     payload: HouseholdInviteAcceptRequest,
     user: AuthUser = Depends(verify_bearer_token),
     members: MembersRepository = Depends(get_members_repository),
+    devices: DevicesRepository = Depends(get_devices_repository),
 ) -> HouseholdMemberResponse:
     """
     Satisfies: REQ-019 AC2
     Spec version: 1.0
     """
     try:
-        return members.accept_invite(payload.token, user.uid, user.name)
+        member = members.accept_invite(payload.token, user.uid, user.name)
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite not found") from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    try:
+        household_members = members.list_members(member.household_id, user.uid)
+        owner_uids = [m.uid for m in household_members if m.role == "owner"]
+        tokens = devices.list_tokens_for_uids(owner_uids)
+        notify_invite_accepted(
+            owner_tokens=tokens,
+            member_name=member.name or user.name or "A member",
+        )
+    except Exception:
+        pass
+    return member
+
+
+@api_router.post(
+    "/devices",
+    response_model=DeviceRegistrationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def register_device(
+    payload: DeviceRegistrationRequest,
+    user: AuthUser = Depends(verify_bearer_token),
+    devices: DevicesRepository = Depends(get_devices_repository),
+) -> DeviceRegistrationResponse:
+    """Register an FCM token for push (PRD §8)."""
+    return devices.upsert(user.uid, payload)
+
+
+@api_router.delete(
+    "/devices",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def unregister_device(
+    fcm_token: str = Query(..., min_length=8, max_length=4096),
+    user: AuthUser = Depends(verify_bearer_token),
+    devices: DevicesRepository = Depends(get_devices_repository),
+) -> None:
+    """Remove an FCM token for the caller."""
+    try:
+        devices.delete(user.uid, fcm_token)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
 
 
 @api_router.patch(

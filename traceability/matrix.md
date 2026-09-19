@@ -18,13 +18,13 @@ Last updated: 2026-09-12
 | REQ-011 | Automatic Shopping List Addition | design/mockups/ShoppingList.jsx | pending | pending | not tested | — |
 | REQ-012 | Child Shopping Request Submission | design/mockups/ShoppingList.jsx | pending | pending | not tested | — |
 | REQ-013 | Request Approval Workflow | design/mockups/ShoppingList.jsx | pending | pending | not tested | — |
-| REQ-014 | Shopping List Purchase Restriction | design/mockups/ShoppingList.jsx | pending | pending | not tested | — |
+| REQ-014 | Shopping List Purchase Restriction | design/mockups/ShoppingList.jsx | test_shopping_list_purchase_gate | tests/backend/test_shopping_list_purchase_gate.py | unit (owner/buyer gate) | 2026-09-19 |
 | REQ-015 | Price Capture from Receipt | — | pending | pending | not tested | — |
 | REQ-016 | Price Estimation Fallback | — | pending | pending | not tested | — |
 | REQ-017 | Spending Categorization | — | pending | pending | not tested | — |
 | REQ-018 | Spending History Reporting | design/mockups/SpendingReport.jsx | pending | pending | not tested | — |
 | REQ-019 | Household Member Invitation | design/mockups/FamilyMembers.jsx | done | done | unit (invites API) | InviteView + FamilyMembersView |
-| REQ-020 | Real-Time Multi-Device Sync | — | pending | pending | not tested | — |
+| REQ-020 | Real-Time Multi-Device Sync | — | FirestoreDocumentMapperTests | ios/MekasaTests/FirestoreDocumentMapperTests.swift | unit (doc map) + listeners | 2026-09-19 |
 | REQ-022 | Expired Session Auto Sign-Out | design/mockups/OnboardingHouseholdSetup.jsx | SessionExpiryTests / test_auth_session | ios/MekasaTests/SessionExpiryTests.swift; tests/backend/test_auth_session.py | implemented | 2026-09-10 |
 | UI-001 | Native Android Interface | design/mockups/ (all screens) | pending | android/src/test/ui/ | not tested | — |
 | UI-002 | Native iOS Interface | design/mockups/ (all screens) | pending | ios/MekasaTests/UI/ | not tested | — |
