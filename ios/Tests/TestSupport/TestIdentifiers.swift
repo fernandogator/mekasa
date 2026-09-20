@@ -20,6 +20,8 @@ enum TestIdentifiers {
     static let inventoryRemoveAction = "InventoryRemoveAction"
     static let inventoryUndoToast = "InventoryUndoToast"
     static let inventoryUndoButton = "InventoryUndoButton"
+    static let allInventoryButton = "AllInventoryButton"
+    static let lowStockStatButton = "LowStockStatButton"
 
     // MARK: - Item Detail
     static let itemDetailView = "ItemDetailView"

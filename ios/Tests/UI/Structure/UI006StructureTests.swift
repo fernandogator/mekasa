@@ -57,10 +57,18 @@ final class UI006StructureTests: XCTestCase {
         XCTAssertTrue(UITestLaunch.waitForShell(app))
         openInventoryList()
         XCTAssertTrue(
-            UITestLaunch.element(app, TestIdentifiers.emptyStateView)
+            UITestLaunch.element(app, TestIdentifiers.inventoryListView)
                 .waitForExistence(timeout: UITestLaunch.elementTimeout)
-                || app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "Nothing in inventory")).firstMatch
-                    .waitForExistence(timeout: 5),
+                || app.staticTexts["Inventory"].waitForExistence(timeout: UITestLaunch.elementTimeout),
+            "Inventory list screen should appear before empty-state assert"
+        )
+        XCTAssertTrue(
+            app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "Nothing in inventory")).firstMatch
+                .waitForExistence(timeout: UITestLaunch.elementTimeout)
+                || (
+                    UITestLaunch.element(app, TestIdentifiers.inventoryListView).exists
+                        && UITestLaunch.element(app, TestIdentifiers.emptyStateView).exists
+                ),
             "Empty inventory should show empty-state copy"
         )
     }
@@ -82,15 +90,36 @@ final class UI006StructureTests: XCTestCase {
     // MARK: - Helpers
 
     private func openInventoryList() {
-        let allInventory = app.buttons["All inventory"]
-        if allInventory.waitForExistence(timeout: UITestLaunch.elementTimeout) {
-            allInventory.tap()
+        let byId = UITestLaunch.element(app, TestIdentifiers.allInventoryButton)
+        if byId.waitForExistence(timeout: UITestLaunch.elementTimeout) {
+            byId.tap()
             return
         }
-        // Fallback: low-stock header may expose the same destination via static text.
-        let link = app.staticTexts["All inventory"]
-        if link.waitForExistence(timeout: 5) {
-            link.tap()
+        let lowStock = UITestLaunch.element(app, TestIdentifiers.lowStockStatButton)
+        if lowStock.waitForExistence(timeout: 5) {
+            lowStock.tap()
+            return
+        }
+        // Visible title may be uppercased via .textCase(.uppercase).
+        let labels = ["All inventory", "ALL INVENTORY"]
+        for label in labels {
+            let button = app.buttons[label]
+            if button.waitForExistence(timeout: 3) {
+                button.tap()
+                return
+            }
+            let text = app.staticTexts[label]
+            if text.waitForExistence(timeout: 2) {
+                text.tap()
+                return
+            }
+        }
+        // Last resort: predicate match (case-insensitive).
+        let match = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "all inventory")
+        ).firstMatch
+        if match.waitForExistence(timeout: 5) {
+            match.tap()
         }
     }
 }
