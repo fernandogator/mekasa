@@ -55,6 +55,12 @@ final class AppSession: ObservableObject {
     /// True while Firestore inventory/shopping listeners are attached (REQ-020).
     @Published private(set) var isRealtimeSyncActive = false
 
+    /// Soft-removed item awaiting Undo / purge (REQ-INV-016–018).
+    @Published var showInventoryUndoToast = false
+    private var lastRemovedItem: InventoryItem?
+    private var lastRemovedIndex: Int?
+    private var inventoryUndoTask: Task<Void, Never>?
+
     var isSignedIn: Bool { idToken != nil }
 
     init() {
@@ -120,6 +126,11 @@ final class AppSession: ObservableObject {
         spendingReport = nil
         didSeedShoppingList = false
         pendingCreates = [:]
+        showInventoryUndoToast = false
+        lastRemovedItem = nil
+        lastRemovedIndex = nil
+        inventoryUndoTask?.cancel()
+        inventoryUndoTask = nil
         stopRealtimeSync()
     }
 
@@ -189,6 +200,11 @@ final class AppSession: ObservableObject {
         isTrashKioskMode = false
         didSeedShoppingList = false
         pendingCreates = [:]
+        showInventoryUndoToast = false
+        lastRemovedItem = nil
+        lastRemovedIndex = nil
+        inventoryUndoTask?.cancel()
+        inventoryUndoTask = nil
     }
 
     private static func loadPendingInviteToken() -> String? {
@@ -532,6 +548,49 @@ final class AppSession: ObservableObject {
         return result
     }
 
+    /// Soft-remove from list with 5s Undo, then purge (REQ-INV-015–018).
+    func softRemoveInventoryItem(id: String) {
+        guard let idx = inventory.firstIndex(where: { $0.id == id }) else { return }
+        let item = inventory[idx]
+        lastRemovedItem = item
+        lastRemovedIndex = idx
+        inventory.remove(at: idx)
+        syncShoppingListFromInventory()
+        showInventoryUndoToast = true
+        logActivity("Removed \(item.name)", kind: .warning)
+
+        inventoryUndoTask?.cancel()
+        if canSyncInventory {
+            Task { await persistSoftDelete(itemID: id) }
+        }
+        inventoryUndoTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard !Task.isCancelled else { return }
+            showInventoryUndoToast = false
+            let pending = lastRemovedItem
+            lastRemovedItem = nil
+            lastRemovedIndex = nil
+            if canSyncInventory, let pending {
+                await persistPurge(itemID: pending.id)
+            }
+        }
+    }
+
+    func undoInventoryRemove() {
+        inventoryUndoTask?.cancel()
+        inventoryUndoTask = nil
+        showInventoryUndoToast = false
+        guard let item = lastRemovedItem else { return }
+        let index = min(lastRemovedIndex ?? 0, inventory.count)
+        inventory.insert(item, at: index)
+        syncShoppingListFromInventory()
+        logActivity("Restored \(item.name)", kind: .success)
+        lastRemovedItem = nil
+        lastRemovedIndex = nil
+        if canSyncInventory {
+            Task { await persistRestore(itemID: item.id) }
+        }
+    }
 
     /// Trash station: consume by barcode via API when signed in, else local match.
     @discardableResult
@@ -884,6 +943,49 @@ final class AppSession: ObservableObject {
                 }
             }
             lastError = "Couldn’t sync consume: \(error.localizedDescription)"
+        }
+    }
+
+    private func persistSoftDelete(itemID: String) async {
+        guard let token = idToken, let householdID = household?.id else { return }
+        do {
+            try await MekasaAPIClient.shared.deleteInventoryItem(
+                householdID: householdID,
+                itemID: itemID,
+                token: token
+            )
+        } catch {
+            handleAPIFailure(error)
+        }
+    }
+
+    private func persistRestore(itemID: String) async {
+        guard let token = idToken, let householdID = household?.id else { return }
+        do {
+            let remote = try await MekasaAPIClient.shared.restoreInventoryItem(
+                householdID: householdID,
+                itemID: itemID,
+                token: token
+            )
+            upsertRemote(remote)
+        } catch {
+            handleAPIFailure(error)
+            await refreshInventory()
+        }
+    }
+
+    private func persistPurge(itemID: String) async {
+        guard let token = idToken, let householdID = household?.id else { return }
+        do {
+            try await MekasaAPIClient.shared.purgeInventoryItem(
+                householdID: householdID,
+                itemID: itemID,
+                token: token
+            )
+        } catch {
+            if SessionExpiry.isUnauthorized(error) {
+                handleAPIFailure(error)
+            }
         }
     }
 

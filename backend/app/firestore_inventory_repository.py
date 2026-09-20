@@ -46,7 +46,13 @@ def _to_item(household_id: str, doc_id: str, data: dict[str, Any]) -> InventoryI
         updated_by_uid=str(data["updated_by_uid"]),
         created_at=data["created_at"],
         updated_at=data["updated_at"],
+        deleted=bool(data.get("deleted") or False),
+        deleted_at=data.get("deleted_at"),
     )
+
+
+def _is_active(data: dict[str, Any]) -> bool:
+    return not bool(data.get("deleted") or False)
 
 
 class FirestoreInventoryRepository:
@@ -82,8 +88,9 @@ class FirestoreInventoryRepository:
     def list_items(self, household_id: str, owner_uid: str) -> list[InventoryItemResponse]:
         self._require_owner(household_id, owner_uid)
         items = [
-            _to_item(household_id, snap.id, snap.to_dict() or {})
+            _to_item(household_id, snap.id, data)
             for snap in self._col(household_id).stream()
+            if _is_active(data := (snap.to_dict() or {}))
         ]
         return sorted(items, key=lambda item: item.updated_at, reverse=True)
 
@@ -94,7 +101,10 @@ class FirestoreInventoryRepository:
         snap = self._col(household_id).document(item_id).get()
         if not snap.exists:
             return None
-        return _to_item(household_id, snap.id, snap.to_dict() or {})
+        data = snap.to_dict() or {}
+        if not _is_active(data):
+            return None
+        return _to_item(household_id, snap.id, data)
 
     def create(
         self, household_id: str, owner_uid: str, payload: InventoryItemCreateRequest
@@ -158,6 +168,52 @@ class FirestoreInventoryRepository:
         return item.model_copy(update=data)
 
     def delete(self, household_id: str, item_id: str, owner_uid: str) -> None:
+        """Soft-delete (REQ-INV-016)."""
+        self._require_owner(household_id, owner_uid)
+        ref = self._col(household_id).document(item_id)
+        snap = ref.get()
+        if not snap.exists:
+            raise KeyError(item_id)
+        data = snap.to_dict() or {}
+        if data.get("deleted"):
+            return
+        now = _utcnow()
+        ref.update(
+            {
+                "deleted": True,
+                "deleted_at": now,
+                "updated_by_uid": owner_uid,
+                "updated_at": now,
+            }
+        )
+
+    def restore(
+        self, household_id: str, item_id: str, owner_uid: str
+    ) -> InventoryItemResponse:
+        """Undo soft-delete (REQ-INV-017)."""
+        self._require_owner(household_id, owner_uid)
+        ref = self._col(household_id).document(item_id)
+        snap = ref.get()
+        if not snap.exists:
+            raise KeyError(item_id)
+        now = _utcnow()
+        ref.update(
+            {
+                "deleted": False,
+                "deleted_at": firestore.DELETE_FIELD,
+                "updated_by_uid": owner_uid,
+                "updated_at": now,
+            }
+        )
+        data = snap.to_dict() or {}
+        data["deleted"] = False
+        data["deleted_at"] = None
+        data["updated_by_uid"] = owner_uid
+        data["updated_at"] = now
+        return _to_item(household_id, snap.id, data)
+
+    def purge(self, household_id: str, item_id: str, owner_uid: str) -> None:
+        """Hard-delete after undo window (REQ-INV-018)."""
         self._require_owner(household_id, owner_uid)
         ref = self._col(household_id).document(item_id)
         if not ref.get().exists:
@@ -215,13 +271,17 @@ class FirestoreInventoryRepository:
     ) -> InventoryItemResponse | None:
         col = self._col(household_id)
         if payload.barcode:
-            for snap in col.where("barcode", "==", payload.barcode).limit(1).stream():
-                return _to_item(household_id, snap.id, snap.to_dict() or {})
+            for snap in col.where("barcode", "==", payload.barcode).limit(5).stream():
+                data = snap.to_dict() or {}
+                if _is_active(data):
+                    return _to_item(household_id, snap.id, data)
         # Name+category merge scanned in-process (avoid composite index for v1).
         name = _norm(payload.name)
         category = _norm(payload.category)
         for snap in col.stream():
             data = snap.to_dict() or {}
+            if not _is_active(data):
+                continue
             if _norm(str(data.get("name") or "")) == name and _norm(
                 str(data.get("category") or "")
             ) == category:

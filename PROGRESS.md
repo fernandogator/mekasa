@@ -96,6 +96,13 @@
 
 ## Running Log
 
+### 2026-09-20 — Inventory swipe Use 1 / Remove + Undo (REQ-INV-014–018)
+- List trailing swipe: qty > 1 → **Use 1** (consume); qty = 1 → **Remove**
+- Remove soft-deletes (`deleted` / `deleted_at`), Undo toast 5s, then `POST …/purge`
+- Restore via `POST …/restore`; listeners skip soft-deleted docs
+- Unit: `InventorySwipeSessionTests`, `test_inventory_soft_delete`
+- **Redeploy Cloud Run** for soft-delete / restore / purge routes.
+
 ### 2026-09-19 — Realtime sync + push scaffold (REQ-020 / PRD §8)
 - iOS: `FirebaseFirestore` + `HouseholdSyncService` listeners on `inventory_items` /
   `shopping_list_items` (named DB `mekasa-db`); offline persistence enabled.

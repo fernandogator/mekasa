@@ -52,7 +52,13 @@ class InventoryRepository(Protocol):
         """Patch item fields."""
 
     def delete(self, household_id: str, item_id: str, owner_uid: str) -> None:
-        """Delete item."""
+        """Soft-delete item (REQ-INV-016)."""
+
+    def restore(self, household_id: str, item_id: str, owner_uid: str) -> InventoryItemResponse:
+        """Undo soft-delete (REQ-INV-017)."""
+
+    def purge(self, household_id: str, item_id: str, owner_uid: str) -> None:
+        """Hard-delete document after undo window (REQ-INV-018)."""
 
     def consume(
         self,
@@ -88,14 +94,21 @@ class InMemoryInventoryRepository:
     def list_items(self, household_id: str, owner_uid: str) -> list[InventoryItemResponse]:
         self._require_owner(household_id, owner_uid)
         with self._lock:
-            items = list(self._items.get(household_id, {}).values())
+            items = [
+                item
+                for item in self._items.get(household_id, {}).values()
+                if not item.deleted
+            ]
         return sorted(items, key=lambda item: item.updated_at, reverse=True)
 
     def get(
         self, household_id: str, item_id: str, owner_uid: str
     ) -> InventoryItemResponse | None:
         self._require_owner(household_id, owner_uid)
-        return self._items.get(household_id, {}).get(item_id)
+        item = self._items.get(household_id, {}).get(item_id)
+        if item is None or item.deleted:
+            return None
+        return item
 
     def create(
         self, household_id: str, owner_uid: str, payload: InventoryItemCreateRequest
@@ -165,6 +178,47 @@ class InMemoryInventoryRepository:
             return updated
 
     def delete(self, household_id: str, item_id: str, owner_uid: str) -> None:
+        """Soft-delete (REQ-INV-016)."""
+        self._require_owner(household_id, owner_uid)
+        with self._lock:
+            bucket = self._items.get(household_id, {})
+            item = bucket.get(item_id)
+            if item is None:
+                raise KeyError(item_id)
+            if item.deleted:
+                return
+            bucket[item_id] = item.model_copy(
+                update={
+                    "deleted": True,
+                    "deleted_at": _utcnow(),
+                    "updated_by_uid": owner_uid,
+                    "updated_at": _utcnow(),
+                }
+            )
+
+    def restore(
+        self, household_id: str, item_id: str, owner_uid: str
+    ) -> InventoryItemResponse:
+        """Undo soft-delete (REQ-INV-017)."""
+        self._require_owner(household_id, owner_uid)
+        with self._lock:
+            bucket = self._items.get(household_id, {})
+            item = bucket.get(item_id)
+            if item is None:
+                raise KeyError(item_id)
+            restored = item.model_copy(
+                update={
+                    "deleted": False,
+                    "deleted_at": None,
+                    "updated_by_uid": owner_uid,
+                    "updated_at": _utcnow(),
+                }
+            )
+            bucket[item_id] = restored
+            return restored
+
+    def purge(self, household_id: str, item_id: str, owner_uid: str) -> None:
+        """Hard-delete after undo window (REQ-INV-018)."""
         self._require_owner(household_id, owner_uid)
         with self._lock:
             bucket = self._items.get(household_id, {})
@@ -234,11 +288,15 @@ class InMemoryInventoryRepository:
     ) -> InventoryItemResponse | None:
         if payload.barcode:
             for item in bucket.values():
+                if item.deleted:
+                    continue
                 if item.barcode and item.barcode == payload.barcode:
                     return item
         name = _norm(payload.name)
         category = _norm(payload.category)
         for item in bucket.values():
+            if item.deleted:
+                continue
             if _norm(item.name) == name and _norm(item.category) == category:
                 return item
         return None
