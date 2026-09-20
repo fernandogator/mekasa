@@ -3,7 +3,7 @@
 SwiftUI client for Mekasa v1.0.
 
 **Shipped so far**
-- Onboarding: Welcome → Household → Address → Stores → scan/invite stubs
+- Onboarding: Welcome (Google + **Apple** + email) → Household → Address → Stores → scan/invite stubs
 - Home: **Dashboard** (UI-004) with bottom nav + Add FAB
 - **Add items** hub (FAB): Type it in / confirm sync to Cloud Run; **Scan barcode** uses live camera + Open Food Facts UPC lookup
 - **Shopping list** (List tab): check off, approve/deny, add custom — syncs to Cloud Run when signed in; low-stock auto-adds via API
@@ -68,7 +68,7 @@ If you see `[Mekasa] GoogleService-Info.plist in bundle: false`, the plist is st
 1. [Firebase Console](https://console.firebase.google.com/project/hackathon2025-472017/settings/general/) → **Add app** → iOS  
 2. Bundle ID: `com.fernandogator.mekasa`  
 3. Download **`GoogleService-Info.plist`** → `ios/Mekasa/GoogleService-Info.plist`  
-4. Auth: **Google** + **Email/Password** enabled  
+4. Auth: **Google** + **Email/Password** + **Apple** enabled (see `docs/gcp-firebase-setup.md` §2b)  
 
 ### Google Sign-In URL scheme
 

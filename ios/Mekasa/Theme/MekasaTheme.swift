@@ -91,22 +91,33 @@ struct PrimaryButton: View {
 
 struct SecondaryButton: View {
     let title: String
+    var disabled = false
+    var isLoading = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .foregroundStyle(MekasaTheme.brand)
-                .background(MekasaTheme.surfaceElevated)
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(MekasaTheme.brandMuted.opacity(0.35), lineWidth: 1)
-                )
+            ZStack {
+                Text(title)
+                    .opacity(isLoading ? 0 : 1)
+                if isLoading {
+                    ProgressView()
+                        .tint(MekasaTheme.brand)
+                }
+            }
+            .font(.system(size: 16, weight: .bold, design: .rounded))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .foregroundStyle(MekasaTheme.brand)
+            .background(MekasaTheme.surfaceElevated)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(MekasaTheme.brandMuted.opacity(0.35), lineWidth: 1)
+            )
         }
+        .disabled(disabled || isLoading)
+        .animation(.easeInOut(duration: 0.12), value: isLoading)
     }
 }
 
