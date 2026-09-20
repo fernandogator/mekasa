@@ -109,7 +109,15 @@ xcodebuild test -scheme Mekasa \
 
 UI layers (structural / snapshots / vision): see `ios/Tests/README.md`. Launch args: `--uitesting` (fixtures, no network), optional `--uitesting-empty`.
 
-SPM (via `project.yml`): FirebaseCore, FirebaseAuth, GoogleSignIn, SnapshotTesting.
+SPM (via `project.yml`): FirebaseCore, FirebaseAuth, FirebaseFirestore, FirebaseMessaging, GoogleSignIn, SnapshotTesting.
+
+After pulling (especially when `project.yml` gains packages or new Swift files), always:
+
+```bash
+cd ios && xcodegen generate
+```
+
+Then **Product → Clean Build Folder** and resolve SPM packages if prompted.
 
 Signing → your Team → Run on **iPhone 17 Pro** simulator (not “Any iOS Device”).
 
