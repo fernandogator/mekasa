@@ -96,6 +96,12 @@
 
 ## Running Log
 
+### 2026-09-20 — Inventory swipe 3-layer UI stubs (UI-006 / REQ-INV-014–018)
+- Layer 1: `UI006StructureTests` — list/empty runnable; swipe Use 1 / Remove / Undo XCTSkip stubs
+- Layer 2: `UI006SnapshotTests` — list / empty / Undo toast / detail (skip until baselines)
+- Layer 3: `Scripts/ui_vision_cases.json` + `verify_ui_vision.py --list-cases`
+- Accessibility ids: `InventoryListView`, Use 1 / Remove / Undo toast + button
+
 ### 2026-09-20 — Inventory swipe Use 1 / Remove + Undo (REQ-INV-014–018)
 - List trailing swipe: qty > 1 → **Use 1** (consume); qty = 1 → **Remove**
 - Remove soft-deletes (`deleted` / `deleted_at`), Undo toast 5s, then `POST …/purge`

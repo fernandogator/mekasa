@@ -37,6 +37,19 @@ Return ONLY a JSON object with no preamble:
   "notes": "one sentence summary"
 }"""
 
+CASES_PATH = Path(__file__).resolve().parent / "ui_vision_cases.json"
+
+
+def _load_cases() -> list[dict]:
+    if not CASES_PATH.is_file():
+        return []
+    try:
+        payload = json.loads(CASES_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return []
+    cases = payload.get("cases")
+    return cases if isinstance(cases, list) else []
+
 
 def _b64_image(path: Path) -> tuple[str, str]:
     data = path.read_bytes()
@@ -48,10 +61,22 @@ def _b64_image(path: Path) -> tuple[str, str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Mekasa Layer-3 UI vision verifier")
-    parser.add_argument("--spec", required=True, help="Path to mockup screenshot")
-    parser.add_argument("--actual", required=True, help="Path to simulator screenshot")
-    parser.add_argument("--screen", required=True, help="Spec entry id, e.g. UI-001")
+    parser.add_argument("--spec", help="Path to mockup screenshot")
+    parser.add_argument("--actual", help="Path to simulator screenshot")
+    parser.add_argument("--screen", help="Spec entry id, e.g. UI-001 / UI-006")
+    parser.add_argument(
+        "--list-cases",
+        action="store_true",
+        help="Print stub/case registry from Scripts/ui_vision_cases.json and exit",
+    )
     args = parser.parse_args()
+
+    if args.list_cases:
+        print(json.dumps({"cases": _load_cases()}, indent=2))
+        return 0
+
+    if not args.spec or not args.actual or not args.screen:
+        parser.error("--spec, --actual, and --screen are required unless --list-cases")
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:

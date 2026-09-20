@@ -67,6 +67,7 @@ struct InventoryListView: View {
                                             Label("Use 1", systemImage: "minus.circle.fill")
                                         }
                                         .tint(MekasaTheme.accent)
+                                        .accessibilityIdentifier(TestIdentifiers.inventoryUseOneAction)
                                     } else {
                                         Button(role: .destructive) {
                                             session.softRemoveInventoryItem(id: item.id)
@@ -74,6 +75,7 @@ struct InventoryListView: View {
                                             Label("Remove", systemImage: "trash.fill")
                                         }
                                         .tint(MekasaTheme.accent)
+                                        .accessibilityIdentifier(TestIdentifiers.inventoryRemoveAction)
                                     }
                                 }
                             }
@@ -95,6 +97,7 @@ struct InventoryListView: View {
                         }
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(MekasaTheme.accent)
+                        .accessibilityIdentifier(TestIdentifiers.inventoryUndoButton)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
@@ -103,11 +106,12 @@ struct InventoryListView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 24)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .accessibilityIdentifier("InventoryUndoToast")
+                    .accessibilityIdentifier(TestIdentifiers.inventoryUndoToast)
                 }
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: session.showInventoryUndoToast)
         }
+        .accessibilityIdentifier(TestIdentifiers.inventoryListView)
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: String.self) { itemID in
             ItemDetailView(itemID: itemID)

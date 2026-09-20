@@ -319,7 +319,7 @@ Acceptance Criteria:
 Priority: P0
 Design Artifact: design/pages/inventory-list.html, design/pages/item-detail.html
 User Flow: design/user-flows.md
-Test File: ios/MekasaTests/UI/InventoryScreenUITest.swift
+Test File: ios/Tests/UI/Structure/UI006StructureTests.swift, ios/Tests/Snapshots/UI006SnapshotTests.swift, Scripts/ui_vision_cases.json (legacy stubs: ios/MekasaTests/UI/InventoryScreenUITest.swift)
 Description: Inventory rows show a product thumbnail from barcode lookup
 (Open Food Facts image URL when available). Tapping the row (or thumbnail)
 opens item detail with a larger product image and product metadata.
