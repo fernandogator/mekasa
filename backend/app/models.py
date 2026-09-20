@@ -144,6 +144,9 @@ class InventoryItemResponse(BaseModel):
     updated_by_uid: str
     created_at: datetime
     updated_at: datetime
+    # REQ-INV-016 soft-delete (absent/false = visible)
+    deleted: bool = False
+    deleted_at: datetime | None = None
 
     @property
     def is_low_stock(self) -> bool:

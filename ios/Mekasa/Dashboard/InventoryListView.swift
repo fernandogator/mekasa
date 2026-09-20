@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Full household inventory list with navigation to item detail (REQ-006 / REQ-009).
+/// Full household inventory list with swipe Use 1 / Remove (REQ-INV-014–018).
 /// Spec version: 1.0
 struct InventoryListView: View {
     @EnvironmentObject private var session: AppSession
@@ -13,58 +13,100 @@ struct InventoryListView: View {
 
     var body: some View {
         MekasaScreen {
-            VStack(spacing: 0) {
-                Text("Inventory")
-                    .font(MekasaTheme.titleFont)
-                    .foregroundStyle(MekasaTheme.brand)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 24)
-                    .padding(.top, 16)
-                    .padding(.bottom, 8)
-
-                if sortedItems.isEmpty {
-                    Text("Nothing in inventory yet. Use + to add items.")
-                        .font(MekasaTheme.bodyFont)
-                        .foregroundStyle(MekasaTheme.textMuted)
+            ZStack(alignment: .bottom) {
+                VStack(spacing: 0) {
+                    Text("Inventory")
+                        .font(MekasaTheme.titleFont)
+                        .foregroundStyle(MekasaTheme.brand)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(24)
-                        .accessibilityIdentifier(TestIdentifiers.emptyStateView)
-                    Spacer()
-                } else {
-                    List {
-                        ForEach(sortedItems) { item in
-                            NavigationLink(value: item.id) {
-                                HStack(spacing: 14) {
-                                    ProductThumbnail(urlString: item.imageURL, size: 56, cornerRadius: 16)
-                                        .accessibilityIdentifier(TestIdentifiers.itemThumbnail)
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(item.name)
-                                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                                            .foregroundStyle(MekasaTheme.brand)
-                                            .accessibilityIdentifier(TestIdentifiers.itemTitle)
-                                        Text("Qty \(item.quantity) · \(item.category)")
-                                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                            .foregroundStyle(MekasaTheme.textMuted)
-                                            .accessibilityIdentifier(TestIdentifiers.itemSubtitle)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 16)
+                        .padding(.bottom, 8)
+
+                    if sortedItems.isEmpty {
+                        Text("Nothing in inventory yet. Use + to add items.")
+                            .font(MekasaTheme.bodyFont)
+                            .foregroundStyle(MekasaTheme.textMuted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(24)
+                            .accessibilityIdentifier(TestIdentifiers.emptyStateView)
+                        Spacer()
+                    } else {
+                        List {
+                            ForEach(sortedItems) { item in
+                                NavigationLink(value: item.id) {
+                                    HStack(spacing: 14) {
+                                        ProductThumbnail(urlString: item.imageURL, size: 56, cornerRadius: 16)
+                                            .accessibilityIdentifier(TestIdentifiers.itemThumbnail)
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(item.name)
+                                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                                .foregroundStyle(MekasaTheme.brand)
+                                                .accessibilityIdentifier(TestIdentifiers.itemTitle)
+                                            Text("Qty \(item.quantity) · \(item.category)")
+                                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                                .foregroundStyle(MekasaTheme.textMuted)
+                                                .accessibilityIdentifier(TestIdentifiers.itemSubtitle)
+                                        }
+                                        Spacer()
+                                        if item.isLowStock {
+                                            Text("Low")
+                                                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                                                .foregroundStyle(MekasaTheme.accent)
+                                        }
                                     }
-                                    Spacer()
-                                    if item.isLowStock {
-                                        Text("Low")
-                                            .font(.system(size: 11, weight: .heavy, design: .rounded))
-                                            .foregroundStyle(MekasaTheme.accent)
+                                    .padding(.vertical, 4)
+                                }
+                                .listRowBackground(MekasaTheme.surface)
+                                .accessibilityIdentifier(TestIdentifiers.itemCell)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    if item.quantity > 1 {
+                                        Button {
+                                            session.consumeInventoryItem(id: item.id)
+                                        } label: {
+                                            Label("Use 1", systemImage: "minus.circle.fill")
+                                        }
+                                        .tint(MekasaTheme.accent)
+                                    } else {
+                                        Button(role: .destructive) {
+                                            session.softRemoveInventoryItem(id: item.id)
+                                        } label: {
+                                            Label("Remove", systemImage: "trash.fill")
+                                        }
+                                        .tint(MekasaTheme.accent)
                                     }
                                 }
-                                .padding(.vertical, 4)
                             }
-                            .listRowBackground(MekasaTheme.surface)
-                            .accessibilityIdentifier(TestIdentifiers.itemCell)
                         }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
+                        .accessibilityIdentifier(TestIdentifiers.itemList)
                     }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .accessibilityIdentifier(TestIdentifiers.itemList)
+                }
+
+                if session.showInventoryUndoToast {
+                    HStack {
+                        Text("Item removed")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundStyle(MekasaTheme.surface)
+                        Spacer()
+                        Button("Undo") {
+                            session.undoInventoryRemove()
+                        }
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(MekasaTheme.accent)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                    .background(MekasaTheme.brand)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 24)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .accessibilityIdentifier("InventoryUndoToast")
                 }
             }
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: session.showInventoryUndoToast)
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: String.self) { itemID in

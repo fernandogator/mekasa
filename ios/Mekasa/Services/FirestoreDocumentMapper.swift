@@ -5,6 +5,8 @@ import Foundation
 /// Shared by `HouseholdSyncService` and unit tests (dictionary-shaped docs).
 enum FirestoreDocumentMapper {
     static func inventoryItem(id: String, data: [String: Any]) -> InventoryItem? {
+        // Soft-deleted docs stay in Firestore until purge — hide from live list.
+        if bool(data["deleted"]) == true { return nil }
         guard let name = string(data["name"]), !name.isEmpty else { return nil }
         let quantity = int(data["quantity"]) ?? 0
         return InventoryItem(

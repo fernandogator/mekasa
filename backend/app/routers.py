@@ -385,11 +385,51 @@ def delete_inventory_item(
     repo: InventoryRepository = Depends(get_inventory_repository),
 ) -> None:
     """
-    Satisfies: REQ-006
+    Soft-delete inventory item (REQ-INV-016).
     Spec version: 1.0
     """
     try:
         repo.delete(household_id, item_id, user.uid)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+
+
+@inventory_router.post(
+    "/households/{household_id}/inventory/{item_id}/restore",
+    response_model=InventoryItemResponse,
+)
+def restore_inventory_item(
+    household_id: str,
+    item_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: InventoryRepository = Depends(get_inventory_repository),
+) -> InventoryItemResponse:
+    """
+    Undo soft-delete (REQ-INV-017).
+    Spec version: 1.0
+    """
+    try:
+        return repo.restore(household_id, item_id, user.uid)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+
+
+@inventory_router.post(
+    "/households/{household_id}/inventory/{item_id}/purge",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def purge_inventory_item(
+    household_id: str,
+    item_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: InventoryRepository = Depends(get_inventory_repository),
+) -> None:
+    """
+    Hard-delete after undo window (REQ-INV-018 client/Cloud Tasks path).
+    Spec version: 1.0
+    """
+    try:
+        repo.purge(household_id, item_id, user.uid)
     except (KeyError, PermissionError) as exc:
         raise _map_inventory_errors(exc) from exc
 

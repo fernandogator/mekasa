@@ -61,7 +61,9 @@ PYTHONPATH=. ALLOW_TEST_AUTH=true pytest ../tests/backend -q
 | GET | `/v1/households/{id}/inventory/{item_id}` | yes | Get one item |
 | PATCH | `/v1/households/{id}/inventory/{item_id}` | yes | Update item fields |
 | POST | `/v1/households/{id}/inventory/{item_id}/refresh-image` | yes | Fill missing `image_url` via OFF / category placeholder |
-| DELETE | `/v1/households/{id}/inventory/{item_id}` | yes | Delete item |
+| POST | `…/inventory/{item_id}/restore` | yes | Undo soft-delete (REQ-INV-017) |
+| POST | `…/inventory/{item_id}/purge` | yes | Hard-delete after undo window (REQ-INV-018) |
+| DELETE | `/v1/households/{id}/inventory/{item_id}` | yes | Soft-delete item (REQ-INV-016) |
 | POST | `/v1/households/{id}/inventory/{item_id}/consume` | yes | Decrement quantity |
 | POST | `/v1/households/{id}/inventory/consume-by-barcode` | yes | Decrement by barcode (unknown → logged event) |
 | GET | `/v1/households/{id}/trash-scans/unknown` | yes | Owner: unknown trash scans |

@@ -147,6 +147,40 @@ def test_inventory_crud_and_consume(client: TestClient) -> None:
         f"/v1/households/{household_id}/inventory/{item_id}",
         headers=_auth(),
     ).status_code == 404
+    listed = client.get(
+        f"/v1/households/{household_id}/inventory",
+        headers=_auth(),
+    )
+    assert listed.status_code == 200
+    assert all(row["id"] != item_id for row in listed.json()["items"])
+
+    restored = client.post(
+        f"/v1/households/{household_id}/inventory/{item_id}/restore",
+        headers=_auth(),
+    )
+    assert restored.status_code == 200
+    assert restored.json()["deleted"] is False
+    assert client.get(
+        f"/v1/households/{household_id}/inventory/{item_id}",
+        headers=_auth(),
+    ).status_code == 200
+
+    client.delete(
+        f"/v1/households/{household_id}/inventory/{item_id}",
+        headers=_auth(),
+    )
+    purged = client.post(
+        f"/v1/households/{household_id}/inventory/{item_id}/purge",
+        headers=_auth(),
+    )
+    assert purged.status_code == 204
+    assert (
+        client.post(
+            f"/v1/households/{household_id}/inventory/{item_id}/restore",
+            headers=_auth(),
+        ).status_code
+        == 404
+    )
 
 
 def test_inventory_forbidden_for_other_user(client: TestClient) -> None:

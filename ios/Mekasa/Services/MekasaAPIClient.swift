@@ -193,6 +193,27 @@ actor MekasaAPIClient {
         )
     }
 
+    func restoreInventoryItem(
+        householdID: String,
+        itemID: String,
+        token: String
+    ) async throws -> InventoryItemDTO {
+        try await request(
+            path: "/v1/households/\(householdID)/inventory/\(itemID)/restore",
+            method: "POST",
+            token: token
+        )
+    }
+
+    func purgeInventoryItem(householdID: String, itemID: String, token: String) async throws {
+        _ = try await rawRequest(
+            path: "/v1/households/\(householdID)/inventory/\(itemID)/purge",
+            method: "POST",
+            token: token,
+            body: nil as String?
+        )
+    }
+
     func consumeInventoryItem(
         householdID: String,
         itemID: String,

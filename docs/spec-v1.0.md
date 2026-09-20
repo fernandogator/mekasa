@@ -114,6 +114,43 @@ Acceptance Criteria:
 - AC2: Default threshold is 1 if not set
 - AC3: Changes apply immediately to low-stock calculations
 
+### REQ-INV-014: Swipe Use One
+Priority: P0
+Description: Swipe left on an inventory item with quantity greater than 1
+decrements quantity by 1 via the inventory consume API.
+Acceptance Criteria:
+- AC1: Trailing swipe shows “Use 1” with minus icon in accent red (#ca0013)
+- AC2: Quantity decreases by 1; never below 0
+- AC3: No confirmation alert
+
+### REQ-INV-015: Swipe Remove Affordance
+Priority: P0
+Description: When quantity is exactly 1, swipe shows a destructive Remove action.
+Acceptance Criteria:
+- AC1: Trailing swipe labeled “Remove” with trash icon in accent red (#ca0013)
+
+### REQ-INV-016: Soft Delete With Undo Toast
+Priority: P0
+Description: Confirming Remove soft-deletes the item and offers Undo.
+Acceptance Criteria:
+- AC1: Item disappears from the list immediately
+- AC2: API marks `deleted: true` with `deleted_at`
+- AC3: Undo toast “Item removed” visible for 5 seconds
+
+### REQ-INV-017: Undo Soft Delete
+Priority: P0
+Description: Tapping Undo within 5 seconds restores the item.
+Acceptance Criteria:
+- AC1: `deleted: false` and `deleted_at` cleared
+- AC2: Item reappears at its original list position
+
+### REQ-INV-018: Purge Soft-Deleted Item
+Priority: P0
+Description: After 5 seconds without Undo, the document is hard-deleted.
+Acceptance Criteria:
+- AC1: Client calls purge so the Firestore document no longer exists
+  (Cloud Tasks/Function may replace the client timer later)
+
 ### REQ-010: Low Stock Threshold — Learned
 Priority: P2
 Description: System learns consumption rate and suggests threshold
