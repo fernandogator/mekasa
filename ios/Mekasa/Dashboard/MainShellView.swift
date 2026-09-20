@@ -53,6 +53,8 @@ struct MainShellView: View {
             await session.refreshShoppingList(syncLowStock: true)
             await session.refreshSpending(period: .week)
             await session.refreshMyMembership()
+            session.updateRealtimeSync()
+            PushRegistrationService.shared.requestPermissionAndRegister(idToken: session.idToken)
         }
     }
 }

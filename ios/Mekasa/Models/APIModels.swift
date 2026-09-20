@@ -336,6 +336,22 @@ struct ProductSearchResponseDTO: Codable, Equatable {
     let results: [ProductSearchHitDTO]
 }
 
+struct DeviceRegistrationDTO: Codable, Equatable, Identifiable {
+    let id: String
+    let uid: String
+    let fcmToken: String
+    let platform: String
+    let createdAt: Date?
+    let updatedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id, uid, platform
+        case fcmToken = "fcm_token"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+}
+
 /// Consume-by-barcode result (REQ-008).
 struct ConsumeByBarcodeResultDTO: Codable, Equatable {
     let found: Bool

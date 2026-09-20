@@ -152,7 +152,9 @@ struct DashboardView: View {
             }
             Spacer()
             Button {
-                showToast("Notifications come next")
+                showToast(session.isRealtimeSyncActive
+                           ? "Live sync is on — inventory updates across devices"
+                           : "Turn on notifications in Settings to get invite alerts")
             } label: {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: "bell")

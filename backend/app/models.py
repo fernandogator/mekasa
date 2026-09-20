@@ -405,6 +405,24 @@ class HouseholdInvitesResponse(BaseModel):
     invites: list[HouseholdInviteResponse]
 
 
+class DeviceRegistrationRequest(BaseModel):
+    """Register an FCM device token for the authenticated user (PRD §8)."""
+
+    fcm_token: str = Field(min_length=8, max_length=4096)
+    platform: Literal["ios", "android", "web"] = "ios"
+
+
+class DeviceRegistrationResponse(BaseModel):
+    """Stored device registration."""
+
+    id: str
+    uid: str
+    fcm_token: str
+    platform: Literal["ios", "android", "web"]
+    created_at: datetime
+    updated_at: datetime
+
+
 class UnknownBarcodeEvent(BaseModel):
     """Logged unknown trash-station scan (REQ-008 AC3)."""
 

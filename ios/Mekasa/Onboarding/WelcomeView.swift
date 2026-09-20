@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// Signup / sign-in (Google + email). Apple deferred.
+/// Signup / sign-in (Google + email). Apple Sign-In button reserved (capability next).
 /// Satisfies: REQ-001 AC2–AC3, REQ-022 AC5, UI-003 AC1
 /// Spec version: 1.0
 struct WelcomeView: View {
@@ -86,6 +86,10 @@ struct WelcomeView: View {
                             PrimaryButton(title: "Continue with Google", isLoading: session.isBusy) {
                                 Task { await submitGoogle() }
                             }
+                            SecondaryButton(title: "Continue with Apple") {
+                                session.lastError = "Sign in with Apple is next — use Google or email for now."
+                            }
+                            .accessibilityIdentifier("WelcomeAppleSignInButton")
                             SecondaryButton(title: "Continue with email") {
                                 withAnimation(.easeInOut(duration: 0.25)) { showEmailForm = true }
                             }
@@ -144,6 +148,8 @@ struct WelcomeView: View {
         if let existing = try? await MekasaAPIClient.shared.currentHousehold(token: token) {
             session.household = existing
             withAnimation { session.onboardingStep = resumeStep(for: existing) }
+            session.updateRealtimeSync()
+            PushRegistrationService.shared.requestPermissionAndRegister(idToken: token)
         } else {
             withAnimation { session.onboardingStep = .household }
         }

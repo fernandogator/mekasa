@@ -179,7 +179,8 @@ final class APIModelsTests: XCTestCase {
         XCTAssertEqual(report.period, .week)
         XCTAssertEqual(report.total, 6.98, accuracy: 0.001)
         XCTAssertEqual(report.byCategory.first?.category, "Dairy")
-        XCTAssertEqual(report.events.first?.lineTotal, 6.98, accuracy: 0.001)
+        let lineTotal = try XCTUnwrap(report.events.first?.lineTotal)
+        XCTAssertEqual(lineTotal, 6.98, accuracy: 0.001)
         XCTAssertEqual(report.events.first?.source, "inventory")
     }
 

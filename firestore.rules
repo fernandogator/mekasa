@@ -1,0 +1,45 @@
+rules_version = '2';
+// Client read access for realtime sync (REQ-020). Writes stay on Cloud Run.
+// Deploy: firebase deploy --only firestore:rules --project hackathon2025-472017
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isHouseholdMember(householdId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/user_memberships/$(request.auth.uid)/households/$(householdId))
+        && get(/databases/$(database)/documents/user_memberships/$(request.auth.uid)/households/$(householdId)).data.status == 'active';
+    }
+
+    match /user_memberships/{uid}/households/{householdId} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /households/{householdId} {
+      allow read: if isHouseholdMember(householdId);
+      allow write: if false;
+
+      match /inventory_items/{itemId} {
+        allow read: if isHouseholdMember(householdId);
+        allow write: if false;
+      }
+
+      match /shopping_list_items/{itemId} {
+        allow read: if isHouseholdMember(householdId);
+        allow write: if false;
+      }
+
+      match /members/{memberUid} {
+        allow read: if isHouseholdMember(householdId);
+        allow write: if false;
+      }
+    }
+
+    match /users/{uid}/devices/{deviceId} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+  }
+}

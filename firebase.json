@@ -1,0 +1,6 @@
+{
+  "firestore": {
+    "database": "mekasa-db",
+    "rules": "firestore.rules"
+  }
+}

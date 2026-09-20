@@ -15,6 +15,7 @@ Python FastAPI service for Cloud Run. Covers:
 - **Purchase events + spending reports** (`REQ-015`, `REQ-017`, `REQ-018`)
 - Durable **members/invites** (Firestore when prod) + member ACL on inventory/shopping
 - **Barcode / UPC lookup** via Open Food Facts (`REQ-004`)
+- **Device tokens + invite push hooks** (FCM best-effort; PRD §8 scaffold)
 
 ## Local run
 
@@ -79,6 +80,8 @@ PYTHONPATH=. ALLOW_TEST_AUTH=true pytest ../tests/backend -q
 | POST | `/v1/invites/accept` | yes | Accept invite token |
 | GET | `/v1/barcode/{code}` | yes | Open Food Facts UPC lookup (`found` false if unknown) |
 | GET | `/v1/products/search?q=&limit=` | yes | Name search → product variants (manual / voice pick list) |
+| POST | `/v1/devices` | yes | Register FCM token (PRD §8) |
+| DELETE | `/v1/devices?fcm_token=` | yes | Unregister FCM token |
 
 ## Environment
 
