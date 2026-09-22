@@ -96,17 +96,15 @@
 
 ## Running Log
 
-<<<<<<< HEAD
 ### 2026-09-22 — App icon: red house + barcode scan
 - Replaced `AppIcon.appiconset/AppIcon.png` (1024×1024) from Superdesign share
   (red house silhouette, barcode + scan line on white)
-=======
+
 ### 2026-09-20 — Sign in with Apple (REQ-001 AC1)
 - Welcome **Continue with Apple** → `ASAuthorization` + Firebase `OAuthProvider.appleCredential`
 - Entitlement: `Mekasa/Mekasa.entitlements` (`com.apple.developer.applesignin`)
 - Unit: `AppleSignInNonceTests`; backend unchanged (still verifies Firebase ID tokens)
 - **Enable Apple** in Firebase Auth + App ID capability before device testing
->>>>>>> origin/main
 
 ### 2026-09-20 — Inventory swipe Use 1 / Remove + Undo (REQ-INV-014–018)
 - List trailing swipe: qty > 1 → **Use 1** (consume); qty = 1 → **Remove**
