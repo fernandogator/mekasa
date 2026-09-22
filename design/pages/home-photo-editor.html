@@ -1,0 +1,128 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Nunito', sans-serif;
+      background-color: #eeebe3;
+      color: #171e19;
+      margin: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .safe-top { padding-top: 56px; }
+    .safe-bottom { padding-bottom: 34px; }
+    .photo-frame {
+      width: 100%;
+      height: 220px;
+      border-radius: 40px;
+      overflow: hidden;
+      position: relative;
+      background-color: #ffffff;
+      border: 1px solid rgba(183, 198, 194, 0.4);
+    }
+    .crop-overlay {
+      position: absolute;
+      inset: 0;
+      border: 2px solid #ca0013;
+      border-radius: 40px;
+      pointer-events: none;
+    }
+    .btn-pill {
+      border-radius: 999px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      transition: all 0.2s ease;
+    }
+    .btn-pill:active { transform: scale(0.96); opacity: 0.9; }
+    .input-field {
+      background: #ffffff;
+      border: 1px solid rgba(183, 198, 194, 0.4);
+      border-radius: 20px;
+      height: 56px;
+      padding: 0 20px;
+      font-size: 16px;
+      font-weight: 600;
+      width: 100%;
+      outline: none;
+    }
+    .input-field:focus { border-color: #ca0013; }
+    .sage-blob {
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: rgba(183, 198, 194, 0.20);
+      filter: blur(40px);
+      z-index: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="flex flex-col min-h-screen relative overflow-hidden" data-sd-id="1">
+    <div class="sage-blob" data-sd-id="2"></div>
+    
+    <!-- Header -->
+    <header class="shrink-0 pt-14 px-6 flex items-center justify-between z-10" data-sd-id="3">
+      <a id="cancel-action" href="#" class="text-brand font-bold py-2" data-sd-id="4">Cancel</a>
+      <h1 class="text-[18px] font-black" data-sd-id="5">Home photo</h1>
+      <button id="save-action-header" class="text-[#ca0013] font-black py-2 active:opacity-60 transition-opacity" data-sd-id="6">Save</button>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto px-6 pt-8 z-10" data-sd-id="7">
+      <!-- House Name Section -->
+      <div class="space-y-2 mb-8" data-sd-id="8">
+        <label class="text-[10px] font-bold uppercase tracking-[0.12em] text-[#6d7a76] ml-2" data-sd-id="9">House name</label>
+        <input type="text" class="input-field" placeholder="The Guerrero Home" value="The Guerrero Home" data-sd-id="10">
+      </div>
+
+      <!-- Crop Framing Section -->
+      <div class="space-y-4" data-sd-id="11">
+        <label class="text-[10px] font-bold uppercase tracking-[0.12em] text-[#6d7a76] ml-2" data-sd-id="12">Crop Preview</label>
+        <div class="photo-frame group relative" data-sd-id="13">
+          <!-- Mock House Image -->
+          <img src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&amp;fit=crop&amp;q=80&amp;w=1000" class="w-full h-full object-cover" alt="House Preview" data-sd-id="14">
+          <div class="crop-overlay" data-sd-id="15"></div>
+        </div>
+        <p class="text-center text-[12px] font-semibold text-[#6d7a76]" data-sd-id="16">
+          Pinch to zoom · drag to reposition
+        </p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="mt-10 space-y-4" data-sd-id="17">
+        <button class="btn-pill bg-[#ca0013] text-white w-full space-x-2 shadow-[0_8px_16px_rgba(202,0,19,0.2)]" data-sd-id="18">
+          <iconify-icon icon="lucide:camera" class="text-xl"></iconify-icon>
+          <span data-sd-id="19">Take photo</span>
+        </button>
+        <button class="btn-pill bg-white text-brand border border-[#b7c6c2] w-full space-x-2" data-sd-id="20">
+          <iconify-icon icon="lucide:image" class="text-xl"></iconify-icon>
+          <span data-sd-id="21">Choose from Photos</span>
+        </button>
+      </div>
+
+      <!-- Helper Text -->
+      <p class="mt-8 text-center text-[13px] text-[#6d7a76] font-medium leading-relaxed max-w-[280px] mx-auto" data-sd-id="22">
+        Owners can update this anytime. Members see it on the dashboard hero.
+      </p>
+    </main>
+
+    <!-- Footer / Sticky Bottom -->
+    <footer class="shrink-0 px-6 pb-[34px] pt-4 z-10" data-sd-id="23">
+      <button id="save-action-footer" class="btn-pill bg-[#ca0013] text-white w-full shadow-[0_8px_20px_rgba(202,0,19,0.25)]" data-sd-id="24">
+        Save Changes
+      </button>
+    </footer>
+  </div>
+
+</body></html>

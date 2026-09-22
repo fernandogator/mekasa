@@ -1,0 +1,119 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-brand: #171e19;
+      --color-brand-muted: #b7c6c2;
+      --color-surface: #eeebe3;
+      --color-surface-elevated: #ffffff;
+      --color-text: #171e19;
+      --color-text-muted: #6d7a76;
+      --color-accent: #ca0013;
+      --color-overlay: rgba(183, 198, 194, 0.20);
+    }
+    body {
+      font-family: 'Nunito', sans-serif;
+      background-color: var(--color-surface);
+      color: var(--color-text);
+      margin: 0;
+    }
+    .sage-blob {
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: var(--color-overlay);
+      filter: blur(40px);
+      z-index: 0;
+      pointer-events: none;
+    }
+    .photo-frame {
+      aspect-ratio: 1 / 1;
+      width: 100%;
+      border-radius: 40px;
+      overflow: hidden;
+      position: relative;
+      background-color: var(--color-surface-elevated);
+      border: 1px solid rgba(183, 198, 194, 0.4);
+    }
+    .crop-overlay {
+      position: absolute;
+      inset: 0;
+      border: 3px solid var(--color-accent);
+      border-radius: 40px;
+      pointer-events: none;
+      box-shadow: 0 0 0 1000px rgba(23, 30, 25, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="w-full h-screen flex flex-col relative overflow-hidden" data-sd-id="1">
+    <div class="sage-blob" data-sd-id="2"></div>
+    
+    <!-- Header -->
+    <header class="shrink-0 pt-14 px-6 flex items-center justify-between z-10" data-sd-id="3">
+      <a id="nav-cancel" href="#" class="text-brand text-[17px] font-bold py-2" data-sd-id="4">Cancel</a>
+      <h1 class="text-[18px] font-black tracking-tight" data-sd-id="5">Product photo</h1>
+      <button id="nav-save-header" class="text-accent text-[17px] font-black py-2 active:opacity-60 transition-opacity" data-sd-id="6">Save</button>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto px-6 pt-8 z-10" data-sd-id="7">
+      <!-- Product Name Input -->
+      <div class="space-y-2 mb-8" data-sd-id="8">
+        <label class="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted ml-2" data-sd-id="9">Product name</label>
+        <div class="relative" data-sd-id="10">
+          <input type="text" class="w-full h-[56px] bg-white border border-[#b7c6c2]/40 rounded-[20px] px-5 text-[16px] font-semibold outline-none focus:border-accent transition-colors shadow-sm" placeholder="e.g. 2% Milk" value="2% Milk" data-sd-id="11">
+        </div>
+      </div>
+
+      <!-- Crop Frame Area -->
+      <div class="space-y-4" data-sd-id="12">
+        <label class="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted ml-2" data-sd-id="13">Framing</label>
+        <div class="photo-frame relative shadow-sm" data-sd-id="14">
+          <img src="https://images.unsplash.com/photo-1550583760-704c9a42172c?auto=format&amp;fit=crop&amp;q=80&amp;w=800" class="w-full h-full object-cover" alt="Product preview" data-sd-id="15">
+          <div class="crop-overlay" data-sd-id="16"></div>
+        </div>
+        <div class="flex flex-col items-center space-y-1" data-sd-id="17">
+          <p class="text-[12px] font-bold text-text-muted flex items-center gap-1.5" data-sd-id="18">
+            <iconify-icon icon="lucide:move-3d" class="text-accent"></iconify-icon>
+            Pinch to zoom · drag to reposition
+          </p>
+        </div>
+      </div>
+
+      <!-- Capture Actions -->
+      <div class="mt-10 space-y-3 pb-8" data-sd-id="19">
+        <button class="flex items-center justify-center w-full h-[56px] bg-accent text-white rounded-[24px] font-black text-[16px] shadow-[0_8px_16px_rgba(202,0,19,0.2)] active:scale-95 transition-transform" data-sd-id="20">
+          <iconify-icon icon="lucide:camera" class="mr-2 text-xl"></iconify-icon>
+          Take photo
+        </button>
+        <button class="flex items-center justify-center w-full h-[56px] bg-white text-brand border border-[#b7c6c2] rounded-[24px] font-black text-[16px] active:scale-95 transition-transform" data-sd-id="21">
+          <iconify-icon icon="lucide:image" class="mr-2 text-xl"></iconify-icon>
+          Choose from Photos
+        </button>
+      </div>
+
+      <!-- Helper Info -->
+      <div class="max-w-[280px] mx-auto text-center" data-sd-id="22">
+        <p class="text-[13px] text-text-muted font-medium leading-relaxed" data-sd-id="23">
+          Custom product images help identify items faster in your household pantry.
+        </p>
+      </div>
+    </main>
+
+    <!-- Fixed Bottom Footer -->
+    <footer class="shrink-0 px-6 pb-[34px] pt-4 z-10" data-sd-id="24">
+      <button id="btn-save-main" class="flex items-center justify-center w-full h-[56px] bg-accent text-white rounded-[24px] font-black text-[17px] shadow-[0_8px_20px_rgba(202,0,19,0.25)] active:scale-95 transition-transform" data-sd-id="25">
+        Save Product
+      </button>
+    </footer>
+  </div>
+
+</body></html>
