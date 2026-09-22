@@ -1,5 +1,7 @@
 import Foundation
 import AuthenticationServices
+import CryptoKit
+import Security
 import UIKit
 import FirebaseCore
 import FirebaseAuth
