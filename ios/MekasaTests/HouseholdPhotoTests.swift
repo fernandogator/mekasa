@@ -64,12 +64,7 @@ final class HouseholdPhotoTests: XCTestCase {
             frameSize: CGSize(width: 160, height: 110)
         )
         XCTAssertNotNil(cropped)
-<<<<<<< HEAD
         XCTAssertEqual(Double(cropped!.size.width), 160, accuracy: 0.5)
         XCTAssertEqual(Double(cropped!.size.height), 110, accuracy: 0.5)
-=======
-        XCTAssertEqual(cropped?.size.width, 160, accuracy: 0.5)
-        XCTAssertEqual(cropped?.size.height, 110, accuracy: 0.5)
->>>>>>> origin/main
     }
 }
