@@ -24,7 +24,8 @@
         "UI002SnapshotTests",
         "UI003SnapshotTests",
         "UI004SnapshotTests",
-        "UI005SnapshotTests"
+        "UI005SnapshotTests",
+        "UI006SnapshotTests"
       ],
       "target" : {
         "containerPath" : "container:Mekasa.xcodeproj",

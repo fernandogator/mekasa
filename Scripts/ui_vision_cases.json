@@ -1,0 +1,43 @@
+{
+  "description": "Layer 3 vision verification case stubs (manual pre-release). Feed --spec/--actual into Scripts/verify_ui_vision.py.",
+  "cases": [
+    {
+      "screen": "UI-006",
+      "name": "inventory_list_default",
+      "status": "stub",
+      "spec": "design/baselines/ios/InventoryList_baseline.png",
+      "notes": "List title, rows with thumbnail/placeholder, name + Qty subtitle; accent low-stock badge when applicable."
+    },
+    {
+      "screen": "UI-006",
+      "name": "inventory_swipe_use_one",
+      "status": "stub",
+      "reqs": ["REQ-INV-014"],
+      "spec": "design/baselines/ios/InventorySwipeUseOne_baseline.png",
+      "notes": "Trailing swipe reveals Use 1 with minus icon in accent red (#ca0013); no confirm dialog."
+    },
+    {
+      "screen": "UI-006",
+      "name": "inventory_swipe_remove",
+      "status": "stub",
+      "reqs": ["REQ-INV-015"],
+      "spec": "design/baselines/ios/InventorySwipeRemove_baseline.png",
+      "notes": "Qty=1 row trailing swipe shows Remove with trash icon in accent red (#ca0013)."
+    },
+    {
+      "screen": "UI-006",
+      "name": "inventory_undo_toast",
+      "status": "stub",
+      "reqs": ["REQ-INV-016", "REQ-INV-017"],
+      "spec": "design/baselines/ios/InventoryUndoToast_baseline.png",
+      "notes": "Bottom toast Item removed + Undo on brand charcoal; toast must not obscure list title hierarchy."
+    },
+    {
+      "screen": "UI-006",
+      "name": "item_detail_default",
+      "status": "stub",
+      "spec": "design/baselines/ios/ItemDetail_baseline.png",
+      "notes": "Hero product image, name, category, UPC when known, quantity metadata."
+    }
+  ]
+}

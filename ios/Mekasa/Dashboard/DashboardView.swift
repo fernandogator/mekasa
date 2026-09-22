@@ -100,6 +100,8 @@ struct DashboardView: View {
                 .textCase(.uppercase)
                 .tracking(0.8)
                 .foregroundStyle(MekasaTheme.textMuted)
+                .accessibilityIdentifier(TestIdentifiers.allInventoryButton)
+                .accessibilityLabel("All inventory")
             }
             if lowStockItems.isEmpty {
                 Text("Nothing below threshold right now.")
@@ -192,6 +194,8 @@ struct DashboardView: View {
                 )
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier(TestIdentifiers.lowStockStatButton)
+            .accessibilityLabel("Low stock")
 
             Button {
                 selectedTab = .spend

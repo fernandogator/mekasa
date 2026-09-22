@@ -14,6 +14,15 @@ enum TestIdentifiers {
     static let itemSubtitle = "ItemSubtitle"
     static let emptyStateView = "EmptyStateView"
 
+    // MARK: - Inventory list / swipe (UI-006 · REQ-INV-014–018)
+    static let inventoryListView = "InventoryListView"
+    static let inventoryUseOneAction = "InventoryUseOneAction"
+    static let inventoryRemoveAction = "InventoryRemoveAction"
+    static let inventoryUndoToast = "InventoryUndoToast"
+    static let inventoryUndoButton = "InventoryUndoButton"
+    static let allInventoryButton = "AllInventoryButton"
+    static let lowStockStatButton = "LowStockStatButton"
+
     // MARK: - Item Detail
     static let itemDetailView = "ItemDetailView"
     static let itemImage = "ItemImage"

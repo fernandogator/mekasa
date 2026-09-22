@@ -42,4 +42,24 @@ class InventoryScreenUITest {
         // and ItemDetail_baseline.png
         // Tolerance: 15% color/content; fail only on structural divergence
     }
+
+    // REQ-INV-014–018 (parity with iOS UI006StructureTests swipe stubs)
+
+    @Test
+    @Ignore("Stub — swipe Use 1 when qty > 1 (REQ-INV-014)")
+    fun interaction_swipeUseOneDecrementsQuantity() {
+        // Trailing swipe shows Use 1 (accent red); quantity decrements; no confirm
+    }
+
+    @Test
+    @Ignore("Stub — swipe Remove + Undo toast (REQ-INV-015/016)")
+    fun interaction_swipeRemoveShowsUndoToast() {
+        // Qty=1 Remove soft-deletes; Item removed toast with Undo for 5s
+    }
+
+    @Test
+    @Ignore("Stub — Undo restores item (REQ-INV-017)")
+    fun flow_undoRestoresRemovedItem() {
+        // Tap Undo within 5s; item returns at original list position
+    }
 }
