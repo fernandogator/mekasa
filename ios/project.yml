@@ -33,12 +33,18 @@ targets:
         optional: true
         buildPhase: resources
 
+    entitlements:
+      path: Mekasa/Mekasa.entitlements
+      properties:
+        com.apple.developer.applesignin:
+          - Default
     configFiles:
       Debug: Config/Version.xcconfig
       Release: Config/Version.xcconfig
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.fernandogator.mekasa
       INFOPLIST_FILE: Mekasa/Info.plist
+      CODE_SIGN_ENTITLEMENTS: Mekasa/Mekasa.entitlements
       TARGETED_DEVICE_FAMILY: "1"
       # MARKETING_VERSION + CURRENT_PROJECT_VERSION come from Config/Version.xcconfig
       # (marketing starts at 1.0.0; build number is unique per build via preBuildScripts).

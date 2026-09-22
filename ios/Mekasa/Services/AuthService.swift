@@ -7,7 +7,7 @@ import FirebaseAuth
 import GoogleSignIn
 #endif
 
-/// Firebase Auth (Email + Google). Falls back to a clear error if Firebase isn't ready.
+/// Firebase Auth (Email + Google + Apple). Falls back to a clear error if Firebase isn't ready.
 /// Satisfies: REQ-001 (Household Account Creation) AC1–AC3
 /// Spec version: 1.0
 @MainActor
@@ -73,6 +73,55 @@ final class AuthService: ObservableObject {
         #endif
     }
 
+    /// Sign in with Apple → Firebase `apple.com` OAuth credential (REQ-001 AC1).
+    func signInWithApple() async throws -> (token: String, email: String?, name: String?) {
+        try ensureFirebaseReady()
+        let rawNonce = AppleSignInNonce.random()
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        request.requestedScopes = [.fullName, .email]
+        request.nonce = AppleSignInNonce.sha256(rawNonce)
+
+        do {
+            let authorization = try await AppleSignInPresenter.shared.authorize(request: request)
+            guard let appleID = authorization.credential as? ASAuthorizationAppleIDCredential else {
+                throw AuthServiceError.missingAppleCredential
+            }
+            guard
+                let tokenData = appleID.identityToken,
+                let idToken = String(data: tokenData, encoding: .utf8)
+            else {
+                throw AuthServiceError.missingAppleToken
+            }
+
+            let credential = OAuthProvider.appleCredential(
+                withIDToken: idToken,
+                rawNonce: rawNonce,
+                fullName: appleID.fullName
+            )
+            let authResult = try await Auth.auth().signIn(with: credential)
+            let token = try await authResult.user.getIDToken()
+            let name = displayName(from: appleID.fullName) ?? authResult.user.displayName
+            let email = appleID.email ?? authResult.user.email
+            return (token, email, name)
+        } catch let error as AuthServiceError {
+            throw error
+        } catch {
+            let ns = error as NSError
+            if ns.domain == ASAuthorizationError.errorDomain,
+               ns.code == ASAuthorizationError.Code.canceled.rawValue {
+                throw AuthServiceError.cancelled
+            }
+            throw AuthErrorFormatter.wrap(error)
+        }
+    }
+
+    private func displayName(from components: PersonNameComponents?) -> String? {
+        guard let components else { return nil }
+        let formatter = PersonNameComponentsFormatter()
+        let formatted = formatter.string(from: components).trimmingCharacters(in: .whitespacesAndNewlines)
+        return formatted.isEmpty ? nil : formatted
+    }
+
     func signOut() throws {
         if FirebaseBootstrap.isConfigured {
             try Auth.auth().signOut()
@@ -126,10 +175,13 @@ final class AuthService: ObservableObject {
     }
 }
 
-enum AuthServiceError: LocalizedError {
+enum AuthServiceError: LocalizedError, Equatable {
     case firebaseMissing
     case missingGoogleToken
     case missingGoogleClientID
+    case missingAppleCredential
+    case missingAppleToken
+    case cancelled
     case sessionExpired
     case firebaseAuthFailed(String)
 
@@ -141,6 +193,12 @@ enum AuthServiceError: LocalizedError {
             return "Google Sign-In did not return an ID token."
         case .missingGoogleClientID:
             return "GoogleService-Info.plist is missing CLIENT_ID. Enable Google Sign-In in Firebase and recreate the iOS OAuth client, then re-download the plist."
+        case .missingAppleCredential:
+            return "Sign in with Apple did not return an Apple ID credential."
+        case .missingAppleToken:
+            return "Sign in with Apple did not return an identity token."
+        case .cancelled:
+            return "Sign-in was cancelled."
         case .sessionExpired:
             return "Your session expired. Please sign in again."
         case let .firebaseAuthFailed(detail):
@@ -172,7 +230,7 @@ enum AuthErrorFormatter {
         // Common FIRAuthErrorDomain codes (see Firebase Auth iOS errors docs).
         switch ns.code {
         case 17025: // operationNotAllowed
-            parts.append("HINT: Enable Email/Password in Firebase Authentication → Sign-in method.")
+            parts.append("HINT: Enable Email/Password, Google, and/or Apple in Firebase Authentication → Sign-in method.")
         case 17008: // invalidEmail
             parts.append("HINT: Email looks invalid.")
         case 17007: // emailAlreadyInUse
@@ -182,7 +240,7 @@ enum AuthErrorFormatter {
         case 17020: // networkError
             parts.append("HINT: Network/API blocked — check Identity Toolkit API + API key restrictions.")
         case 17999: // internalError
-            parts.append("HINT: Enable Identity Toolkit API; ensure Email/Password is ON; loosen API key restrictions or re-download GoogleService-Info.plist.")
+            parts.append("HINT: Enable Identity Toolkit API; ensure Email/Password (and Apple if used) is ON; loosen API key restrictions or re-download GoogleService-Info.plist.")
         default:
             break
         }

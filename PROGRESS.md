@@ -12,7 +12,7 @@
 
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
-| auth | deployed (Firebase verify) | unit + Cloud Run smoke | — | Real Google/email ID tokens from iOS; keep `ALLOW_TEST_AUTH=false` in prod |
+| auth | deployed (Firebase verify) | unit + Cloud Run smoke | — | Real Google/email/Apple ID tokens from iOS; keep `ALLOW_TEST_AUTH=false` in prod |
 | household | deployed (Firestore) | unit + smoke | — | Confirm live Cloud Run revision uses `HOUSEHOLD_PERSISTENCE=firestore` |
 | inventory | deployed (CRUD + consume + member ACL + refresh-image) | unit | — | Redeploy Cloud Run for refresh-image |
 | shopping-list | deployed (CRUD + sync + member ACL) | unit | — | Redeploy Cloud Run |
@@ -55,7 +55,7 @@
 
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
-| onboarding | ready (scan step wired) | stubs + Features2to6Tests | — | Keep Firebase plist local; Apple Sign-In later |
+| onboarding | ready (scan step wired) | stubs + Features2to6Tests + AppleSignInNonceTests | — | Enable Apple provider in Firebase Console; keep Firebase plist local |
 | dashboard | ready (live approvals + inventory link) | stubs | — | Notifications; bind spend card to spend API when ready |
 | inventory-screen | ready (list + detail + Add hub) | unit | — | Expand InventoryScreenUITest |
 | scanner | ready (barcode + receipt + voice match) | unit (VoicePhraseParserTests) | — | Expand ScannerUITest on device |
@@ -96,6 +96,16 @@
 
 ## Running Log
 
+### 2026-09-22 — App icon: red house + barcode scan
+- Replaced `AppIcon.appiconset/AppIcon.png` (1024×1024) from Superdesign share
+  (red house silhouette, barcode + scan line on white)
+
+### 2026-09-20 — Sign in with Apple (REQ-001 AC1)
+- Welcome **Continue with Apple** → `ASAuthorization` + Firebase `OAuthProvider.appleCredential`
+- Entitlement: `Mekasa/Mekasa.entitlements` (`com.apple.developer.applesignin`)
+- Unit: `AppleSignInNonceTests`; backend unchanged (still verifies Firebase ID tokens)
+- **Enable Apple** in Firebase Auth + App ID capability before device testing
+
 ### 2026-09-20 — Inventory swipe 3-layer UI stubs (UI-006 / REQ-INV-014–018)
 - Layer 1: `UI006StructureTests` — list/empty runnable; swipe Use 1 / Remove / Undo XCTSkip stubs
 - Layer 2: `UI006SnapshotTests` — list / empty / Undo toast / detail (skip until baselines)
@@ -116,7 +126,7 @@
 - `firestore.rules` + `firebase.json` — member read, client writes denied.
 - Push: `POST/DELETE /v1/devices`, FCM best-effort on invite create/accept;
   iOS `FirebaseMessaging` + APNs registration.
-- ShoppingList / Scanner unit stubs filled; Apple Sign-In button reserved on Welcome.
+- ShoppingList / Scanner unit stubs filled; Apple Sign-In wired on Welcome (enable provider in Firebase).
 - Unit: `FirestoreDocumentMapperTests`, `test_devices_push` (41 backend tests green).
 - **Deploy Firestore rules** + **redeploy Cloud Run** (devices + invite push) + APNs key.
 
