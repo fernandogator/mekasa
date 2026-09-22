@@ -96,6 +96,10 @@
 
 ## Running Log
 
+### 2026-09-22 — App icon: red house + barcode scan
+- Replaced `AppIcon.appiconset/AppIcon.png` (1024×1024) from Superdesign share
+  (red house silhouette, barcode + scan line on white)
+
 ### 2026-09-20 — Inventory swipe Use 1 / Remove + Undo (REQ-INV-014–018)
 - List trailing swipe: qty > 1 → **Use 1** (consume); qty = 1 → **Remove**
 - Remove soft-deletes (`deleted` / `deleted_at`), Undo toast 5s, then `POST …/purge`
