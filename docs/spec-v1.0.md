@@ -303,7 +303,7 @@ Test File: android/src/test/ui/DashboardUITest.kt, ios/MekasaTests/UI/DashboardU
 Acceptance Criteria:
 - AC1: Displays low-stock items prominently
 - AC2: Displays pending child requests for Owner users
-- AC3: Displays home photo as backdrop if set
+- AC3: Displays home photo as top hero band if set (tap to change via camera/Photos)
 
 ### UI-005: Trash Station Mode
 Priority: P0

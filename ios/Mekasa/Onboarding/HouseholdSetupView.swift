@@ -9,6 +9,7 @@ struct HouseholdSetupView: View {
     @State private var name = ""
     @State private var photoItem: PhotosPickerItem?
     @State private var photoImage: UIImage?
+    @State private var showCamera = false
 
     var body: some View {
         MekasaScreen {
@@ -78,6 +79,17 @@ struct HouseholdSetupView: View {
                             }
                         }
 
+                        if CameraImagePicker.isCameraAvailable {
+                            Button {
+                                showCamera = true
+                            } label: {
+                                Label("Take a photo", systemImage: "camera.fill")
+                                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                                    .foregroundStyle(MekasaTheme.accent)
+                            }
+                            .accessibilityIdentifier(TestIdentifiers.homePhotoCameraButton)
+                        }
+
                         VStack(alignment: .leading, spacing: 12) {
                             MekasaTextField(
                                 label: "Household Name",
@@ -105,6 +117,10 @@ struct HouseholdSetupView: View {
             if let existing = session.household?.name {
                 name = existing
             }
+        }
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraImagePicker(image: $photoImage)
+                .ignoresSafeArea()
         }
     }
 

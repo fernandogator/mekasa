@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 import FirebaseAuth
 
 /// App-wide session: auth token + onboarding household progress + inventory sync.
@@ -1074,6 +1075,55 @@ final class AppSession: ObservableObject {
             }
             lastError = "Couldn’t sync denial: \(error.localizedDescription)"
             await refreshShoppingList()
+        }
+    }
+
+    /// Upload / replace the household home photo (REQ-002 / UI-004 AC3).
+    @discardableResult
+    func uploadHouseholdHomePhoto(_ image: UIImage, compressionQuality: CGFloat = 0.82) async -> Bool {
+        guard let jpeg = image.jpegData(compressionQuality: compressionQuality) else {
+            lastError = "Couldn’t encode that photo."
+            return false
+        }
+        if isUIPreview || isUITesting {
+            let b64 = jpeg.base64EncodedString()
+            let dataURL = "data:image/jpeg;base64,\(b64)"
+            if var hh = household {
+                hh.photoURL = dataURL
+                household = hh
+            } else {
+                household = PreviewFixtures.household(name: "Your house", photoURL: dataURL)
+            }
+            logActivity("Updated home photo", kind: .success)
+            return true
+        }
+        guard isHouseholdOwner else {
+            lastError = "Only household owners can change the home photo."
+            return false
+        }
+        guard let token = idToken, let householdID = household?.id else {
+            lastError = "Not signed in to a household."
+            return false
+        }
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            let updated = try await MekasaAPIClient.shared.uploadHouseholdPhoto(
+                householdID: householdID,
+                imageData: jpeg,
+                mimeType: "image/jpeg",
+                token: token
+            )
+            household = updated
+            logActivity("Updated home photo", kind: .success)
+            return true
+        } catch {
+            if SessionExpiry.isUnauthorized(error) {
+                handleAPIFailure(error)
+                return false
+            }
+            lastError = error.localizedDescription
+            return false
         }
     }
 

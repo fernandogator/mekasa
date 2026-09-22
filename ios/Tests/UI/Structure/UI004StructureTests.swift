@@ -26,6 +26,16 @@ final class UI004StructureTests: XCTestCase {
         XCTAssertTrue(UITestLaunch.addItemButton(app).exists)
     }
 
+    func testDashboard_homePhotoHeroExists() {
+        XCTAssertTrue(
+            UITestLaunch.element(app, TestIdentifiers.homePhotoHero)
+                .waitForExistence(timeout: UITestLaunch.elementTimeout)
+                || app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "Good")).firstMatch
+                    .waitForExistence(timeout: 5),
+            "Dashboard should show the home photo hero / greeting"
+        )
+    }
+
     func testDashboard_requestQueueOrEmptyStateExists() {
         let queue = UITestLaunch.element(app, TestIdentifiers.requestQueue)
         let empty = UITestLaunch.element(app, TestIdentifiers.emptyStateView)

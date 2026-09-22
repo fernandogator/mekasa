@@ -56,7 +56,7 @@
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
 | onboarding | ready (scan step wired) | stubs + Features2to6Tests + AppleSignInNonceTests | — | Enable Apple provider in Firebase Console; keep Firebase plist local |
-| dashboard | ready (live approvals + inventory link) | stubs | — | Notifications; bind spend card to spend API when ready |
+| dashboard | ready (home photo hero + approvals + inventory link) | stubs + HouseholdPhotoTests | — | Notifications; bind spend card to spend API when ready |
 | inventory-screen | ready (list + detail + Add hub) | unit | — | Expand InventoryScreenUITest |
 | scanner | ready (barcode + receipt + voice match) | unit (VoicePhraseParserTests) | — | Expand ScannerUITest on device |
 | shopping-list-screen | ready (API sync + owner purchase gate) | unit | — | Expand ShoppingList UI tests |
@@ -95,6 +95,13 @@
 ---
 
 ## Running Log
+
+### 2026-09-22 — Dashboard home photo hero + HomePhotoView
+- Dashboard top **150px** home photo hero (design system) with gradient + greeting
+- Tap hero → `HomePhotoView`: **Take photo** (camera) or **Choose from Photos**, then Save
+- `AppSession.uploadHouseholdHomePhoto` → `POST …/households/{id}/photo`
+- Onboarding household setup also offers Take a photo when camera is available
+- Unit: `HouseholdPhotoTests`
 
 ### 2026-09-22 — App icon: red house + barcode scan
 - Replaced `AppIcon.appiconset/AppIcon.png` (1024×1024) from Superdesign share

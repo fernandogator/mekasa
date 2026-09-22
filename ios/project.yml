@@ -82,7 +82,7 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         UIBackgroundModes:
           - remote-notification
-        NSCameraUsageDescription: Mekasa uses the camera to scan barcodes and receipts.
+        NSCameraUsageDescription: Mekasa uses the camera to scan barcodes and receipts, and to take a home photo for your dashboard.
         NSMicrophoneUsageDescription: Mekasa uses the microphone so you can add items by voice.
         NSSpeechRecognitionUsageDescription: Mekasa uses speech recognition to turn what you say into grocery items.
         NSLocationWhenInUseUsageDescription: Mekasa uses your location to suggest your home address and nearby stores.

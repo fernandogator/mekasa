@@ -4,7 +4,8 @@ SwiftUI client for Mekasa v1.0.
 
 **Shipped so far**
 - Onboarding: Welcome (Google + **Apple** + email) → Household → Address → Stores → scan/invite stubs
-- Home: **Dashboard** (UI-004) with bottom nav + Add FAB
+- Home: **Dashboard** (UI-004) with **home photo hero**, bottom nav + Add FAB
+- Tap hero → **Home photo** screen (camera or Photos library)
 - **Add items** hub (FAB): Type it in / confirm sync to Cloud Run; **Scan barcode** uses live camera + Open Food Facts UPC lookup
 - **Shopping list** (List tab): check off, approve/deny, add custom — syncs to Cloud Run when signed in; low-stock auto-adds via API
 - **Spending** (Spend tab): week/month/year report from purchase events; Dashboard card shows weekly total

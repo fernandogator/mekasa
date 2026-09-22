@@ -1,8 +1,8 @@
 import SwiftUI
 import UIKit
 
-/// Home dashboard: low stock, pending approvals, recent activity.
-/// Satisfies: UI-004 AC1–AC2 (AC3 photo backdrop when photo_url exists)
+/// Home dashboard: hero home photo, low stock, pending approvals, recent activity.
+/// Satisfies: UI-004 AC1–AC3 (150px home photo hero per design system)
 /// Spec version: 1.0
 struct DashboardView: View {
     @EnvironmentObject private var session: AppSession
@@ -10,6 +10,7 @@ struct DashboardView: View {
     @State private var toast: String?
     @State private var selectedItemID: String?
     @State private var showInventory = false
+    @State private var showHomePhoto = false
 
     init(selectedTab: Binding<MainTab> = .constant(.home)) {
         _selectedTab = selectedTab
@@ -20,21 +21,26 @@ struct DashboardView: View {
     }
 
     var body: some View {
-        ZStack {
-            householdBackdrop
-            ScrollView {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                homeHero
+                    .zIndex(1)
+
                 VStack(alignment: .leading, spacing: 32) {
-                    header
                     statsRow
+                        .padding(.top, 8)
                     lowStockSection
                     needsApprovalSection
                     recentActivitySection
                 }
                 .padding(.horizontal, 24)
-                .padding(.top, 56)
+                .padding(.top, 20)
                 .padding(.bottom, 140)
+                .offset(y: -28)
             }
         }
+        .ignoresSafeArea(edges: .top)
+        .toolbar(.hidden, for: .navigationBar)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(TestIdentifiers.dashboardView)
         .navigationDestination(item: $selectedItemID) { itemID in
@@ -42,6 +48,9 @@ struct DashboardView: View {
         }
         .navigationDestination(isPresented: $showInventory) {
             InventoryListView()
+        }
+        .navigationDestination(isPresented: $showHomePhoto) {
+            HomePhotoView()
         }
         .overlay(alignment: .top) {
             if let toast {
@@ -52,7 +61,7 @@ struct DashboardView: View {
                     .padding(.vertical, 10)
                     .background(MekasaTheme.brand)
                     .clipShape(Capsule())
-                    .padding(.top, 12)
+                    .padding(.top, 56)
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
@@ -60,26 +69,96 @@ struct DashboardView: View {
         .animation(.easeInOut(duration: 0.2), value: pendingApprovals.map(\.id))
     }
 
-    @ViewBuilder
-    private var householdBackdrop: some View {
-        if let urlString = session.household?.photoURL {
-            if urlString.hasPrefix("data:"),
-               let b64 = urlString.split(separator: ",").last,
-               let data = Data(base64Encoded: String(b64)),
-               let image = UIImage(data: data) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .opacity(0.18)
-                    .ignoresSafeArea()
-            } else if let url = URL(string: urlString) {
-                AsyncImage(url: url) { phase in
-                    if case let .success(image) = phase {
-                        image.resizable().scaledToFill().opacity(0.18).ignoresSafeArea()
+    /// 150px full-bleed hero with home photo (DESIGN_SYSTEM / UI-004 AC3).
+    private var homeHero: some View {
+        ZStack(alignment: .topTrailing) {
+            Button {
+                showHomePhoto = true
+            } label: {
+                ZStack {
+                    HouseholdPhotoView(urlString: session.household?.photoURL)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
+
+                    LinearGradient(
+                        colors: [
+                            MekasaTheme.brand.opacity(0.10),
+                            MekasaTheme.brand.opacity(0.35),
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+
+                    VStack(spacing: 8) {
+                        Text(greeting)
+                            .font(MekasaTheme.labelFont)
+                            .tracking(1.2)
+                            .textCase(.uppercase)
+                            .foregroundStyle(MekasaTheme.brandMuted)
+                        Text(householdTitle)
+                            .font(.system(size: 30, weight: .black, design: .rounded))
+                            .foregroundStyle(.white)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.8)
+                            .shadow(color: .black.opacity(0.25), radius: 4, y: 1)
+
+                        if session.household?.photoURL == nil {
+                            Text("Tap to add a home photo")
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.9))
+                                .padding(.top, 2)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 28)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 178)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(TestIdentifiers.homePhotoHero)
+            .accessibilityLabel(
+                session.household?.photoURL == nil
+                    ? "Add home photo"
+                    : "Home photo for \(householdTitle). Double tap to change."
+            )
+
+            Button {
+                showToast(session.isRealtimeSyncActive
+                           ? "Live sync is on — inventory updates across devices"
+                           : "Turn on notifications in Settings to get invite alerts")
+            } label: {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: "bell")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(.white.opacity(0.22))
+                        .background(.ultraThinMaterial)
+                        .clipShape(Circle())
+                    if !pendingApprovals.isEmpty {
+                        Circle()
+                            .fill(MekasaTheme.accent)
+                            .frame(width: 8, height: 8)
+                            .overlay(Circle().stroke(Color.white, lineWidth: 1))
+                            .offset(x: -2, y: 2)
                     }
                 }
             }
+            .buttonStyle(.plain)
+            .padding(.top, 54)
+            .padding(.trailing, 20)
+            .accessibilityLabel("Notifications")
         }
+        .clipShape(
+            UnevenRoundedRectangle(
+                bottomLeadingRadius: 40,
+                bottomTrailingRadius: 40,
+                style: .continuous
+            )
+        )
     }
 
     private var lowStockItems: [InventoryItem] {
@@ -135,49 +214,6 @@ struct DashboardView: View {
                     .accessibilityHint("Opens item details")
                 }
             }
-        }
-    }
-
-    private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(greeting)
-                    .font(MekasaTheme.labelFont)
-                    .tracking(1)
-                    .textCase(.uppercase)
-                    .foregroundStyle(MekasaTheme.textMuted)
-                Text(householdTitle)
-                    .font(.system(size: 30, weight: .black, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.8)
-            }
-            Spacer()
-            Button {
-                showToast(session.isRealtimeSyncActive
-                           ? "Live sync is on — inventory updates across devices"
-                           : "Turn on notifications in Settings to get invite alerts")
-            } label: {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: "bell")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(MekasaTheme.brand)
-                        .frame(width: 40, height: 40)
-                        .background(MekasaTheme.surfaceElevated)
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1))
-                        .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
-                    if !pendingApprovals.isEmpty {
-                        Circle()
-                            .fill(MekasaTheme.accent)
-                            .frame(width: 8, height: 8)
-                            .overlay(Circle().stroke(Color.white, lineWidth: 1))
-                            .offset(x: -2, y: 2)
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Notifications")
         }
     }
 
