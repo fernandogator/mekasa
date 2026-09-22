@@ -31,4 +31,40 @@ final class HouseholdPhotoTests: XCTestCase {
         XCTAssertNotNil(session.household?.photoURL)
         XCTAssertTrue(session.household?.photoURL?.hasPrefix("data:image/jpeg;base64,") == true)
     }
+
+    @MainActor
+    func testSaveHomePhotoEdits_updatesNameAndPhoto() async {
+        let session = AppSession()
+        session.isUIPreview = true
+        session.household = PreviewFixtures.household(name: "Old Name")
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 32, height: 24)).image { ctx in
+            UIColor.green.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 32, height: 24))
+        }
+        let ok = await session.saveHomePhotoEdits(
+            name: "The Guerrero Home",
+            image: image,
+            nameChanged: true,
+            imageChanged: true
+        )
+        XCTAssertTrue(ok)
+        XCTAssertEqual(session.household?.name, "The Guerrero Home")
+        XCTAssertNotNil(session.household?.photoURL)
+    }
+
+    func testCropCanvas_renderProducesImage() {
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 200, height: 100)).image { ctx in
+            UIColor.orange.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 200, height: 100))
+        }
+        let cropped = HomePhotoCropCanvas.render(
+            image: image,
+            scale: 1.4,
+            offset: CGSize(width: 10, height: -5),
+            frameSize: CGSize(width: 160, height: 110)
+        )
+        XCTAssertNotNil(cropped)
+        XCTAssertEqual(cropped?.size.width, 160, accuracy: 0.5)
+        XCTAssertEqual(cropped?.size.height, 110, accuracy: 0.5)
+    }
 }

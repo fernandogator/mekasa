@@ -62,6 +62,19 @@ class AddressUpdateRequest(BaseModel):
     longitude: float | None = None
 
 
+class HouseholdNameUpdateRequest(BaseModel):
+    """
+    Satisfies: REQ-002
+    Acceptance criteria: AC1
+    Spec version: 1.0
+
+    Optional household display name (e.g. "The Guerrero Home").
+    Empty / null clears the name.
+    """
+
+    name: str | None = Field(default=None, max_length=80)
+
+
 class Store(BaseModel):
     """Nearby store candidate."""
 

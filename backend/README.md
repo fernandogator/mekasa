@@ -54,6 +54,7 @@ PYTHONPATH=. ALLOW_TEST_AUTH=true pytest ../tests/backend -q
 | POST | `/v1/households` | yes | Create household |
 | GET | `/v1/households/current` | yes | Current user's household |
 | PUT | `/v1/households/{id}/address` | yes | Confirm address |
+| PUT | `/v1/households/{id}/name` | yes | Update household display name (REQ-002) |
 | GET | `/v1/households/{id}/stores/nearby` | yes | Stub/Places nearby stores |
 | PUT | `/v1/households/{id}/stores` | yes | Persist selected store ids |
 | GET | `/v1/households/{id}/inventory` | yes | List inventory items |

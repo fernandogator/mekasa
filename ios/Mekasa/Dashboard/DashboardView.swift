@@ -50,8 +50,9 @@ struct DashboardView: View {
         .navigationDestination(isPresented: $showInventory) {
             InventoryListView()
         }
-        .navigationDestination(isPresented: $showHomePhoto) {
+        .fullScreenCover(isPresented: $showHomePhoto) {
             HomePhotoView()
+                .environmentObject(session)
         }
         .overlay(alignment: .top) {
             if let toast {
@@ -474,19 +475,46 @@ struct DashboardView: View {
 
 // MARK: - Home photo picker
 
-/// Add or replace the household home photo from camera or photo library.
-/// Satisfies: REQ-002 AC2–AC3, UI-004 AC3
+/// Add or replace the household home photo from camera or photo library,
+/// name the house, and pinch/drag to crop the image for the dashboard hero.
+/// Satisfies: REQ-002 AC1–AC3, UI-004 AC3
 /// Spec version: 1.0
 struct HomePhotoView: View {
     @EnvironmentObject private var session: AppSession
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedImage: UIImage?
+    @State private var houseName: String = ""
+    @State private var sourceImage: UIImage?
     @State private var photoItem: PhotosPickerItem?
     @State private var showCamera = false
     @State private var localError: String?
+    @State private var cropScale: CGFloat = 1
+    @State private var cropOffset: CGSize = .zero
+    @State private var cropFrameSize: CGSize = CGSize(width: 320, height: 220)
+    @State private var userReplacedImage = false
 
-    private var canSave: Bool { selectedImage != nil && !session.isBusy }
+    private var initialName: String {
+        session.household?.name ?? ""
+    }
+
+    private var nameChanged: Bool {
+        houseName.trimmingCharacters(in: .whitespacesAndNewlines)
+            != initialName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var cropChanged: Bool {
+        abs(cropScale - 1) > 0.01
+            || abs(cropOffset.width) > 0.5
+            || abs(cropOffset.height) > 0.5
+    }
+
+    private var imageDirty: Bool {
+        userReplacedImage || (sourceImage != nil && cropChanged)
+    }
+
+    private var saveEnabled: Bool {
+        !session.isBusy && (nameChanged || imageDirty)
+    }
 
     var body: some View {
         MekasaScreen {
@@ -501,7 +529,13 @@ struct HomePhotoView: View {
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundStyle(MekasaTheme.brand)
                     Spacer()
-                    Color.clear.frame(width: 56, height: 1)
+                    Button("Save") {
+                        Task { await save() }
+                    }
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(saveEnabled ? MekasaTheme.accent : MekasaTheme.textMuted)
+                    .disabled(!saveEnabled)
+                    .accessibilityIdentifier(TestIdentifiers.saveButton)
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 16)
@@ -509,19 +543,48 @@ struct HomePhotoView: View {
 
                 ScrollView {
                     VStack(spacing: 24) {
-                        Text("Show your house on the home screen.")
+                        Text("Name your house and frame the photo for the home screen.")
                             .font(MekasaTheme.bodyFont)
                             .foregroundStyle(MekasaTheme.textMuted)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 24)
                             .padding(.top, 12)
 
-                        previewCard
-                            .padding(.horizontal, 24)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("House name")
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .foregroundStyle(MekasaTheme.textMuted)
+                            TextField("e.g. The Guerrero Home", text: $houseName)
+                                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                .foregroundStyle(MekasaTheme.brand)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .background(MekasaTheme.surfaceElevated)
+                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .stroke(MekasaTheme.brandMuted.opacity(0.35), lineWidth: 1)
+                                )
+                                .textInputAutocapitalization(.words)
+                                .disableAutocorrection(true)
+                                .accessibilityIdentifier(TestIdentifiers.homePhotoNameField)
+                        }
+                        .padding(.horizontal, 24)
+
+                        VStack(spacing: 10) {
+                            cropPreview
+                                .padding(.horizontal, 24)
+
+                            if sourceImage != nil {
+                                Text("Pinch to zoom · drag to reposition")
+                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(MekasaTheme.textMuted)
+                            }
+                        }
 
                         VStack(spacing: 12) {
                             if CameraImagePicker.isCameraAvailable {
-                                PrimaryButton(title: "Take photo", disabled: session.isBusy) {
+                PrimaryButton(title: "Take photo", disabled: session.isBusy) {
                                     localError = nil
                                     showCamera = true
                                 }
@@ -566,18 +629,18 @@ struct HomePhotoView: View {
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 32)
                     }
-                    .padding(.bottom, 140)
+                    .padding(.bottom, 40)
                 }
 
                 StickyBottomBar(progress: nil) {
                     PrimaryButton(
-                        title: "Save home photo",
-                        disabled: !canSave,
+                        title: "Save",
+                        disabled: !saveEnabled,
                         isLoading: session.isBusy
                     ) {
                         Task { await save() }
                     }
-                    .accessibilityIdentifier(TestIdentifiers.saveButton)
+                    .accessibilityIdentifier(TestIdentifiers.homePhotoSaveBottomButton)
                 }
             }
         }
@@ -587,36 +650,63 @@ struct HomePhotoView: View {
             Task { await loadLibraryItem(item) }
         }
         .fullScreenCover(isPresented: $showCamera) {
-            CameraImagePicker(image: $selectedImage)
-                .ignoresSafeArea()
+            CameraImagePicker(image: Binding(
+                get: { sourceImage },
+                set: { newImage in
+                    sourceImage = newImage
+                    if newImage != nil {
+                        userReplacedImage = true
+                        resetCrop()
+                    }
+                }
+            ))
+            .ignoresSafeArea()
         }
     }
 
-    private var previewCard: some View {
-        ZStack {
-            if let selectedImage {
-                Image(uiImage: selectedImage)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                HouseholdPhotoView(urlString: session.household?.photoURL)
+    private var cropPreview: some View {
+        GeometryReader { geo in
+            let size = geo.size
+            ZStack {
+                MekasaTheme.brand.opacity(0.08)
+                if let sourceImage {
+                    HomePhotoCropCanvas(
+                        image: sourceImage,
+                        scale: $cropScale,
+                        offset: $cropOffset,
+                        frameSize: size
+                    )
+                } else {
+                    HouseholdPhotoView(urlString: session.household?.photoURL)
+                }
+            }
+            .frame(width: size.width, height: size.height)
+            .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .stroke(MekasaTheme.brandMuted.opacity(0.35), lineWidth: 1)
+            )
+            .onAppear { cropFrameSize = size }
+            .onChange(of: size) { _, newSize in
+                cropFrameSize = newSize
             }
         }
         .frame(maxWidth: .infinity)
         .frame(height: 220)
-        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .stroke(MekasaTheme.brandMuted.opacity(0.35), lineWidth: 1)
-        )
         .accessibilityIdentifier(TestIdentifiers.homePhotoPreview)
     }
 
     private func seedFromHousehold() {
-        if selectedImage == nil,
+        houseName = session.household?.name ?? ""
+        if sourceImage == nil,
            let existing = HouseholdPhotoImage.uiImage(from: session.household?.photoURL) {
-            selectedImage = existing
+            sourceImage = existing
         }
+    }
+
+    private func resetCrop() {
+        cropScale = 1
+        cropOffset = .zero
     }
 
     private func loadLibraryItem(_ item: PhotosPickerItem?) async {
@@ -628,7 +718,9 @@ struct HomePhotoView: View {
                 localError = "Couldn’t read that photo. Try another one."
                 return
             }
-            selectedImage = image
+            sourceImage = image
+            userReplacedImage = true
+            resetCrop()
             localError = nil
         } catch {
             localError = error.localizedDescription
@@ -636,14 +728,126 @@ struct HomePhotoView: View {
     }
 
     private func save() async {
-        guard let selectedImage else { return }
+        guard saveEnabled else { return }
         localError = nil
         session.lastError = nil
-        let ok = await session.uploadHouseholdHomePhoto(selectedImage)
+
+        var cropped: UIImage?
+        if imageDirty, let sourceImage {
+            cropped = HomePhotoCropCanvas.render(
+                image: sourceImage,
+                scale: cropScale,
+                offset: cropOffset,
+                frameSize: cropFrameSize
+            ) ?? sourceImage
+        }
+
+        let ok = await session.saveHomePhotoEdits(
+            name: houseName,
+            image: cropped,
+            nameChanged: nameChanged,
+            imageChanged: cropped != nil
+        )
         if ok {
             dismiss()
         } else if session.lastError == nil {
-            localError = "Couldn’t save the home photo."
+            localError = "Couldn’t save home details."
+        }
+    }
+}
+
+/// Pinch-to-zoom and drag-to-pan canvas; exports the visible crop for the hero.
+struct HomePhotoCropCanvas: View {
+    let image: UIImage
+    @Binding var scale: CGFloat
+    @Binding var offset: CGSize
+    let frameSize: CGSize
+
+    @State private var gestureScale: CGFloat = 1
+    @State private var gestureOffset: CGSize = .zero
+
+    private var fillScale: CGFloat {
+        guard image.size.width > 0, image.size.height > 0, frameSize.width > 0, frameSize.height > 0 else {
+            return 1
+        }
+        return max(frameSize.width / image.size.width, frameSize.height / image.size.height)
+    }
+
+    var body: some View {
+        Image(uiImage: image)
+            .resizable()
+            .frame(
+                width: image.size.width * fillScale * scale * gestureScale,
+                height: image.size.height * fillScale * scale * gestureScale
+            )
+            .offset(
+                x: offset.width + gestureOffset.width,
+                y: offset.height + gestureOffset.height
+            )
+            .frame(width: frameSize.width, height: frameSize.height)
+            .contentShape(Rectangle())
+            .gesture(
+                SimultaneousGesture(
+                    MagnificationGesture()
+                        .onChanged { value in
+                            gestureScale = value
+                        }
+                        .onEnded { value in
+                            let next = max(1, min(scale * value, 4))
+                            scale = next
+                            gestureScale = 1
+                            clampOffset()
+                        },
+                    DragGesture()
+                        .onChanged { value in
+                            gestureOffset = value.translation
+                        }
+                        .onEnded { value in
+                            offset.width += value.translation.width
+                            offset.height += value.translation.height
+                            gestureOffset = .zero
+                            clampOffset()
+                        }
+                )
+            )
+    }
+
+    private func clampOffset() {
+        let drawnW = image.size.width * fillScale * scale
+        let drawnH = image.size.height * fillScale * scale
+        let maxX = max(0, (drawnW - frameSize.width) / 2)
+        let maxY = max(0, (drawnH - frameSize.height) / 2)
+        offset.width = min(maxX, max(-maxX, offset.width))
+        offset.height = min(maxY, max(-maxY, offset.height))
+    }
+
+    /// Renders the visible crop into a bitmap matching the preview frame.
+    static func render(
+        image: UIImage,
+        scale: CGFloat,
+        offset: CGSize,
+        frameSize: CGSize
+    ) -> UIImage? {
+        guard frameSize.width > 1, frameSize.height > 1,
+              image.size.width > 0, image.size.height > 0
+        else { return nil }
+
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = UIScreen.main.scale
+        format.opaque = true
+        let renderer = UIGraphicsImageRenderer(size: frameSize, format: format)
+        return renderer.image { _ in
+            let fill = max(frameSize.width / image.size.width, frameSize.height / image.size.height)
+            let total = fill * max(scale, 1)
+            let drawn = CGSize(
+                width: image.size.width * total,
+                height: image.size.height * total
+            )
+            let origin = CGPoint(
+                x: (frameSize.width - drawn.width) / 2 + offset.width,
+                y: (frameSize.height - drawn.height) / 2 + offset.height
+            )
+            image.draw(in: CGRect(origin: origin, size: drawn))
         }
     }
 }

@@ -23,6 +23,7 @@ from app.models import (
     HouseholdMemberResponse,
     HouseholdMemberRoleUpdateRequest,
     HouseholdMembersResponse,
+    HouseholdNameUpdateRequest,
     HouseholdPhotoResponse,
     HouseholdResponse,
     InventoryConsumeByBarcodeRequest,
@@ -152,6 +153,26 @@ def update_address(
     """
     try:
         return repo.update_address(household_id, user.uid, payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
+
+
+@api_router.put("/households/{household_id}/name", response_model=HouseholdResponse)
+def update_household_name(
+    household_id: str,
+    payload: HouseholdNameUpdateRequest,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: HouseholdRepository = Depends(get_household_repository),
+) -> HouseholdResponse:
+    """
+    Satisfies: REQ-002
+    Acceptance criteria: AC1
+    Spec version: 1.0
+    """
+    try:
+        return repo.update_name(household_id, user.uid, payload)
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
     except PermissionError as exc:

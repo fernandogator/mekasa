@@ -12,6 +12,7 @@ from app.config import Settings
 from app.models import (
     AddressUpdateRequest,
     HouseholdCreateRequest,
+    HouseholdNameUpdateRequest,
     HouseholdResponse,
 )
 
@@ -127,6 +128,18 @@ class FirestoreHouseholdRepository:
         household = self._require_owner(household_id, owner_uid)
         updates = {
             "photo_url": photo_url,
+            "updated_at": _utcnow(),
+        }
+        self._col.document(household_id).update(updates)
+        return household.model_copy(update=updates)
+
+    def update_name(
+        self, household_id: str, owner_uid: str, payload: HouseholdNameUpdateRequest
+    ) -> HouseholdResponse:
+        household = self._require_owner(household_id, owner_uid)
+        name = (payload.name or "").strip() or None
+        updates = {
+            "name": name,
             "updated_at": _utcnow(),
         }
         self._col.document(household_id).update(updates)
