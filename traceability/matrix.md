@@ -5,7 +5,7 @@ Last updated: 2026-09-12
 
 | Requirement ID | Description | Design Artifact | Test Case ID | Test File | Status | Last Verified |
 |----------------|-------------|-----------------|--------------|-----------|--------|---------------|
-| REQ-001 | Household Account Creation | — | pending | pending | not tested | — |
+| REQ-001 | Household Account Creation | — | done (iOS Welcome: Apple/Google/email) | pending (console Apple provider) | unit (nonce) | AuthService.signInWithApple |
 | REQ-002 | Household Naming and Photo | design/mockups/OnboardingHouseholdSetup.jsx | done | done | unit (backend photo) | HouseholdSetupView + Dashboard backdrop |
 | REQ-003 | Home Address Detection and Store Discovery | design/mockups/OnboardingStoreSelection.jsx | done | done | unit (places/stub) | StoreSelectionView + Places lookup |
 | REQ-004 | Barcode Scanning and Product Lookup | design/mockups/AddItems.jsx | pending | pending | not tested | — |

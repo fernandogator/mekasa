@@ -20,7 +20,7 @@ final class OnboardingUITest: XCTestCase {
 
     func testInteraction_tapsInputsAndNavigationTriggers() throws {
         throw XCTSkip("Stub — run on device/simulator after xcodegen + Firebase SPM")
-        // Interaction: email/Google auth, household name, address confirm, store multi-select
+        // Interaction: email/Google/Apple auth, household name, address confirm, store multi-select
     }
 
     func testFlow_navigatesToNextScreen() throws {

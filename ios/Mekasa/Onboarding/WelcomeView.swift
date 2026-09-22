@@ -1,8 +1,8 @@
 import SwiftUI
 import UIKit
 
-/// Signup / sign-in (Google + email). Apple Sign-In button reserved (capability next).
-/// Satisfies: REQ-001 AC2–AC3, REQ-022 AC5, UI-003 AC1
+/// Signup / sign-in (Google + Apple + email).
+/// Satisfies: REQ-001 AC1–AC3, REQ-022 AC5, UI-003 AC1
 /// Spec version: 1.0
 struct WelcomeView: View {
     @EnvironmentObject private var session: AppSession
@@ -86,8 +86,8 @@ struct WelcomeView: View {
                             PrimaryButton(title: "Continue with Google", isLoading: session.isBusy) {
                                 Task { await submitGoogle() }
                             }
-                            SecondaryButton(title: "Continue with Apple") {
-                                session.lastError = "Sign in with Apple is next — use Google or email for now."
+                            SecondaryButton(title: "Continue with Apple", isLoading: session.isBusy) {
+                                Task { await submitApple() }
                             }
                             .accessibilityIdentifier("WelcomeAppleSignInButton")
                             SecondaryButton(title: "Continue with email") {
@@ -201,6 +201,21 @@ struct WelcomeView: View {
             await applyAuth(token: result.token, email: result.email, name: result.name)
         } catch {
             print("[Mekasa] submitGoogle ERROR: \(error)")
+            session.lastError = error.localizedDescription
+        }
+    }
+
+    private func submitApple() async {
+        session.isBusy = true
+        defer { session.isBusy = false }
+        print("[Mekasa] submitApple start")
+        do {
+            let result = try await AuthService.shared.signInWithApple()
+            await applyAuth(token: result.token, email: result.email, name: result.name)
+        } catch let error as AuthServiceError where error == .cancelled {
+            print("[Mekasa] submitApple cancelled")
+        } catch {
+            print("[Mekasa] submitApple ERROR: \(error)")
             session.lastError = error.localizedDescription
         }
     }
