@@ -13,17 +13,18 @@
 | Cloud Run service | `https://mekasa-api-934775015882.us-central1.run.app` |
 | Service account | `mekasa-api@hackathon2025-472017.iam.gserviceaccount.com` |
 
-## Status (2026-09-07)
+## Status (2026-09-22)
 
 - [x] GCP project + APIs
 - [x] Firebase Auth (Google + Email; enable Apple for iOS SiwA)
 - [x] Firestore `mekasa-db` @ `nam5` (Standard, Restrictive)
 - [x] Service account + local JSON key
-- [x] Cloud Run deploy + onboarding smoke (in-memory)
+- [x] Cloud Run deploy + onboarding smoke
 - [x] `ALLOW_TEST_AUTH=false` in prod
-- [ ] API persistence → Firestore (**code ready — redeploy required**)
-- [ ] Cloud Run runtime SA binding (included in updated deploy script)
-- [ ] Real Firebase ID tokens from iOS
+- [x] API persistence → Firestore (live health reports `firestore` / `mekasa-db`)
+- [ ] **Redeploy Cloud Run** so `PUT /v1/households/{id}/name` (house name) is live — code is on `main`, revision is stale
+- [x] Cloud Run runtime SA binding (deploy script)
+- [ ] Real Firebase ID tokens from iOS (device / TestFlight)
 
 ## Finish in the console (if not done yet)
 
