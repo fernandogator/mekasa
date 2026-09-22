@@ -96,6 +96,10 @@
 
 ## Running Log
 
+### 2026-09-22 — App icon: red house + barcode scan
+- Replaced `AppIcon.appiconset/AppIcon.png` (1024×1024) from Superdesign share
+  (red house silhouette, barcode + scan line on white)
+
 ### 2026-09-20 — Sign in with Apple (REQ-001 AC1)
 - Welcome **Continue with Apple** → `ASAuthorization` + Firebase `OAuthProvider.appleCredential`
 - Entitlement: `Mekasa/Mekasa.entitlements` (`com.apple.developer.applesignin`)
