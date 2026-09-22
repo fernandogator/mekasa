@@ -142,10 +142,24 @@ jobs:
     environment: mekasa-dev
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy backend to GCP dev
+      - name: Deploy backend to Cloud Run (when GCP_SA_KEY is set)
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
         run: |
-          echo "TODO: deploy Cloud Run service to mekasa-dev"
-          true
+          set -euo pipefail
+          if [ -z "${GCP_SA_KEY:-}" ]; then
+            echo "GCP_SA_KEY secret not configured — skip Cloud Run deploy."
+            echo "Use workflow Deploy backend (Cloud Run) or backend/scripts/deploy-cloud-run.sh locally."
+            exit 0
+          fi
+          printf '%s' "$GCP_SA_KEY" > "$RUNNER_TEMP/gcp-sa.json"
+          # Inline auth without composite action so missing secret stays a soft skip above.
+          curl -sS https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-linux-x86_64.tar.gz \
+            | tar -xz -C "$RUNNER_TEMP"
+          export PATH="$RUNNER_TEMP/google-cloud-sdk/bin:$PATH"
+          gcloud auth activate-service-account --key-file="$RUNNER_TEMP/gcp-sa.json"
+          chmod +x backend/scripts/deploy-cloud-run.sh
+          (cd backend && ./scripts/deploy-cloud-run.sh)
 
   manual-approve:
     name: manual-approve

@@ -1,0 +1,61 @@
+# Manual Cloud Run redeploy for the Mekasa API (mekasa-api).
+# Requires a GitHub Actions secret GCP_SA_KEY = JSON key for a principal that can
+# deploy Cloud Run in project hackathon2025-472017 (e.g. mekasa-api or a deployer SA).
+#
+# Run: Actions → Deploy backend (Cloud Run) → Run workflow
+
+name: Deploy backend (Cloud Run)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to deploy (branch, tag, or SHA)"
+        required: false
+        default: "main"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: deploy-cloud-run
+    runs-on: ubuntu-latest
+    environment: mekasa-dev
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy mekasa-api
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          chmod +x scripts/deploy-cloud-run.sh
+          ./scripts/deploy-cloud-run.sh
+
+      - name: Verify /name route is live
+        run: |
+          set -euo pipefail
+          URL="$(gcloud run services describe mekasa-api \
+            --region us-central1 \
+            --project hackathon2025-472017 \
+            --format='value(status.url)')"
+          echo "Service URL: $URL"
+          curl -fsS "$URL/health" | tee /tmp/health.json
+          curl -fsS "$URL/openapi.json" | python3 -c "
+          import json,sys
+          paths=json.load(sys.stdin).get('paths',{})
+          need='/v1/households/{household_id}/name'
+          assert need in paths, f'missing {need}; have {[p for p in paths if \"household\" in p]}'
+          print('OK:', need)
+          "
