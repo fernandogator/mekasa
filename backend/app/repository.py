@@ -11,6 +11,7 @@ from app.config import Settings, get_settings
 from app.models import (
     AddressUpdateRequest,
     HouseholdCreateRequest,
+    HouseholdNameUpdateRequest,
     HouseholdResponse,
     Store,
 )
@@ -46,6 +47,11 @@ class HouseholdRepository(Protocol):
         self, household_id: str, owner_uid: str, photo_url: str
     ) -> HouseholdResponse:
         """Persist household photo URL (REQ-002)."""
+
+    def update_name(
+        self, household_id: str, owner_uid: str, payload: HouseholdNameUpdateRequest
+    ) -> HouseholdResponse:
+        """Persist household display name (REQ-002)."""
 
 
 class InMemoryHouseholdRepository:
@@ -120,6 +126,18 @@ class InMemoryHouseholdRepository:
         household = self._require_owner(household_id, owner_uid)
         updated = household.model_copy(
             update={"photo_url": photo_url, "updated_at": _utcnow()}
+        )
+        with self._lock:
+            self._items[household_id] = updated
+        return updated
+
+    def update_name(
+        self, household_id: str, owner_uid: str, payload: HouseholdNameUpdateRequest
+    ) -> HouseholdResponse:
+        household = self._require_owner(household_id, owner_uid)
+        name = (payload.name or "").strip() or None
+        updated = household.model_copy(
+            update={"name": name, "updated_at": _utcnow()}
         )
         with self._lock:
             self._items[household_id] = updated

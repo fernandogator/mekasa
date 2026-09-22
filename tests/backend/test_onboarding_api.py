@@ -96,6 +96,36 @@ def test_onboarding_happy_path(client: TestClient) -> None:
     assert current.json()["id"] == household_id
 
 
+def test_update_household_name(client: TestClient) -> None:
+    """
+    Satisfies: REQ-002
+    Acceptance criteria: AC1
+    Spec version: 1.0
+    """
+    created = client.post(
+        "/v1/households",
+        json={"name": "Temp"},
+        headers=_auth(),
+    )
+    household_id = created.json()["id"]
+
+    renamed = client.put(
+        f"/v1/households/{household_id}/name",
+        json={"name": "The Guerrero Home"},
+        headers=_auth(),
+    )
+    assert renamed.status_code == 200
+    assert renamed.json()["name"] == "The Guerrero Home"
+
+    cleared = client.put(
+        f"/v1/households/{household_id}/name",
+        json={"name": "  "},
+        headers=_auth(),
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["name"] is None
+
+
 def test_household_forbidden_for_other_user(client: TestClient) -> None:
     created = client.post("/v1/households", json={"name": "Mine"}, headers=_auth("a"))
     household_id = created.json()["id"]

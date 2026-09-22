@@ -1127,6 +1127,91 @@ final class AppSession: ObservableObject {
         }
     }
 
+    /// Persist house name and/or cropped home photo in one busy cycle.
+    @discardableResult
+    func saveHomePhotoEdits(
+        name: String?,
+        image: UIImage?,
+        nameChanged: Bool,
+        imageChanged: Bool
+    ) async -> Bool {
+        guard nameChanged || imageChanged else { return true }
+        if isUIPreview || isUITesting {
+            if nameChanged {
+                let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let normalized: String? = (trimmed?.isEmpty == false) ? trimmed : nil
+                if var hh = household {
+                    hh.name = normalized
+                    household = hh
+                } else {
+                    household = PreviewFixtures.household(name: normalized)
+                }
+            }
+            if imageChanged, let image {
+                return await uploadHouseholdHomePhoto(image)
+            }
+            if nameChanged {
+                logActivity("Updated house name", kind: .success)
+            }
+            return true
+        }
+        guard isHouseholdOwner else {
+            lastError = "Only household owners can update the home photo."
+            return false
+        }
+        guard let token = idToken, let householdID = household?.id else {
+            lastError = "Not signed in to a household."
+            return false
+        }
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            if nameChanged {
+                let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let normalized: String? = (trimmed?.isEmpty == false) ? trimmed : nil
+                household = try await MekasaAPIClient.shared.updateHouseholdName(
+                    householdID: householdID,
+                    name: normalized,
+                    token: token
+                )
+            }
+            if imageChanged, let image {
+                guard let jpeg = image.jpegData(compressionQuality: 0.82) else {
+                    lastError = "Couldn’t encode that photo."
+                    return false
+                }
+                household = try await MekasaAPIClient.shared.uploadHouseholdPhoto(
+                    householdID: householdID,
+                    imageData: jpeg,
+                    mimeType: "image/jpeg",
+                    token: token
+                )
+                logActivity("Updated home photo", kind: .success)
+            } else if nameChanged {
+                logActivity("Updated house name", kind: .success)
+            }
+            return true
+        } catch {
+            if SessionExpiry.isUnauthorized(error) {
+                handleAPIFailure(error)
+                return false
+            }
+            lastError = error.localizedDescription
+            return false
+        }
+    }
+
+    /// Update household display name (REQ-002 AC1), e.g. "The Guerrero Home".
+    @discardableResult
+    func updateHouseholdName(_ name: String?) async -> Bool {
+        await saveHomePhotoEdits(
+            name: name,
+            image: nil,
+            nameChanged: true,
+            imageChanged: false
+        )
+    }
+
     private static func mergeKey(name: String, category: String) -> String {
         "\(name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())|\(category.lowercased())"
     }

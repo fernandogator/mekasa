@@ -72,4 +72,6 @@ enum TestIdentifiers {
     static let homePhotoPreview = "HomePhotoPreview"
     static let homePhotoCameraButton = "HomePhotoCameraButton"
     static let homePhotoLibraryButton = "HomePhotoLibraryButton"
+    static let homePhotoNameField = "HomePhotoNameField"
+    static let homePhotoSaveBottomButton = "HomePhotoSaveBottomButton"
 }

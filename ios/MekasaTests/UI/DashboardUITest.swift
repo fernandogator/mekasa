@@ -23,7 +23,7 @@ final class DashboardUITest: XCTestCase {
     }
 
     func testFlow_homePhotoCameraOrLibrary() throws {
-        throw XCTSkip("Stub — HomePhotoView camera / Photos → Save updates household.photo_url")
+        throw XCTSkip("Stub — HomePhotoView name + crop + camera/Photos → Save updates name/photo_url")
     }
 
     func testFlow_navigatesToNextScreen() throws {

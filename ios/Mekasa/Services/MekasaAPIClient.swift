@@ -79,6 +79,22 @@ actor MekasaAPIClient {
         )
     }
 
+    func updateHouseholdName(
+        householdID: String,
+        name: String?,
+        token: String
+    ) async throws -> Household {
+        struct Body: Encodable {
+            let name: String?
+        }
+        return try await request(
+            path: "/v1/households/\(householdID)/name",
+            method: "PUT",
+            token: token,
+            body: Body(name: name)
+        )
+    }
+
     func nearbyStores(householdID: String, token: String) async throws -> StoreSearchResponse {
         try await request(
             path: "/v1/households/\(householdID)/stores/nearby",

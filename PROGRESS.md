@@ -100,6 +100,15 @@
 - Dashboard top **150px** home photo hero (design system) with gradient + greeting
 - Tap hero → `HomePhotoView`: **Take photo** (camera) or **Choose from Photos**, then Save
 - `AppSession.uploadHouseholdHomePhoto` → `POST …/households/{id}/photo`
+
+### 2026-09-22 — Home photo name + crop (Save unblocked)
+- `HomePhotoView` presented as **fullScreenCover** (tab bar/FAB no longer covers Save)
+- House name field (e.g. “The Guerrero Home”) → `PUT …/households/{id}/name`
+- Pinch/drag crop canvas exports framed JPEG for the hero
+- Header **Save** + bottom **Save**; `saveHomePhotoEdits` persists name and/or photo
+
+### 2026-09-22 — Colocate HomePhotoView for local Xcode
+- `HomePhotoView` lives in `DashboardView.swift` (no separate file / xcodegen needed)
 - Onboarding household setup also offers Take a photo when camera is available
 - Unit: `HouseholdPhotoTests`
 
