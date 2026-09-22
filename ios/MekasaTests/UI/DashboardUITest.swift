@@ -1,6 +1,6 @@
 // Verifies: UI-004 (Home Dashboard)
 // AC1, AC2, AC3
-// Design: design/mockups/Dashboard.jsx
+// Design: design/mockups/Dashboard.jsx, design/DESIGN_SYSTEM.md (hero)
 
 import XCTest
 
@@ -8,18 +8,22 @@ import XCTest
 /// Layout + interaction + flow + semantic visual verification.
 /// Visual verification is structural (not pixel-exact).
 ///
-/// Implemented SwiftUI: `DashboardView` + `MainShellView` (bottom nav + FAB → AddItemsView).
-/// Wire XCUITest once the app target builds in CI with Firebase SPM.
+/// Implemented SwiftUI: `DashboardView` home photo hero → `HomePhotoView`
+/// (camera / Photos). Structural: `Tests/UI/Structure/UI004StructureTests`.
 final class DashboardUITest: XCTestCase {
 
     func testLayout_keyElementsExistAndVisible() throws {
-        throw XCTSkip("Stub — run on device/simulator after xcodegen + Firebase SPM")
-        // Layout: household title, Low Stock / Spend cards, Needs Approval, bottom nav + FAB
+        throw XCTSkip("Stub — covered by UI004StructureTests (incl. HomePhotoHero)")
+        // Layout: home photo hero, Low Stock / Spend cards, Needs Approval, bottom nav + FAB
     }
 
     func testInteraction_tapsInputsAndNavigationTriggers() throws {
         throw XCTSkip("Stub — run on device/simulator after xcodegen + Firebase SPM")
-        // Interaction: approve/deny request rows; FAB opens Add items hub; tab switches
+        // Interaction: tap hero → HomePhotoView; approve/deny; FAB; tabs
+    }
+
+    func testFlow_homePhotoCameraOrLibrary() throws {
+        throw XCTSkip("Stub — HomePhotoView camera / Photos → Save updates household.photo_url")
     }
 
     func testFlow_navigatesToNextScreen() throws {

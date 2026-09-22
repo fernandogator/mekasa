@@ -2,11 +2,11 @@ import Foundation
 
 /// Local fixtures for DEBUG UI preview and unit tests.
 enum PreviewFixtures {
-    static func household(name: String? = "The Rivas House") -> Household {
+    static func household(name: String? = "The Rivas House", photoURL: String? = nil) -> Household {
         Household(
             id: "preview-household",
             name: name,
-            photoURL: nil,
+            photoURL: photoURL,
             ownerUID: "preview-user",
             address: nil,
             latitude: nil,

@@ -65,4 +65,11 @@ enum TestIdentifiers {
     static let bottomNavBar = "BottomNavBar"
     static let homeTab = "HomeTab"
     static let listTab = "ListTab"
+
+    // MARK: - Home photo (REQ-002 / UI-004 AC3)
+    static let homePhotoHero = "HomePhotoHero"
+    static let homePhotoView = "HomePhotoView"
+    static let homePhotoPreview = "HomePhotoPreview"
+    static let homePhotoCameraButton = "HomePhotoCameraButton"
+    static let homePhotoLibraryButton = "HomePhotoLibraryButton"
 }

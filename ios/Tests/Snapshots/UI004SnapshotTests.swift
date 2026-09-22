@@ -59,4 +59,11 @@ final class UI004SnapshotTests: XCTestCase {
         }
         try MekasaSnapshots.assertScreen(of: vc, as: .image(on: .iPhone13Pro, precision: 0.98))
     }
+
+    func testHomePhoto_default_iPhone13Pro() throws {
+        let vc = SnapshotHost.controller { _ in
+            NavigationStack { HomePhotoView() }
+        }
+        try MekasaSnapshots.assertScreen(of: vc, as: .image(on: .iPhone13Pro, precision: 0.98))
+    }
 }
