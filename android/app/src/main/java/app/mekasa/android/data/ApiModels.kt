@@ -227,3 +227,25 @@ data class InventoryItemCreateRequest(
 data class InventoryConsumeRequest(
     val amount: Int = 1,
 )
+
+@Serializable
+data class InventoryConsumeByBarcodeRequest(
+    val barcode: String,
+    val amount: Int = 1,
+)
+
+@Serializable
+data class UnknownBarcodeEventDto(
+    val id: String,
+    @SerialName("household_id") val householdId: String,
+    val barcode: String,
+    @SerialName("scanned_by_uid") val scannedByUid: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+)
+
+@Serializable
+data class ConsumeByBarcodeResultDto(
+    val found: Boolean = false,
+    val item: InventoryItemDto? = null,
+    @SerialName("unknown_event") val unknownEvent: UnknownBarcodeEventDto? = null,
+)

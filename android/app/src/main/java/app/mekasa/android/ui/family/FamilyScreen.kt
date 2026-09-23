@@ -206,6 +206,10 @@ fun FamilyScreen(
             session.refreshDashboard()
             session.refreshFamily()
         })
+        PrimaryButton(
+            title = "Open trash kiosk",
+            onClick = { session.setTrashKioskMode(true) },
+        )
         SecondaryButton(title = "Sign out", onClick = session::signOut)
     }
 }

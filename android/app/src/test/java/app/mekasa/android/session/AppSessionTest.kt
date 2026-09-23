@@ -70,11 +70,28 @@ class AppSessionTest {
     }
 
     @Test
-    fun createInvite_offlinePreview_prependsPendingInvite() = runTest {
+    fun consumeInventoryByBarcode_offlineUnknown_logsEvent() = runTest {
         val session = AppSession()
         session.startOfflinePreview()
-        session.createInvite("Alex", "alex@example.com")
+        var result: ConsumeResult? = null
+        session.consumeInventoryByBarcode("999999999999") { result = it }
         dispatcher.scheduler.advanceUntilIdle()
-        assertTrue(session.state.value.invites.any { it.name == "Alex" && it.status == "pending" })
+        assertTrue(result is ConsumeResult.Unknown)
+        assertTrue(session.state.value.unknownTrashScans.any { it.barcode == "999999999999" })
+    }
+
+    @Test
+    fun consumeInventoryByBarcode_offlineKnown_decrements() = runTest {
+        val session = AppSession()
+        session.startOfflinePreview()
+        val before = session.state.value.inventory.first { it.barcode == "049000028911" }.quantity
+        var result: ConsumeResult? = null
+        session.consumeInventoryByBarcode("049000028911") { result = it }
+        dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(result is ConsumeResult.Decremented || result is ConsumeResult.Depleted)
+        assertEquals(
+            before - 1,
+            session.state.value.inventory.first { it.barcode == "049000028911" }.quantity,
+        )
     }
 }

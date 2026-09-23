@@ -15,30 +15,39 @@ import app.mekasa.android.ui.onboarding.HouseholdSetupScreen
 import app.mekasa.android.ui.onboarding.StoreSelectionScreen
 import app.mekasa.android.ui.onboarding.WelcomeScreen
 import app.mekasa.android.ui.shell.MainShellScreen
+import app.mekasa.android.ui.trash.TrashStationScreen
 
 @Composable
 fun RootScreen(session: AppSession) {
     val state by session.state.collectAsStateWithLifecycle()
 
-    when (state.step) {
-        OnboardingStep.Welcome -> WelcomeScreen(
+    when {
+        state.step == OnboardingStep.Done && state.isTrashKioskMode -> {
+            TrashStationScreen(
+                state = state,
+                session = session,
+                kioskMode = true,
+                onExit = { session.setTrashKioskMode(false) },
+            )
+        }
+        state.step == OnboardingStep.Welcome -> WelcomeScreen(
             state = state,
             session = session,
         )
-        OnboardingStep.Household -> HouseholdSetupScreen(
+        state.step == OnboardingStep.Household -> HouseholdSetupScreen(
             state = state,
             onContinue = session::createHousehold,
         )
-        OnboardingStep.Address -> AddressConfirmScreen(
+        state.step == OnboardingStep.Address -> AddressConfirmScreen(
             state = state,
             onContinue = session::saveAddress,
         )
-        OnboardingStep.Stores -> StoreSelectionScreen(
+        state.step == OnboardingStep.Stores -> StoreSelectionScreen(
             state = state,
             onToggle = session::toggleStore,
             onContinue = session::saveStores,
         )
-        OnboardingStep.Done -> MainShellScreen(state = state, session = session)
+        state.step == OnboardingStep.Done -> MainShellScreen(state = state, session = session)
     }
 
     if (state.lastError != null) {

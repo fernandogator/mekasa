@@ -106,6 +106,25 @@ class MekasaApiClient(
         InventoryConsumeRequest(amount),
     )
 
+    suspend fun consumeInventoryByBarcode(
+        householdId: String,
+        barcode: String,
+        amount: Int = 1,
+        token: String,
+    ): ConsumeByBarcodeResultDto = post(
+        "/v1/households/$householdId/inventory/consume-by-barcode",
+        token,
+        InventoryConsumeByBarcodeRequest(barcode, amount),
+    )
+
+    suspend fun listUnknownTrashScans(
+        householdId: String,
+        token: String,
+    ): List<UnknownBarcodeEventDto> = get(
+        "/v1/households/$householdId/trash-scans/unknown",
+        token,
+    )
+
     suspend fun listShoppingList(householdId: String, token: String): ShoppingListResponse =
         get("/v1/households/$householdId/shopping-list", token)
 
