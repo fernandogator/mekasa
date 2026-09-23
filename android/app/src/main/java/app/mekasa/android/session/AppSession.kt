@@ -7,6 +7,7 @@ import app.mekasa.android.auth.AuthResult
 import app.mekasa.android.auth.AuthService
 import app.mekasa.android.data.BarcodeLookupResponse
 import app.mekasa.android.data.Household
+import app.mekasa.android.data.ConsumeByBarcodeResultDto
 import app.mekasa.android.data.HouseholdInviteAcceptRequest
 import app.mekasa.android.data.HouseholdInviteCreateRequest
 import app.mekasa.android.data.HouseholdInviteDto
@@ -22,6 +23,7 @@ import app.mekasa.android.data.ShoppingListItemUpdateRequest
 import app.mekasa.android.data.SpendingCategoryDto
 import app.mekasa.android.data.SpendingReportDto
 import app.mekasa.android.data.Store
+import app.mekasa.android.data.UnknownBarcodeEventDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,6 +48,19 @@ data class PendingInventoryDraft(
     val pricePaid: Double? = null,
 )
 
+data class TrashEvent(
+    val id: String,
+    val message: String,
+    val isUnknown: Boolean = false,
+)
+
+sealed class ConsumeResult {
+    data class Decremented(val item: InventoryItemDto) : ConsumeResult()
+    data class Depleted(val item: InventoryItemDto) : ConsumeResult()
+    data class Unknown(val barcode: String) : ConsumeResult()
+    data class Failed(val message: String) : ConsumeResult()
+}
+
 data class AppUiState(
     val step: OnboardingStep = OnboardingStep.Welcome,
     val idToken: String? = null,
@@ -60,6 +75,9 @@ data class AppUiState(
     val members: List<HouseholdMemberDto> = emptyList(),
     val invites: List<HouseholdInviteDto> = emptyList(),
     val pendingInviteToken: String? = null,
+    val isTrashKioskMode: Boolean = false,
+    val trashEvents: List<TrashEvent> = emptyList(),
+    val unknownTrashScans: List<UnknownBarcodeEventDto> = emptyList(),
     val nearbyStores: List<Store> = emptyList(),
     val selectedStoreIds: Set<String> = emptySet(),
     val isBusy: Boolean = false,
@@ -564,6 +582,10 @@ class AppSession(
                             },
                         )
                     }
+                    val item = _state.value.inventory.firstOrNull { it.id == itemId }
+                    if (item != null) {
+                        pushTrashEvent("${item.name} −$amount (qty ${item.quantity})")
+                    }
                     return@launch
                 }
                 val token = _state.value.idToken ?: return@launch
@@ -574,10 +596,115 @@ class AppSession(
                         inventory = state.inventory.map { if (it.id == updated.id) updated else it },
                     )
                 }
+                pushTrashEvent("${updated.name} −$amount (qty ${updated.quantity})")
             } catch (e: Exception) {
                 handleFailure(e)
             }
         }
+    }
+
+    fun setTrashKioskMode(enabled: Boolean) {
+        _state.update { it.copy(isTrashKioskMode = enabled) }
+        if (enabled) refreshUnknownTrashScans()
+    }
+
+    fun consumeInventoryByBarcode(barcode: String, amount: Int = 1, onResult: (ConsumeResult) -> Unit = {}) {
+        val code = barcode.trim()
+        if (code.isEmpty()) {
+            onResult(ConsumeResult.Failed("Empty barcode"))
+            return
+        }
+        viewModelScope.launch {
+            try {
+                if (_state.value.isOfflinePreview) {
+                    val match = _state.value.inventory.firstOrNull { it.barcode == code && it.quantity > 0 }
+                    if (match == null) {
+                        val event = UnknownBarcodeEventDto(
+                            id = "local-unk-${System.currentTimeMillis()}",
+                            householdId = _state.value.household?.id ?: "preview-home",
+                            barcode = code,
+                            scannedByUid = _state.value.userUid,
+                        )
+                        _state.update {
+                            it.copy(unknownTrashScans = listOf(event) + it.unknownTrashScans)
+                        }
+                        pushTrashEvent("Unknown: $code", isUnknown = true)
+                        onResult(ConsumeResult.Unknown(code))
+                        return@launch
+                    }
+                    val nextQty = (match.quantity - amount).coerceAtLeast(0)
+                    val updated = match.copy(quantity = nextQty)
+                    _state.update { state ->
+                        state.copy(
+                            inventory = state.inventory.map { if (it.id == updated.id) updated else it },
+                        )
+                    }
+                    pushTrashEvent("${updated.name} −$amount (qty $nextQty)")
+                    onResult(
+                        if (nextQty == 0) ConsumeResult.Depleted(updated)
+                        else ConsumeResult.Decremented(updated),
+                    )
+                    return@launch
+                }
+                val token = _state.value.idToken ?: return@launch
+                val householdId = _state.value.household?.id ?: return@launch
+                val result = api.consumeInventoryByBarcode(householdId, code, amount, token)
+                if (!result.found || result.item == null) {
+                    result.unknownEvent?.let { event ->
+                        _state.update {
+                            it.copy(unknownTrashScans = listOf(event) + it.unknownTrashScans)
+                        }
+                    }
+                    pushTrashEvent("Unknown: $code", isUnknown = true)
+                    onResult(ConsumeResult.Unknown(code))
+                    return@launch
+                }
+                val updated = result.item
+                _state.update { state ->
+                    state.copy(
+                        inventory = state.inventory.map { if (it.id == updated.id) updated else it }
+                            .let { list ->
+                                if (list.none { it.id == updated.id }) listOf(updated) + list else list
+                            },
+                    )
+                }
+                pushTrashEvent("${updated.name} −$amount (qty ${updated.quantity})")
+                onResult(
+                    if (updated.quantity <= 0) ConsumeResult.Depleted(updated)
+                    else ConsumeResult.Decremented(updated),
+                )
+                refreshUnknownTrashScans()
+            } catch (e: Exception) {
+                handleFailure(e)
+                onResult(ConsumeResult.Failed(e.message ?: "Consume failed"))
+            }
+        }
+    }
+
+    fun refreshUnknownTrashScans() {
+        val token = _state.value.idToken ?: return
+        val householdId = _state.value.household?.id ?: return
+        if (_state.value.isOfflinePreview) return
+        viewModelScope.launch {
+            try {
+                val events = api.listUnknownTrashScans(householdId, token)
+                _state.update { it.copy(unknownTrashScans = events) }
+            } catch (e: MekasaApiException) {
+                if (e.status == 403) return@launch
+                handleFailure(e)
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
+    private fun pushTrashEvent(message: String, isUnknown: Boolean = false) {
+        val event = TrashEvent(
+            id = "evt-${System.currentTimeMillis()}",
+            message = message,
+            isUnknown = isUnknown,
+        )
+        _state.update { it.copy(trashEvents = listOf(event) + it.trashEvents.take(19)) }
     }
 
     fun toggleShoppingChecked(itemId: String) {

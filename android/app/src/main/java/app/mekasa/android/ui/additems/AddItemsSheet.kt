@@ -1,18 +1,8 @@
 package app.mekasa.android.ui.additems
 
-import android.Manifest
-import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -23,26 +13,20 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import app.mekasa.android.data.ProductSearchHit
 import app.mekasa.android.session.AppSession
 import app.mekasa.android.session.AppUiState
 import app.mekasa.android.session.PendingInventoryDraft
+import app.mekasa.android.ui.components.BarcodeCameraOrPermission
 import app.mekasa.android.ui.components.MekasaTextField
 import app.mekasa.android.ui.components.PrimaryButton
 import app.mekasa.android.ui.components.SecondaryButton
@@ -50,12 +34,7 @@ import app.mekasa.android.ui.components.SoftCard
 import app.mekasa.android.ui.theme.MekasaColor
 import app.mekasa.android.ui.theme.MekasaType
 import app.mekasa.android.ui.theme.Spacing
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode
-import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.launch
-import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicBoolean
 
 private enum class AddStep {
     Hub,
@@ -70,6 +49,7 @@ fun AddItemsSheet(
     state: AppUiState,
     session: AppSession,
     onDismiss: () -> Unit,
+    onOpenTrash: () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var step by remember { mutableStateOf(AddStep.Hub) }
@@ -85,6 +65,10 @@ fun AddItemsSheet(
             AddStep.Hub -> HubContent(
                 onBarcode = { step = AddStep.Barcode },
                 onSearch = { step = AddStep.Search },
+                onTrash = {
+                    onDismiss()
+                    onOpenTrash()
+                },
                 onDismiss = onDismiss,
             )
             AddStep.Barcode -> BarcodeContent(
@@ -132,6 +116,7 @@ fun AddItemsSheet(
 private fun HubContent(
     onBarcode: () -> Unit,
     onSearch: () -> Unit,
+    onTrash: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     Column(
@@ -144,12 +129,13 @@ private fun HubContent(
     ) {
         Text(text = "Add items", style = MekasaType.title, color = MekasaColor.brand)
         Text(
-            text = "Scan a barcode, search the product catalog, or enter a UPC manually.",
+            text = "Scan a barcode, search the product catalog, or open the trash station.",
             style = MekasaType.body,
             color = MekasaColor.textMuted,
         )
         PrimaryButton(title = "Scan / enter barcode", onClick = onBarcode)
         SecondaryButton(title = "Search products", onClick = onSearch)
+        SecondaryButton(title = "Trash station", onClick = onTrash)
         SecondaryButton(title = "Close", onClick = onDismiss)
     }
 }
@@ -164,17 +150,8 @@ private fun BarcodeContent(
     var code by remember { mutableStateOf("") }
     var lookingUp by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
+    var scanKey by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
-    var cameraGranted by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-                PackageManager.PERMISSION_GRANTED,
-        )
-    }
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted -> cameraGranted = granted }
 
     fun lookup(raw: String) {
         val trimmed = raw.trim()
@@ -215,6 +192,7 @@ private fun BarcodeContent(
                 status = e.message
             } finally {
                 lookingUp = false
+                scanKey += 1
             }
         }
     }
@@ -227,26 +205,10 @@ private fun BarcodeContent(
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         Text(text = "Barcode", style = MekasaType.title, color = MekasaColor.brand)
-        if (cameraGranted) {
-            BarcodeCameraPreview(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp),
-                onBarcode = { lookup(it) },
-            )
-        } else {
-            SoftCard {
-                Text(
-                    text = "Camera permission needed to scan live. You can still type a UPC below.",
-                    style = MekasaType.body,
-                    color = MekasaColor.textMuted,
-                )
-                Box(modifier = Modifier.height(Spacing.sm))
-                SecondaryButton(title = "Allow camera") {
-                    permissionLauncher.launch(Manifest.permission.CAMERA)
-                }
-            }
-        }
+        BarcodeCameraOrPermission(
+            scanKey = scanKey,
+            onBarcode = { lookup(it) },
+        )
         MekasaTextField(
             label = "UPC / EAN",
             value = code,
@@ -407,83 +369,5 @@ private fun ConfirmContent(
             onClick = onSave,
         )
         SecondaryButton(title = "Back", onClick = onBack)
-    }
-}
-
-@Composable
-private fun BarcodeCameraPreview(
-    modifier: Modifier = Modifier,
-    onBarcode: (String) -> Unit,
-) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val handled = remember { AtomicBoolean(false) }
-    val executor = remember { Executors.newSingleThreadExecutor() }
-
-    DisposableEffect(Unit) {
-        onDispose { executor.shutdown() }
-    }
-
-    AndroidView(
-        modifier = modifier,
-        factory = { ctx ->
-            PreviewView(ctx).also { previewView ->
-                val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-                cameraProviderFuture.addListener(
-                    {
-                        val cameraProvider = cameraProviderFuture.get()
-                        val preview = Preview.Builder().build().also {
-                            it.setSurfaceProvider(previewView.surfaceProvider)
-                        }
-                        val analysis = ImageAnalysis.Builder()
-                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                            .build()
-                        val scanner = BarcodeScanning.getClient()
-                        analysis.setAnalyzer(executor) { imageProxy ->
-                            val media = imageProxy.image
-                            if (media != null && !handled.get()) {
-                                val image = InputImage.fromMediaImage(
-                                    media,
-                                    imageProxy.imageInfo.rotationDegrees,
-                                )
-                                scanner.process(image)
-                                    .addOnSuccessListener { barcodes ->
-                                        val value = barcodes.firstOrNull {
-                                            it.format == Barcode.FORMAT_EAN_13 ||
-                                                it.format == Barcode.FORMAT_EAN_8 ||
-                                                it.format == Barcode.FORMAT_UPC_A ||
-                                                it.format == Barcode.FORMAT_UPC_E ||
-                                                it.rawValue != null
-                                        }?.rawValue
-                                        if (value != null && handled.compareAndSet(false, true)) {
-                                            ContextCompat.getMainExecutor(ctx).execute {
-                                                onBarcode(value)
-                                            }
-                                        }
-                                    }
-                                    .addOnCompleteListener { imageProxy.close() }
-                            } else {
-                                imageProxy.close()
-                            }
-                        }
-                        runCatching {
-                            cameraProvider.unbindAll()
-                            cameraProvider.bindToLifecycle(
-                                lifecycleOwner,
-                                CameraSelector.DEFAULT_BACK_CAMERA,
-                                preview,
-                                analysis,
-                            )
-                        }
-                    },
-                    ContextCompat.getMainExecutor(ctx),
-                )
-            }
-        },
-    )
-
-    LaunchedEffect(Unit) {
-        // reset latch when preview is first shown
-        handled.set(false)
     }
 }

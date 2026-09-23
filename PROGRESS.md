@@ -49,7 +49,7 @@
 | shopping-list-screen | ready (check / approve / reject / add custom / sync low-stock) | stubs + AppSessionTest | — | Owner purchase gate parity |
 | spending-screen | ready (week/month/year toggle + by_category totals) | stubs + AppSessionTest | — | Charts / event list |
 | settings | ready (members, invites, share link, accept deep link, sign out) | stubs + AppSessionTest | — | Role UX polish / trash kiosk entry |
-| trash-station-mode | stub filename only | stubs | — | Port iOS kiosk mode |
+| trash-station-mode | ready (kiosk + Add hub entry; consume-by-barcode; unknown scans) | stubs + AppSessionTest | — | Home-screen shortcut polish |
 
 ## Phase 3: iOS App
 

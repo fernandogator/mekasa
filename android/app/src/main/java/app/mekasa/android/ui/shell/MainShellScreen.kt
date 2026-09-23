@@ -49,6 +49,7 @@ import app.mekasa.android.ui.spending.SpendingScreen
 import app.mekasa.android.ui.theme.MekasaColor
 import app.mekasa.android.ui.theme.MekasaShapes
 import app.mekasa.android.ui.theme.Spacing
+import app.mekasa.android.ui.trash.TrashStationScreen
 
 @Composable
 fun MainShellScreen(
@@ -58,11 +59,22 @@ fun MainShellScreen(
     var tab by remember { mutableStateOf(MainTab.Home) }
     var showAdd by remember { mutableStateOf(false) }
     var showInventory by remember { mutableStateOf(false) }
+    var showTrash by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.household?.id, state.isOfflinePreview) {
         if (!state.isOfflinePreview) {
             session.refreshDashboard()
         }
+    }
+
+    if (showTrash) {
+        TrashStationScreen(
+            state = state,
+            session = session,
+            kioskMode = false,
+            onExit = { showTrash = false },
+        )
+        return
     }
 
     MekasaScreen(modifier = Modifier.testTag("MainShellView")) {
@@ -120,6 +132,7 @@ fun MainShellScreen(
             state = state,
             session = session,
             onDismiss = { showAdd = false },
+            onOpenTrash = { showTrash = true },
         )
     }
 }
