@@ -107,14 +107,72 @@ data class ShoppingListItemUpdateRequest(
 @Serializable
 data class SpendingReportDto(
     val period: String,
-    @SerialName("total_spent") val totalSpent: Double = 0.0,
-    val categories: List<SpendingCategoryDto> = emptyList(),
+    val total: Double = 0.0,
+    @SerialName("by_category") val byCategory: List<SpendingCategoryDto> = emptyList(),
+    @SerialName("household_id") val householdId: String? = null,
+    val currency: String = "USD",
 )
 
 @Serializable
 data class SpendingCategoryDto(
     val category: String,
     val total: Double,
+)
+
+@Serializable
+data class HouseholdMemberDto(
+    val uid: String,
+    @SerialName("household_id") val householdId: String,
+    val name: String? = null,
+    val email: String? = null,
+    val phone: String? = null,
+    val role: String = "member",
+    val status: String = "active",
+    val permissions: List<String> = emptyList(),
+)
+
+@Serializable
+data class HouseholdMembersResponse(
+    @SerialName("household_id") val householdId: String? = null,
+    val members: List<HouseholdMemberDto> = emptyList(),
+)
+
+@Serializable
+data class HouseholdInviteDto(
+    val id: String,
+    @SerialName("household_id") val householdId: String,
+    val name: String,
+    val email: String? = null,
+    val phone: String? = null,
+    val role: String = "member",
+    val token: String,
+    val status: String = "pending",
+    @SerialName("invited_by_uid") val invitedByUid: String? = null,
+    @SerialName("invite_link") val inviteLink: String? = null,
+)
+
+@Serializable
+data class HouseholdInvitesResponse(
+    @SerialName("household_id") val householdId: String? = null,
+    val invites: List<HouseholdInviteDto> = emptyList(),
+)
+
+@Serializable
+data class HouseholdInviteCreateRequest(
+    val name: String,
+    val email: String? = null,
+    val phone: String? = null,
+    val role: String = "member",
+)
+
+@Serializable
+data class HouseholdInviteAcceptRequest(
+    val token: String,
+)
+
+@Serializable
+data class HouseholdMemberRoleUpdateRequest(
+    val role: String,
 )
 
 @Serializable

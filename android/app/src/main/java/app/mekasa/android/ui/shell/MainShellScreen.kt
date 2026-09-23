@@ -102,13 +102,13 @@ fun MainShellScreen(
                     contentPadding = contentPadding,
                 )
                 tab == MainTab.Spend -> SpendingScreen(
-                    spending = state.spending,
+                    state = state,
+                    session = session,
                     contentPadding = contentPadding,
                 )
                 tab == MainTab.Family -> FamilyScreen(
                     state = state,
-                    onSignOut = session::signOut,
-                    onRefresh = session::refreshDashboard,
+                    session = session,
                     contentPadding = contentPadding,
                 )
             }

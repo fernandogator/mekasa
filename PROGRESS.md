@@ -47,8 +47,8 @@
 | inventory-screen | ready (list + consume Use 1 + images) | stubs + AppSessionTest | — | Detail edit; expand InventoryScreenUITest |
 | scanner | ready (CameraX + ML Kit barcode + UPC entry + product search + confirm → POST inventory) | stubs + AppSessionTest offline add | — | Receipt / voice parity with iOS |
 | shopping-list-screen | ready (check / approve / reject / add custom / sync low-stock) | stubs + AppSessionTest | — | Owner purchase gate parity |
-| spending-screen | ready (week report read) | stubs | — | Period toggle + charts |
-| settings | ready (profile + sign out + refresh) | stubs | — | Invites / family members API |
+| spending-screen | ready (week/month/year toggle + by_category totals) | stubs + AppSessionTest | — | Charts / event list |
+| settings | ready (members, invites, share link, accept deep link, sign out) | stubs + AppSessionTest | — | Role UX polish / trash kiosk entry |
 | trash-station-mode | stub filename only | stubs | — | Port iOS kiosk mode |
 
 ## Phase 3: iOS App

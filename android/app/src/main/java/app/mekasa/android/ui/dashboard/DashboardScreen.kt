@@ -168,14 +168,14 @@ private fun SpendingCard(
         )
         Box(modifier = Modifier.height(Spacing.sm))
         Text(
-            text = spending?.totalSpent?.let { "$%.2f".format(it) } ?: "—",
+            text = spending?.total?.let { "$%.2f".format(it) } ?: "—",
             style = MekasaType.title,
             color = MekasaColor.brand,
         )
-        if (!spending?.categories.isNullOrEmpty()) {
+        if (spending?.byCategory?.isNotEmpty() == true) {
             Box(modifier = Modifier.height(Spacing.sm))
             Text(
-                text = spending!!.categories.take(3).joinToString(" · ") {
+                text = spending.byCategory.take(3).joinToString(" · ") {
                     "${it.category} $%.0f".format(it.total)
                 },
                 style = MekasaType.label,
