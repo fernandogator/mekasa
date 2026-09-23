@@ -2,10 +2,10 @@ package app.mekasa.android.ui.dashboard
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import app.mekasa.android.data.InventoryItemDto
 import app.mekasa.android.data.SpendingReportDto
+import app.mekasa.android.session.AppSession
 import app.mekasa.android.session.AppUiState
 import app.mekasa.android.ui.components.SoftCard
 import app.mekasa.android.ui.inventory.InventoryRow
@@ -34,7 +35,9 @@ import coil.compose.AsyncImage
 @Composable
 fun DashboardScreen(
     state: AppUiState,
+    session: AppSession,
     onSelectTab: (MainTab) -> Unit,
+    onOpenInventory: () -> Unit,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
     val household = state.household
@@ -75,10 +78,38 @@ fun DashboardScreen(
             onClick = { onSelectTab(MainTab.Spend) },
         )
 
+        val pending = state.shoppingList.filter { it.needsApproval }
+        if (pending.isNotEmpty()) {
+            SectionHeader(
+                title = "Needs approval",
+                action = "Open list",
+                onAction = { onSelectTab(MainTab.List) },
+            )
+            pending.take(3).forEach { item ->
+                SoftCard {
+                    Text(text = item.name, style = MekasaType.body, color = MekasaColor.brand)
+                    Text(
+                        text = "qty ${item.quantity}" +
+                            (item.requestedBy?.let { " · $it" } ?: ""),
+                        style = MekasaType.label,
+                        color = MekasaColor.warning,
+                    )
+                    Row {
+                        TextButton(onClick = { session.approveShoppingItem(item.id) }) {
+                            Text("Approve", color = MekasaColor.success, style = MekasaType.label)
+                        }
+                        TextButton(onClick = { session.rejectShoppingItem(item.id) }) {
+                            Text("Reject", color = MekasaColor.accent, style = MekasaType.label)
+                        }
+                    }
+                }
+            }
+        }
+
         SectionHeader(
             title = "Low stock",
             action = "See inventory",
-            onAction = { onSelectTab(MainTab.Home) },
+            onAction = onOpenInventory,
         )
         val lowStock = state.inventory.filter { it.quantity <= it.lowStockThreshold }.take(4)
         if (lowStock.isEmpty()) {
@@ -90,7 +121,12 @@ fun DashboardScreen(
                 )
             }
         } else {
-            lowStock.forEach { InventoryRow(it) }
+            lowStock.forEach { item ->
+                InventoryRow(
+                    item = item,
+                    onConsume = { session.consumeInventoryItem(item.id) },
+                )
+            }
         }
 
         SectionHeader(
@@ -99,12 +135,12 @@ fun DashboardScreen(
             onAction = { onSelectTab(MainTab.List) },
         )
         SoftCard {
-            val pending = state.shoppingList.filter { !it.isChecked }
+            val open = state.shoppingList.filter { !it.isChecked }
             Text(
-                text = if (pending.isEmpty()) {
+                text = if (open.isEmpty()) {
                     "List is clear"
                 } else {
-                    "${pending.size} item${if (pending.size == 1) "" else "s"} to pick up"
+                    "${open.size} item${if (open.size == 1) "" else "s"} to pick up"
                 },
                 style = MekasaType.body,
                 color = MekasaColor.brand,
@@ -112,7 +148,10 @@ fun DashboardScreen(
             )
         }
 
-        RecentInventory(items = state.inventory.take(5))
+        RecentInventory(
+            items = state.inventory.take(5),
+            onConsume = { session.consumeInventoryItem(it) },
+        )
     }
 }
 
@@ -127,14 +166,14 @@ private fun SpendingCard(
             style = MekasaType.label,
             color = MekasaColor.textMuted,
         )
-        Spacer(modifier = Modifier.height(Spacing.sm))
+        Box(modifier = Modifier.height(Spacing.sm))
         Text(
             text = spending?.totalSpent?.let { "$%.2f".format(it) } ?: "—",
             style = MekasaType.title,
             color = MekasaColor.brand,
         )
         if (!spending?.categories.isNullOrEmpty()) {
-            Spacer(modifier = Modifier.height(Spacing.sm))
+            Box(modifier = Modifier.height(Spacing.sm))
             Text(
                 text = spending!!.categories.take(3).joinToString(" · ") {
                     "${it.category} $%.0f".format(it.total)
@@ -165,8 +204,13 @@ private fun SectionHeader(
 }
 
 @Composable
-private fun RecentInventory(items: List<InventoryItemDto>) {
+private fun RecentInventory(
+    items: List<InventoryItemDto>,
+    onConsume: (String) -> Unit,
+) {
     if (items.isEmpty()) return
     Text(text = "Recent items", style = MekasaType.subhead, color = MekasaColor.brand)
-    items.forEach { InventoryRow(it) }
+    items.forEach { item ->
+        InventoryRow(item = item, onConsume = { onConsume(item.id) })
+    }
 }

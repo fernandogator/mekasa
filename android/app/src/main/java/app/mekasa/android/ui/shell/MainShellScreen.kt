@@ -43,6 +43,7 @@ import app.mekasa.android.ui.additems.AddItemsSheet
 import app.mekasa.android.ui.components.MekasaScreen
 import app.mekasa.android.ui.dashboard.DashboardScreen
 import app.mekasa.android.ui.family.FamilyScreen
+import app.mekasa.android.ui.inventory.InventoryScreen
 import app.mekasa.android.ui.shopping.ShoppingListScreen
 import app.mekasa.android.ui.spending.SpendingScreen
 import app.mekasa.android.ui.theme.MekasaColor
@@ -56,6 +57,7 @@ fun MainShellScreen(
 ) {
     var tab by remember { mutableStateOf(MainTab.Home) }
     var showAdd by remember { mutableStateOf(false) }
+    var showInventory by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.household?.id, state.isOfflinePreview) {
         if (!state.isOfflinePreview) {
@@ -69,7 +71,10 @@ fun MainShellScreen(
             bottomBar = {
                 BottomNavBar(
                     selected = tab,
-                    onSelect = { tab = it },
+                    onSelect = {
+                        showInventory = false
+                        tab = it
+                    },
                     onAdd = { showAdd = true },
                 )
             },
@@ -77,21 +82,30 @@ fun MainShellScreen(
             val contentPadding = PaddingValues(
                 bottom = padding.calculateBottomPadding(),
             )
-            when (tab) {
-                MainTab.Home -> DashboardScreen(
+            when {
+                tab == MainTab.Home && showInventory -> InventoryScreen(
+                    items = state.inventory,
+                    onConsume = session::consumeInventoryItem,
+                    onBack = { showInventory = false },
+                    contentPadding = contentPadding,
+                )
+                tab == MainTab.Home -> DashboardScreen(
                     state = state,
+                    session = session,
                     onSelectTab = { tab = it },
+                    onOpenInventory = { showInventory = true },
                     contentPadding = contentPadding,
                 )
-                MainTab.List -> ShoppingListScreen(
-                    items = state.shoppingList,
+                tab == MainTab.List -> ShoppingListScreen(
+                    state = state,
+                    session = session,
                     contentPadding = contentPadding,
                 )
-                MainTab.Spend -> SpendingScreen(
+                tab == MainTab.Spend -> SpendingScreen(
                     spending = state.spending,
                     contentPadding = contentPadding,
                 )
-                MainTab.Family -> FamilyScreen(
+                tab == MainTab.Family -> FamilyScreen(
                     state = state,
                     onSignOut = session::signOut,
                     onRefresh = session::refreshDashboard,

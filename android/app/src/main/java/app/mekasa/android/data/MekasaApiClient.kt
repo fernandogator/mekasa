@@ -7,8 +7,10 @@ import io.ktor.client.engine.android.Android
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
@@ -93,8 +95,63 @@ class MekasaApiClient(
         token: String,
     ): InventoryItemDto = post("/v1/households/$householdId/inventory", token, body)
 
+    suspend fun consumeInventoryItem(
+        householdId: String,
+        itemId: String,
+        amount: Int = 1,
+        token: String,
+    ): InventoryItemDto = post(
+        "/v1/households/$householdId/inventory/$itemId/consume",
+        token,
+        InventoryConsumeRequest(amount),
+    )
+
     suspend fun listShoppingList(householdId: String, token: String): ShoppingListResponse =
         get("/v1/households/$householdId/shopping-list", token)
+
+    suspend fun createShoppingListItem(
+        householdId: String,
+        body: ShoppingListItemCreateRequest,
+        token: String,
+    ): ShoppingListItemDto = post("/v1/households/$householdId/shopping-list", token, body)
+
+    suspend fun updateShoppingListItem(
+        householdId: String,
+        itemId: String,
+        body: ShoppingListItemUpdateRequest,
+        token: String,
+    ): ShoppingListItemDto = patch("/v1/households/$householdId/shopping-list/$itemId", token, body)
+
+    suspend fun approveShoppingListItem(
+        householdId: String,
+        itemId: String,
+        token: String,
+    ): ShoppingListItemDto = postEmpty("/v1/households/$householdId/shopping-list/$itemId/approve", token)
+
+    suspend fun rejectShoppingListItem(
+        householdId: String,
+        itemId: String,
+        token: String,
+    ): ShoppingListItemDto = postEmpty("/v1/households/$householdId/shopping-list/$itemId/reject", token)
+
+    suspend fun deleteShoppingListItem(
+        householdId: String,
+        itemId: String,
+        token: String,
+    ) {
+        val response = client.delete("v1/households/$householdId/shopping-list/$itemId") {
+            bearerAuth(token)
+        }
+        if (!response.status.isSuccess()) {
+            throw MekasaApiException(
+                response.status.value,
+                response.bodyAsText().ifBlank { "HTTP ${response.status.value}" },
+            )
+        }
+    }
+
+    suspend fun syncShoppingListFromInventory(householdId: String, token: String): ShoppingListSyncResponse =
+        postEmpty("/v1/households/$householdId/shopping-list/sync-from-inventory", token)
 
     suspend fun spending(householdId: String, period: String, token: String): SpendingReportDto =
         get("/v1/households/$householdId/spending?period=$period", token)
@@ -122,8 +179,25 @@ class MekasaApiClient(
         return decode(response.status, response.bodyAsText())
     }
 
+    private suspend inline fun <reified T> postEmpty(path: String, token: String): T {
+        val response = client.post(path.trimStart('/')) {
+            bearerAuth(token)
+            header("Accept", "application/json")
+        }
+        return decode(response.status, response.bodyAsText())
+    }
+
     private suspend inline fun <reified T, reified B> put(path: String, token: String, body: B): T {
         val response = client.put(path.trimStart('/')) {
+            bearerAuth(token)
+            contentType(ContentType.Application.Json)
+            setBody(body)
+        }
+        return decode(response.status, response.bodyAsText())
+    }
+
+    private suspend inline fun <reified T, reified B> patch(path: String, token: String, body: B): T {
+        val response = client.patch(path.trimStart('/')) {
             bearerAuth(token)
             contentType(ContentType.Application.Json)
             setBody(body)

@@ -12,7 +12,9 @@ import app.mekasa.android.data.InventoryItemDto
 import app.mekasa.android.data.MekasaApiClient
 import app.mekasa.android.data.MekasaApiException
 import app.mekasa.android.data.ProductSearchHit
+import app.mekasa.android.data.ShoppingListItemCreateRequest
 import app.mekasa.android.data.ShoppingListItemDto
+import app.mekasa.android.data.ShoppingListItemUpdateRequest
 import app.mekasa.android.data.SpendingCategoryDto
 import app.mekasa.android.data.SpendingReportDto
 import app.mekasa.android.data.Store
@@ -124,18 +126,18 @@ class AppSession(
                         id = "s1",
                         householdId = "preview-home",
                         name = "Diet Coke",
-                        category = "Beverages",
                         quantity = 1,
                         needsApproval = false,
+                        kind = "auto",
                     ),
                     ShoppingListItemDto(
                         id = "s2",
                         householdId = "preview-home",
                         name = "Avocados",
-                        category = "Produce",
                         quantity = 3,
                         needsApproval = true,
-                        requestedByUid = "kid",
+                        requestedBy = "kid",
+                        kind = "request",
                     ),
                 ),
                 spending = SpendingReportDto(
@@ -363,6 +365,150 @@ class AppSession(
             } catch (e: Exception) {
                 handleFailure(e)
             }
+        }
+    }
+
+    fun consumeInventoryItem(itemId: String, amount: Int = 1) {
+        viewModelScope.launch {
+            try {
+                if (_state.value.isOfflinePreview) {
+                    _state.update { state ->
+                        state.copy(
+                            inventory = state.inventory.map { item ->
+                                if (item.id != itemId) item
+                                else item.copy(quantity = (item.quantity - amount).coerceAtLeast(0))
+                            },
+                        )
+                    }
+                    return@launch
+                }
+                val token = _state.value.idToken ?: return@launch
+                val householdId = _state.value.household?.id ?: return@launch
+                val updated = api.consumeInventoryItem(householdId, itemId, amount, token)
+                _state.update { state ->
+                    state.copy(
+                        inventory = state.inventory.map { if (it.id == updated.id) updated else it },
+                    )
+                }
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
+    fun toggleShoppingChecked(itemId: String) {
+        val current = _state.value.shoppingList.firstOrNull { it.id == itemId } ?: return
+        val nextChecked = !current.isChecked
+        viewModelScope.launch {
+            try {
+                if (_state.value.isOfflinePreview) {
+                    replaceShoppingItem(current.copy(isChecked = nextChecked))
+                    return@launch
+                }
+                val token = _state.value.idToken ?: return@launch
+                val householdId = _state.value.household?.id ?: return@launch
+                val updated = api.updateShoppingListItem(
+                    householdId,
+                    itemId,
+                    ShoppingListItemUpdateRequest(isChecked = nextChecked),
+                    token,
+                )
+                replaceShoppingItem(updated)
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
+    fun approveShoppingItem(itemId: String) {
+        viewModelScope.launch {
+            try {
+                if (_state.value.isOfflinePreview) {
+                    val current = _state.value.shoppingList.firstOrNull { it.id == itemId } ?: return@launch
+                    replaceShoppingItem(current.copy(needsApproval = false, kind = "custom"))
+                    return@launch
+                }
+                val token = _state.value.idToken ?: return@launch
+                val householdId = _state.value.household?.id ?: return@launch
+                val updated = api.approveShoppingListItem(householdId, itemId, token)
+                replaceShoppingItem(updated)
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
+    fun rejectShoppingItem(itemId: String) {
+        viewModelScope.launch {
+            try {
+                if (_state.value.isOfflinePreview) {
+                    _state.update { it.copy(shoppingList = it.shoppingList.filterNot { row -> row.id == itemId }) }
+                    return@launch
+                }
+                val token = _state.value.idToken ?: return@launch
+                val householdId = _state.value.household?.id ?: return@launch
+                api.rejectShoppingListItem(householdId, itemId, token)
+                _state.update { it.copy(shoppingList = it.shoppingList.filterNot { row -> row.id == itemId }) }
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
+    fun addShoppingListItem(name: String, quantity: Int = 1) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch {
+            _state.update { it.copy(isBusy = true, lastError = null) }
+            try {
+                if (_state.value.isOfflinePreview) {
+                    val item = ShoppingListItemDto(
+                        id = "local-shop-${System.currentTimeMillis()}",
+                        householdId = _state.value.household?.id ?: "preview-home",
+                        name = trimmed,
+                        quantity = quantity.coerceAtLeast(1),
+                        kind = "custom",
+                    )
+                    _state.update {
+                        it.copy(isBusy = false, shoppingList = listOf(item) + it.shoppingList)
+                    }
+                    return@launch
+                }
+                val token = _state.value.idToken ?: return@launch
+                val householdId = _state.value.household?.id ?: return@launch
+                val created = api.createShoppingListItem(
+                    householdId,
+                    ShoppingListItemCreateRequest(name = trimmed, quantity = quantity.coerceAtLeast(1)),
+                    token,
+                )
+                _state.update {
+                    it.copy(isBusy = false, shoppingList = listOf(created) + it.shoppingList)
+                }
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
+    fun syncShoppingFromInventory() {
+        viewModelScope.launch {
+            try {
+                if (_state.value.isOfflinePreview) return@launch
+                val token = _state.value.idToken ?: return@launch
+                val householdId = _state.value.household?.id ?: return@launch
+                val synced = api.syncShoppingListFromInventory(householdId, token)
+                _state.update { it.copy(shoppingList = synced.items) }
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
+    private fun replaceShoppingItem(updated: ShoppingListItemDto) {
+        _state.update { state ->
+            state.copy(
+                shoppingList = state.shoppingList.map { if (it.id == updated.id) updated else it },
+            )
         }
     }
 
