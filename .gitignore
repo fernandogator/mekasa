@@ -39,3 +39,9 @@ xcuserdata/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Android
+android/local.properties
+**/.gradle/
+**/build/
+

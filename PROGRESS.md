@@ -1,7 +1,7 @@
 # Project MEKASA
 
 - **Current Phase:** 3 — Live barcode + UPC lookup
-- **Last Updated:** 2026-09-19
+- **Last Updated:** 2026-09-23
 
 > **WARNING:** This file must be reconciled against the actual codebase at the
 > start of every session. Never trust this file without verification.
@@ -42,14 +42,14 @@
 
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
-| onboarding | not started | unknown | — | After iOS path, or parallel later |
-| dashboard | not started | unknown | — | Confirm UI-004 + Dashboard.jsx; expand DashboardUITest |
-| inventory-screen | not started | unknown | — | Await mockup + UI req coverage beyond AddItems |
-| scanner | not started | unknown | — | Confirm AddItems.jsx; expand ScannerUITest |
-| shopping-list-screen | not started | unknown | — | Confirm ShoppingList.jsx; add ShoppingList UI test stubs |
-| spending-screen | not started | unknown | — | Confirm SpendingReport.jsx |
-| settings | not started | unknown | — | Confirm FamilyMembers.jsx |
-| trash-station-mode | done | unknown | — | Align TrashStation* test filename with UI-005 |
+| onboarding | ready (Welcome → household → address → stores; test-token + offline preview) | stubs + AppSessionTest | — | Wire Firebase Auth + google-services.json |
+| dashboard | ready (summary + low stock + spend card + shell nav) | stubs | — | Home photo upload; expand DashboardUITest |
+| inventory-screen | ready (list rows + images via Coil) | stubs | — | Detail + consume; expand InventoryScreenUITest |
+| scanner | stub (Add sheet placeholders) | stubs | — | Camera barcode + receipt + voice |
+| shopping-list-screen | ready (read list from API / preview) | stubs | — | Check/approve mutations |
+| spending-screen | ready (week report read) | stubs | — | Period toggle + charts |
+| settings | ready (profile + sign out + refresh) | stubs | — | Invites / family members API |
+| trash-station-mode | stub filename only | stubs | — | Port iOS kiosk mode |
 
 ## Phase 3: iOS App
 
