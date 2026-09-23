@@ -385,9 +385,11 @@ final class AppSession: ObservableObject {
     }
 
     /// Clears Firebase + local session and returns to the sign-in screen.
+    /// No error alert — silent return to Welcome (REQ-022).
     func endSessionBecauseExpired() {
         try? AuthService.shared.signOut()
-        signOut(expiredSessionMessage: SessionExpiry.userMessage)
+        signOut(expiredSessionMessage: nil)
+        lastError = nil
     }
 
     /// Pull inventory from Cloud Run / Firestore.

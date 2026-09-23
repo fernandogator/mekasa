@@ -1,9 +1,10 @@
 import Foundation
 
-/// Helpers for detecting and messaging expired GCP / Firebase API sessions.
+/// Helpers for detecting expired GCP / Firebase API sessions.
 /// Satisfies: REQ-022
 /// Spec version: 1.0
 enum SessionExpiry {
+    /// Kept for docs / legacy references; expired sessions sign out silently (no alert).
     static let userMessage = "Your session expired. Please sign in again."
 
     static func isUnauthorized(_ error: Error) -> Bool {

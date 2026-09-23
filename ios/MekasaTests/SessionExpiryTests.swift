@@ -21,20 +21,20 @@ final class SessionExpiryTests: XCTestCase {
     }
 
     @MainActor
-    func testEndSessionBecauseExpired_returnsToWelcomeWithMessage() {
+    func testEndSessionBecauseExpired_returnsToWelcomeWithoutError() {
         let session = AppSession()
         session.idToken = "stale-token"
         session.displayName = "Alex"
         session.email = "alex@mekasa.local"
         session.onboardingStep = .done
         session.household = TestFixtures.previewHousehold
+        session.lastError = "stale error"
 
         session.endSessionBecauseExpired()
 
         XCTAssertNil(session.idToken)
         XCTAssertEqual(session.onboardingStep, .welcome)
-        XCTAssertEqual(session.lastError, SessionExpiry.userMessage)
-        XCTAssertTrue(SessionExpiry.userMessage.localizedCaseInsensitiveContains("session expired"))
+        XCTAssertNil(session.lastError)
         // REQ-022 AC5: username survives sign-out for Welcome prefill.
         XCTAssertEqual(session.lastSignedInEmail, "alex@mekasa.local")
         XCTAssertNil(session.email)
@@ -47,12 +47,13 @@ final class SessionExpiryTests: XCTestCase {
         session.email = "alex@mekasa.local"
         session.onboardingStep = .done
         session.household = TestFixtures.previewHousehold
+        session.lastError = "previous"
 
         await session.handleUnauthorizedAPIResponse()
 
         XCTAssertEqual(session.onboardingStep, .welcome)
         XCTAssertNil(session.idToken)
-        XCTAssertEqual(session.lastError, SessionExpiry.userMessage)
+        XCTAssertNil(session.lastError)
         XCTAssertEqual(session.lastSignedInEmail, "alex@mekasa.local")
     }
 
