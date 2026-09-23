@@ -156,6 +156,32 @@ class MekasaApiClient(
     suspend fun spending(householdId: String, period: String, token: String): SpendingReportDto =
         get("/v1/households/$householdId/spending?period=$period", token)
 
+    suspend fun listMembers(householdId: String, token: String): HouseholdMembersResponse =
+        get("/v1/households/$householdId/members", token)
+
+    suspend fun listInvites(householdId: String, token: String): HouseholdInvitesResponse =
+        get("/v1/households/$householdId/invites", token)
+
+    suspend fun createInvite(
+        householdId: String,
+        body: HouseholdInviteCreateRequest,
+        token: String,
+    ): HouseholdInviteDto = post("/v1/households/$householdId/invites", token, body)
+
+    suspend fun acceptInvite(body: HouseholdInviteAcceptRequest, token: String): HouseholdMemberDto =
+        post("/v1/invites/accept", token, body)
+
+    suspend fun updateMemberRole(
+        householdId: String,
+        memberUid: String,
+        role: String,
+        token: String,
+    ): HouseholdMemberDto = patch(
+        "/v1/households/$householdId/members/$memberUid",
+        token,
+        HouseholdMemberRoleUpdateRequest(role),
+    )
+
     suspend fun searchProducts(query: String, limit: Int = 8, token: String): ProductSearchResponse =
         get("/v1/products/search?q=${query.encodeURLParam()}&limit=$limit", token)
 

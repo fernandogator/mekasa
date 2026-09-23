@@ -7,6 +7,10 @@ import app.mekasa.android.auth.AuthResult
 import app.mekasa.android.auth.AuthService
 import app.mekasa.android.data.BarcodeLookupResponse
 import app.mekasa.android.data.Household
+import app.mekasa.android.data.HouseholdInviteAcceptRequest
+import app.mekasa.android.data.HouseholdInviteCreateRequest
+import app.mekasa.android.data.HouseholdInviteDto
+import app.mekasa.android.data.HouseholdMemberDto
 import app.mekasa.android.data.InventoryItemCreateRequest
 import app.mekasa.android.data.InventoryItemDto
 import app.mekasa.android.data.MekasaApiClient
@@ -52,6 +56,10 @@ data class AppUiState(
     val inventory: List<InventoryItemDto> = emptyList(),
     val shoppingList: List<ShoppingListItemDto> = emptyList(),
     val spending: SpendingReportDto? = null,
+    val spendingPeriod: String = "week",
+    val members: List<HouseholdMemberDto> = emptyList(),
+    val invites: List<HouseholdInviteDto> = emptyList(),
+    val pendingInviteToken: String? = null,
     val nearbyStores: List<Store> = emptyList(),
     val selectedStoreIds: Set<String> = emptySet(),
     val isBusy: Boolean = false,
@@ -142,13 +150,24 @@ class AppSession(
                 ),
                 spending = SpendingReportDto(
                     period = "week",
-                    totalSpent = 86.42,
-                    categories = listOf(
+                    total = 86.42,
+                    byCategory = listOf(
                         SpendingCategoryDto("Groceries", 54.10),
                         SpendingCategoryDto("Beverages", 18.20),
                         SpendingCategoryDto("Household", 14.12),
                     ),
                 ),
+                members = listOf(
+                    HouseholdMemberDto(
+                        uid = "preview-user",
+                        householdId = "preview-home",
+                        name = "Preview",
+                        email = "preview@mekasa.local",
+                        role = "owner",
+                    ),
+                ),
+                invites = emptyList(),
+                spendingPeriod = "week",
                 step = OnboardingStep.Done,
                 lastError = null,
             )
@@ -214,9 +233,11 @@ class AppSession(
     fun signOut() {
         auth.signOut()
         val email = _state.value.email ?: _state.value.lastSignedInEmail
+        val pending = _state.value.pendingInviteToken
         _state.value = AppUiState(
             lastSignedInEmail = email,
             firebaseConfigured = auth.isFirebaseConfigured,
+            pendingInviteToken = pending,
         )
     }
 
@@ -290,14 +311,177 @@ class AppSession(
             try {
                 val inventory = api.listInventory(householdId, token).items
                 val shopping = api.listShoppingList(householdId, token).items
-                val spending = runCatching { api.spending(householdId, "week", token) }.getOrNull()
+                val period = _state.value.spendingPeriod
+                val spending = runCatching { api.spending(householdId, period, token) }.getOrNull()
+                val members = runCatching { api.listMembers(householdId, token).members }.getOrDefault(emptyList())
+                val invites = runCatching { api.listInvites(householdId, token).invites }.getOrDefault(emptyList())
                 _state.update {
                     it.copy(
                         inventory = inventory,
                         shoppingList = shopping,
                         spending = spending,
+                        members = members,
+                        invites = invites,
                     )
                 }
+                acceptPendingInviteIfNeeded()
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
+    fun refreshSpending(period: String) {
+        _state.update { it.copy(spendingPeriod = period) }
+        val token = _state.value.idToken ?: return
+        val householdId = _state.value.household?.id ?: return
+        if (_state.value.isOfflinePreview) {
+            _state.update {
+                it.copy(
+                    spending = it.spending?.copy(period = period) ?: SpendingReportDto(
+                        period = period,
+                        total = 86.42,
+                        byCategory = listOf(SpendingCategoryDto("Groceries", 54.10)),
+                    ),
+                )
+            }
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val spending = api.spending(householdId, period, token)
+                _state.update { it.copy(spending = spending, spendingPeriod = period) }
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
+    fun refreshFamily() {
+        val token = _state.value.idToken ?: return
+        val householdId = _state.value.household?.id ?: return
+        if (_state.value.isOfflinePreview) return
+        viewModelScope.launch {
+            try {
+                val members = api.listMembers(householdId, token).members
+                val invites = api.listInvites(householdId, token).invites
+                _state.update { it.copy(members = members, invites = invites) }
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
+    fun setPendingInviteToken(token: String?) {
+        val cleaned = token?.trim()?.takeIf { it.isNotEmpty() }
+        _state.update { it.copy(pendingInviteToken = cleaned) }
+        if (cleaned != null && _state.value.idToken != null) {
+            acceptPendingInviteIfNeeded()
+        }
+    }
+
+    fun handleInviteDeepLink(uriString: String?) {
+        if (uriString.isNullOrBlank()) return
+        val uri = android.net.Uri.parse(uriString)
+        if (uri.scheme != "mekasa") return
+        val host = uri.host.orEmpty()
+        if (host != "invite" && !uri.path.orEmpty().contains("invite")) return
+        val token = uri.getQueryParameter("token")
+            ?: uri.pathSegments.firstOrNull { it.isNotBlank() && it != "invite" }
+        setPendingInviteToken(token)
+    }
+
+    fun createInvite(name: String, email: String?, role: String = "member") {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch {
+            _state.update { it.copy(isBusy = true, lastError = null) }
+            try {
+                if (_state.value.isOfflinePreview) {
+                    val invite = HouseholdInviteDto(
+                        id = "local-invite-${System.currentTimeMillis()}",
+                        householdId = _state.value.household?.id ?: "preview-home",
+                        name = trimmed,
+                        email = email?.trim()?.ifBlank { null },
+                        role = role,
+                        token = "preview-token",
+                        inviteLink = "mekasa://invite?token=preview-token",
+                    )
+                    _state.update {
+                        it.copy(isBusy = false, invites = listOf(invite) + it.invites)
+                    }
+                    return@launch
+                }
+                val token = _state.value.idToken ?: return@launch
+                val householdId = _state.value.household?.id ?: return@launch
+                val created = api.createInvite(
+                    householdId,
+                    HouseholdInviteCreateRequest(
+                        name = trimmed,
+                        email = email?.trim()?.ifBlank { null },
+                        role = role,
+                    ),
+                    token,
+                )
+                _state.update {
+                    it.copy(isBusy = false, invites = listOf(created) + it.invites)
+                }
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
+    fun acceptPendingInviteIfNeeded() {
+        val inviteToken = _state.value.pendingInviteToken ?: return
+        val token = _state.value.idToken ?: return
+        if (_state.value.isOfflinePreview) return
+        viewModelScope.launch {
+            _state.update { it.copy(isBusy = true, lastError = null) }
+            try {
+                api.acceptInvite(HouseholdInviteAcceptRequest(inviteToken), token)
+                _state.update { it.copy(isBusy = false, pendingInviteToken = null) }
+                val household = runCatching { api.currentHousehold(token) }.getOrNull()
+                if (household != null) {
+                    _state.update {
+                        it.copy(
+                            household = household,
+                            step = when {
+                                household.address.isNullOrBlank() -> OnboardingStep.Address
+                                household.storeIds.isEmpty() -> OnboardingStep.Stores
+                                else -> OnboardingStep.Done
+                            },
+                        )
+                    }
+                }
+                refreshDashboard()
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
+    fun promoteMemberToOwner(memberUid: String) {
+        viewModelScope.launch {
+            try {
+                if (_state.value.isOfflinePreview) {
+                    _state.update { state ->
+                        state.copy(
+                            members = state.members.map {
+                                when (it.uid) {
+                                    memberUid -> it.copy(role = "owner")
+                                    state.userUid -> it.copy(role = "member")
+                                    else -> it
+                                }
+                            },
+                        )
+                    }
+                    return@launch
+                }
+                val token = _state.value.idToken ?: return@launch
+                val householdId = _state.value.household?.id ?: return@launch
+                api.updateMemberRole(householdId, memberUid, "owner", token)
+                refreshFamily()
             } catch (e: Exception) {
                 handleFailure(e)
             }

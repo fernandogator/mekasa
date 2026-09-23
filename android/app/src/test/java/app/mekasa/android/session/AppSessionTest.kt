@@ -61,13 +61,20 @@ class AppSessionTest {
     }
 
     @Test
-    fun toggleShoppingChecked_offlinePreview_flipsFlag() = runTest {
+    fun refreshSpending_offlinePreview_updatesPeriod() {
         val session = AppSession()
         session.startOfflinePreview()
-        val id = session.state.value.shoppingList.first().id
-        val before = session.state.value.shoppingList.first().isChecked
-        session.toggleShoppingChecked(id)
+        session.refreshSpending("month")
+        assertEquals("month", session.state.value.spendingPeriod)
+        assertEquals("month", session.state.value.spending?.period)
+    }
+
+    @Test
+    fun createInvite_offlinePreview_prependsPendingInvite() = runTest {
+        val session = AppSession()
+        session.startOfflinePreview()
+        session.createInvite("Alex", "alex@example.com")
         dispatcher.scheduler.advanceUntilIdle()
-        assertEquals(!before, session.state.value.shoppingList.first { it.id == id }.isChecked)
+        assertTrue(session.state.value.invites.any { it.name == "Alex" && it.status == "pending" })
     }
 }
