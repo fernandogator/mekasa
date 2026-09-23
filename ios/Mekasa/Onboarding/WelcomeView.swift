@@ -11,6 +11,16 @@ struct WelcomeView: View {
     /// Default to sign-in; users opt in to create an account.
     @State private var isSignUp = false
     @State private var showEmailForm = false
+    @FocusState private var focusedField: EmailAuthField?
+
+    private enum EmailAuthField: Hashable {
+        case email
+        case password
+    }
+
+    private var canSubmitEmail: Bool {
+        !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && password.count >= 6 && !session.isBusy
+    }
 
     var body: some View {
         MekasaScreen {
@@ -45,19 +55,26 @@ struct WelcomeView: View {
                                 placeholder: "you@example.com",
                                 text: $email,
                                 keyboard: .emailAddress,
-                                autocapitalization: .never
+                                autocapitalization: .never,
+                                submitLabel: .next,
+                                onSubmit: { focusedField = .password }
                             )
                             .textContentType(.emailAddress)
                             .autocorrectionDisabled()
+                            .focused($focusedField, equals: .email)
                             .accessibilityIdentifier("WelcomeEmailField")
 
                             MekasaTextField(
                                 label: "Password",
                                 placeholder: "At least 6 characters",
                                 text: $password,
-                                isSecure: true
+                                isSecure: true,
+                                submitLabel: .go,
+                                onSubmit: { submitEmailFromKeyboard() }
                             )
                             .textContentType(isSignUp ? .newPassword : .password)
+                            .focused($focusedField, equals: .password)
+                            .accessibilityIdentifier("WelcomePasswordField")
 
                             Toggle("Create a new account", isOn: $isSignUp)
                                 .font(MekasaTheme.bodyFont)
@@ -74,11 +91,12 @@ struct WelcomeView: View {
                         if showEmailForm {
                             PrimaryButton(
                                 title: isSignUp ? "Create account" : "Sign in",
-                                disabled: email.isEmpty || password.count < 6,
+                                disabled: !canSubmitEmail,
                                 isLoading: session.isBusy
                             ) {
                                 Task { await submitEmail() }
                             }
+                            .accessibilityIdentifier("WelcomeSignInButton")
                             SecondaryButton(title: "Back") {
                                 withAnimation { showEmailForm = false }
                             }
@@ -91,7 +109,10 @@ struct WelcomeView: View {
                             }
                             .accessibilityIdentifier("WelcomeAppleSignInButton")
                             SecondaryButton(title: "Continue with email") {
-                                withAnimation(.easeInOut(duration: 0.25)) { showEmailForm = true }
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    showEmailForm = true
+                                    focusedField = session.lastSignedInEmail == nil ? .email : .password
+                                }
                             }
                             #if DEBUG
                             Button("Browse UI offline") {
@@ -133,6 +154,18 @@ struct WelcomeView: View {
         isSignUp = false
         showEmailForm = true
         password = ""
+        focusedField = .password
+    }
+
+    private func submitEmailFromKeyboard() {
+        guard canSubmitEmail else {
+            if email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                focusedField = .email
+            }
+            return
+        }
+        focusedField = nil
+        Task { await submitEmail() }
     }
 
     private func applyAuth(token: String, email: String?, name: String?) async {

@@ -129,6 +129,8 @@ struct MekasaTextField: View {
     var isSecure = false
     var keyboard: UIKeyboardType = .default
     var autocapitalization: TextInputAutocapitalization = .sentences
+    var submitLabel: SubmitLabel = .done
+    var onSubmit: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -149,6 +151,8 @@ struct MekasaTextField: View {
                         .textInputAutocapitalization(autocapitalization)
                 }
             }
+            .submitLabel(submitLabel)
+            .onSubmit { onSubmit?() }
             .font(.system(size: 18, weight: .heavy, design: .rounded))
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
