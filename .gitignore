@@ -42,6 +42,7 @@ __pycache__/
 
 # Android
 android/local.properties
+android/.kotlin/
 **/.gradle/
 **/build/
 
