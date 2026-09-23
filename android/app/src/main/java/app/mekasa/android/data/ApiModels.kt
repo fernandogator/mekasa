@@ -64,16 +64,44 @@ data class ShoppingListItemDto(
     val id: String,
     @SerialName("household_id") val householdId: String,
     val name: String,
-    val category: String = "Other",
     val quantity: Int = 1,
+    @SerialName("quantity_label") val quantityLabel: String? = null,
     @SerialName("is_checked") val isChecked: Boolean = false,
     @SerialName("needs_approval") val needsApproval: Boolean = false,
-    @SerialName("requested_by_uid") val requestedByUid: String? = null,
+    @SerialName("requested_by") val requestedBy: String? = null,
+    @SerialName("inventory_item_id") val inventoryItemId: String? = null,
+    val kind: String = "custom",
 )
 
 @Serializable
 data class ShoppingListResponse(
+    @SerialName("household_id") val householdId: String? = null,
     val items: List<ShoppingListItemDto> = emptyList(),
+)
+
+@Serializable
+data class ShoppingListSyncResponse(
+    @SerialName("household_id") val householdId: String? = null,
+    val added: List<ShoppingListItemDto> = emptyList(),
+    val items: List<ShoppingListItemDto> = emptyList(),
+)
+
+@Serializable
+data class ShoppingListItemCreateRequest(
+    val name: String,
+    val quantity: Int = 1,
+    @SerialName("is_checked") val isChecked: Boolean = false,
+    @SerialName("needs_approval") val needsApproval: Boolean = false,
+    val kind: String = "custom",
+)
+
+@Serializable
+data class ShoppingListItemUpdateRequest(
+    val name: String? = null,
+    val quantity: Int? = null,
+    @SerialName("is_checked") val isChecked: Boolean? = null,
+    @SerialName("needs_approval") val needsApproval: Boolean? = null,
+    val kind: String? = null,
 )
 
 @Serializable
@@ -135,4 +163,9 @@ data class InventoryItemCreateRequest(
     val barcode: String? = null,
     @SerialName("image_url") val imageUrl: String? = null,
     val source: String = "manual",
+)
+
+@Serializable
+data class InventoryConsumeRequest(
+    val amount: Int = 1,
 )

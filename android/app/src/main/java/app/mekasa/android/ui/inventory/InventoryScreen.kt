@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +32,8 @@ import coil.compose.AsyncImage
 @Composable
 fun InventoryScreen(
     items: List<InventoryItemDto>,
+    onConsume: (String) -> Unit,
+    onBack: (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
     if (items.isEmpty()) {
@@ -57,20 +60,34 @@ fun InventoryScreen(
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         item {
-            Text(
-                text = "Inventory",
-                style = MekasaType.title,
-                color = MekasaColor.brand,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Inventory",
+                    style = MekasaType.title,
+                    color = MekasaColor.brand,
+                )
+                if (onBack != null) {
+                    TextButton(onClick = onBack) {
+                        Text("Back", color = MekasaColor.accent, style = MekasaType.label)
+                    }
+                }
+            }
         }
         items(items, key = { it.id }) { item ->
-            InventoryRow(item)
+            InventoryRow(item = item, onConsume = { onConsume(item.id) })
         }
     }
 }
 
 @Composable
-fun InventoryRow(item: InventoryItemDto) {
+fun InventoryRow(
+    item: InventoryItemDto,
+    onConsume: (() -> Unit)? = null,
+) {
     SoftCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -114,6 +131,11 @@ fun InventoryRow(item: InventoryItemDto) {
                         MekasaColor.textMuted
                     },
                 )
+            }
+            if (onConsume != null && item.quantity > 0) {
+                TextButton(onClick = onConsume) {
+                    Text("Use 1", color = MekasaColor.accent, style = MekasaType.label)
+                }
             }
         }
     }

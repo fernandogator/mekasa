@@ -50,23 +50,24 @@ class AppSessionTest {
     }
 
     @Test
-    fun addInventoryItem_offlinePreview_prependsLocalItem() = runTest {
+    fun consumeInventoryItem_offlinePreview_decrementsQuantity() = runTest {
         val session = AppSession()
         session.startOfflinePreview()
-        val before = session.state.value.inventory.size
-        session.addInventoryItem(
-            PendingInventoryDraft(
-                name = "Test Bar",
-                category = "Snacks",
-                quantity = 2,
-                barcode = "123",
-                source = "barcode",
-            ),
-        )
+        val id = session.state.value.inventory.first().id
+        val before = session.state.value.inventory.first().quantity
+        session.consumeInventoryItem(id)
         dispatcher.scheduler.advanceUntilIdle()
-        val state = session.state.value
-        assertEquals(before + 1, state.inventory.size)
-        assertEquals("Test Bar", state.inventory.first().name)
-        assertEquals("barcode", state.inventory.first().source)
+        assertEquals(before - 1, session.state.value.inventory.first { it.id == id }.quantity)
+    }
+
+    @Test
+    fun toggleShoppingChecked_offlinePreview_flipsFlag() = runTest {
+        val session = AppSession()
+        session.startOfflinePreview()
+        val id = session.state.value.shoppingList.first().id
+        val before = session.state.value.shoppingList.first().isChecked
+        session.toggleShoppingChecked(id)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(!before, session.state.value.shoppingList.first { it.id == id }.isChecked)
     }
 }

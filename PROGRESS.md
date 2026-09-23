@@ -44,9 +44,9 @@
 |--------|--------|---------------|------------|-----------|
 | onboarding | ready (Welcome → household → address → stores; Firebase Auth + offline / test-token fallback) | stubs + AppSessionTest | — | Drop in real google-services.json for prod sign-in |
 | dashboard | ready (summary + low stock + spend card + shell nav) | stubs | — | Home photo upload; expand DashboardUITest |
-| inventory-screen | ready (list rows + images via Coil) | stubs | — | Detail + consume; expand InventoryScreenUITest |
+| inventory-screen | ready (list + consume Use 1 + images) | stubs + AppSessionTest | — | Detail edit; expand InventoryScreenUITest |
 | scanner | ready (CameraX + ML Kit barcode + UPC entry + product search + confirm → POST inventory) | stubs + AppSessionTest offline add | — | Receipt / voice parity with iOS |
-| shopping-list-screen | ready (read list from API / preview) | stubs | — | Check/approve mutations |
+| shopping-list-screen | ready (check / approve / reject / add custom / sync low-stock) | stubs + AppSessionTest | — | Owner purchase gate parity |
 | spending-screen | ready (week report read) | stubs | — | Period toggle + charts |
 | settings | ready (profile + sign out + refresh) | stubs | — | Invites / family members API |
 | trash-station-mode | stub filename only | stubs | — | Port iOS kiosk mode |
