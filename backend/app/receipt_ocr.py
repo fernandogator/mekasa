@@ -150,8 +150,10 @@ def _tokens(value: str) -> set[str]:
 
 def _is_strong_match(ocr_name: str, hit_name: str) -> bool:
     """Require overlapping tokens so weak OFF hits stay unidentified."""
-    ocr = _tokens(ocr_name)
-    hit = _tokens(hit_name)
+    from app.barcode_lookup import expand_match_tokens
+
+    ocr = expand_match_tokens(_tokens(ocr_name))
+    hit = expand_match_tokens(_tokens(hit_name))
     if not ocr or not hit:
         return False
     if ocr_name.casefold() in hit_name.casefold() or hit_name.casefold() in ocr_name.casefold():
@@ -160,9 +162,11 @@ def _is_strong_match(ocr_name: str, hit_name: str) -> bool:
     # At least one meaningful token, and majority of OCR tokens when short.
     if not overlap:
         return False
-    if len(ocr) <= 2:
-        return len(overlap) == len(ocr)
-    return len(overlap) >= max(1, len(ocr) // 2)
+    raw_ocr = _tokens(ocr_name)
+    if len(raw_ocr) <= 2:
+        # Nickname expansion: "coke" vs "Coca-Cola" should match via synonyms.
+        return bool(overlap)
+    return len(overlap) >= max(1, len(raw_ocr) // 2)
 
 
 async def enrich_receipt_item(item: ReceiptLineItem) -> ReceiptLineItem:

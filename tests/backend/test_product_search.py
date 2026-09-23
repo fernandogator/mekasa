@@ -127,3 +127,136 @@ def test_product_search_http_error_returns_empty(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json()["results"] == []
+    # Retries transient OFF failures before giving up.
+    assert mock_client.get.await_count >= 3
+
+
+def test_product_search_coke_expands_to_coca_cola(client: TestClient) -> None:
+    """Brand nickname 'coke' should also query coca-cola and return beverage hits."""
+    empty = MagicMock()
+    empty.status_code = 200
+    empty.raise_for_status = MagicMock()
+    empty.json.return_value = {"products": []}
+
+    cola = MagicMock()
+    cola.status_code = 200
+    cola.raise_for_status = MagicMock()
+    cola.json.return_value = {
+        "products": [
+            {
+                "code": "049000028911",
+                "product_name": "Diet Coke",
+                "brands": "Coca-Cola",
+                "categories_tags": ["en:sodas", "en:beverages"],
+                "image_front_url": "https://images.openfoodfacts.org/diet-coke.jpg",
+            },
+            {
+                "code": "049000050103",
+                "product_name": "Coca-Cola Classic",
+                "brands": "COCA-COLA SERVICES SA/NV,Coca-Cola",
+                "categories_tags": ["en:sodas", "en:carbonated-soft-drinks"],
+                "categories": "Beverages, Sodas, Soft drinks",
+            },
+        ],
+    }
+
+    mock_client = AsyncMock()
+
+    async def _get(*_args, **kwargs):
+        terms = kwargs.get("params", {}).get("search_terms", "")
+        if terms.casefold() == "coke":
+            return empty
+        return cola
+
+    mock_client.get.side_effect = _get
+    mock_client.aclose = AsyncMock()
+
+    with patch("app.barcode_lookup.httpx.AsyncClient", return_value=mock_client):
+        response = client.get(
+            "/v1/products/search",
+            params={"q": "coke", "limit": 8},
+            headers=_auth(),
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["query"] == "coke"
+    assert len(body["results"]) >= 1
+    names = " ".join(hit["name"].casefold() for hit in body["results"])
+    assert "coke" in names or "coca" in names
+    assert body["results"][0]["category"] == "Beverages"
+    # Prefer consumer brand over corporate legal name.
+    brands = {hit.get("brand") for hit in body["results"]}
+    assert "Coca-Cola" in brands
+    searched = [
+        call.kwargs["params"]["search_terms"]
+        for call in mock_client.get.await_args_list
+    ]
+    assert "coke" in searched
+    assert any("coca" in term.casefold() for term in searched)
+
+def test_product_search_retries_then_succeeds(client: TestClient) -> None:
+    import httpx
+
+    fail = MagicMock()
+    fail.status_code = 503
+    fail.request = MagicMock()
+    fail.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "503", request=fail.request, response=fail
+    )
+
+    ok = MagicMock()
+    ok.status_code = 200
+    ok.raise_for_status = MagicMock()
+    ok.json.return_value = {
+        "products": [
+            {
+                "code": "049000042566",
+                "product_name": "Coca-Cola",
+                "brands": "Coca-Cola",
+                "categories_tags": ["en:sodas"],
+            }
+        ]
+    }
+
+    mock_client = AsyncMock()
+    mock_client.get.side_effect = [fail, ok]
+    mock_client.aclose = AsyncMock()
+
+    with patch("app.barcode_lookup.httpx.AsyncClient", return_value=mock_client):
+        response = client.get(
+            "/v1/products/search",
+            params={"q": "coca-cola", "limit": 5},
+            headers=_auth(),
+        )
+
+    assert response.status_code == 200
+    assert len(response.json()["results"]) == 1
+    assert mock_client.get.await_count == 2
+
+
+def test_expand_search_queries_coke() -> None:
+    from app.barcode_lookup import expand_search_queries
+
+    queries = expand_search_queries("Coke")
+    assert queries[0] == "Coke"
+    assert any("coca-cola" == q.casefold() for q in queries)
+
+
+def test_map_category_soda_not_produce() -> None:
+    from app.barcode_lookup import _map_category
+
+    assert (
+        _map_category(
+            ["en:sodas", "en:beverages", "en:sans-jus-de-fruit"],
+            "Beverages, Sodas, Soft drinks without fruit juice",
+        )
+        == "Beverages"
+    )
+
+
+def test_receipt_strong_match_coke_nickname() -> None:
+    from app.receipt_ocr import _is_strong_match
+
+    assert _is_strong_match("Coke", "Coca-Cola Original Taste")
+    assert _is_strong_match("coca-cola", "Diet Coke")
