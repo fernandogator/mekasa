@@ -87,6 +87,12 @@ class MekasaApiClient(
     suspend fun listInventory(householdId: String, token: String): InventoryListResponse =
         get("/v1/households/$householdId/inventory", token)
 
+    suspend fun createInventoryItem(
+        householdId: String,
+        body: InventoryItemCreateRequest,
+        token: String,
+    ): InventoryItemDto = post("/v1/households/$householdId/inventory", token, body)
+
     suspend fun listShoppingList(householdId: String, token: String): ShoppingListResponse =
         get("/v1/households/$householdId/shopping-list", token)
 

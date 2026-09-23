@@ -23,8 +23,7 @@ fun RootScreen(session: AppSession) {
     when (state.step) {
         OnboardingStep.Welcome -> WelcomeScreen(
             state = state,
-            onSignIn = { email -> session.signInWithTestToken(email) },
-            onOfflinePreview = session::startOfflinePreview,
+            session = session,
         )
         OnboardingStep.Household -> HouseholdSetupScreen(
             state = state,

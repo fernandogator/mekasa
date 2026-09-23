@@ -1,0 +1,8 @@
+# Replace app/google-services.json with the real Firebase Android config
+# (Project settings → Your apps → Android). Keep both package names:
+#   com.fernandogator.mekasa
+#   com.fernandogator.mekasa.debug
+#
+# The committed file is a CI stub (project_id mekasa-ci-stub). AuthService
+# skips FirebaseApp.configure() for that stub so builds/tests do not crash.
+# Offline preview still works without a real config.
