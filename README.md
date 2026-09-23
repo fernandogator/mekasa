@@ -45,4 +45,4 @@ traceability/
 
 - **Backend:** thin onboarding API on Cloud Run + Firestore household persistence (see `PROGRESS.md`).
 - **iOS:** onboarding flow scaffolded (Google + email auth, household, address, stores). Open `ios/README.md` to generate the Xcode project and add Firebase.
-- **Android:** Compose foundation — Welcome → onboarding → MainShell against Cloud Run; offline preview; Firebase Auth still pending (`android/README.md`).
+- **Android:** Compose client — Firebase Auth (email/Google when configured), onboarding, MainShell, barcode Add flow; see `android/README.md`.

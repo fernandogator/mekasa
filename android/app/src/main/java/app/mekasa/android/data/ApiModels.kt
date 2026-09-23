@@ -124,3 +124,15 @@ data class HealthResponse(
     val environment: String? = null,
     val persistence: String? = null,
 )
+
+@Serializable
+data class InventoryItemCreateRequest(
+    val name: String,
+    val category: String = "Other",
+    val quantity: Int = 1,
+    @SerialName("low_stock_threshold") val lowStockThreshold: Int = 1,
+    @SerialName("price_paid") val pricePaid: Double? = null,
+    val barcode: String? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    val source: String = "manual",
+)

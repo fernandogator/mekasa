@@ -102,7 +102,11 @@ fun MainShellScreen(
     }
 
     if (showAdd) {
-        AddItemsSheet(onDismiss = { showAdd = false })
+        AddItemsSheet(
+            state = state,
+            session = session,
+            onDismiss = { showAdd = false },
+        )
     }
 }
 

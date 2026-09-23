@@ -1,8 +1,9 @@
 package app.mekasa.android.ui.onboarding
 
-import androidx.compose.foundation.layout.Arrangement
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -15,13 +16,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import app.mekasa.android.auth.AuthException
+import app.mekasa.android.session.AppSession
 import app.mekasa.android.session.AppUiState
 import app.mekasa.android.session.OnboardingStep
 import app.mekasa.android.ui.components.MekasaScreen
@@ -33,21 +38,43 @@ import app.mekasa.android.ui.components.StickyBottomBar
 import app.mekasa.android.ui.theme.MekasaColor
 import app.mekasa.android.ui.theme.MekasaType
 import app.mekasa.android.ui.theme.Spacing
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 
 @Composable
 fun WelcomeScreen(
     state: AppUiState,
-    onSignIn: (email: String) -> Unit,
-    onOfflinePreview: () -> Unit,
+    session: AppSession,
 ) {
     var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var isSignUp by remember { mutableStateOf(false) }
     var showEmailForm by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val activity = context as? Activity
 
     LaunchedEffect(state.lastSignedInEmail) {
         val last = state.lastSignedInEmail
         if (!last.isNullOrBlank() && email.isBlank()) {
             email = last
             showEmailForm = true
+        }
+    }
+
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { activityResult ->
+        scope.launch {
+            try {
+                val authResult = session.authService.completeGoogleSignIn(activityResult.data)
+                session.applyAuth(authResult)
+            } catch (_: AuthException.Cancelled) {
+                // user backed out
+            } catch (e: Exception) {
+                session.reportError(e.message)
+            }
         }
     }
 
@@ -80,14 +107,39 @@ fun WelcomeScreen(
                         placeholder = "you@example.com",
                         keyboardType = KeyboardType.Email,
                         capitalization = KeyboardCapitalization.None,
-                        imeAction = ImeAction.Go,
-                        onImeAction = {
-                            if (email.isNotBlank()) onSignIn(email.trim())
-                        },
+                        imeAction = ImeAction.Next,
                         testTag = "WelcomeEmailField",
                     )
+                    MekasaTextField(
+                        label = "Password",
+                        value = password,
+                        onValueChange = { password = it },
+                        placeholder = "At least 6 characters",
+                        isSecure = true,
+                        keyboardType = KeyboardType.Password,
+                        capitalization = KeyboardCapitalization.None,
+                        imeAction = ImeAction.Go,
+                        onImeAction = {
+                            if (email.isNotBlank() && password.length >= 6) {
+                                submitEmail(session, state, email, password, isSignUp)
+                            }
+                        },
+                        testTag = "WelcomePasswordField",
+                    )
+                    TextButton(
+                        onClick = { isSignUp = !isSignUp },
+                        modifier = Modifier.testTag("WelcomeCreateAccountToggle"),
+                    ) {
+                        Text(
+                            text = if (isSignUp) "Have an account? Sign in" else "Create a new account",
+                            color = MekasaColor.accent,
+                            style = MekasaType.body,
+                        )
+                    }
+                }
+                if (!state.firebaseConfigured) {
                     Text(
-                        text = "Firebase Auth is not wired in this build yet. Use a Cloud Run test token (email only) when ALLOW_TEST_AUTH is enabled, or Browse UI offline.",
+                        text = "Firebase is using the CI stub. Drop in a real google-services.json for email/Google auth, or Browse UI offline.",
                         style = MekasaType.label,
                         color = MekasaColor.textMuted,
                     )
@@ -96,33 +148,67 @@ fun WelcomeScreen(
             StickyBottomBar(progress = 1f / 6f) {
                 if (showEmailForm) {
                     PrimaryButton(
-                        title = "Sign in",
-                        enabled = email.isNotBlank(),
+                        title = if (isSignUp) "Create account" else "Sign in",
+                        enabled = email.isNotBlank() && (
+                            !state.firebaseConfigured || password.length >= 6
+                            ),
                         isLoading = state.isBusy,
-                        onClick = { onSignIn(email.trim()) },
+                        onClick = { submitEmail(session, state, email, password, isSignUp) },
                     )
-                    Spacer(modifier = Modifier.height(Spacing.md))
+                    Box(modifier = Modifier.height(Spacing.md))
                     SecondaryButton(title = "Back") { showEmailForm = false }
                 } else {
+                    if (state.firebaseConfigured) {
+                        PrimaryButton(
+                            title = "Continue with Google",
+                            isLoading = state.isBusy,
+                            onClick = {
+                                val act = activity ?: return@PrimaryButton
+                                val webClientId = runCatching {
+                                    val resId = context.resources.getIdentifier(
+                                        "default_web_client_id",
+                                        "string",
+                                        context.packageName,
+                                    )
+                                    if (resId == 0) null else context.getString(resId)
+                                }.getOrNull()
+                                if (webClientId.isNullOrBlank()) {
+                                    session.reportError(AuthException.MissingGoogleClient().message)
+                                    return@PrimaryButton
+                                }
+                                googleSignInLauncher.launch(
+                                    session.authService.googleSignInIntent(act, webClientId),
+                                )
+                            },
+                        )
+                        Box(modifier = Modifier.height(Spacing.md))
+                    }
                     PrimaryButton(
                         title = "Continue with email",
-                        isLoading = state.isBusy,
                         onClick = { showEmailForm = true },
                     )
-                    Spacer(modifier = Modifier.height(Spacing.md))
+                    Box(modifier = Modifier.height(Spacing.md))
                     SecondaryButton(
                         title = "Browse UI offline",
-                        onClick = onOfflinePreview,
-                    )
-                }
-                TextButton(onClick = onOfflinePreview) {
-                    Text(
-                        text = "Skip auth · preview sample data",
-                        color = MekasaColor.textMuted,
-                        style = MekasaType.body,
+                        onClick = session::startOfflinePreview,
                     )
                 }
             }
         }
+    }
+}
+
+private fun submitEmail(
+    session: AppSession,
+    state: AppUiState,
+    email: String,
+    password: String,
+    isSignUp: Boolean,
+) {
+    val trimmed = email.trim()
+    if (state.firebaseConfigured) {
+        session.signInWithEmail(trimmed, password, isSignUp)
+    } else {
+        session.signInWithTestToken(trimmed)
     }
 }
