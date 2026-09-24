@@ -10,10 +10,10 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -26,34 +26,67 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.mekasa.android.ui.theme.MekasaColor
 import app.mekasa.android.ui.theme.MekasaType
 import app.mekasa.android.ui.theme.Spacing
-import androidx.compose.material3.Text
+import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * CameraX + ML Kit barcode preview. Calls [onBarcode] once per arm of [scanKey]
  * (change [scanKey] to re-arm after handling a code).
  */
+@Suppress("UnsafeOptInUsageError")
 @Composable
 fun BarcodeCameraPreview(
     modifier: Modifier = Modifier,
     scanKey: Int = 0,
     onBarcode: (String) -> Unit,
 ) {
-    val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val handled = remember(scanKey) { AtomicBoolean(false) }
     val executor = remember { Executors.newSingleThreadExecutor() }
+    val safeExecutor = remember(executor) {
+        Executor { command ->
+            if (!executor.isShutdown) {
+                try {
+                    executor.execute {
+                        try {
+                            command.run()
+                        } catch (_: Throwable) {
+                            // Catch any uncaught exception/error on background executor thread
+                        }
+                    }
+                } catch (_: RejectedExecutionException) {
+                    // Executor shut down concurrently, drop frame safely
+                } catch (_: Throwable) {
+                    // Ignore any unexpected executor error on shutdown
+                }
+            }
+        }
+    }
+    val cameraProviderRef = remember { AtomicReference<ProcessCameraProvider?>(null) }
+    val scannerRef = remember { AtomicReference<BarcodeScanner?>(null) }
+    val analysisRef = remember { AtomicReference<ImageAnalysis?>(null) }
+    val isDisposed = remember { AtomicBoolean(false) }
 
-    DisposableEffect(Unit) {
-        onDispose { executor.shutdown() }
+    DisposableEffect(lifecycleOwner) {
+        onDispose {
+            isDisposed.set(true)
+            runCatching { analysisRef.getAndSet(null)?.clearAnalyzer() }
+            runCatching { cameraProviderRef.getAndSet(null)?.unbindAll() }
+            runCatching { scannerRef.getAndSet(null)?.close() }
+            runCatching { executor.shutdownNow() }
+        }
     }
 
     AndroidView(
@@ -63,49 +96,90 @@ fun BarcodeCameraPreview(
                 val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
                 cameraProviderFuture.addListener(
                     {
-                        val cameraProvider = cameraProviderFuture.get()
+                        if (isDisposed.get()) return@addListener
+                        val cameraProvider = runCatching { cameraProviderFuture.get() }.getOrNull()
+                            ?: return@addListener
+                        cameraProviderRef.set(cameraProvider)
+                        if (isDisposed.get()) {
+                            runCatching { cameraProvider.unbindAll() }
+                            return@addListener
+                        }
                         val preview = Preview.Builder().build().also {
                             it.setSurfaceProvider(previewView.surfaceProvider)
                         }
                         val analysis = ImageAnalysis.Builder()
                             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                             .build()
-                        val scanner = BarcodeScanning.getClient()
-                        analysis.setAnalyzer(executor) { imageProxy ->
-                            val media = imageProxy.image
+                        analysisRef.set(analysis)
+
+                        val scanner = runCatching { BarcodeScanning.getClient() }.getOrNull()
+                            ?: return@addListener
+                        scannerRef.set(scanner)
+
+                        analysis.setAnalyzer(safeExecutor) { imageProxy ->
+                            if (isDisposed.get() || executor.isShutdown) {
+                                runCatching { imageProxy.close() }
+                                return@setAnalyzer
+                            }
+                            val media = runCatching { imageProxy.image }.getOrNull()
                             if (media != null && !handled.get()) {
-                                val image = InputImage.fromMediaImage(
-                                    media,
-                                    imageProxy.imageInfo.rotationDegrees,
-                                )
-                                scanner.process(image)
-                                    .addOnSuccessListener { barcodes ->
-                                        val value = barcodes.firstOrNull {
-                                            it.format == Barcode.FORMAT_EAN_13 ||
-                                                it.format == Barcode.FORMAT_EAN_8 ||
-                                                it.format == Barcode.FORMAT_UPC_A ||
-                                                it.format == Barcode.FORMAT_UPC_E ||
-                                                it.rawValue != null
-                                        }?.rawValue
-                                        if (value != null && handled.compareAndSet(false, true)) {
-                                            ContextCompat.getMainExecutor(ctx).execute {
-                                                onBarcode(value)
+                                val image = runCatching {
+                                    InputImage.fromMediaImage(
+                                        media,
+                                        imageProxy.imageInfo.rotationDegrees,
+                                    )
+                                }.getOrNull()
+
+                                val activeScanner = scannerRef.get()
+                                if (image != null && activeScanner != null && !isDisposed.get()) {
+                                    runCatching {
+                                        activeScanner.process(image)
+                                            .addOnSuccessListener { barcodes ->
+                                                if (isDisposed.get()) return@addOnSuccessListener
+                                                val value = barcodes.firstOrNull {
+                                                    it.format == Barcode.FORMAT_EAN_13 ||
+                                                        it.format == Barcode.FORMAT_EAN_8 ||
+                                                        it.format == Barcode.FORMAT_UPC_A ||
+                                                        it.format == Barcode.FORMAT_UPC_E ||
+                                                        it.rawValue != null
+                                                }?.rawValue
+                                                if (value != null && handled.compareAndSet(false, true)) {
+                                                    ContextCompat.getMainExecutor(ctx).execute {
+                                                        if (!isDisposed.get()) {
+                                                            onBarcode(value)
+                                                        }
+                                                    }
+                                                }
                                             }
-                                        }
+                                            .addOnFailureListener {
+                                                // Ignore MLKit processing failure on shutdown/closed scanner
+                                            }
+                                            .addOnCompleteListener {
+                                                runCatching { imageProxy.close() }
+                                            }
+                                    }.onFailure {
+                                        runCatching { imageProxy.close() }
                                     }
-                                    .addOnCompleteListener { imageProxy.close() }
+                                } else {
+                                    runCatching { imageProxy.close() }
+                                }
                             } else {
-                                imageProxy.close()
+                                runCatching { imageProxy.close() }
                             }
                         }
-                        runCatching {
-                            cameraProvider.unbindAll()
-                            cameraProvider.bindToLifecycle(
-                                lifecycleOwner,
-                                CameraSelector.DEFAULT_BACK_CAMERA,
-                                preview,
-                                analysis,
-                            )
+
+                        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) &&
+                            !isDisposed.get()
+                        ) {
+                            runCatching {
+                                cameraProvider.unbindAll()
+                                cameraProvider.bindToLifecycle(
+                                    lifecycleOwner,
+                                    CameraSelector.DEFAULT_BACK_CAMERA,
+                                    preview,
+                                    analysis,
+                                )
+                            }
                         }
                     },
                     ContextCompat.getMainExecutor(ctx),

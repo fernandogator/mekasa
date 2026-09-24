@@ -7,7 +7,6 @@ import app.mekasa.android.auth.AuthResult
 import app.mekasa.android.auth.AuthService
 import app.mekasa.android.data.BarcodeLookupResponse
 import app.mekasa.android.data.Household
-import app.mekasa.android.data.ConsumeByBarcodeResultDto
 import app.mekasa.android.data.HouseholdInviteAcceptRequest
 import app.mekasa.android.data.HouseholdInviteCreateRequest
 import app.mekasa.android.data.HouseholdInviteDto
@@ -511,13 +510,15 @@ class AppSession(
 
     fun handleInviteDeepLink(uriString: String?) {
         if (uriString.isNullOrBlank()) return
-        val uri = android.net.Uri.parse(uriString)
-        if (uri.scheme != "mekasa") return
-        val host = uri.host.orEmpty()
-        if (host != "invite" && !uri.path.orEmpty().contains("invite")) return
-        val token = uri.getQueryParameter("token")
-            ?: uri.pathSegments.firstOrNull { it.isNotBlank() && it != "invite" }
-        setPendingInviteToken(token)
+        runCatching {
+            val uri = android.net.Uri.parse(uriString)
+            if (uri.scheme != "mekasa") return@runCatching
+            val host = uri.host.orEmpty()
+            if (host != "invite" && !uri.path.orEmpty().contains("invite")) return@runCatching
+            val token = uri.getQueryParameter("token")
+                ?: uri.pathSegments.firstOrNull { it.isNotBlank() && it != "invite" }
+            setPendingInviteToken(token)
+        }
     }
 
     fun createInvite(name: String, email: String?, role: String = "member") {
@@ -975,30 +976,37 @@ class AppSession(
 
     private fun handleFailure(error: Throwable) {
         viewModelScope.launch {
-            if (error is MekasaApiException && error.isUnauthorized) {
-                val refreshed = auth.refreshIdToken(force = true)
-                if (refreshed != null && refreshed != _state.value.idToken) {
-                    _state.update { it.copy(idToken = refreshed, isBusy = false) }
+            try {
+                if (error is MekasaApiException && error.isUnauthorized) {
+                    val refreshed = runCatching { auth.refreshIdToken(force = true) }.getOrNull()
+                    if (refreshed != null && refreshed != _state.value.idToken) {
+                        _state.update { it.copy(idToken = refreshed, isBusy = false) }
+                        return@launch
+                    }
+                    signOut()
+                    _state.update {
+                        it.copy(lastError = null)
+                    }
                     return@launch
                 }
+                val message = when (error) {
+                    is AuthException.Cancelled -> null
+                    else -> error.message ?: "Something went wrong"
+                }
+                _state.update {
+                    it.copy(isBusy = false, lastError = message)
+                }
+            } catch (e: Throwable) {
                 signOut()
                 _state.update {
-                    it.copy(lastError = null)
+                    it.copy(isBusy = false, lastError = e.message ?: "Session expired")
                 }
-                return@launch
-            }
-            val message = when (error) {
-                is AuthException.Cancelled -> null
-                else -> error.message ?: "Something went wrong"
-            }
-            _state.update {
-                it.copy(isBusy = false, lastError = message)
             }
         }
     }
 
     override fun onCleared() {
-        api.close()
+        runCatching { api.close() }
         super.onCleared()
     }
 }

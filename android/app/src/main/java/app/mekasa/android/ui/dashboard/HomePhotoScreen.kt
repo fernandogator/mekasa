@@ -62,9 +62,11 @@ fun HomePhotoScreen(
 
     val gallery = rememberLauncherForActivityResult(PickVisualMedia()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
-        val bmp = context.contentResolver.openInputStream(uri)?.use { stream ->
-            BitmapFactory.decodeStream(stream)
-        }
+        val bmp = runCatching {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream)
+            }
+        }.getOrNull()
         if (bmp != null) {
             previewBitmap = bmp
             imageChanged = true

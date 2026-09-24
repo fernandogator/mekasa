@@ -62,11 +62,9 @@ fun photoModel(photoUrl: String): Any? {
         if (comma <= 0) return null
         val meta = trimmed.substring(5, comma)
         if (!meta.contains(";base64", ignoreCase = true)) return null
-        return try {
+        return runCatching {
             Base64.decode(trimmed.substring(comma + 1), Base64.DEFAULT)
-        } catch (_: IllegalArgumentException) {
-            null
-        }
+        }.getOrNull()
     }
     return trimmed
 }

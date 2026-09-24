@@ -293,7 +293,9 @@ class MekasaApiClient(
         return json.decodeFromString(text)
     }
 
-    fun close() = client.close()
+    fun close() {
+        runCatching { client.close() }
+    }
 }
 
 private fun String.encodeURLParam(): String =
