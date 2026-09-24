@@ -276,8 +276,11 @@ class AppSession(
     val isHouseholdOwner: Boolean
         get() {
             val hh = _state.value.household ?: return false
-            val uid = _state.value.userUid ?: return false
-            return hh.ownerUid == uid
+            val uid = _state.value.userUid
+                ?: auth.currentUserUid
+                ?: return false
+            if (hh.ownerUid == uid) return true
+            return _state.value.members.any { it.uid == uid && it.role == "owner" }
         }
 
     /**
@@ -319,11 +322,17 @@ class AppSession(
                     onDone(true)
                     return@launch
                 }
+                // Prefer live Firebase uid if session uid drifted.
+                val effectiveUid = _state.value.userUid ?: auth.currentUserUid
+                if (effectiveUid != null && _state.value.userUid != effectiveUid) {
+                    _state.update { it.copy(userUid = effectiveUid) }
+                }
                 if (!isHouseholdOwner) {
                     _state.update {
                         it.copy(
                             isBusy = false,
-                            lastError = "Only household owners can update the home photo.",
+                            lastError = "Only household owners can update the home photo. " +
+                                "Sign in with the account that created this house.",
                         )
                     }
                     onDone(false)
