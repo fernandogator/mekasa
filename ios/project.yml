@@ -67,6 +67,20 @@ targets:
         script: |
           PLIST="${TARGET_BUILD_DIR}/${INFOPLIST_PATH}"
           /bin/bash "${SRCROOT}/scripts/ensure_unique_build_number.sh" --stamp-plist "${PLIST}"
+      - name: Ensure Google Sign-In URL scheme in built Info.plist
+        basedOnDependencyAnalysis: false
+        script: |
+          PLIST="${TARGET_BUILD_DIR}/${INFOPLIST_PATH}"
+          /bin/bash "${SRCROOT}/scripts/ensure_google_url_scheme.sh" "${PLIST}"
+          # Also stamp the packaged app Info.plist when present.
+          APP_PLIST="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Info.plist"
+          if [ -f "${APP_PLIST}" ]; then
+            /bin/bash "${SRCROOT}/scripts/ensure_google_url_scheme.sh" "${APP_PLIST}"
+          fi
+          WRAPPER_PLIST="${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Info.plist"
+          if [ -f "${WRAPPER_PLIST}" ]; then
+            /bin/bash "${SRCROOT}/scripts/ensure_google_url_scheme.sh" "${WRAPPER_PLIST}"
+          fi
     dependencies:
       - package: Firebase
         product: FirebaseCore
