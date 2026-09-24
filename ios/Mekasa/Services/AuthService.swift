@@ -52,6 +52,9 @@ final class AuthService: ObservableObject {
         guard let clientID = FirebaseAppHelper.googleClientID else {
             throw AuthServiceError.missingGoogleClientID
         }
+        guard FirebaseAppHelper.hasGoogleURLScheme(forClientID: clientID) else {
+            throw AuthServiceError.missingGoogleURLScheme
+        }
         do {
             GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
             let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: viewController)
@@ -181,6 +184,7 @@ enum AuthServiceError: LocalizedError, Equatable {
     case firebaseMissing
     case missingGoogleToken
     case missingGoogleClientID
+    case missingGoogleURLScheme
     case missingAppleCredential
     case missingAppleToken
     case cancelled
@@ -195,6 +199,8 @@ enum AuthServiceError: LocalizedError, Equatable {
             return "Google Sign-In did not return an ID token."
         case .missingGoogleClientID:
             return "GoogleService-Info.plist is missing CLIENT_ID. Enable Google Sign-In in Firebase and recreate the iOS OAuth client, then re-download the plist."
+        case .missingGoogleURLScheme:
+            return "Info.plist is missing the Google URL scheme (com.googleusercontent.apps.…). Run ios/scripts/sync_google_signin_config.sh, then xcodegen generate, Clean + Run."
         case .missingAppleCredential:
             return "Sign in with Apple did not return an Apple ID credential."
         case .missingAppleToken:
@@ -286,6 +292,24 @@ enum FirebaseAppHelper {
             return fromOptions
         }
         return nil
+    }
+
+    /// GIDSignIn crashes if Info.plist lacks the reversed client ID URL scheme.
+    static func hasGoogleURLScheme(forClientID clientID: String) -> Bool {
+        let expected = reversedClientID(from: clientID)
+        let types = Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]] ?? []
+        let schemes = types.flatMap { ($0["CFBundleURLSchemes"] as? [String]) ?? [] }
+        if schemes.contains(expected) { return true }
+        // Also accept any googleusercontent reverse scheme (sync script / manual entry).
+        return schemes.contains { $0.hasPrefix("com.googleusercontent.apps.") }
+    }
+
+    static func reversedClientID(from clientID: String) -> String {
+        // 123-abc.apps.googleusercontent.com → com.googleusercontent.apps.123-abc
+        let trimmed = clientID.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("com.googleusercontent.apps.") { return trimmed }
+        let core = trimmed.replacingOccurrences(of: ".apps.googleusercontent.com", with: "")
+        return "com.googleusercontent.apps.\(core)"
     }
 
     private static func clientIDFromPlist() -> String? {
