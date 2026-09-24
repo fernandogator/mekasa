@@ -131,6 +131,30 @@ class MekasaApiClient(
         token: String,
     ): InventoryItemDto = post("/v1/households/$householdId/inventory", token, body)
 
+    suspend fun updateInventoryItem(
+        householdId: String,
+        itemId: String,
+        body: InventoryItemUpdateRequest,
+        token: String,
+    ): InventoryItemDto = patch("/v1/households/$householdId/inventory/$itemId", token, body)
+
+    suspend fun refreshInventoryItemImage(
+        householdId: String,
+        itemId: String,
+        token: String,
+    ): InventoryItemDto = postEmpty("/v1/households/$householdId/inventory/$itemId/refresh-image", token)
+
+    suspend fun scanReceipt(
+        householdId: String,
+        rawText: String? = null,
+        imageBase64: String? = null,
+        token: String,
+    ): ReceiptScanResponse = post(
+        "/v1/households/$householdId/receipts/scan",
+        token,
+        ReceiptScanRequest(imageBase64 = imageBase64, rawText = rawText),
+    )
+
     suspend fun consumeInventoryItem(
         householdId: String,
         itemId: String,

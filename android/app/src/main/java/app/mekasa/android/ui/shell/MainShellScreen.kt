@@ -45,12 +45,14 @@ import app.mekasa.android.ui.dashboard.DashboardScreen
 import app.mekasa.android.ui.dashboard.HomePhotoScreen
 import app.mekasa.android.ui.family.FamilyScreen
 import app.mekasa.android.ui.inventory.InventoryScreen
+import app.mekasa.android.ui.inventory.ItemDetailScreen
 import app.mekasa.android.ui.shopping.ShoppingListScreen
 import app.mekasa.android.ui.spending.SpendingScreen
 import app.mekasa.android.ui.theme.MekasaColor
 import app.mekasa.android.ui.theme.MekasaShapes
 import app.mekasa.android.ui.theme.Spacing
 import app.mekasa.android.ui.trash.TrashStationScreen
+import app.mekasa.android.data.InventoryItemDto
 
 @Composable
 fun MainShellScreen(
@@ -62,11 +64,17 @@ fun MainShellScreen(
     var showInventory by remember { mutableStateOf(false) }
     var showTrash by remember { mutableStateOf(false) }
     var showHomePhoto by remember { mutableStateOf(false) }
+    var selectedItem by remember { mutableStateOf<InventoryItemDto?>(null) }
 
     LaunchedEffect(state.household?.id, state.isOfflinePreview) {
         if (!state.isOfflinePreview) {
             session.refreshDashboard()
         }
+    }
+
+    // Keep detail in sync with inventory updates.
+    val detailItem = selectedItem?.let { selected ->
+        state.inventory.firstOrNull { it.id == selected.id } ?: selected
     }
 
     if (showTrash) {
@@ -88,6 +96,15 @@ fun MainShellScreen(
         return
     }
 
+    if (detailItem != null) {
+        ItemDetailScreen(
+            item = detailItem,
+            session = session,
+            onBack = { selectedItem = null },
+        )
+        return
+    }
+
     MekasaScreen(modifier = Modifier.testTag("MainShellView")) {
         Scaffold(
             containerColor = Color.Transparent,
@@ -96,6 +113,7 @@ fun MainShellScreen(
                     selected = tab,
                     onSelect = {
                         showInventory = false
+                        selectedItem = null
                         tab = it
                     },
                     onAdd = { showAdd = true },
@@ -109,6 +127,7 @@ fun MainShellScreen(
                 tab == MainTab.Home && showInventory -> InventoryScreen(
                     items = state.inventory,
                     onConsume = session::consumeInventoryItem,
+                    onOpenItem = { selectedItem = it },
                     onBack = { showInventory = false },
                     contentPadding = contentPadding,
                 )
