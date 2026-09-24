@@ -17,20 +17,19 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import app.mekasa.android.data.InventoryItemDto
 import app.mekasa.android.data.SpendingReportDto
 import app.mekasa.android.session.AppSession
 import app.mekasa.android.session.AppUiState
+import app.mekasa.android.ui.components.HouseholdPhotoImage
 import app.mekasa.android.ui.components.SoftCard
 import app.mekasa.android.ui.inventory.InventoryRow
 import app.mekasa.android.ui.shell.MainTab
 import app.mekasa.android.ui.theme.MekasaColor
 import app.mekasa.android.ui.theme.MekasaType
 import app.mekasa.android.ui.theme.Spacing
-import coil.compose.AsyncImage
 
 @Composable
 fun DashboardScreen(
@@ -38,6 +37,7 @@ fun DashboardScreen(
     session: AppSession,
     onSelectTab: (MainTab) -> Unit,
     onOpenInventory: () -> Unit,
+    onOpenHomePhoto: () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(),
 ) {
     val household = state.household
@@ -55,17 +55,23 @@ fun DashboardScreen(
             text = household?.name ?: "Your home",
             style = MekasaType.display,
             color = MekasaColor.brand,
+            modifier = Modifier.clickable(onClick = onOpenHomePhoto),
         )
-        if (!household?.photoUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = household?.photoUrl,
-                contentDescription = "Home photo",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp),
-                contentScale = ContentScale.Crop,
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp)
+                .clickable(onClick = onOpenHomePhoto)
+                .testTag("homePhotoHero"),
+        ) {
+            HouseholdPhotoImage(
+                photoUrl = household?.photoUrl,
+                modifier = Modifier.fillMaxSize(),
             )
-        } else if (!household?.address.isNullOrBlank()) {
+        }
+
+        if (!household?.address.isNullOrBlank() && household?.photoUrl.isNullOrBlank()) {
             Text(
                 text = household?.address.orEmpty(),
                 style = MekasaType.body,

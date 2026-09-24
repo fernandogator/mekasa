@@ -8,6 +8,8 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.patch
@@ -16,6 +18,8 @@ import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
@@ -75,6 +79,38 @@ class MekasaApiClient(
         @Serializable
         data class Body(val name: String?)
         return put("/v1/households/$householdId/name", token, Body(name))
+    }
+
+    /** Multipart `file` → POST /v1/households/{id}/photo (REQ-002). */
+    suspend fun uploadHouseholdPhoto(
+        householdId: String,
+        imageBytes: ByteArray,
+        mimeType: String = "image/jpeg",
+        filename: String = "home.jpg",
+        token: String,
+    ): Household {
+        val response = client.post("v1/households/$householdId/photo") {
+            bearerAuth(token)
+            header("Accept", "application/json")
+            setBody(
+                MultiPartFormDataContent(
+                    formData {
+                        append(
+                            "file",
+                            imageBytes,
+                            Headers.build {
+                                append(HttpHeaders.ContentType, mimeType)
+                                append(
+                                    HttpHeaders.ContentDisposition,
+                                    "filename=\"$filename\"",
+                                )
+                            },
+                        )
+                    },
+                ),
+            )
+        }
+        return decode(response.status, response.bodyAsText())
     }
 
     suspend fun nearbyStores(householdId: String, token: String): StoreSearchResponse =

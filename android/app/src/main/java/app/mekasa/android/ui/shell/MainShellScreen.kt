@@ -42,6 +42,7 @@ import app.mekasa.android.session.AppUiState
 import app.mekasa.android.ui.additems.AddItemsSheet
 import app.mekasa.android.ui.components.MekasaScreen
 import app.mekasa.android.ui.dashboard.DashboardScreen
+import app.mekasa.android.ui.dashboard.HomePhotoScreen
 import app.mekasa.android.ui.family.FamilyScreen
 import app.mekasa.android.ui.inventory.InventoryScreen
 import app.mekasa.android.ui.shopping.ShoppingListScreen
@@ -60,6 +61,7 @@ fun MainShellScreen(
     var showAdd by remember { mutableStateOf(false) }
     var showInventory by remember { mutableStateOf(false) }
     var showTrash by remember { mutableStateOf(false) }
+    var showHomePhoto by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.household?.id, state.isOfflinePreview) {
         if (!state.isOfflinePreview) {
@@ -73,6 +75,15 @@ fun MainShellScreen(
             session = session,
             kioskMode = false,
             onExit = { showTrash = false },
+        )
+        return
+    }
+
+    if (showHomePhoto) {
+        HomePhotoScreen(
+            state = state,
+            session = session,
+            onClose = { showHomePhoto = false },
         )
         return
     }
@@ -106,6 +117,7 @@ fun MainShellScreen(
                     session = session,
                     onSelectTab = { tab = it },
                     onOpenInventory = { showInventory = true },
+                    onOpenHomePhoto = { showHomePhoto = true },
                     contentPadding = contentPadding,
                 )
                 tab == MainTab.List -> ShoppingListScreen(

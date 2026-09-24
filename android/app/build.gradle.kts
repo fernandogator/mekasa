@@ -85,9 +85,8 @@ dependencies {
 
     implementation("io.coil-kt:coil-compose:2.7.0")
 
-    val firebaseBom = platform("com.google.firebase:firebase-bom:33.5.1")
-    implementation(firebaseBom)
-    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+    implementation("com.google.firebase:firebase-auth")
     implementation("com.google.android.gms:play-services-auth:21.2.0")
 
     implementation("androidx.camera:camera-camera2:1.3.4")
