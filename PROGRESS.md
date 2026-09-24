@@ -44,11 +44,11 @@
 |--------|--------|---------------|------------|-----------|
 | onboarding | ready (Welcome → household → address → stores; Firebase Auth + offline / test-token fallback) | stubs + AppSessionTest | — | Drop in real google-services.json for prod sign-in |
 | dashboard | ready (hero tap → home photo editor + upload) | AppSessionTest home photo | — | Crop canvas parity with iOS |
-| inventory-screen | ready (list + consume Use 1 + images) | stubs + AppSessionTest | — | Detail edit; expand InventoryScreenUITest |
-| scanner | ready (CameraX + ML Kit barcode + UPC entry + product search + confirm → POST inventory) | stubs + AppSessionTest offline add | — | Receipt / voice parity with iOS |
-| shopping-list-screen | ready (check / approve / reject / add custom / sync low-stock) | stubs + AppSessionTest | — | Owner purchase gate parity |
+| inventory-screen | ready (list + detail qty/threshold + consume + images) | stubs + AppSessionTest | — | Soft-delete / undo parity |
+| scanner | ready (barcode + product search + voice phrase + receipt demo + confirm) | VoicePhraseParserTest + AppSessionTest | — | Live mic SpeechRecognizer optional |
+| shopping-list-screen | ready (check / approve / reject / add / sync + owner purchase gate) | stubs + AppSessionTest | — | Expand ShoppingList UI tests |
 | spending-screen | ready (week/month/year toggle + by_category totals) | stubs + AppSessionTest | — | Charts / event list |
-| settings | ready (members, invites, share link, accept deep link, sign out) | stubs + AppSessionTest | — | Role UX polish / trash kiosk entry |
+| settings | ready (members, invites, share link, accept deep link, sign out) | stubs + AppSessionTest | — | Role UX polish |
 | trash-station-mode | ready (kiosk + Add hub entry; consume-by-barcode; unknown scans) | stubs + AppSessionTest | — | Home-screen shortcut polish |
 
 ## Phase 3: iOS App

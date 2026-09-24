@@ -85,6 +85,7 @@ fun ShoppingListScreen(
             items(items, key = { it.id }) { item ->
                 ShoppingRow(
                     item = item,
+                    canPurchase = session.canMarkShoppingPurchased,
                     onToggle = { session.toggleShoppingChecked(item.id) },
                     onApprove = { session.approveShoppingItem(item.id) },
                     onReject = { session.rejectShoppingItem(item.id) },
@@ -138,6 +139,7 @@ fun ShoppingListScreen(
 @Composable
 private fun ShoppingRow(
     item: ShoppingListItemDto,
+    canPurchase: Boolean,
     onToggle: () -> Unit,
     onApprove: () -> Unit,
     onReject: () -> Unit,
@@ -157,7 +159,14 @@ private fun ShoppingRow(
                     Icons.Outlined.CheckBoxOutlineBlank
                 },
                 contentDescription = if (item.isChecked) "Checked" else "Unchecked",
-                tint = if (item.needsApproval) MekasaColor.warning else MekasaColor.brand,
+                tint = when {
+                    item.needsApproval -> MekasaColor.warning
+                    !canPurchase && !item.isChecked -> MekasaColor.textMuted
+                    else -> MekasaColor.brand
+                },
+                modifier = Modifier.then(
+                    if (!canPurchase && !item.isChecked) Modifier else Modifier,
+                ),
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = item.name, style = MekasaType.body, color = MekasaColor.brand)
@@ -166,6 +175,7 @@ private fun ShoppingRow(
                         append("qty ${item.quantity}")
                         if (item.kind.isNotBlank()) append(" · ${item.kind}")
                         if (item.needsApproval) append(" · needs approval")
+                        if (!canPurchase && !item.isChecked) append(" · owner marks purchased")
                         item.requestedBy?.let { append(" · $it") }
                     },
                     style = MekasaType.label,

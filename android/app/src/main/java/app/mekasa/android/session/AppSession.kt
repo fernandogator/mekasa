@@ -16,6 +16,8 @@ import app.mekasa.android.data.InventoryItemDto
 import app.mekasa.android.data.MekasaApiClient
 import app.mekasa.android.data.MekasaApiException
 import app.mekasa.android.data.ProductSearchHit
+import app.mekasa.android.data.ReceiptLineItemDto
+import app.mekasa.android.data.ReceiptScanResponse
 import app.mekasa.android.data.ShoppingListItemCreateRequest
 import app.mekasa.android.data.ShoppingListItemDto
 import app.mekasa.android.data.ShoppingListItemUpdateRequest
@@ -23,6 +25,7 @@ import app.mekasa.android.data.SpendingCategoryDto
 import app.mekasa.android.data.SpendingReportDto
 import app.mekasa.android.data.Store
 import app.mekasa.android.data.UnknownBarcodeEventDto
+import app.mekasa.android.data.InventoryItemUpdateRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -281,6 +284,19 @@ class AppSession(
                 ?: return false
             if (hh.ownerUid == uid) return true
             return _state.value.members.any { it.uid == uid && it.role == "owner" }
+        }
+
+    /** Owners (or members with buyer permission) may mark shopping purchased (REQ-014). */
+    val canMarkShoppingPurchased: Boolean
+        get() {
+            if (_state.value.isOfflinePreview) return true
+            if (!isHouseholdOwner) {
+                val uid = _state.value.userUid ?: auth.currentUserUid
+                val me = _state.value.members.firstOrNull { it.uid == uid }
+                if (me?.permissions?.contains("buyer") == true) return true
+                return false
+            }
+            return true
         }
 
     /**
@@ -691,6 +707,169 @@ class AppSession(
         }
     }
 
+    fun addInventoryItems(drafts: List<PendingInventoryDraft>, onDone: () -> Unit = {}) {
+        if (drafts.isEmpty()) {
+            onDone()
+            return
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(isBusy = true, lastError = null) }
+            try {
+                var remaining = drafts
+                while (remaining.isNotEmpty()) {
+                    val head = remaining.first()
+                    remaining = remaining.drop(1)
+                    val doneLast = remaining.isEmpty()
+                    if (_state.value.isOfflinePreview) {
+                        val householdId = _state.value.household?.id ?: "preview-home"
+                        val item = InventoryItemDto(
+                            id = "local-${System.currentTimeMillis()}-${head.name.hashCode()}",
+                            householdId = householdId,
+                            name = head.name,
+                            category = head.category,
+                            quantity = head.quantity,
+                            barcode = head.barcode,
+                            imageUrl = head.imageUrl,
+                            source = head.source,
+                            pricePaid = head.pricePaid,
+                        )
+                        _state.update {
+                            it.copy(
+                                isBusy = !doneLast,
+                                inventory = listOf(item) + it.inventory,
+                            )
+                        }
+                    } else {
+                        val token = _state.value.idToken ?: return@launch
+                        val householdId = _state.value.household?.id ?: return@launch
+                        val created = api.createInventoryItem(
+                            householdId,
+                            InventoryItemCreateRequest(
+                                name = head.name,
+                                category = head.category,
+                                quantity = head.quantity,
+                                barcode = head.barcode,
+                                imageUrl = head.imageUrl,
+                                source = head.source,
+                                pricePaid = head.pricePaid,
+                            ),
+                            token,
+                        )
+                        _state.update {
+                            it.copy(
+                                isBusy = !doneLast,
+                                inventory = listOf(created) + it.inventory.filterNot { row -> row.id == created.id },
+                            )
+                        }
+                    }
+                }
+                _state.update { it.copy(isBusy = false) }
+                onDone()
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
+    fun updateInventoryItem(
+        itemId: String,
+        quantity: Int? = null,
+        lowStockThreshold: Int? = null,
+        onDone: (Boolean) -> Unit = {},
+    ) {
+        viewModelScope.launch {
+            try {
+                if (_state.value.isOfflinePreview) {
+                    _state.update { state ->
+                        state.copy(
+                            inventory = state.inventory.map { item ->
+                                if (item.id != itemId) item
+                                else item.copy(
+                                    quantity = quantity ?: item.quantity,
+                                    lowStockThreshold = lowStockThreshold ?: item.lowStockThreshold,
+                                )
+                            },
+                        )
+                    }
+                    onDone(true)
+                    return@launch
+                }
+                val token = _state.value.idToken ?: return@launch
+                val householdId = _state.value.household?.id ?: return@launch
+                val updated = api.updateInventoryItem(
+                    householdId,
+                    itemId,
+                    InventoryItemUpdateRequest(
+                        quantity = quantity,
+                        lowStockThreshold = lowStockThreshold,
+                    ),
+                    token,
+                )
+                _state.update { state ->
+                    state.copy(
+                        inventory = state.inventory.map { if (it.id == updated.id) updated else it },
+                    )
+                }
+                onDone(true)
+            } catch (e: Exception) {
+                handleFailure(e)
+                onDone(false)
+            }
+        }
+    }
+
+    fun refreshInventoryItemImage(itemId: String) {
+        if (_state.value.isOfflinePreview) return
+        viewModelScope.launch {
+            try {
+                val token = _state.value.idToken ?: return@launch
+                val householdId = _state.value.household?.id ?: return@launch
+                val updated = api.refreshInventoryItemImage(householdId, itemId, token)
+                _state.update { state ->
+                    state.copy(
+                        inventory = state.inventory.map { if (it.id == updated.id) updated else it },
+                    )
+                }
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
+    fun scanReceipt(
+        rawText: String? = null,
+        imageBase64: String? = null,
+        onResult: (ReceiptScanResponse) -> Unit,
+    ) {
+        viewModelScope.launch {
+            _state.update { it.copy(isBusy = true, lastError = null) }
+            try {
+                if (_state.value.isOfflinePreview || _state.value.idToken == null) {
+                    val demo = ReceiptScanResponse(
+                        householdId = _state.value.household?.id,
+                        engine = "demo",
+                        items = DEMO_RECEIPT_LINES,
+                    )
+                    _state.update { it.copy(isBusy = false) }
+                    onResult(demo)
+                    return@launch
+                }
+                val token = _state.value.idToken ?: return@launch
+                val householdId = _state.value.household?.id ?: return@launch
+                val response = api.scanReceipt(
+                    householdId = householdId,
+                    rawText = rawText,
+                    imageBase64 = imageBase64,
+                    token = token,
+                )
+                _state.update { it.copy(isBusy = false) }
+                onResult(response)
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
     fun consumeInventoryItem(itemId: String, amount: Int = 1) {
         viewModelScope.launch {
             try {
@@ -831,6 +1010,10 @@ class AppSession(
     fun toggleShoppingChecked(itemId: String) {
         val current = _state.value.shoppingList.firstOrNull { it.id == itemId } ?: return
         val nextChecked = !current.isChecked
+        if (nextChecked && !canMarkShoppingPurchased) {
+            reportError("Only household owners can mark items as purchased.")
+            return
+        }
         viewModelScope.launch {
             try {
                 if (_state.value.isOfflinePreview) {
@@ -1017,5 +1200,21 @@ class AppSession(
     override fun onCleared() {
         runCatching { api.close() }
         super.onCleared()
+    }
+
+    companion object {
+        val DEMO_RECEIPT_TEXT = """
+            BANANAS 1.29
+            WHOLE MILK 3.49
+            SOURDOUGH LOAF 4.99
+            SUBTOTAL 9.77
+            TOTAL 9.77
+        """.trimIndent()
+
+        val DEMO_RECEIPT_LINES = listOf(
+            ReceiptLineItemDto("Bananas", "Produce", 1, 1.29, identified = true),
+            ReceiptLineItemDto("Whole Milk", "Dairy", 1, 3.49, identified = true),
+            ReceiptLineItemDto("Sourdough Loaf", "Bakery", 1, 4.99, identified = false),
+        )
     }
 }
