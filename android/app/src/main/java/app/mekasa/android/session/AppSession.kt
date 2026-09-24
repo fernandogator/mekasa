@@ -274,6 +274,117 @@ class AppSession(
         }
     }
 
+    val isHouseholdOwner: Boolean
+        get() {
+            val hh = _state.value.household ?: return false
+            val uid = _state.value.userUid ?: return false
+            return hh.ownerUid == uid
+        }
+
+    /**
+     * Persist house name and/or home hero JPEG (REQ-002 / UI-004).
+     * [imageJpeg] is multipart-uploaded when [imageChanged] is true.
+     */
+    fun saveHomePhotoEdits(
+        name: String?,
+        imageJpeg: ByteArray?,
+        nameChanged: Boolean,
+        imageChanged: Boolean,
+        onDone: (Boolean) -> Unit = {},
+    ) {
+        if (!nameChanged && !imageChanged) {
+            onDone(true)
+            return
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(isBusy = true, lastError = null) }
+            try {
+                if (_state.value.isOfflinePreview) {
+                    val trimmed = name?.trim()?.takeIf { it.isNotEmpty() }
+                    val current = _state.value.household
+                    val photoUrl = if (imageChanged && imageJpeg != null) {
+                        val b64 = java.util.Base64.getEncoder().encodeToString(imageJpeg)
+                        "data:image/jpeg;base64,$b64"
+                    } else {
+                        current?.photoUrl
+                    }
+                    val updated = (current ?: Household(
+                        id = "preview-home",
+                        name = trimmed,
+                        ownerUid = _state.value.userUid ?: "preview-user",
+                    )).copy(
+                        name = if (nameChanged) trimmed else current?.name,
+                        photoUrl = photoUrl,
+                    )
+                    _state.update { it.copy(isBusy = false, household = updated) }
+                    onDone(true)
+                    return@launch
+                }
+                if (!isHouseholdOwner) {
+                    _state.update {
+                        it.copy(
+                            isBusy = false,
+                            lastError = "Only household owners can update the home photo.",
+                        )
+                    }
+                    onDone(false)
+                    return@launch
+                }
+                val token = _state.value.idToken
+                    ?: run {
+                        _state.update { it.copy(isBusy = false, lastError = "Not signed in.") }
+                        onDone(false)
+                        return@launch
+                    }
+                val householdId = _state.value.household?.id
+                    ?: run {
+                        _state.update { it.copy(isBusy = false, lastError = "No household.") }
+                        onDone(false)
+                        return@launch
+                    }
+                var household = _state.value.household
+                if (nameChanged) {
+                    val trimmed = name?.trim()?.takeIf { it.isNotEmpty() }
+                    household = api.updateHouseholdName(householdId, trimmed, token)
+                }
+                if (imageChanged) {
+                    val bytes = imageJpeg
+                        ?: run {
+                            _state.update {
+                                it.copy(isBusy = false, lastError = "Couldn’t encode that photo.")
+                            }
+                            onDone(false)
+                            return@launch
+                        }
+                    if (bytes.isEmpty() || bytes.size > 5_000_000) {
+                        _state.update {
+                            it.copy(
+                                isBusy = false,
+                                lastError = if (bytes.isEmpty()) {
+                                    "Empty photo"
+                                } else {
+                                    "Photo is too large (max 5 MB)."
+                                },
+                            )
+                        }
+                        onDone(false)
+                        return@launch
+                    }
+                    household = api.uploadHouseholdPhoto(
+                        householdId = householdId,
+                        imageBytes = bytes,
+                        token = token,
+                    )
+                }
+                _state.update { it.copy(isBusy = false, household = household) }
+                onDone(true)
+            } catch (e: Exception) {
+                handleFailure(e)
+                onDone(false)
+            }
+        }
+    }
+
     fun saveAddress(address: String) {
         val token = _state.value.idToken ?: return
         val householdId = _state.value.household?.id ?: return

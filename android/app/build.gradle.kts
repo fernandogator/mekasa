@@ -84,7 +84,6 @@ dependencies {
     implementation("io.ktor:ktor-client-logging:2.3.12")
 
     implementation("io.coil-kt:coil-compose:2.7.0")
-    
     implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.android.gms:play-services-auth:21.2.0")

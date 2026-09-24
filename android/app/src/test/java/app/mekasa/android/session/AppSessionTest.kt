@@ -94,4 +94,22 @@ class AppSessionTest {
             session.state.value.inventory.first { it.barcode == "049000028911" }.quantity,
         )
     }
+
+    @Test
+    fun saveHomePhotoEdits_offlinePreview_updatesNameAndPhoto() = runTest {
+        val session = AppSession()
+        session.startOfflinePreview()
+        var ok = false
+        val jpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xD9.toByte())
+        session.saveHomePhotoEdits(
+            name = "Casa Mekasa",
+            imageJpeg = jpeg,
+            nameChanged = true,
+            imageChanged = true,
+        ) { ok = it }
+        dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(ok)
+        assertEquals("Casa Mekasa", session.state.value.household?.name)
+        assertTrue(session.state.value.household?.photoUrl?.startsWith("data:image/jpeg;base64,") == true)
+    }
 }

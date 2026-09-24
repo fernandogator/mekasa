@@ -43,7 +43,7 @@
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
 | onboarding | ready (Welcome → household → address → stores; Firebase Auth + offline / test-token fallback) | stubs + AppSessionTest | — | Drop in real google-services.json for prod sign-in |
-| dashboard | ready (summary + low stock + spend card + shell nav) | stubs | — | Home photo upload; expand DashboardUITest |
+| dashboard | ready (hero tap → home photo editor + upload) | AppSessionTest home photo | — | Crop canvas parity with iOS |
 | inventory-screen | ready (list + consume Use 1 + images) | stubs + AppSessionTest | — | Detail edit; expand InventoryScreenUITest |
 | scanner | ready (CameraX + ML Kit barcode + UPC entry + product search + confirm → POST inventory) | stubs + AppSessionTest offline add | — | Receipt / voice parity with iOS |
 | shopping-list-screen | ready (check / approve / reject / add custom / sync low-stock) | stubs + AppSessionTest | — | Owner purchase gate parity |
