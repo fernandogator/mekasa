@@ -70,6 +70,20 @@ fun DashboardScreen(
                 modifier = Modifier.fillMaxSize(),
             )
         }
+        TextButton(
+            onClick = onOpenHomePhoto,
+            modifier = Modifier.testTag("EditHomePhotoButton"),
+        ) {
+            Text(
+                text = if (household?.photoUrl.isNullOrBlank()) {
+                    "Add home photo"
+                } else {
+                    "Edit home photo"
+                },
+                color = MekasaColor.accent,
+                style = MekasaType.label,
+            )
+        }
 
         if (!household?.address.isNullOrBlank() && household?.photoUrl.isNullOrBlank()) {
             Text(
