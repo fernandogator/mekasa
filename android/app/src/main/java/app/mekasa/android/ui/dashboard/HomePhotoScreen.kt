@@ -1,6 +1,7 @@
 package app.mekasa.android.ui.dashboard
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -67,31 +68,39 @@ fun HomePhotoScreen(
     var previewBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var imageChanged by remember { mutableStateOf(false) }
 
-    fun applyBitmap(bmp: Bitmap?) {
-        if (bmp == null) {
-            session.reportError("Couldn’t read that photo. Try a JPEG or PNG.")
-            return
-        }
-        previewBitmap = bmp
-        imageChanged = true
-    }
-
     val gallery = rememberLauncherForActivityResult(PickVisualMedia()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
-        applyBitmap(decodeBitmap(context, uri))
+        val bmp = decodeHomePhotoBitmap(context, uri)
+        if (bmp == null) {
+            session.reportError("Couldn’t read that photo. Try a JPEG or PNG.")
+        } else {
+            previewBitmap = bmp
+            imageChanged = true
+        }
     }
 
     val galleryFallback = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent(),
     ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
-        applyBitmap(decodeBitmap(context, uri))
+        val bmp = decodeHomePhotoBitmap(context, uri)
+        if (bmp == null) {
+            session.reportError("Couldn’t read that photo. Try a JPEG or PNG.")
+        } else {
+            previewBitmap = bmp
+            imageChanged = true
+        }
     }
 
     val camera = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicturePreview(),
     ) { bmp: Bitmap? ->
-        applyBitmap(bmp)
+        if (bmp == null) {
+            session.reportError("Couldn’t capture that photo.")
+        } else {
+            previewBitmap = bmp
+            imageChanged = true
+        }
     }
 
     val cameraPermission = rememberLauncherForActivityResult(
@@ -104,7 +113,15 @@ fun HomePhotoScreen(
         }
     }
 
-    fun openCamera() {
+    val openGallery: () -> Unit = {
+        try {
+            gallery.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
+        } catch (_: Exception) {
+            galleryFallback.launch("image/*")
+        }
+    }
+
+    val openCamera: () -> Unit = {
         val granted = ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.CAMERA,
@@ -116,32 +133,24 @@ fun HomePhotoScreen(
         }
     }
 
-    fun openGallery() {
-        try {
-            gallery.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
-        } catch (_: Exception) {
-            galleryFallback.launch("image/*")
-        }
-    }
-
-    fun save() {
+    val save: () -> Unit = {
         val nameChanged = name.trim() != initialName.trim()
         if (!nameChanged && !imageChanged) {
             onClose()
-            return
-        }
-        val jpeg = previewBitmap?.let { encodeJpeg(it) }
-        if (imageChanged && jpeg == null) {
-            session.reportError("Couldn’t encode that photo.")
-            return
-        }
-        session.saveHomePhotoEdits(
-            name = name,
-            imageJpeg = jpeg,
-            nameChanged = nameChanged,
-            imageChanged = imageChanged,
-        ) { ok ->
-            if (ok) onClose()
+        } else {
+            val jpeg = previewBitmap?.let { encodeHomePhotoJpeg(it) }
+            if (imageChanged && jpeg == null) {
+                session.reportError("Couldn’t encode that photo.")
+            } else {
+                session.saveHomePhotoEdits(
+                    name = name,
+                    imageJpeg = jpeg,
+                    nameChanged = nameChanged,
+                    imageChanged = imageChanged,
+                ) { ok ->
+                    if (ok) onClose()
+                }
+            }
         }
     }
 
@@ -169,7 +178,7 @@ fun HomePhotoScreen(
                     color = MekasaColor.brand,
                 )
                 TextButton(
-                    onClick = ::save,
+                    onClick = save,
                     enabled = !state.isBusy,
                     modifier = Modifier.testTag("HomePhotoSaveButton"),
                 ) {
@@ -194,18 +203,19 @@ fun HomePhotoScreen(
                     .fillMaxWidth()
                     .height(240.dp)
                     .background(MekasaColor.brandMuted.copy(alpha = 0.2f), MekasaShapes.nested)
-                    .clickable(onClick = ::openGallery)
+                    .clickable(onClick = openGallery)
                     .testTag("HomePhotoHero"),
             ) {
                 val bmp = previewBitmap
-                when {
-                    bmp != null -> Image(
+                if (bmp != null) {
+                    Image(
                         bitmap = bmp.asImageBitmap(),
                         contentDescription = "Selected home photo",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
                     )
-                    else -> HouseholdPhotoImage(
+                } else {
+                    HouseholdPhotoImage(
                         photoUrl = household?.photoUrl,
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -213,7 +223,7 @@ fun HomePhotoScreen(
             }
 
             OutlinedButton(
-                onClick = ::openGallery,
+                onClick = openGallery,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
@@ -226,7 +236,7 @@ fun HomePhotoScreen(
 
             PrimaryButton(
                 title = "Take photo",
-                onClick = ::openCamera,
+                onClick = openCamera,
                 modifier = Modifier.testTag("HomePhotoCameraButton"),
                 enabled = !state.isBusy,
                 isLoading = state.isBusy,
@@ -249,7 +259,7 @@ fun HomePhotoScreen(
     }
 }
 
-private fun decodeBitmap(context: android.content.Context, uri: Uri): Bitmap? {
+private fun decodeHomePhotoBitmap(context: Context, uri: Uri): Bitmap? {
     return try {
         if (Build.VERSION.SDK_INT >= 28) {
             val source = ImageDecoder.createSource(context.contentResolver, uri)
@@ -265,8 +275,8 @@ private fun decodeBitmap(context: android.content.Context, uri: Uri): Bitmap? {
     }
 }
 
-private fun encodeJpeg(bitmap: Bitmap, maxEdge: Int = 1600, quality: Int = 82): ByteArray? {
-    val scaled = scaleDown(bitmap, maxEdge)
+private fun encodeHomePhotoJpeg(bitmap: Bitmap, maxEdge: Int = 1600, quality: Int = 82): ByteArray? {
+    val scaled = scaleHomePhotoDown(bitmap, maxEdge)
     val rgb = if (scaled.config == Bitmap.Config.ARGB_8888 || scaled.config == Bitmap.Config.RGB_565) {
         scaled
     } else {
@@ -285,7 +295,7 @@ private fun encodeJpeg(bitmap: Bitmap, maxEdge: Int = 1600, quality: Int = 82): 
     return bytes
 }
 
-private fun scaleDown(bitmap: Bitmap, maxEdge: Int): Bitmap {
+private fun scaleHomePhotoDown(bitmap: Bitmap, maxEdge: Int): Bitmap {
     val w = bitmap.width
     val h = bitmap.height
     val longest = maxOf(w, h)
