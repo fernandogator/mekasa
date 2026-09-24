@@ -37,5 +37,12 @@ enum FirebaseBootstrap {
         FirebaseApp.configure()
         isConfigured = true
         print("[Mekasa] Firebase configured OK")
+        let schemes = FirebaseAppHelper.registeredURLSchemes()
+        print("[Mekasa] CFBundleURLSchemes at launch: \(schemes)")
+        if let clientID = FirebaseAppHelper.googleClientID {
+            let expected = FirebaseAppHelper.reversedClientID(from: clientID)
+            let ok = schemes.contains(expected)
+            print("[Mekasa] Google URL scheme present=\(ok) expected=\(expected)")
+        }
     }
 }

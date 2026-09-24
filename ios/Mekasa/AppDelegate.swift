@@ -1,5 +1,8 @@
 import UIKit
 import UserNotifications
+#if canImport(GoogleSignIn)
+import GoogleSignIn
+#endif
 
 /// Configures Firebase as early as possible in the UIKit lifecycle.
 /// Satisfies: REQ-001, REQ-020, PRD §8
@@ -12,6 +15,19 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         FirebaseBootstrap.configure()
         PushRegistrationService.shared.configureIfNeeded()
         return true
+    }
+
+    func application(
+        _ app: UIApplication,
+        open url: URL,
+        options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+    ) -> Bool {
+        #if canImport(GoogleSignIn)
+        if GIDSignIn.sharedInstance.handle(url) {
+            return true
+        }
+        #endif
+        return false
     }
 
     func application(

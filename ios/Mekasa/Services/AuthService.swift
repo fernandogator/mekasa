@@ -52,12 +52,36 @@ final class AuthService: ObservableObject {
         guard let clientID = FirebaseAppHelper.googleClientID else {
             throw AuthServiceError.missingGoogleClientID
         }
-        guard FirebaseAppHelper.hasGoogleURLScheme(forClientID: clientID) else {
+        let expectedScheme = FirebaseAppHelper.reversedClientID(from: clientID)
+        let registered = FirebaseAppHelper.registeredURLSchemes()
+        print("[Mekasa] Google Sign-In clientID=\(clientID)")
+        print("[Mekasa] Expected URL scheme=\(expectedScheme)")
+        print("[Mekasa] Registered URL schemes=\(registered)")
+        guard registered.contains(expectedScheme) else {
             throw AuthServiceError.missingGoogleURLScheme
         }
         do {
             GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
-            let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: viewController)
+            // GIDSignIn raises NSException (not Swift Error) when the scheme is missing.
+            // Catch it so a stale Info.plist cannot terminate the process.
+            let result: GIDSignInResult = try await withCheckedThrowingContinuation { continuation in
+                do {
+                    try MekasaExceptionCatcher.perform {
+                        GIDSignIn.sharedInstance.signIn(withPresenting: viewController) { signInResult, error in
+                            if let error {
+                                continuation.resume(throwing: error)
+                            } else if let signInResult {
+                                continuation.resume(returning: signInResult)
+                            } else {
+                                continuation.resume(throwing: AuthServiceError.missingGoogleToken)
+                            }
+                        }
+                    }
+                } catch {
+                    print("[Mekasa] Google Sign-In NSException caught: \(error.localizedDescription)")
+                    continuation.resume(throwing: AuthServiceError.missingGoogleURLScheme)
+                }
+            }
             guard let idToken = result.user.idToken?.tokenString else {
                 throw AuthServiceError.missingGoogleToken
             }
@@ -294,14 +318,14 @@ enum FirebaseAppHelper {
         return nil
     }
 
-    /// GIDSignIn crashes if Info.plist lacks the reversed client ID URL scheme.
+    /// GIDSignIn crashes if Info.plist lacks the *exact* reversed client ID URL scheme.
     static func hasGoogleURLScheme(forClientID clientID: String) -> Bool {
-        let expected = reversedClientID(from: clientID)
+        registeredURLSchemes().contains(reversedClientID(from: clientID))
+    }
+
+    static func registeredURLSchemes() -> [String] {
         let types = Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]] ?? []
-        let schemes = types.flatMap { ($0["CFBundleURLSchemes"] as? [String]) ?? [] }
-        if schemes.contains(expected) { return true }
-        // Also accept any googleusercontent reverse scheme (sync script / manual entry).
-        return schemes.contains { $0.hasPrefix("com.googleusercontent.apps.") }
+        return types.flatMap { ($0["CFBundleURLSchemes"] as? [String]) ?? [] }
     }
 
     static func reversedClientID(from clientID: String) -> String {
