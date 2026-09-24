@@ -12,21 +12,16 @@ This folder contains the **complete design system**: 8 production-ready screens,
 
 All screens are **390×844** (mobile-first, iPhone SE/13 mini) with full navigation and view transitions.
 
-Spec IDs below match `docs/spec-v1.0.md` (permanent — never renumber).
-
-| Spec | Screen | Purpose | File |
-|------|--------|---------|------|
-| UI-004 | Dashboard | Home hub after onboarding (low-stock + thumbnails) | `pages/dashboard.html` |
-| UI-003 | Store Selection | Onboarding — choose stores | `pages/store-selection.html` |
-| — | Shopping List | Shared list with approval workflow | `pages/shopping-list.html` |
-| — | Add Items | Multi-method input hub (barcode, voice, manual) | `pages/add-items.html` |
+| # | Screen | Purpose | File |
+|---|--------|---------|------|
+| UI-001 | Dashboard | Home hub after onboarding | `pages/dashboard.html` |
+| UI-002 | Store Selection | Onboarding step 4 — choose stores | `pages/store-selection.html` |
+| UI-003 | Shopping List | Shared list with approval workflow | `pages/shopping-list.html` |
+| UI-004 | Add Items | Multi-method input hub (barcode, voice, manual) | `pages/add-items.html` |
 | UI-005 | Trash Station | Focused rapid depletion mode | `pages/trash-station.html` |
-| **UI-006** | **Inventory list + item detail** | **OFF thumbnails; tap → large image + product details** | **`pages/inventory-list.html`, `pages/item-detail.html`** |
-| — | Household Setup | Onboarding — name & photo | `pages/onboarding-household.html` |
-| — | Spending Report | Category analytics & budget tracking | `pages/spending-report.html` |
-| — | Family Members | Household roster & member roles | `pages/family-members.html` |
-
-> **UI-006** is the inventory thumbnail / item-detail requirement. Sample pages load live Open Food Facts images (e.g. UPC `049000028911`).
+| UI-006 | Household Setup | Onboarding step 2 — name & photo | `pages/onboarding-household.html` |
+| UI-007 | Spending Report | Category analytics & budget tracking | `pages/spending-report.html` |
+| UI-008 | Family Members | Household roster & member roles | `pages/family-members.html` |
 
 ### 📚 Documentation
 
@@ -69,22 +64,10 @@ Spec IDs below match `docs/spec-v1.0.md` (permanent — never renumber).
 
 ### View on GitHub Pages
 
-GitHub Pages is set to **Deploy from a branch → `main` → `/ (root)`**.
-That is correct for this repo: keep the folder as **root**, not `/design`.
-
-| Entry | URL |
-|-------|-----|
-| Site root (redirects) | https://fernandogator.github.io/mekasa/ |
-| Screen index | https://fernandogator.github.io/mekasa/design/ |
-| Dashboard demo | https://fernandogator.github.io/mekasa/design/pages/dashboard.html |
-
-`design/pages/*.html` are **self-contained Tailwind mockups** built from `design/mockups/*.jsx`:
-
-```bash
-python3 design/scripts/build-static-pages.py
+Once deployed (see Deployment section below), view live at:
 ```
-
-Do **not** switch the Pages folder to `/design` unless you also update these links (paths would drop the `/design` prefix).
+https://fernandogator.github.io/mekasa/design/pages/dashboard.html
+```
 
 ---
 
@@ -383,4 +366,3 @@ Refer to the appropriate guide:
 **Browser Support**: Chrome 111+, Safari 17.1+, modern evergreen browsers  
 
 🎉 **Ready to build!** Start with Dashboard or explore the full flow in sequential order.
-
