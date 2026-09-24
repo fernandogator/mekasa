@@ -278,10 +278,23 @@ enum AuthErrorFormatter {
 
 enum FirebaseAppHelper {
     static var googleClientID: String? {
+        if let fromPlist = clientIDFromPlist(), !fromPlist.isEmpty {
+            return fromPlist
+        }
+        // FirebaseOptions.clientID is populated from CLIENT_ID when configure() succeeded.
+        if let fromOptions = FirebaseApp.app()?.options.clientID, !fromOptions.isEmpty {
+            return fromOptions
+        }
+        return nil
+    }
+
+    private static func clientIDFromPlist() -> String? {
         guard
             let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
             let dict = NSDictionary(contentsOfFile: path) as? [String: Any],
-            let clientID = dict["CLIENT_ID"] as? String
+            let clientID = dict["CLIENT_ID"] as? String,
+            !clientID.isEmpty,
+            !clientID.contains("ci-stub")
         else { return nil }
         return clientID
     }

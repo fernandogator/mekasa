@@ -40,7 +40,41 @@ cd ios
 ./scripts/bump_marketing_version.sh major   # 1.1.0 → 2.0.0
 ```
 
-## Fix Firebase “default app has not yet been configured”
+### Google Sign-In (Continue with Google)
+
+The app already has Google Sign-In wired. You need a real plist **with** `CLIENT_ID` + `REVERSED_CLIENT_ID`:
+
+1. [Firebase Console](https://console.firebase.google.com/project/hackathon2025-472017/authentication/providers) → **Sign-in method** → enable **Google** → Save  
+2. Project settings → iOS app `com.fernandogator.mekasa` → download **`GoogleService-Info.plist`**  
+3. Save it at `ios/Mekasa/GoogleService-Info.plist` (gitignored)  
+4. Confirm the file contains:
+
+```xml
+<key>CLIENT_ID</key>
+<string>….apps.googleusercontent.com</string>
+<key>REVERSED_CLIENT_ID</key>
+<string>com.googleusercontent.apps.…</string>
+```
+
+If those keys are missing: [Google Cloud Credentials](https://console.cloud.google.com/apis/credentials?project=hackathon2025-472017) → create **OAuth client ID → iOS** for bundle `com.fernandogator.mekasa` → re-download the Firebase plist (or add the keys manually).
+
+5. Sync URL scheme + regenerate Xcode project:
+
+```bash
+cd ios
+chmod +x scripts/sync_google_signin_config.sh
+./scripts/sync_google_signin_config.sh
+xcodegen generate
+open Mekasa.xcodeproj
+```
+
+6. Clean + Run. Tap **Continue with Google**.
+
+The build runs `sync_google_signin_config.sh` automatically so `Info.plist` gets `$(GOOGLE_REVERSED_CLIENT_ID)` from your local plist.
+
+Email/password works without the URL scheme; **Google Sign-In needs it**.
+
+### Fix Firebase “default app has not yet been configured”
 
 That log means **`GoogleService-Info.plist` is not inside the built `.app`**.
 

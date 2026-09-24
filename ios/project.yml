@@ -53,6 +53,10 @@ targets:
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       OTHER_LDFLAGS: "$(inherited) -ObjC"
     preBuildScripts:
+      - name: Sync Google Sign-In URL scheme
+        basedOnDependencyAnalysis: false
+        script: |
+          /bin/bash "${SRCROOT}/scripts/sync_google_signin_config.sh"
       - name: Ensure unique build number
         basedOnDependencyAnalysis: false
         script: |
@@ -91,6 +95,9 @@ targets:
           - CFBundleURLName: com.fernandogator.mekasa.invite
             CFBundleURLSchemes:
               - mekasa
+          - CFBundleURLName: GoogleSignIn
+            CFBundleURLSchemes:
+              - $(GOOGLE_REVERSED_CLIENT_ID)
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
   MekasaTests:
