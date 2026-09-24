@@ -40,6 +40,33 @@ cd ios
 ./scripts/bump_marketing_version.sh major   # 1.1.0 → 2.0.0
 ```
 
+### Google Sign-In URL scheme crash
+
+If Xcode stops in `GIDSignIn.m` with:
+
+`Your app is missing support for the following URL schemes: com.googleusercontent.apps.…`
+
+the reversed client ID is not registered. Fix:
+
+```bash
+cd ios
+./scripts/sync_google_signin_config.sh   # writes literal scheme into Info.plist
+xcodegen generate
+```
+
+Or in Xcode: target **Mekasa** → **Info** → **URL Types** → add:
+
+| URL Types | Value |
+|-----------|--------|
+| Identifier | `GoogleSignIn` |
+| URL Schemes | value of `REVERSED_CLIENT_ID` from your plist (starts with `com.googleusercontent.apps.`) |
+
+```bash
+/usr/libexec/PlistBuddy -c 'Print :REVERSED_CLIENT_ID' Mekasa/GoogleService-Info.plist
+```
+
+Clean + Run again.
+
 ### Google Sign-In (Continue with Google)
 
 The app already has Google Sign-In wired. You need a real plist **with** `CLIENT_ID` + `REVERSED_CLIENT_ID`:
