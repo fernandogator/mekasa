@@ -1,0 +1,17 @@
+# Firebase config for the Fable build
+#
+# app/google-services.json in git is a CI stub (project_id = mekasa-ci-stub).
+# FirebaseGate skips FirebaseApp initialisation for that project id, so the
+# app builds and runs (offline preview + debug test-token sign-in) without
+# real credentials.
+#
+# For email / Google sign-in against the real project:
+#   1. Firebase Console -> Project settings -> Your apps -> Add Android app for
+#        com.fernandogator.mekasa.fable
+#        com.fernandogator.mekasa.fable.debug
+#      (add the debug SHA-1 for Google sign-in).
+#   2. Download google-services.json and save it as app/google-services.real.json
+#      (gitignored), then copy it over app/google-services.json locally.
+#   3. Make sure an OAuth "Web client" (client_type 3) exists so the
+#      google-services plugin generates R.string.default_web_client_id.
+#   4. Enable Email/Password and Google providers in Authentication.

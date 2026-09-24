@@ -1,0 +1,20 @@
+# Gradle / IDE
+.gradle/
+.kotlin/
+build/
+*/build/
+.idea/
+*.iml
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Signing / secrets
+*.jks
+*.keystore
+
+# Firebase: the committed app/google-services.json is a CI stub (project_id mekasa-ci-stub).
+# Keep a real config out of git by dropping it in as google-services.real.json and copying
+# it over the stub locally (see README).
+app/google-services.real.json
