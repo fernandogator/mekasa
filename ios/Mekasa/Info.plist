@@ -42,14 +42,6 @@
 				<string>mekasa</string>
 			</array>
 		</dict>
-		<dict>
-			<key>CFBundleURLName</key>
-			<string>GoogleSignIn</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>$(GOOGLE_REVERSED_CLIENT_ID)</string>
-			</array>
-		</dict>
 	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
