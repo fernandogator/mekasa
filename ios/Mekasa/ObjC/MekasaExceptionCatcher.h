@@ -7,7 +7,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface MekasaExceptionCatcher : NSObject
 
 + (BOOL)performBlock:(void(NS_NOESCAPE ^)(void))block
-                error:(NSError *_Nullable *_Nullable)error;
+                error:(NSError *_Nullable *_Nullable)error NS_SWIFT_NAME(perform(_:));
 
 @end
 

@@ -65,21 +65,20 @@ final class AuthService: ObservableObject {
             // GIDSignIn raises NSException (not Swift Error) when the scheme is missing.
             // Catch it so a stale Info.plist cannot terminate the process.
             let result: GIDSignInResult = try await withCheckedThrowingContinuation { continuation in
-                var caught: NSError?
-                let started = MekasaExceptionCatcher.performBlock({
-                    GIDSignIn.sharedInstance.signIn(withPresenting: viewController) { signInResult, error in
-                        if let error {
-                            continuation.resume(throwing: error)
-                        } else if let signInResult {
-                            continuation.resume(returning: signInResult)
-                        } else {
-                            continuation.resume(throwing: AuthServiceError.missingGoogleToken)
+                do {
+                    try MekasaExceptionCatcher.perform {
+                        GIDSignIn.sharedInstance.signIn(withPresenting: viewController) { signInResult, error in
+                            if let error {
+                                continuation.resume(throwing: error)
+                            } else if let signInResult {
+                                continuation.resume(returning: signInResult)
+                            } else {
+                                continuation.resume(throwing: AuthServiceError.missingGoogleToken)
+                            }
                         }
                     }
-                }, error: &caught)
-                if !started {
-                    let message = caught?.localizedDescription ?? AuthServiceError.missingGoogleURLScheme.localizedDescription
-                    print("[Mekasa] Google Sign-In NSException caught: \(message)")
+                } catch {
+                    print("[Mekasa] Google Sign-In NSException caught: \(error.localizedDescription)")
                     continuation.resume(throwing: AuthServiceError.missingGoogleURLScheme)
                 }
             }
