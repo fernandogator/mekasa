@@ -46,12 +46,22 @@ If Xcode stops in `GIDSignIn.m` with:
 
 `Your app is missing support for the following URL schemes: com.googleusercontent.apps.…`
 
-the reversed client ID is not registered. Fix:
+the **running app’s** Info.plist does not contain that scheme. Fix:
 
 ```bash
 cd ios
+git pull
 ./scripts/sync_google_signin_config.sh   # writes literal scheme into Info.plist
 xcodegen generate
+```
+
+Then in Xcode: **Product → Clean Build Folder**, delete the app from the simulator, **Run**.
+
+Launch logs should include:
+
+```
+[Mekasa] CFBundleURLSchemes at launch: [mekasa, com.googleusercontent.apps.…]
+[Mekasa] Google URL scheme present=true
 ```
 
 Or in Xcode: target **Mekasa** → **Info** → **URL Types** → add:
@@ -64,8 +74,6 @@ Or in Xcode: target **Mekasa** → **Info** → **URL Types** → add:
 ```bash
 /usr/libexec/PlistBuddy -c 'Print :REVERSED_CLIENT_ID' Mekasa/GoogleService-Info.plist
 ```
-
-Clean + Run again.
 
 ### Google Sign-In (Continue with Google)
 

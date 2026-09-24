@@ -44,6 +44,8 @@ targets:
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.fernandogator.mekasa
       INFOPLIST_FILE: Mekasa/Info.plist
+      GENERATE_INFOPLIST_FILE: NO
+      SWIFT_OBJC_BRIDGING_HEADER: Mekasa/Mekasa-Bridging-Header.h
       CODE_SIGN_ENTITLEMENTS: Mekasa/Mekasa.entitlements
       TARGETED_DEVICE_FAMILY: "1"
       # MARKETING_VERSION + CURRENT_PROJECT_VERSION come from Config/Version.xcconfig
@@ -57,6 +59,10 @@ targets:
         basedOnDependencyAnalysis: false
         script: |
           /bin/bash "${SRCROOT}/scripts/sync_google_signin_config.sh"
+      - name: Verify Google Sign-In URL scheme
+        basedOnDependencyAnalysis: false
+        script: |
+          /bin/bash "${SRCROOT}/scripts/verify_google_url_scheme.sh"
       - name: Ensure unique build number
         basedOnDependencyAnalysis: false
         script: |
