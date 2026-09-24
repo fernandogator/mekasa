@@ -95,8 +95,11 @@ targets:
           - CFBundleURLName: com.fernandogator.mekasa.invite
             CFBundleURLSchemes:
               - mekasa
-        # GoogleSignIn URL scheme is injected by scripts/sync_google_signin_config.sh
-        # from Mekasa/GoogleService-Info.plist (REVERSED_CLIENT_ID).
+          # OAuth redirect for Google Sign-In (REVERSED_CLIENT_ID from Firebase iOS app).
+          # scripts/sync_google_signin_config.sh can refresh this from GoogleService-Info.plist.
+          - CFBundleURLName: GoogleSignIn
+            CFBundleURLSchemes:
+              - com.googleusercontent.apps.934775015882-tkn8jri65ijtbadhlkpskdo3j2nh0m0t
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
   MekasaTests:
