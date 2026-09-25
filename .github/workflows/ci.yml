@@ -104,12 +104,17 @@ jobs:
           rm -rf TestResults/structural.xcresult
           # Disable parallel test clones — macos-15 runners flake hard when
           # XCUITest spins "Clone N of iPhone 16" destinations.
+          # Retry once: the first XCUIApplication launches after the unit plan
+          # reinstalls the host app can fail with FBSOpenApplicationErrorDomain
+          # ("Simulator device failed to launch") while the sim settles.
           xcodebuild test \
             -scheme Mekasa \
             -destination "${{ steps.sim.outputs.destination }}" \
             -testPlan StructuralTests \
             -parallel-testing-enabled NO \
             -maximum-parallel-testing-workers 1 \
+            -retry-tests-on-failure \
+            -test-iterations 2 \
             -resultBundlePath TestResults/structural.xcresult
       - name: Run snapshot tests
         run: |
