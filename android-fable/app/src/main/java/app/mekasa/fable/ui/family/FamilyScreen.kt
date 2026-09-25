@@ -33,6 +33,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.mekasa.fable.session.SessionState
 import app.mekasa.fable.session.SessionViewModel
+import app.mekasa.fable.ui.TestTags
 import app.mekasa.fable.ui.components.Card
 import app.mekasa.fable.ui.components.Chip
 import app.mekasa.fable.ui.components.IconWell
@@ -64,7 +65,7 @@ fun FamilyScreen(
         if (!state.isDemo) session.refreshFamily()
     }
 
-    Column(modifier = Modifier.fillMaxSize().testTag("FamilyScreen")) {
+    Column(modifier = Modifier.fillMaxSize().testTag(TestTags.FAMILY_VIEW)) {
         ScreenHeader(title = "Family", eyebrow = state.household?.name ?: "Household")
         Column(
             modifier = Modifier
@@ -103,7 +104,7 @@ fun FamilyScreen(
                 Card { Text("You're the only member so far.", style = Type.body, color = palette.textMuted) }
             }
             state.data.members.forEach { member ->
-                Card(modifier = Modifier.testTag("Member-${member.uid}")) {
+                Card(modifier = Modifier.testTag(TestTags.member(member.uid))) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.md)) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(member.displayLabel, style = Type.body, color = palette.text)
@@ -123,7 +124,7 @@ fun FamilyScreen(
 
             SectionHeading("Invite someone")
             Card {
-                LabeledField(label = "Name", value = inviteName, onValueChange = { inviteName = it }, placeholder = "Alex", testTag = "InviteName")
+                LabeledField(label = "Name", value = inviteName, onValueChange = { inviteName = it }, placeholder = "Alex", testTag = TestTags.INVITE_NAME)
                 Spacer(Modifier.height(Space.sm))
                 LabeledField(
                     label = "Email (optional)",
@@ -133,7 +134,7 @@ fun FamilyScreen(
                     keyboardType = KeyboardType.Email,
                     capitalization = KeyboardCapitalization.None,
                     imeAction = ImeAction.Done,
-                    testTag = "InviteEmail",
+                    testTag = TestTags.INVITE_EMAIL,
                 )
                 Spacer(Modifier.height(Space.sm))
                 Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
@@ -156,7 +157,7 @@ fun FamilyScreen(
                     },
                     enabled = inviteName.isNotBlank(),
                     loading = state.busy,
-                    modifier = Modifier.testTag("CreateInvite"),
+                    modifier = Modifier.testTag(TestTags.CREATE_INVITE),
                 )
             }
 
@@ -191,12 +192,17 @@ fun FamilyScreen(
             }
 
             SectionHeading("Devices")
-            SecondaryButton("Trash station kiosk", onClick = { session.setKioskMode(true) }, icon = Icons.Outlined.DeleteSweep, modifier = Modifier.testTag("OpenKiosk"))
-            SecondaryButton("Dispose one item", onClick = onOpenTrash, icon = Icons.Outlined.Share)
+            SecondaryButton(
+                "Trash station kiosk",
+                onClick = { session.setKioskMode(true) },
+                icon = Icons.Outlined.DeleteSweep,
+                modifier = Modifier.testTag(TestTags.OPEN_KIOSK),
+            )
+            SecondaryButton("Dispose one item", onClick = onOpenTrash, icon = Icons.Outlined.Share, modifier = Modifier.testTag(TestTags.OPEN_TRASH))
 
             SectionHeading("Account")
             SecondaryButton("Refresh everything", onClick = { session.refreshAll() })
-            PrimaryButton("Sign out", onClick = session::signOut, accent = true, modifier = Modifier.testTag("SignOut"))
+            PrimaryButton("Sign out", onClick = session::signOut, accent = true, modifier = Modifier.testTag(TestTags.SIGN_OUT))
         }
     }
 }

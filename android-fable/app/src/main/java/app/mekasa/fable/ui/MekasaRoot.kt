@@ -15,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.mekasa.fable.session.SessionViewModel
 import app.mekasa.fable.session.Stage
 import app.mekasa.fable.ui.home.HomeShell
+import app.mekasa.fable.ui.home.Routes
 import app.mekasa.fable.ui.onboarding.AddressScreen
 import app.mekasa.fable.ui.onboarding.HouseholdNameScreen
 import app.mekasa.fable.ui.onboarding.StoresScreen
@@ -26,9 +27,12 @@ import app.mekasa.fable.ui.trash.TrashStationScreen
 
 private enum class RootDestination { Welcome, NameHousehold, Address, Stores, Kiosk, Home }
 
-/** Top-level router: the [Stage] in session state decides which surface is shown. */
+/**
+ * Top-level router: the [Stage] in session state decides which surface is shown.
+ * [startRoute] lets tests and deep links open the shell on a route other than the dashboard.
+ */
 @Composable
-fun MekasaRoot(session: SessionViewModel) {
+fun MekasaRoot(session: SessionViewModel, startRoute: String = Routes.DASHBOARD) {
     val state by session.state.collectAsStateWithLifecycle()
     val palette = MekasaTheme.palette
 
@@ -60,7 +64,7 @@ fun MekasaRoot(session: SessionViewModel) {
                 kiosk = true,
                 onExit = { session.setKioskMode(false) },
             )
-            RootDestination.Home -> HomeShell(state = state, session = session)
+            RootDestination.Home -> HomeShell(state = state, session = session, startRoute = startRoute)
         }
     }
 
@@ -74,7 +78,7 @@ fun MekasaRoot(session: SessionViewModel) {
             text = { Text(message, style = Type.bodyRegular, color = palette.textMuted) },
             shape = Shapes.card,
             containerColor = palette.surfaceElevated,
-            modifier = Modifier.testTag("ErrorDialog"),
+            modifier = Modifier.testTag(TestTags.ERROR_DIALOG),
         )
     }
 }

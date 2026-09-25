@@ -4,12 +4,14 @@ import app.mekasa.fable.data.InventoryDraft
 import app.mekasa.fable.data.demo.DemoBackend
 import app.mekasa.fable.data.model.Household
 import app.mekasa.fable.data.model.HouseholdMember
+import app.mekasa.fable.data.model.InventoryItem
 import app.mekasa.fable.data.remote.ApiException
 import app.mekasa.fable.support.FakeApi
 import app.mekasa.fable.support.FakeAuthGateway
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -224,6 +226,41 @@ class SessionViewModelTest {
 
         vm.consumeByBarcode("   ") { outcomes += it }
         assertTrue(outcomes.last() is ConsumeOutcome.Failed)
+    }
+
+    @Test
+    fun `remove hides the row, soft deletes, and purges after the undo window`() = runTest(dispatcher) {
+        val vm = SessionViewModel(api = api, auth = auth, emailMemory = memory, undoWindowMillis = 5_000)
+        vm.signInWithEmail("ana@example.com", "secret", createAccount = false)
+
+        vm.removeInventoryItem("i1")
+        assertTrue(vm.s.data.inventory.isEmpty())
+        assertEquals("i1", vm.s.pendingRemoval?.item?.id)
+        assertTrue(api.calls.contains("deleteInventory:i1"))
+        assertFalse(api.calls.contains("purgeInventory:i1"))
+
+        advanceTimeBy(5_001)
+        assertNull(vm.s.pendingRemoval)
+        assertTrue(api.calls.contains("purgeInventory:i1"))
+        assertTrue(api.inventory.isEmpty())
+    }
+
+    @Test
+    fun `undo within the window restores the row at its original index`() = runTest(dispatcher) {
+        api.inventory += InventoryItem(id = "i2", householdId = "hh-1", name = "Eggs", quantity = 1, lowStockThreshold = 1)
+        val vm = SessionViewModel(api = api, auth = auth, emailMemory = memory, undoWindowMillis = 5_000)
+        vm.signInWithEmail("ana@example.com", "secret", createAccount = false)
+
+        vm.removeInventoryItem("i1")
+        assertEquals(listOf("i2"), vm.s.data.inventory.map { it.id })
+
+        vm.undoInventoryRemove()
+        assertEquals(listOf("i1", "i2"), vm.s.data.inventory.map { it.id })
+        assertNull(vm.s.pendingRemoval)
+        assertTrue(api.calls.contains("restoreInventory:i1"))
+
+        advanceTimeBy(6_000)
+        assertFalse(api.calls.contains("purgeInventory:i1"))
     }
 
     @Test
