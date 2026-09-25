@@ -94,9 +94,11 @@ final class DashboardUITest: XCTestCase {
         session.startUITesting()
 
         // Rename only (REQ-002 AC1): blank name clears to nil, non-blank is trimmed.
-        XCTAssertTrue(await session.updateHouseholdName("   "))
+        let cleared = await session.updateHouseholdName("   ")
+        XCTAssertTrue(cleared)
         XCTAssertNil(session.household?.name)
-        XCTAssertTrue(await session.updateHouseholdName("  Casa Rivas  "))
+        let renamed = await session.updateHouseholdName("  Casa Rivas  ")
+        XCTAssertTrue(renamed)
         XCTAssertEqual(session.household?.name, "Casa Rivas")
 
         // Sign out from the shell returns to Welcome and clears dashboard data.
