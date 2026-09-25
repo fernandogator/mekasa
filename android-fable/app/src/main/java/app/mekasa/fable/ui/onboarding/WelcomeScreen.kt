@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import app.mekasa.fable.auth.AuthError
 import app.mekasa.fable.session.SessionState
 import app.mekasa.fable.session.SessionViewModel
+import app.mekasa.fable.ui.TestTags
 import app.mekasa.fable.ui.components.Backdrop
 import app.mekasa.fable.ui.components.Card
 import app.mekasa.fable.ui.components.LabeledField
@@ -111,7 +112,7 @@ fun WelcomeScreen(
         }
     }
 
-    Backdrop(modifier = Modifier.testTag("WelcomeScreen")) {
+    Backdrop(modifier = Modifier.testTag(TestTags.WELCOME_VIEW)) {
         Column(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
@@ -134,7 +135,7 @@ fun WelcomeScreen(
                     Card(tint = palette.warningTint, padding = androidx.compose.foundation.layout.PaddingValues(Space.md)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
                             Icon(Icons.Outlined.Info, contentDescription = null, tint = palette.warning)
-                            Text(notice, style = Type.caption, color = palette.warning, modifier = Modifier.weight(1f).testTag("SessionNotice"))
+                            Text(notice, style = Type.caption, color = palette.warning, modifier = Modifier.weight(1f).testTag(TestTags.SESSION_NOTICE))
                             LinkButton("Dismiss", onClick = session::dismissNotice, color = palette.warning)
                         }
                     }
@@ -149,7 +150,7 @@ fun WelcomeScreen(
                             placeholder = "you@example.com",
                             keyboardType = KeyboardType.Email,
                             capitalization = KeyboardCapitalization.None,
-                            testTag = "EmailField",
+                            testTag = TestTags.EMAIL_FIELD,
                         )
                         if (usesFirebase) {
                             LabeledField(
@@ -162,12 +163,12 @@ fun WelcomeScreen(
                                 capitalization = KeyboardCapitalization.None,
                                 imeAction = ImeAction.Go,
                                 onSubmit = ::submitEmail,
-                                testTag = "PasswordField",
+                                testTag = TestTags.PASSWORD_FIELD,
                             )
                             LinkButton(
                                 text = if (createAccount) "Already have an account? Sign in" else "New here? Create an account",
                                 onClick = { createAccount = !createAccount },
-                                modifier = Modifier.testTag("ToggleCreateAccount"),
+                                modifier = Modifier.testTag(TestTags.TOGGLE_CREATE_ACCOUNT),
                             )
                         } else {
                             Text(
@@ -199,14 +200,14 @@ fun WelcomeScreen(
                             PrimaryButton(
                                 text = if (usesFirebase) "Continue with email" else "Sign in with test token",
                                 onClick = { mode = WelcomeMode.Email },
-                                modifier = Modifier.testTag("ContinueWithEmail"),
+                                modifier = Modifier.testTag(TestTags.CONTINUE_WITH_EMAIL),
                             )
                             Spacer(Modifier.height(Space.md))
                         }
                         SecondaryButton(
                             text = "Browse UI offline",
                             onClick = session::browseOffline,
-                            modifier = Modifier.testTag("BrowseOffline"),
+                            modifier = Modifier.testTag(TestTags.BROWSE_OFFLINE),
                         )
                     }
                     WelcomeMode.Email -> {
@@ -219,7 +220,7 @@ fun WelcomeScreen(
                             onClick = ::submitEmail,
                             enabled = canSubmitEmail,
                             loading = state.busy,
-                            modifier = Modifier.testTag("SubmitEmail"),
+                            modifier = Modifier.testTag(TestTags.SUBMIT_EMAIL),
                         )
                         Spacer(Modifier.height(Space.md))
                         SecondaryButton(text = "Back", onClick = { mode = WelcomeMode.Choices })

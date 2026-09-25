@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import app.mekasa.fable.data.model.ShoppingItem
 import app.mekasa.fable.session.SessionState
 import app.mekasa.fable.session.SessionViewModel
+import app.mekasa.fable.ui.TestTags
 import app.mekasa.fable.ui.components.Card
 import app.mekasa.fable.ui.components.Chip
 import app.mekasa.fable.ui.components.EmptyMessage
@@ -72,12 +73,12 @@ fun ShoppingListScreen(
         composing = false
     }
 
-    Column(modifier = Modifier.fillMaxSize().testTag("ShoppingListScreen")) {
+    Column(modifier = Modifier.fillMaxSize().testTag(TestTags.SHOPPING_LIST_VIEW)) {
         ScreenHeader(
             title = "Shopping list",
             eyebrow = "${data.openShopping.size} to buy",
             trailing = {
-                LinkButton("Sync low stock", onClick = { session.syncShoppingFromInventory() }, modifier = Modifier.testTag("SyncLowStock"))
+                LinkButton("Sync low stock", onClick = { session.syncShoppingFromInventory() }, modifier = Modifier.testTag(TestTags.SYNC_LOW_STOCK))
             },
         )
         LazyColumn(
@@ -92,13 +93,13 @@ fun ShoppingListScreen(
         ) {
             item {
                 AnimatedVisibility(visible = composing) {
-                    Card(modifier = Modifier.testTag("AddShoppingCard")) {
+                    Card(modifier = Modifier.testTag(TestTags.ADD_SHOPPING_CARD)) {
                         LabeledField(
                             label = "Item",
                             value = newName,
                             onValueChange = { newName = it },
                             placeholder = "Avocados",
-                            testTag = "ShoppingNameField",
+                            testTag = TestTags.SHOPPING_NAME_FIELD,
                         )
                         Spacer(Modifier.height(Space.sm))
                         LabeledField(
@@ -110,19 +111,23 @@ fun ShoppingListScreen(
                             onSubmit = ::submitNew,
                         )
                         Spacer(Modifier.height(Space.md))
-                        PrimaryButton("Add to list", onClick = ::submitNew, enabled = newName.isNotBlank(), loading = state.busy, modifier = Modifier.testTag("ShoppingAddSubmit"))
+                        PrimaryButton("Add to list", onClick = ::submitNew, enabled = newName.isNotBlank(), loading = state.busy, modifier = Modifier.testTag(TestTags.SHOPPING_ADD_SUBMIT))
                         Spacer(Modifier.height(Space.sm))
                         SecondaryButton("Cancel", onClick = { composing = false })
                     }
                 }
                 if (!composing) {
-                    SecondaryButton("Add an item", onClick = { composing = true }, modifier = Modifier.testTag("ShoppingAddToggle"))
+                    SecondaryButton("Add an item", onClick = { composing = true }, modifier = Modifier.testTag(TestTags.SHOPPING_ADD_TOGGLE))
                 }
             }
 
             if (!state.canMarkPurchased) {
                 item {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
+                    Row(
+                        modifier = Modifier.testTag(TestTags.PURCHASE_LOCK_NOTICE),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Space.sm),
+                    ) {
                         Icon(Icons.Outlined.Lock, contentDescription = null, tint = palette.textMuted)
                         Text("Only household owners can mark items purchased.", style = Type.caption, color = palette.textMuted)
                     }
@@ -130,7 +135,7 @@ fun ShoppingListScreen(
             }
 
             if (data.shopping.isEmpty()) {
-                item { EmptyMessage("Nothing on the list. Sync low stock or add something.", modifier = Modifier.testTag("ShoppingEmpty")) }
+                item { EmptyMessage("Nothing on the list. Sync low stock or add something.", modifier = Modifier.testTag(TestTags.SHOPPING_EMPTY)) }
             }
 
             val pending = data.pendingApprovals
@@ -193,13 +198,13 @@ private fun ShoppingRow(
     val palette = MekasaTheme.palette
     val locked = !item.isChecked && !canPurchase
     Card(
-        modifier = Modifier.testTag("ShoppingRow-${item.id}"),
+        modifier = Modifier.testTag(TestTags.shoppingRow(item.id)),
         padding = PaddingValues(horizontal = Space.sm, vertical = Space.sm),
         tint = if (item.needsApproval) palette.warningTint else null,
     ) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             if (!item.needsApproval) {
-                IconButton(onClick = onToggle, enabled = !locked, modifier = Modifier.testTag("Toggle-${item.id}")) {
+                IconButton(onClick = onToggle, enabled = !locked, modifier = Modifier.testTag(TestTags.shoppingToggle(item.id))) {
                     Icon(
                         imageVector = when {
                             item.isChecked -> Icons.Filled.CheckCircle
@@ -237,14 +242,14 @@ private fun ShoppingRow(
                     }
                 }
             }
-            IconButton(onClick = onRemove, modifier = Modifier.testTag("Remove-${item.id}")) {
+            IconButton(onClick = onRemove, modifier = Modifier.testTag(TestTags.shoppingRemove(item.id))) {
                 Icon(Icons.Outlined.Delete, contentDescription = "Remove", tint = palette.textMuted)
             }
         }
         if (item.needsApproval && isOwner && onApprove != null && onReject != null) {
             Row(modifier = Modifier.padding(start = Space.sm), horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
-                LinkButton("Approve", onClick = onApprove, color = palette.success, modifier = Modifier.testTag("Approve-${item.id}"))
-                LinkButton("Reject", onClick = onReject, modifier = Modifier.testTag("Reject-${item.id}"))
+                LinkButton("Approve", onClick = onApprove, color = palette.success, modifier = Modifier.testTag(TestTags.approve(item.id)))
+                LinkButton("Reject", onClick = onReject, modifier = Modifier.testTag(TestTags.reject(item.id)))
             }
         }
     }

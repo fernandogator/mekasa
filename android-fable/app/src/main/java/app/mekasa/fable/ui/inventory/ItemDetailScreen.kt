@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import app.mekasa.fable.data.model.InventoryItem
 import app.mekasa.fable.session.SessionViewModel
+import app.mekasa.fable.ui.TestTags
 import app.mekasa.fable.ui.components.Backdrop
 import app.mekasa.fable.ui.components.Card
 import app.mekasa.fable.ui.components.Chip
@@ -67,7 +68,7 @@ fun ItemDetailScreen(
         if (!item.hasImage) session.refreshItemImage(item.id)
     }
 
-    Backdrop(modifier = Modifier.testTag("ItemDetailScreen")) {
+    Backdrop(modifier = Modifier.testTag(TestTags.ITEM_DETAIL_VIEW)) {
         Column(modifier = Modifier.fillMaxSize()) {
             ScreenHeader(title = "Item", eyebrow = item.category, onBack = onBack)
             Column(
@@ -85,7 +86,7 @@ fun ItemDetailScreen(
                         .clip(Shapes.card)
                         .background(palette.surfaceElevated)
                         .clickable(enabled = item.hasImage) { lightbox = true }
-                        .testTag("ItemImage"),
+                        .testTag(TestTags.ITEM_IMAGE),
                     contentAlignment = Alignment.Center,
                 ) {
                     ProductThumbnail(
@@ -122,13 +123,13 @@ fun ItemDetailScreen(
                 Stepper(
                     label = "Quantity",
                     value = item.quantity,
-                    testTag = "QuantityStepper",
+                    testTag = TestTags.QUANTITY_CONTROL,
                     onChange = { session.updateInventory(item.id, quantity = it) },
                 )
                 Stepper(
                     label = "Low-stock threshold",
                     value = item.lowStockThreshold,
-                    testTag = "ThresholdStepper",
+                    testTag = TestTags.THRESHOLD_CONTROL,
                     onChange = { session.updateInventory(item.id, threshold = it) },
                 )
                 Text(
@@ -153,7 +154,7 @@ fun ItemDetailScreen(
                     .clip(Shapes.card)
                     .background(palette.surfaceElevated)
                     .clickable { lightbox = false }
-                    .testTag("ItemLightbox"),
+                    .testTag(TestTags.ITEM_LIGHTBOX),
             ) {
                 ProductThumbnail(
                     imageUrl = item.imageUrl,

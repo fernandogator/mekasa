@@ -30,6 +30,7 @@ import app.mekasa.fable.session.ConsumeOutcome
 import app.mekasa.fable.session.ScanEvent
 import app.mekasa.fable.session.SessionState
 import app.mekasa.fable.session.SessionViewModel
+import app.mekasa.fable.ui.TestTags
 import app.mekasa.fable.ui.components.Backdrop
 import app.mekasa.fable.ui.components.Card
 import app.mekasa.fable.ui.components.Chip
@@ -87,13 +88,13 @@ fun TrashStationScreen(
         }
     }
 
-    Backdrop(modifier = Modifier.testTag(if (kiosk) "TrashKioskScreen" else "TrashStationScreen")) {
+    Backdrop(modifier = Modifier.testTag(if (kiosk) TestTags.TRASH_KIOSK_VIEW else TestTags.TRASH_STATION_VIEW)) {
         Column(modifier = Modifier.fillMaxSize()) {
             ScreenHeader(
                 title = if (kiosk) "Trash station" else "Dispose",
                 eyebrow = if (kiosk) "Scan before you toss" else "Use one by barcode",
                 onBack = if (kiosk) null else onExit,
-                trailing = { if (kiosk) LinkButton("Exit kiosk", onClick = onExit, modifier = Modifier.testTag("ExitKiosk")) },
+                trailing = { if (kiosk) LinkButton("Exit kiosk", onClick = onExit, modifier = Modifier.testTag(TestTags.EXIT_KIOSK)) },
             )
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -103,7 +104,7 @@ fun TrashStationScreen(
                 item {
                     AnimatedVisibility(visible = flash != null) {
                         val (message, tone) = flash ?: ("" to ScanEvent.Tone.Used)
-                        Card(tint = tone.tint(), modifier = Modifier.testTag("ScanFlash")) {
+                        Card(tint = tone.tint(), modifier = Modifier.testTag(TestTags.SCAN_FLASH)) {
                             Text(message, style = Type.subhead, color = tone.color())
                         }
                     }
@@ -125,10 +126,15 @@ fun TrashStationScreen(
                         keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Go,
                         onSubmit = { if (manual.length >= 6) consume(manual) },
-                        testTag = "ManualBarcode",
+                        testTag = TestTags.MANUAL_BARCODE,
                     )
                     Spacer(Modifier.height(Space.sm))
-                    PrimaryButton("Use 1 by barcode", onClick = { consume(manual) }, enabled = manual.length >= 6, modifier = Modifier.testTag("ManualConsume"))
+                    PrimaryButton(
+                        "Use 1 by barcode",
+                        onClick = { consume(manual) },
+                        enabled = manual.length >= 6,
+                        modifier = Modifier.testTag(TestTags.MANUAL_CONSUME),
+                    )
                 }
 
                 if (!kiosk) {
@@ -147,7 +153,7 @@ fun TrashStationScreen(
                                         color = palette.textMuted,
                                     )
                                 }
-                                LinkButton("Use 1", onClick = { session.consume(item.id) }, modifier = Modifier.testTag("TrashUse-${item.id}"))
+                                LinkButton("Use 1", onClick = { session.consume(item.id) }, modifier = Modifier.testTag(TestTags.trashUse(item.id)))
                             }
                         }
                     }

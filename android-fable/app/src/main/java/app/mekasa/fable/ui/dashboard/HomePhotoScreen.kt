@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import app.mekasa.fable.session.SessionState
 import app.mekasa.fable.session.SessionViewModel
+import app.mekasa.fable.ui.TestTags
 import app.mekasa.fable.ui.components.Backdrop
 import app.mekasa.fable.ui.components.HomePhoto
 import app.mekasa.fable.ui.components.LabeledField
@@ -110,7 +111,7 @@ fun HomePhotoScreen(
         }
     }
 
-    Backdrop(modifier = Modifier.testTag("HomePhotoScreen")) {
+    Backdrop(modifier = Modifier.testTag(TestTags.HOME_PHOTO_VIEW)) {
         Column(modifier = Modifier.fillMaxSize()) {
             ScreenHeader(
                 title = "Home photo",
@@ -121,7 +122,7 @@ fun HomePhotoScreen(
                         onClick = save,
                         enabled = dirty && !state.busy,
                         color = palette.text,
-                        modifier = Modifier.testTag("SaveHome"),
+                        modifier = Modifier.testTag(TestTags.HOME_PHOTO_SAVE_BUTTON),
                     )
                 },
             )
@@ -139,7 +140,7 @@ fun HomePhotoScreen(
                         .height(240.dp)
                         .clip(Shapes.card)
                         .clickable(onClick = openGallery)
-                        .testTag("HomePhotoPreview"),
+                        .testTag(TestTags.HOME_PHOTO_PREVIEW),
                 ) {
                     val bitmap = picked
                     if (bitmap != null) {
@@ -159,14 +160,14 @@ fun HomePhotoScreen(
                         text = "Gallery",
                         onClick = openGallery,
                         icon = Icons.Outlined.PhotoLibrary,
-                        modifier = Modifier.weight(1f).testTag("PickFromGallery"),
+                        modifier = Modifier.weight(1f).testTag(TestTags.HOME_PHOTO_LIBRARY_BUTTON),
                         enabled = !state.busy,
                     )
                     SecondaryButton(
                         text = "Camera",
                         onClick = openCamera,
                         icon = Icons.Outlined.PhotoCamera,
-                        modifier = Modifier.weight(1f).testTag("TakePhoto"),
+                        modifier = Modifier.weight(1f).testTag(TestTags.HOME_PHOTO_CAMERA_BUTTON),
                         enabled = !state.busy,
                     )
                 }
@@ -176,7 +177,7 @@ fun HomePhotoScreen(
                     value = name,
                     onValueChange = { name = it },
                     placeholder = "The Guerrero Home",
-                    testTag = "HouseNameField",
+                    testTag = TestTags.HOME_PHOTO_NAME_FIELD,
                 )
 
                 Text(
@@ -194,7 +195,7 @@ fun HomePhotoScreen(
                     onClick = save,
                     enabled = dirty,
                     loading = state.busy,
-                    modifier = Modifier.testTag("SaveHomePrimary"),
+                    modifier = Modifier.testTag(TestTags.HOME_PHOTO_SAVE_BOTTOM_BUTTON),
                 )
             }
         }

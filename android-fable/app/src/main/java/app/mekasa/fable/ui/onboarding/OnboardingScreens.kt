@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import app.mekasa.fable.data.model.Store
 import app.mekasa.fable.session.SessionState
 import app.mekasa.fable.session.Stage
+import app.mekasa.fable.ui.TestTags
 import app.mekasa.fable.ui.components.Backdrop
 import app.mekasa.fable.ui.components.EmptyMessage
 import app.mekasa.fable.ui.components.LabeledField
@@ -103,18 +104,18 @@ fun HouseholdNameScreen(
         stage = Stage.NameHousehold,
         title = "Name your household",
         subtitle = "Optional — it shows on the dashboard and on invites. You can change it later.",
-        testTag = "HouseholdNameScreen",
+        testTag = TestTags.HOUSEHOLD_NAME_VIEW,
         footer = {
             PrimaryButton(
                 text = "Continue",
                 onClick = { onContinue(name) },
                 loading = state.busy,
-                modifier = Modifier.testTag("HouseholdContinue"),
+                modifier = Modifier.testTag(TestTags.HOUSEHOLD_CONTINUE),
             )
             LinkButton(
                 text = "Skip for now",
                 onClick = { onContinue("") },
-                modifier = Modifier.align(Alignment.CenterHorizontally),
+                modifier = Modifier.align(Alignment.CenterHorizontally).testTag(TestTags.HOUSEHOLD_SKIP),
                 enabled = !state.busy,
             )
         },
@@ -126,7 +127,7 @@ fun HouseholdNameScreen(
             placeholder = "The Guerrero Home",
             imeAction = ImeAction.Done,
             onSubmit = { onContinue(name) },
-            testTag = "HouseholdNameField",
+            testTag = TestTags.HOUSEHOLD_NAME_FIELD,
         )
     }
 }
@@ -142,14 +143,14 @@ fun AddressScreen(
         stage = Stage.ConfirmAddress,
         title = "Where's home?",
         subtitle = "We look for grocery and retail stores within 15 miles of this address.",
-        testTag = "AddressScreen",
+        testTag = TestTags.ADDRESS_VIEW,
         footer = {
             PrimaryButton(
                 text = "Find nearby stores",
                 onClick = { onContinue(address) },
                 enabled = address.isNotBlank(),
                 loading = state.busy,
-                modifier = Modifier.testTag("AddressContinue"),
+                modifier = Modifier.testTag(TestTags.ADDRESS_CONTINUE),
             )
         },
     ) {
@@ -160,7 +161,7 @@ fun AddressScreen(
             placeholder = "123 Peachtree St, Atlanta, GA",
             imeAction = ImeAction.Done,
             onSubmit = { if (address.isNotBlank()) onContinue(address) },
-            testTag = "AddressField",
+            testTag = TestTags.ADDRESS_FIELD,
         )
         Text(
             "Location detection isn't wired in this build — type the address and we'll take it from there.",
@@ -180,13 +181,13 @@ fun StoresScreen(
         stage = Stage.PickStores,
         title = "Pick your stores",
         subtitle = "Where do you usually shop? Receipts and prices get tied to these.",
-        testTag = "StoresScreen",
+        testTag = TestTags.STORE_SELECTION_VIEW,
         footer = {
             PrimaryButton(
                 text = if (state.selectedStoreIds.isEmpty()) "Skip and finish" else "Finish setup",
                 onClick = onContinue,
                 loading = state.busy,
-                modifier = Modifier.testTag("StoresContinue"),
+                modifier = Modifier.testTag(TestTags.STORES_CONTINUE),
             )
         },
     ) {
@@ -214,7 +215,7 @@ private fun StoreRow(store: Store, selected: Boolean, onClick: () -> Unit) {
             )
             .clickable(onClick = onClick)
             .padding(Space.base)
-            .testTag("StoreRow-${store.id}"),
+            .testTag(TestTags.storeRow(store.id)),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Space.md),
     ) {
