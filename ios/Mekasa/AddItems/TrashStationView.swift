@@ -292,6 +292,12 @@ struct TrashStationView: View {
 
     private func apply(_ result: AppSession.ConsumeResult, barcode: String) {
         switch result {
+        case .decremented, .depleted:
+            ScanFeedback.accepted()
+        case .unknown:
+            ScanFeedback.unknown()
+        }
+        switch result {
         case let .decremented(name, qty):
             session.trashEvents.insert(
                 TrashEvent(
