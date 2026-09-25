@@ -32,7 +32,45 @@ Unit tests are plain JVM tests (`app/src/test`) and cover the voice phrase
 parser, invite-link parsing, the in-memory demo backend, the Ktor API layer
 (via `MockEngine`), onboarding routing, and the session ViewModel (sign-in,
 offline preview, onboarding stages, REQ-014 purchase gate, REQ-002 owner-only
-photo, REQ-022 session expiry, barcode consume, invites).
+photo, REQ-022 session expiry, barcode consume, inventory remove/undo/purge,
+invites).
+
+## Testing layers
+
+Everything below runs on a plain Linux JVM — no emulator — and is what the
+`android-fable` job in `.github/workflows/ci.yml` executes:
+
+```bash
+cd android-fable
+./gradlew :app:testDebugUnitTest :app:verifyRoborazziDebug
+```
+
+| Layer | What it checks | Where | Command |
+|-------|----------------|-------|---------|
+| 0 — Unit | Parsers, demo backend rules, Ktor API mapping, `SessionViewModel` state machine | `app/src/test/.../{voice,invite,data,session}` | `./gradlew :app:testDebugUnitTest` |
+| 1 — Structural | Compose semantics under Robolectric (`@GraphicsMode(NATIVE)`, SDK 34): key composables present, taps/inputs fire the ViewModel, navigation lands on the next screen, reading order matches the baseline. One file per screen, four tests each (`layout_`, `interaction_`, `flow_`, `visual_`). Includes REQ-INV-014..017 swipe Use 1 / Remove / Undo via `performTouchInput`. | `app/src/test/java/app/mekasa/fable/ui/*UITest.kt` (9 files, 36 tests) | `./gradlew :app:testDebugUnitTest --tests '*UITest*'` |
+| 2 — Snapshot | Roborazzi PNG of every Layer-1 screen state (16) on a fixed Pixel-7-class qualifier with demo fixtures; compared at a 15% change threshold (semantic, not pixel-exact — see `design/baselines/README.md`). Diffs are written to `app/build/outputs/roborazzi/`. | `app/src/test/java/app/mekasa/fable/ui/ScreenSnapshotTest.kt` → `design/baselines/android/<Screen>_baseline.png` | `./gradlew :app:verifyRoborazziDebug` (compare) / `./gradlew :app:recordRoborazziDebug` (re-record after an approved design change) |
+| 3 — Vision | Manual pre-release gate: a vision model compares a real device/emulator capture with the recorded baseline for layout, hierarchy and palette. Cases live in `Scripts/ui_vision_cases.json` (`"platform": "android"`). | `Scripts/verify_ui_vision.py` | `python3 Scripts/verify_ui_vision.py --list-cases --platform android` then `ANTHROPIC_API_KEY=… python3 Scripts/verify_ui_vision.py --platform android --screen UI-004 --spec design/baselines/android/Dashboard_baseline.png --actual <capture.png>` |
+
+Layers 1 and 2 drive the real composables through the production
+`SessionViewModel` + `MekasaRoot` path: "Browse UI offline" installs the same
+`DemoBackend` the app ships, onboarding runs against a scripted `MekasaApi`
+(`OnboardingApi`), and the REQ-014 member view uses `MemberApi`. Test tags
+come from `ui/TestTags.kt`, which mirrors
+`ios/Tests/TestSupport/TestIdentifiers.swift`. Shared fixtures are in
+`app/src/test/java/app/mekasa/fable/support/UiHarness.kt`.
+
+What Robolectric cannot do, and how it is covered instead:
+
+- **Camera.** CameraX/ML Kit never start on the JVM, so the scanner renders its
+  permission fallback (`Allow camera`). Tests assert that fallback and drive
+  barcode lookups / trash-station consumption through the manual UPC field,
+  which shares the same `lookup()` / `consume()` code path.
+- **Coil images.** `coil-test`'s `FakeImageLoaderEngine` resolves every URL to
+  a flat swatch so thumbnails are deterministic and offline.
+- **Undo timer.** `SessionViewModel(undoWindowMillis = …)` is injectable; UI
+  tests hold the window open, `SessionViewModelTest` advances virtual time to
+  cover the purge.
 
 ## Firebase configuration
 
@@ -67,7 +105,7 @@ See `app/google-services.json.example` for the same steps inline.
 | Dashboard | Hero photo with gradient scrim, low-stock/spend stat cards, pending approvals, low-stock list, shopping summary, recently added. |
 | Home photo | Gallery (Photo Picker with `GetContent` fallback) or camera; downscaled and JPEG-encoded on device, multipart `file` upload; owner-only with a client-side check (REQ-002). |
 | Add items | Bottom-sheet hub: barcode camera (CameraX + ML Kit) → `/v1/barcode/{code}` → confirm; product search; voice (system speech recogniser or typed phrase → `VoicePhraseParser` → search); receipt (photo → base64, pasted text, or demo haul) → select lines → bulk add with `source=receipt` and `price_paid`. |
-| Inventory | Grouped by category, search, Coil thumbnails (https or data URLs), swipe-to-use-one (REQ-INV-014), item detail with quantity/threshold steppers (PATCH), lightbox, refresh image. |
+| Inventory | Grouped by category, search, Coil thumbnails (https or data URLs), trailing swipe: Use 1 when qty > 1 (REQ-INV-014) or Remove when qty ≤ 1 with soft delete, "Item removed · Undo" toast and purge after 5 s (REQ-INV-015..018); item detail with quantity/threshold steppers (PATCH), lightbox, refresh image. |
 | Shopping list | Add/remove, approve/reject requests, sync from inventory, mark purchased gated to owners or members with the `buyer` permission (REQ-014); non-owners see a lock notice. |
 | Spending | Week/month/year toggle re-fetches `/spending?period=`; animated category bars. |
 | Family | Members with "Make owner", invite form with role toggle, share sheet for `mekasa://invite?token=…`, deep-link acceptance (held until signed in), kiosk trash station. |
@@ -108,7 +146,7 @@ different so the two can be compared honestly:
   from `/stores/nearby` after the server geocodes it).
 - The Nunito typeface from the design system is not bundled; the theme uses the
   platform sans-serif with the design system's sizes and weights.
-- Compose UI (instrumented) tests are not included; verification is JVM unit
-  tests plus `assembleDebug`.
+- No instrumented (device) tests; Compose UI coverage is Robolectric +
+  Roborazzi on the JVM (see "Testing layers").
 - Voice input uses the system `RecognizerIntent`; devices without a speech
   recogniser fall back to the typed phrase field.
