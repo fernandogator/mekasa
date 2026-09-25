@@ -11,6 +11,7 @@ struct WelcomeView: View {
     /// Default to sign-in; users opt in to create an account.
     @State private var isSignUp = false
     @State private var showEmailForm = false
+    @State private var resetNotice: String?
     @FocusState private var focusedField: EmailAuthField?
 
     private enum EmailAuthField: Hashable {
@@ -20,6 +21,10 @@ struct WelcomeView: View {
 
     private var canSubmitEmail: Bool {
         !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && password.count >= 6 && !session.isBusy
+    }
+
+    private var canRequestPasswordReset: Bool {
+        !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !session.isBusy
     }
 
     var body: some View {
@@ -80,6 +85,23 @@ struct WelcomeView: View {
                                 .font(MekasaTheme.bodyFont)
                                 .tint(MekasaTheme.accent)
                                 .accessibilityIdentifier("WelcomeCreateAccountToggle")
+
+                            if !isSignUp {
+                                Button("Forgot password?") {
+                                    Task { await submitPasswordReset() }
+                                }
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundStyle(MekasaTheme.accent)
+                                .disabled(!canRequestPasswordReset)
+                                .accessibilityIdentifier("WelcomeForgotPasswordButton")
+                            }
+
+                            if let resetNotice {
+                                Text(resetNotice)
+                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(MekasaTheme.textMuted)
+                                    .accessibilityIdentifier("WelcomePasswordResetNotice")
+                            }
                         }
                     }
                     .padding(.horizontal, 24)
@@ -98,7 +120,10 @@ struct WelcomeView: View {
                             }
                             .accessibilityIdentifier("WelcomeSignInButton")
                             SecondaryButton(title: "Back") {
-                                withAnimation { showEmailForm = false }
+                                withAnimation {
+                                    showEmailForm = false
+                                    resetNotice = nil
+                                }
                             }
                         } else {
                             PrimaryButton(title: "Continue with Google", isLoading: session.isBusy) {
@@ -213,6 +238,25 @@ struct WelcomeView: View {
             print("[Mekasa] submitEmail done step=\(session.onboardingStep)")
         } catch {
             print("[Mekasa] submitEmail ERROR: \(error)")
+            session.lastError = error.localizedDescription
+        }
+    }
+
+    /// Firebase answers success even for unknown emails (enumeration protection), so the
+    /// notice is deliberately neutral.
+    private func submitPasswordReset() async {
+        let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        session.isBusy = true
+        defer { session.isBusy = false }
+        focusedField = nil
+        resetNotice = nil
+        do {
+            try await AuthService.shared.sendPasswordReset(email: trimmed)
+            resetNotice = "If an account exists for \(trimmed), a password reset email is on its way. "
+                + "Setting a password there also works for accounts that signed up with Google or Apple."
+        } catch {
+            print("[Mekasa] submitPasswordReset ERROR: \(error)")
             session.lastError = error.localizedDescription
         }
     }

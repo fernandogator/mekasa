@@ -35,6 +35,17 @@ final class AuthService: ObservableObject {
         }
     }
 
+    /// Sends Firebase's password-reset email. Also the way a Google/Apple-only account
+    /// gets a password attached, so email sign-in starts working for it.
+    func sendPasswordReset(email: String) async throws {
+        try ensureFirebaseReady()
+        do {
+            try await Auth.auth().sendPasswordReset(withEmail: email)
+        } catch {
+            throw AuthErrorFormatter.wrap(error)
+        }
+    }
+
     func signUp(email: String, password: String) async throws -> (token: String, email: String?, name: String?) {
         try ensureFirebaseReady()
         do {
@@ -261,6 +272,11 @@ enum AuthErrorFormatter {
 
         // Common FIRAuthErrorDomain codes (see Firebase Auth iOS errors docs).
         switch ns.code {
+        case 17004, 17009, 17011: // invalidCredential (enumeration-protected), wrongPassword, userNotFound
+            parts.append(
+                "HINT: Wrong password — or this account signs in with Google/Apple and has no password yet. "
+                    + "Use that button, or tap Forgot password? to set one."
+            )
         case 17025: // operationNotAllowed
             parts.append("HINT: Enable Email/Password, Google, and/or Apple in Firebase Authentication → Sign-in method.")
         case 17008: // invalidEmail
