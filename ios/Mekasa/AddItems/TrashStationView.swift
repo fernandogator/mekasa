@@ -10,6 +10,10 @@ struct TrashStationView: View {
     @State private var toast: String?
     @State private var isBusy = false
     @State private var cameraError: String?
+    @State private var cooldown = ScanCooldown()
+    /// Whole seconds left before the next scan is accepted; nil when ready.
+    @State private var cooldownSecondsLeft: Int?
+    @State private var cooldownTicker: Task<Void, Never>?
 
     private var cameraAvailable: Bool { BarcodeCameraView.isSupported }
 
@@ -141,6 +145,7 @@ struct TrashStationView: View {
             guard !session.isUITesting else { return }
             await session.refreshUnknownTrashScans()
         }
+        .onDisappear { cooldownTicker?.cancel() }
     }
 
     @ViewBuilder
@@ -175,6 +180,39 @@ struct TrashStationView: View {
             if isBusy {
                 ProgressView()
                     .tint(.white)
+            } else if let cooldownSecondsLeft {
+                VStack(spacing: 6) {
+                    Text("\(cooldownSecondsLeft)")
+                        .font(.system(size: 44, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                        .monospacedDigit()
+                    Text("Next scan in a moment")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
+                .background(Color.black.opacity(0.55))
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier(TestIdentifiers.scanCooldownOverlay)
+            }
+        }
+    }
+
+    /// Start the 5 s window after an accepted scan and drive the on-screen countdown.
+    private func beginCooldown() {
+        cooldownTicker?.cancel()
+        cooldownSecondsLeft = Int(cooldown.window.rounded(.up))
+        cooldownTicker = Task { @MainActor in
+            while !Task.isCancelled {
+                let remaining = cooldown.remaining()
+                if remaining <= 0 {
+                    cooldownSecondsLeft = nil
+                    return
+                }
+                cooldownSecondsLeft = Int(remaining.rounded(.up))
+                try? await Task.sleep(nanoseconds: 250_000_000)
             }
         }
     }
@@ -223,6 +261,10 @@ struct TrashStationView: View {
 
     private func handleBarcode(_ code: String) async {
         guard !isBusy else { return }
+        // One accepted scan per 5 s window; later reads of the same toss are dropped silently
+        // (the countdown on the camera pane explains why).
+        guard cooldown.tryAccept() else { return }
+        beginCooldown()
         isBusy = true
         defer { isBusy = false }
         let result = await session.consumeInventoryByBarcode(code)
@@ -249,6 +291,12 @@ struct TrashStationView: View {
     }
 
     private func apply(_ result: AppSession.ConsumeResult, barcode: String) {
+        switch result {
+        case .decremented, .depleted:
+            ScanFeedback.accepted()
+        case .unknown:
+            ScanFeedback.unknown()
+        }
         switch result {
         case let .decremented(name, qty):
             session.trashEvents.insert(
