@@ -57,6 +57,11 @@ interface MekasaApi {
     suspend fun consumeByBarcode(token: String, householdId: String, barcode: String, amount: Int): ConsumeByBarcodeResult
     suspend fun listUnknownScans(token: String, householdId: String): List<UnknownBarcodeEvent>
 
+    // REQ-INV-016..018: soft delete → undo window → hard purge
+    suspend fun deleteInventoryItem(token: String, householdId: String, itemId: String)
+    suspend fun restoreInventoryItem(token: String, householdId: String, itemId: String): InventoryItem
+    suspend fun purgeInventoryItem(token: String, householdId: String, itemId: String)
+
     // Shopping list
     suspend fun listShopping(token: String, householdId: String): ShoppingListResponse
     suspend fun createShoppingItem(token: String, householdId: String, body: ShoppingItemCreateRequest): ShoppingItem

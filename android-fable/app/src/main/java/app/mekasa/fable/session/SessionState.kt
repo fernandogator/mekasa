@@ -58,6 +58,15 @@ data class ScanEvent(
     enum class Tone { Used, Depleted, Unknown, Failed }
 }
 
+/**
+ * REQ-INV-016/017: the inventory row hidden by Remove, remembered with its position so
+ * Undo can put it back exactly where it was until the purge timer fires.
+ */
+data class PendingRemoval(
+    val item: InventoryItem,
+    val index: Int,
+)
+
 /** Result of a trash-station scan, reported back to the screen for its toast. */
 sealed interface ConsumeOutcome {
     data class Used(val item: InventoryItem) : ConsumeOutcome
@@ -96,6 +105,8 @@ data class SessionState(
     val nearbyStores: List<Store> = emptyList(),
     val selectedStoreIds: Set<String> = emptySet(),
     val kioskMode: Boolean = false,
+    /** Set while the "Item removed · Undo" toast is showing (REQ-INV-016). */
+    val pendingRemoval: PendingRemoval? = null,
     val busy: Boolean = false,
     val error: String? = null,
     /** Non-error banner shown on Welcome, e.g. "Your session expired". */

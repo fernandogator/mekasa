@@ -99,6 +99,15 @@ class RemoteBackend(
     override suspend fun unknownScans(householdId: String): List<UnknownBarcodeEvent> =
         api.listUnknownScans(token(), householdId)
 
+    override suspend fun softDeleteInventory(householdId: String, itemId: String) =
+        api.deleteInventoryItem(token(), householdId, itemId)
+
+    override suspend fun restoreInventory(householdId: String, itemId: String): InventoryItem =
+        api.restoreInventoryItem(token(), householdId, itemId)
+
+    override suspend fun purgeInventory(householdId: String, itemId: String) =
+        api.purgeInventoryItem(token(), householdId, itemId)
+
     override suspend fun shoppingList(householdId: String): List<ShoppingItem> =
         api.listShopping(token(), householdId).items
 
