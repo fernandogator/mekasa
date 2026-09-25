@@ -122,6 +122,7 @@ object TestTags {
     const val TRASH_KIOSK_VIEW = "TrashKioskView"
     const val EXIT_KIOSK = "ExitKiosk"
     const val SCAN_FLASH = "ScanFlash"
+    const val SCAN_COOLDOWN = "ScanCooldown"
     const val MANUAL_BARCODE = "ManualBarcode"
     const val MANUAL_CONSUME = "ManualConsume"
     const val BARCODE_SCANNER = "BarcodeScanner"

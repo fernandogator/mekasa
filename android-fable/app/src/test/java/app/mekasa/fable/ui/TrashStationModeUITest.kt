@@ -72,8 +72,21 @@ class TrashStationModeUITest {
         compose.onNodeWithText("Used 1 Diet Coke · 1 left").assertIsDisplayed()
         compose.onNodeWithText("qty 1 · ${DemoBackend.DIET_COKE_UPC}").assertIsDisplayed()
 
-        // Unknown code is logged (REQ-010 AC2) and listed under "Unknown scans".
+        // REQ-008: after an accepted scan the station is disarmed for 5 s — countdown shown,
+        // manual consume disabled even with a valid UPC typed.
+        compose.awaitDisplayed(TestTags.SCAN_COOLDOWN)
+        compose.onNodeWithText("Next scan in a moment").assertIsDisplayed()
         compose.node(TestTags.MANUAL_BARCODE).performTextInput("000000000000")
+        compose.node(TestTags.MANUAL_CONSUME).assertIsNotEnabled()
+        compose.mainClock.advanceTimeBy(2_000)
+        compose.node(TestTags.MANUAL_CONSUME).assertIsNotEnabled()
+
+        // Window elapses → scanner re-armed, manual consume enabled again.
+        compose.mainClock.advanceTimeBy(3_500)
+        compose.awaitGone(TestTags.SCAN_COOLDOWN)
+        compose.node(TestTags.MANUAL_CONSUME).assertIsEnabled()
+
+        // Unknown code is logged (REQ-010 AC2) and listed under "Unknown scans".
         compose.node(TestTags.MANUAL_CONSUME).performClick()
         compose.waitUntil(UiHarness.WAIT_MS) {
             compose.onAllNodes(hasText("Unknown barcode 000000000000 logged")).fetchSemanticsNodes().isNotEmpty()
