@@ -85,6 +85,18 @@ jobs:
             xcrun simctl bootstatus "$UDID" -b
             echo "udid=$UDID" >> "$GITHUB_OUTPUT"
           fi
+      - name: Run unit tests (Layer 0)
+        run: |
+          set -euo pipefail
+          mkdir -p TestResults
+          rm -rf TestResults/unit.xcresult
+          xcodebuild test \
+            -scheme Mekasa \
+            -destination "${{ steps.sim.outputs.destination }}" \
+            -testPlan UnitTests \
+            -parallel-testing-enabled NO \
+            -maximum-parallel-testing-workers 1 \
+            -resultBundlePath TestResults/unit.xcresult
       - name: Run structural UI tests
         run: |
           set -euo pipefail
