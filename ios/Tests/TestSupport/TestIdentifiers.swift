@@ -54,6 +54,7 @@ enum TestIdentifiers {
     static let scanPromptLabel = "ScanPromptLabel"
     static let lastScannedItem = "LastScannedItem"
     static let trashEventList = "TrashEventList"
+    static let scanCooldownOverlay = "ScanCooldownOverlay"
 
     // MARK: - Shell / onboarding / dashboard (UI-002–UI-004)
     static let rootView = "RootView"
