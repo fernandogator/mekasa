@@ -9,10 +9,17 @@ import httpx
 
 from app.category_icons import category_placeholder_url
 from app.models import BarcodeLookupResponse, ProductSearchHit, ProductSearchResponse
+from app.product_health import health_from_off_product
 
 OFF_PRODUCT_URL = "https://world.openfoodfacts.org/api/v2/product/{code}"
 OFF_SEARCH_URL = "https://world.openfoodfacts.org/cgi/search.pl"
 USER_AGENT = "Mekasa/0.4 (https://github.com/fernandogator/mekasa)"
+
+# REQ-021: health grade + allergen inputs requested alongside the catalog fields.
+OFF_HEALTH_FIELDS = (
+    "nutriscore_grade,nutrition_grades,nova_group,additives_tags,allergens_tags,"
+    "traces_tags,ingredients_text,ingredients_text_en,ingredients_analysis_tags"
+)
 
 # Brand nicknames → OFF-friendly search terms (voice / manual / receipt).
 _SEARCH_ALIASES: dict[str, tuple[str, ...]] = {
@@ -160,6 +167,7 @@ def _hit_from_product(product: dict) -> ProductSearchHit | None:
         category=category,
         image_url=_product_image_url(product, category),
         source="openfoodfacts",
+        health=health_from_off_product(product),
     )
 
 
@@ -291,7 +299,8 @@ async def lookup_barcode(code: str, *, client: httpx.AsyncClient | None = None) 
                     params={
                         "fields": (
                             "product_name,product_name_en,brands,categories,categories_tags,"
-                            "image_front_url,image_url,image_front_small_url"
+                            "image_front_url,image_url,image_front_small_url,"
+                            + OFF_HEALTH_FIELDS
                         )
                     },
                 )
@@ -333,6 +342,7 @@ async def lookup_barcode(code: str, *, client: httpx.AsyncClient | None = None) 
             quantity=1,
             image_url=_product_image_url(product, category),
             source="openfoodfacts",
+            health=health_from_off_product(product),
         )
     finally:
         if owns_client:

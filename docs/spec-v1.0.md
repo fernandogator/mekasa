@@ -260,6 +260,27 @@ Acceptance Criteria:
 - AC2: Sync conflicts resolve without data loss
 - AC3: Offline changes queue and sync once connectivity is restored
 
+### REQ-021: Product Health Grade and Member Avoidances
+Priority: P1
+Description: Barcoded products carry a health grade (A–E) derived from
+Open Food Facts data (Nutri-Score, NOVA group, additives) plus their
+additive, allergen and trace lists. Each household member keeps an
+"I'm allergic to / I avoid" list (e.g. MSG, gluten, peanuts); products
+containing any listed item warn which members are affected.
+Design Artifact: design/pages/item-detail.html, design/mockups/FamilyMembers.jsx
+Test File: tests/backend/test_product_health.py, ios/MekasaTests/ProductHealthTests.swift
+Acceptance Criteria:
+- AC1: A member can edit their own avoid list from a catalog of common
+  allergens/additives plus free text; Owners can edit any member's list
+- AC2: Scanning or viewing a product whose additives, allergens, traces or
+  ingredients match a member's list shows "<member> avoids <item>" for
+  every affected member, at scan-confirm time and on the item detail
+- AC3: The grade formula is deterministic and documented
+  (`backend/app/product_health.py`); products without Nutri-Score or NOVA
+  data show "No grade" rather than a guess
+- AC4: Health data is stored with the inventory item so the grade and
+  warnings are available offline / via real-time sync without re-lookup
+
 ---
 
 ## UI Requirements

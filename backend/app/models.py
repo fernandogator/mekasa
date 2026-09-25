@@ -107,6 +107,68 @@ class StoreSelectionRequest(BaseModel):
 
 InventorySource = Literal["manual", "barcode", "receipt", "voice"]
 
+HealthGrade = Literal["A", "B", "C", "D", "E"]
+AdditiveConcern = Literal["none", "low", "moderate", "high", "unknown"]
+
+
+class AdditiveInfo(BaseModel):
+    """One food additive found on a product (REQ-021)."""
+
+    code: str = Field(max_length=8)
+    name: str = Field(max_length=80)
+    concern: AdditiveConcern = "unknown"
+
+
+class ProductHealth(BaseModel):
+    """
+    Satisfies: REQ-021 (health grade + allergen data)
+    Spec version: 1.0
+
+    Derived from Open Food Facts; see app.product_health for the grade formula.
+    """
+
+    grade: HealthGrade | None = None
+    score: int | None = Field(default=None, ge=0, le=100)
+    nutriscore: Literal["A", "B", "C", "D", "E"] | None = None
+    nova_group: int | None = Field(default=None, ge=1, le=4)
+    additives: list[AdditiveInfo] = Field(default_factory=list)
+    allergens: list[str] = Field(default_factory=list)
+    traces: list[str] = Field(default_factory=list)
+    ingredients_text: str | None = Field(default=None, max_length=2000)
+    # e.g. "Palm oil" from OFF ingredient analysis
+    flags: list[str] = Field(default_factory=list)
+
+
+class MemberWarning(BaseModel):
+    """A household member who avoids something this product contains (REQ-021 AC2)."""
+
+    member_uid: str
+    member_name: str
+    matched: list[str]
+
+
+class AvoidanceOption(BaseModel):
+    """Catalog entry a member can pick from ("I'm allergic to…")."""
+
+    key: str
+    label: str
+    terms: list[str] = Field(default_factory=list)
+
+
+class AvoidancesResponse(BaseModel):
+    options: list[AvoidanceOption]
+
+
+class MemberAvoidUpdateRequest(BaseModel):
+    """
+    Satisfies: REQ-021 AC1
+    Spec version: 1.0
+
+    Replace the member's avoid list. Entries are catalog keys/labels or free text.
+    """
+
+    avoid: list[str] = Field(default_factory=list, max_length=40)
+
 
 class InventoryItemCreateRequest(BaseModel):
     """
@@ -123,6 +185,7 @@ class InventoryItemCreateRequest(BaseModel):
     barcode: str | None = Field(default=None, max_length=64)
     image_url: str | None = Field(default=None, max_length=2048)
     source: InventorySource = "manual"
+    health: ProductHealth | None = None
 
 
 class InventoryItemUpdateRequest(BaseModel):
@@ -138,6 +201,7 @@ class InventoryItemUpdateRequest(BaseModel):
     price_paid: float | None = Field(default=None, ge=0)
     barcode: str | None = Field(default=None, max_length=64)
     image_url: str | None = Field(default=None, max_length=2048)
+    health: ProductHealth | None = None
 
 
 class InventoryItemResponse(BaseModel):
@@ -160,6 +224,9 @@ class InventoryItemResponse(BaseModel):
     # REQ-INV-016 soft-delete (absent/false = visible)
     deleted: bool = False
     deleted_at: datetime | None = None
+    # REQ-021: health grade data (barcode items) + members who avoid an ingredient
+    health: ProductHealth | None = None
+    warnings: list[MemberWarning] = Field(default_factory=list)
 
     @property
     def is_low_stock(self) -> bool:
@@ -278,6 +345,9 @@ class BarcodeLookupResponse(BaseModel):
     quantity: int = 1
     image_url: str | None = None
     source: Literal["openfoodfacts", "none"] = "none"
+    health: ProductHealth | None = None
+    # Filled when the lookup is scoped to a household (?household_id=…)
+    warnings: list[MemberWarning] = Field(default_factory=list)
 
 
 class ProductSearchHit(BaseModel):
@@ -289,6 +359,7 @@ class ProductSearchHit(BaseModel):
     category: str
     image_url: str | None = None
     source: Literal["openfoodfacts"] = "openfoodfacts"
+    health: ProductHealth | None = None
 
 
 class ProductSearchResponse(BaseModel):
@@ -394,6 +465,8 @@ class HouseholdMemberResponse(BaseModel):
     status: Literal["active", "invited", "removed"] = "active"
     # REQ-014 AC3: future "buyer" (and similar) without a schema migration.
     permissions: list[str] = Field(default_factory=list)
+    # REQ-021 AC1: ingredients / allergens this member avoids (catalog keys or free text)
+    avoid: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

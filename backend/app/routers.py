@@ -11,6 +11,7 @@ from app.inventory_image import refresh_item_image
 from app.inventory_repository import InventoryRepository, get_inventory_repository
 from app.models import (
     AddressUpdateRequest,
+    AvoidancesResponse,
     BarcodeLookupResponse,
     DeviceRegistrationRequest,
     DeviceRegistrationResponse,
@@ -33,6 +34,7 @@ from app.models import (
     InventoryItemResponse,
     InventoryItemUpdateRequest,
     InventoryListResponse,
+    MemberAvoidUpdateRequest,
     ProductSearchResponse,
     PurchaseEventCreateRequest,
     PurchaseEventResponse,
@@ -53,6 +55,7 @@ from app.models import (
 )
 from app.members_repository import MembersRepository, get_members_repository
 from app.places_lookup import fetch_nearby_stores
+from app.product_health import AVOIDANCES, member_warnings
 from app.push_notify import notify_invite_accepted, notify_invite_created
 from app.receipt_ocr import enrich_receipt_items, parse_receipt_image
 from app.repository import (
@@ -256,6 +259,20 @@ def _map_inventory_errors(exc: Exception) -> HTTPException:
     raise exc
 
 
+def _household_members_for_warnings(household_id: str, actor_uid: str) -> list:
+    """Members list for REQ-021 warnings; never fails the inventory call."""
+    try:
+        return get_members_repository().list_members(household_id, actor_uid)
+    except (KeyError, PermissionError):
+        return []
+
+
+def _with_warnings(item: InventoryItemResponse, members: list) -> InventoryItemResponse:
+    if item.health is None or not members:
+        return item
+    return item.model_copy(update={"warnings": member_warnings(members, item.health)})
+
+
 @inventory_router.get(
     "/households/{household_id}/inventory",
     response_model=InventoryListResponse,
@@ -273,6 +290,9 @@ def list_inventory(
         items = repo.list_items(household_id, user.uid)
     except (KeyError, PermissionError) as exc:
         raise _map_inventory_errors(exc) from exc
+    if any(item.health is not None for item in items):
+        members = _household_members_for_warnings(household_id, user.uid)
+        items = [_with_warnings(item, members) for item in items]
     return InventoryListResponse(household_id=household_id, items=items)
 
 
@@ -314,7 +334,7 @@ def create_inventory_item(
         except Exception:
             # Spending is additive; inventory create must still succeed.
             pass
-    return item
+    return _with_warnings(item, _household_members_for_warnings(household_id, user.uid))
 
 
 @inventory_router.get(
@@ -337,7 +357,7 @@ def get_inventory_item(
         raise _map_inventory_errors(exc) from exc
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
-    return item
+    return _with_warnings(item, _household_members_for_warnings(household_id, user.uid))
 
 
 @inventory_router.patch(
@@ -692,18 +712,36 @@ def sync_shopping_list_from_inventory(
 @barcode_router.get("/barcode/{code}", response_model=BarcodeLookupResponse)
 async def lookup_barcode_endpoint(
     code: str,
+    household_id: str | None = Query(default=None),
     user: AuthUser = Depends(verify_bearer_token),
 ) -> BarcodeLookupResponse:
     """
-    Satisfies: REQ-004
+    Satisfies: REQ-004, REQ-021 AC2
     Acceptance criteria: AC1, AC2
     Spec version: 1.0
 
     Looks up a UPC/EAN via Open Food Facts. Unknown codes return found=false
-    so the client can fall back to manual entry.
+    so the client can fall back to manual entry. With `household_id` the
+    response also lists members whose avoid list matches the product.
+    """
+    result = await lookup_barcode(code)
+    if household_id and result.health is not None:
+        members = _household_members_for_warnings(household_id, user.uid)
+        if members:
+            result = result.model_copy(update={"warnings": member_warnings(members, result.health)})
+    return result
+
+
+@barcode_router.get("/health/avoidances", response_model=AvoidancesResponse)
+def list_avoidances(user: AuthUser = Depends(verify_bearer_token)) -> AvoidancesResponse:
+    """
+    Satisfies: REQ-021 AC1
+    Spec version: 1.0
+
+    Catalog of common allergens / additives a member can mark as "I avoid this".
     """
     _ = user
-    return await lookup_barcode(code)
+    return AvoidancesResponse(options=AVOIDANCES)
 
 
 @barcode_router.get("/products/search", response_model=ProductSearchResponse)
@@ -977,6 +1015,32 @@ def update_household_member_role(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@api_router.put(
+    "/households/{household_id}/members/{member_uid}/avoid",
+    response_model=HouseholdMemberResponse,
+)
+def update_household_member_avoid(
+    household_id: str,
+    member_uid: str,
+    payload: MemberAvoidUpdateRequest,
+    user: AuthUser = Depends(verify_bearer_token),
+    members: MembersRepository = Depends(get_members_repository),
+) -> HouseholdMemberResponse:
+    """
+    Satisfies: REQ-021 AC1
+    Spec version: 1.0
+
+    Replace the "I'm allergic to / I avoid" list. Members edit their own row;
+    owners may edit any member.
+    """
+    try:
+        return members.update_avoid(household_id, member_uid, user.uid, payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
 
 
 @spending_router.post(
