@@ -104,13 +104,19 @@ struct InventoryListView: View {
                     .background(MekasaTheme.brand)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 24)
+                    // Clear the floating BottomNavBar (64 pt + 24 pt inset + FAB overhang)
+                    // so the Undo button is actually tappable within the 5 s window.
+                    .padding(.bottom, 120)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .accessibilityElement(children: .contain)
                     .accessibilityIdentifier(TestIdentifiers.inventoryUndoToast)
                 }
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: session.showInventoryUndoToast)
         }
+        // `.contain` keeps descendants' own identifiers (ItemCell, InventoryUndoButton…);
+        // without it every child is reported as "InventoryListView".
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(TestIdentifiers.inventoryListView)
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: String.self) { itemID in
