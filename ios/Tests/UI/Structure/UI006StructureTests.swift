@@ -73,21 +73,124 @@ final class UI006StructureTests: XCTestCase {
         )
     }
 
+    /// REQ-INV-014: trailing swipe on a qty > 1 row reveals Use 1; tapping decrements
+    /// without any confirmation alert. Fixture: Bananas (qty 6, TestFixtures.standardItemList).
     func testSwipe_useOneWhenQuantityGreaterThanOne() throws {
-        throw XCTSkip("Stub — swipe Use 1 (REQ-INV-014): open inventory, swipe qty>1 row, assert Use 1 / InventoryUseOneAction, qty decrements")
-        // Interaction: trailing swipe → Use 1 (accent #ca0013); no confirmation alert
+        openInventoryList()
+        let row = try requireRow(named: "Bananas")
+        XCTAssertTrue(app.staticTexts["Qty 6 · Produce"].exists, "Bananas should start at qty 6")
+
+        revealTrailingActions(on: row)
+        let useOne = swipeAction(id: TestIdentifiers.inventoryUseOneAction, label: "Use 1")
+        XCTAssertTrue(useOne.waitForExistence(timeout: UITestLaunch.elementTimeout), "Use 1 swipe action should appear")
+        XCTAssertFalse(
+            swipeAction(id: TestIdentifiers.inventoryRemoveAction, label: "Remove").exists,
+            "qty > 1 rows offer Use 1, not Remove"
+        )
+        useOne.tap()
+
+        XCTAssertTrue(
+            app.staticTexts["Qty 5 · Produce"].waitForExistence(timeout: UITestLaunch.elementTimeout),
+            "Use 1 should decrement Bananas to qty 5"
+        )
+        XCTAssertEqual(app.alerts.count, 0, "Use 1 must not show a confirmation alert")
+        XCTAssertFalse(
+            UITestLaunch.element(app, TestIdentifiers.inventoryUndoToast).exists,
+            "Use 1 must not show the Undo toast"
+        )
     }
 
+    /// REQ-INV-015/016: trailing swipe on a qty == 1 row reveals Remove; the row leaves
+    /// the list and the Undo toast appears. Fixture: Cheerios 12oz (qty 1).
     func testSwipe_removeWhenQuantityIsOne() throws {
-        throw XCTSkip("Stub — swipe Remove (REQ-INV-015/016): swipe qty=1 row, assert Remove / InventoryRemoveAction, row leaves list, Undo toast appears")
-        // Layout: InventoryUndoToast + InventoryUndoButton visible for ~5s
+        openInventoryList()
+        let row = try requireRow(named: "Cheerios 12oz")
+
+        revealTrailingActions(on: row)
+        let remove = swipeAction(id: TestIdentifiers.inventoryRemoveAction, label: "Remove")
+        XCTAssertTrue(remove.waitForExistence(timeout: UITestLaunch.elementTimeout), "Remove swipe action should appear")
+        XCTAssertFalse(
+            swipeAction(id: TestIdentifiers.inventoryUseOneAction, label: "Use 1").exists,
+            "qty == 1 rows offer Remove, not Use 1"
+        )
+        remove.tap()
+
+        XCTAssertTrue(
+            UITestLaunch.element(app, TestIdentifiers.inventoryUndoToast).waitForExistence(timeout: UITestLaunch.elementTimeout)
+                || app.staticTexts["Item removed"].waitForExistence(timeout: 3),
+            "Undo toast should appear after Remove"
+        )
+        XCTAssertTrue(undoButton().exists, "Undo button should be visible in the toast")
+        XCTAssertFalse(
+            app.staticTexts["Cheerios 12oz"].waitForExistence(timeout: 2),
+            "Removed row should leave the list"
+        )
     }
 
+    /// REQ-INV-017: tapping Undo restores the removed item and dismisses the toast.
     func testSwipe_undoRestoresItem() throws {
-        throw XCTSkip("Stub — Undo (REQ-INV-017): after Remove, tap InventoryUndoButton; item returns at original index")
+        openInventoryList()
+        let row = try requireRow(named: "Cheerios 12oz")
+
+        revealTrailingActions(on: row)
+        let remove = swipeAction(id: TestIdentifiers.inventoryRemoveAction, label: "Remove")
+        XCTAssertTrue(remove.waitForExistence(timeout: UITestLaunch.elementTimeout))
+        remove.tap()
+
+        let undo = undoButton()
+        XCTAssertTrue(undo.waitForExistence(timeout: UITestLaunch.elementTimeout), "Undo button should appear")
+        undo.tap()
+
+        XCTAssertTrue(
+            app.staticTexts["Cheerios 12oz"].waitForExistence(timeout: UITestLaunch.elementTimeout),
+            "Undo should restore the removed row"
+        )
+        XCTAssertFalse(
+            UITestLaunch.element(app, TestIdentifiers.inventoryUndoToast).waitForExistence(timeout: 2),
+            "Undo should dismiss the toast"
+        )
     }
 
     // MARK: - Helpers
+
+    /// Row anchor: the visible title text inside the cell (swiping the text swipes the row).
+    private func requireRow(named name: String) throws -> XCUIElement {
+        let title = app.staticTexts[name]
+        guard title.waitForExistence(timeout: UITestLaunch.elementTimeout) else {
+            throw XCTSkip("No inventory fixture row named \(name) under --uitesting")
+        }
+        return title
+    }
+
+    /// Partial drag (not `swipeLeft()`): the row allows full swipe, and XCUITest's
+    /// built-in swipe is long enough to fire the action before we can assert on the
+    /// revealed button.
+    /// The anchor is the row's title text, so drag along the full row width using
+    /// window coordinates at the title's vertical center.
+    private func revealTrailingActions(on row: XCUIElement) {
+        let y = row.frame.midY
+        let width = app.frame.width
+        let origin = app.coordinate(withNormalizedOffset: .zero)
+        let start = origin.withOffset(CGVector(dx: width * 0.9, dy: y))
+        let end = origin.withOffset(CGVector(dx: width * 0.3, dy: y))
+        start.press(forDuration: 0.05, thenDragTo: end)
+    }
+
+    /// SwiftUI swipe actions surface as buttons; the identifier may or may not propagate,
+    /// so fall back to the visible label.
+    private func swipeAction(id: String, label: String) -> XCUIElement {
+        let byId = app.buttons[id]
+        if byId.exists { return byId }
+        let byLabel = app.buttons[label]
+        if byLabel.exists { return byLabel }
+        return app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", label)).firstMatch
+    }
+
+    private func undoButton() -> XCUIElement {
+        let byId = UITestLaunch.element(app, TestIdentifiers.inventoryUndoButton)
+        if byId.exists { return byId }
+        return app.buttons["Undo"]
+    }
 
     private func openInventoryList() {
         let byId = UITestLaunch.element(app, TestIdentifiers.allInventoryButton)
