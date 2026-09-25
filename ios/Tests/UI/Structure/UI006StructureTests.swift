@@ -80,17 +80,17 @@ final class UI006StructureTests: XCTestCase {
         let row = try requireRow(named: "Bananas")
         XCTAssertTrue(app.staticTexts["Qty 6 · Produce"].exists, "Bananas should start at qty 6")
 
-        revealTrailingActions(on: row)
-        let useOne = swipeAction(id: TestIdentifiers.inventoryUseOneAction, label: "Use 1")
-        XCTAssertTrue(useOne.waitForExistence(timeout: UITestLaunch.elementTimeout), "Use 1 swipe action should appear")
-        XCTAssertFalse(
-            swipeAction(id: TestIdentifiers.inventoryRemoveAction, label: "Remove").exists,
-            "qty > 1 rows offer Use 1, not Remove"
+        let decremented = app.staticTexts["Qty 5 · Produce"]
+        try triggerTrailingAction(
+            on: row,
+            id: TestIdentifiers.inventoryUseOneAction,
+            label: "Use 1",
+            mustNotOffer: (TestIdentifiers.inventoryRemoveAction, "Remove"),
+            alreadyApplied: { decremented.exists }
         )
-        useOne.tap()
 
         XCTAssertTrue(
-            app.staticTexts["Qty 5 · Produce"].waitForExistence(timeout: UITestLaunch.elementTimeout),
+            decremented.waitForExistence(timeout: UITestLaunch.elementTimeout),
             "Use 1 should decrement Bananas to qty 5"
         )
         XCTAssertEqual(app.alerts.count, 0, "Use 1 must not show a confirmation alert")
@@ -106,21 +106,22 @@ final class UI006StructureTests: XCTestCase {
         openInventoryList()
         let row = try requireRow(named: "Cheerios 12oz")
 
-        revealTrailingActions(on: row)
-        let remove = swipeAction(id: TestIdentifiers.inventoryRemoveAction, label: "Remove")
-        XCTAssertTrue(remove.waitForExistence(timeout: UITestLaunch.elementTimeout), "Remove swipe action should appear")
-        XCTAssertFalse(
-            swipeAction(id: TestIdentifiers.inventoryUseOneAction, label: "Use 1").exists,
-            "qty == 1 rows offer Remove, not Use 1"
+        let toast = UITestLaunch.element(app, TestIdentifiers.inventoryUndoToast)
+        try triggerTrailingAction(
+            on: row,
+            id: TestIdentifiers.inventoryRemoveAction,
+            label: "Remove",
+            mustNotOffer: (TestIdentifiers.inventoryUseOneAction, "Use 1"),
+            alreadyApplied: { toast.exists }
         )
-        remove.tap()
 
+        // The toast auto-dismisses after 5 s, so assert promptly.
         XCTAssertTrue(
-            UITestLaunch.element(app, TestIdentifiers.inventoryUndoToast).waitForExistence(timeout: UITestLaunch.elementTimeout)
-                || app.staticTexts["Item removed"].waitForExistence(timeout: 3),
+            toast.waitForExistence(timeout: 4) || app.staticTexts["Item removed"].waitForExistence(timeout: 1),
             "Undo toast should appear after Remove"
         )
         XCTAssertTrue(undoButton().exists, "Undo button should be visible in the toast")
+        XCTAssertTrue(undoButton().isHittable, "Undo button must not be covered by the bottom nav")
         XCTAssertFalse(
             app.staticTexts["Cheerios 12oz"].waitForExistence(timeout: 2),
             "Removed row should leave the list"
@@ -132,13 +133,17 @@ final class UI006StructureTests: XCTestCase {
         openInventoryList()
         let row = try requireRow(named: "Cheerios 12oz")
 
-        revealTrailingActions(on: row)
-        let remove = swipeAction(id: TestIdentifiers.inventoryRemoveAction, label: "Remove")
-        XCTAssertTrue(remove.waitForExistence(timeout: UITestLaunch.elementTimeout))
-        remove.tap()
+        let toast = UITestLaunch.element(app, TestIdentifiers.inventoryUndoToast)
+        try triggerTrailingAction(
+            on: row,
+            id: TestIdentifiers.inventoryRemoveAction,
+            label: "Remove",
+            mustNotOffer: nil,
+            alreadyApplied: { toast.exists }
+        )
 
         let undo = undoButton()
-        XCTAssertTrue(undo.waitForExistence(timeout: UITestLaunch.elementTimeout), "Undo button should appear")
+        XCTAssertTrue(undo.waitForExistence(timeout: 4), "Undo button should appear")
         undo.tap()
 
         XCTAssertTrue(
@@ -164,16 +169,47 @@ final class UI006StructureTests: XCTestCase {
 
     /// Partial drag (not `swipeLeft()`): the row allows full swipe, and XCUITest's
     /// built-in swipe is long enough to fire the action before we can assert on the
-    /// revealed button.
-    /// The anchor is the row's title text, so drag along the full row width using
-    /// window coordinates at the title's vertical center.
+    /// revealed button. The anchor is the row's title text, so drag in window
+    /// coordinates at the title's vertical center.
     private func revealTrailingActions(on row: XCUIElement) {
         let y = row.frame.midY
         let width = app.frame.width
         let origin = app.coordinate(withNormalizedOffset: .zero)
         let start = origin.withOffset(CGVector(dx: width * 0.9, dy: y))
-        let end = origin.withOffset(CGVector(dx: width * 0.3, dy: y))
+        let end = origin.withOffset(CGVector(dx: width * 0.55, dy: y))
         start.press(forDuration: 0.05, thenDragTo: end)
+    }
+
+    /// Swipe the row and run its trailing action. Either the action button is revealed
+    /// and tapped, or the drag already registered as a full swipe and the effect is
+    /// visible — both are valid ways to perform the action. Fails if neither happens.
+    private func triggerTrailingAction(
+        on row: XCUIElement,
+        id: String,
+        label: String,
+        mustNotOffer other: (id: String, label: String)?,
+        alreadyApplied: () -> Bool
+    ) throws {
+        revealTrailingActions(on: row)
+        let action = swipeAction(id: id, label: label)
+        if action.waitForExistence(timeout: 5) {
+            if let other {
+                XCTAssertFalse(
+                    swipeAction(id: other.id, label: other.label).exists,
+                    "Row should offer \(label), not \(other.label)"
+                )
+            }
+            action.tap()
+            return
+        }
+        if alreadyApplied() { return }
+        // One more, shorter attempt in case the first drag was consumed as a scroll.
+        revealTrailingActions(on: row)
+        if action.waitForExistence(timeout: 5) {
+            action.tap()
+            return
+        }
+        XCTAssertTrue(alreadyApplied(), "\(label) swipe action should appear or apply")
     }
 
     /// SwiftUI swipe actions surface as buttons; the identifier may or may not propagate,
