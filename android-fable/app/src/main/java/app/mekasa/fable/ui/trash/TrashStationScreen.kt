@@ -145,8 +145,10 @@ fun TrashStationScreen(
                         height = if (kiosk) 320 else 220,
                     )
                 }
-                item {
-                    AnimatedVisibility(visible = coolingDown) {
+                // Conditional item (not AnimatedVisibility): a zero-height slot would still
+                // add the column spacing and shift the idle layout / snapshot baseline.
+                if (coolingDown) {
+                    item(key = "cooldown") {
                         Card(tint = palette.accentTint, modifier = Modifier.testTag(TestTags.SCAN_COOLDOWN)) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
                                 Text(
