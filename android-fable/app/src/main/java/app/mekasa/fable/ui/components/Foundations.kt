@@ -49,6 +49,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.mekasa.fable.ui.TestTags
 import app.mekasa.fable.ui.theme.MekasaTheme
 import app.mekasa.fable.ui.theme.Shapes
 import app.mekasa.fable.ui.theme.Space
@@ -92,7 +93,7 @@ fun ScreenHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onBack != null) {
-            IconButton(onClick = onBack, modifier = Modifier.testTag("BackButton")) {
+            IconButton(onClick = onBack, modifier = Modifier.testTag(TestTags.BACK_BUTTON)) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = palette.text)
             }
         } else {
@@ -119,6 +120,7 @@ fun SectionHeading(
     modifier: Modifier = Modifier,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
+    actionTag: String? = null,
 ) {
     val palette = MekasaTheme.palette
     Row(
@@ -128,7 +130,10 @@ fun SectionHeading(
     ) {
         Text(title, style = Type.subhead, color = palette.text)
         if (actionLabel != null && onAction != null) {
-            TextButton(onClick = onAction) {
+            TextButton(
+                onClick = onAction,
+                modifier = if (actionTag != null) Modifier.testTag(actionTag) else Modifier,
+            ) {
                 Text(actionLabel, style = Type.caption, color = palette.accent)
             }
         }

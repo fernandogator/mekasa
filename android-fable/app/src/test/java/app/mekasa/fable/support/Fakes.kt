@@ -191,6 +191,23 @@ open class FakeApi : MekasaApi {
         return emptyList()
     }
 
+    override suspend fun deleteInventoryItem(token: String, householdId: String, itemId: String) {
+        record("deleteInventory:$itemId")
+        val idx = inventory.indexOfFirst { it.id == itemId }
+        inventory[idx] = inventory[idx].copy(deleted = true)
+    }
+
+    override suspend fun restoreInventoryItem(token: String, householdId: String, itemId: String): InventoryItem {
+        record("restoreInventory:$itemId")
+        val idx = inventory.indexOfFirst { it.id == itemId }
+        return inventory[idx].copy(deleted = false).also { inventory[idx] = it }
+    }
+
+    override suspend fun purgeInventoryItem(token: String, householdId: String, itemId: String) {
+        record("purgeInventory:$itemId")
+        inventory.removeAll { it.id == itemId }
+    }
+
     override suspend fun listShopping(token: String, householdId: String): ShoppingListResponse {
         record("listShopping")
         return ShoppingListResponse(householdId = householdId, items = shopping.toList())

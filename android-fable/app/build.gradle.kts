@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.roborazzi)
 }
 
 android {
@@ -60,6 +61,22 @@ android {
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Robolectric needs the merged manifest + resources for Compose UI tests (Layers 1 & 2).
+        unitTests.isIncludeAndroidResources = true
+        unitTests.all { test ->
+            test.maxHeapSize = "2g"
+            test.systemProperty("robolectric.graphicsMode", "NATIVE")
+            test.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
+        }
+    }
+}
+
+// Layer 2 snapshot baselines live with the other approved baselines (design/baselines/README.md).
+// Comparison images (`*_compare.png`) for failed verifies go to build/outputs/roborazzi.
+roborazzi {
+    outputDir.set(rootProject.file("../design/baselines/android"))
+    compare {
+        outputDir.set(layout.buildDirectory.dir("outputs/roborazzi"))
     }
 }
 
@@ -104,6 +121,18 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.ktor.client.mock)
+
+    // Layer 1 (structural) + Layer 2 (snapshot) run on the JVM via Robolectric.
+    testImplementation(libs.androidx.junit)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
+    testImplementation(libs.coil.test)
+    debugImplementation(libs.compose.ui.test.manifest)
+
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.compose.ui.test.junit4)
 }

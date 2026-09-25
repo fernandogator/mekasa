@@ -54,6 +54,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import app.mekasa.fable.session.SessionState
 import app.mekasa.fable.session.SessionViewModel
+import app.mekasa.fable.ui.TestTags
 import app.mekasa.fable.ui.additems.AddItemsSheet
 import app.mekasa.fable.ui.components.Backdrop
 import app.mekasa.fable.ui.dashboard.DashboardScreen
@@ -95,6 +96,7 @@ enum class HomeTab(val route: String, val label: String, val icon: ImageVector, 
 fun HomeShell(
     state: SessionState,
     session: SessionViewModel,
+    startRoute: String = Routes.DASHBOARD,
 ) {
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
@@ -106,7 +108,7 @@ fun HomeShell(
         if (!state.isDemo) session.refreshAll()
     }
 
-    Backdrop(modifier = Modifier.testTag("HomeShell")) {
+    Backdrop(modifier = Modifier.testTag(TestTags.MAIN_SHELL_VIEW)) {
         Scaffold(
             containerColor = Color.Transparent,
             bottomBar = {
@@ -126,7 +128,7 @@ fun HomeShell(
             val bottomInset = PaddingValues(bottom = innerPadding.calculateBottomPadding())
             NavHost(
                 navController = navController,
-                startDestination = Routes.DASHBOARD,
+                startDestination = startRoute,
                 enterTransition = { fadeIn() },
                 exitTransition = { fadeOut() },
                 popEnterTransition = { fadeIn() },
@@ -161,8 +163,11 @@ fun HomeShell(
                 composable(Routes.INVENTORY) {
                     InventoryScreen(
                         items = state.data.inventory,
+                        pendingRemoval = state.pendingRemoval,
                         onBack = { navController.popBackStack() },
                         onConsume = { session.consume(it.id) },
+                        onRemove = { session.removeInventoryItem(it.id) },
+                        onUndoRemove = session::undoInventoryRemove,
                         onOpenItem = { navController.navigate(Routes.item(it.id)) },
                         onAdd = { showAddSheet = true },
                     )
@@ -226,7 +231,7 @@ private fun BottomPillNav(
             .navigationBarsPadding()
             .padding(horizontal = Space.base)
             .padding(bottom = Space.base, top = Space.lg)
-            .testTag("BottomNav"),
+            .testTag(TestTags.BOTTOM_NAV_BAR),
         contentAlignment = Alignment.BottomCenter,
     ) {
         Row(
@@ -249,7 +254,7 @@ private fun BottomPillNav(
                 .offset(y = (-4).dp)
                 .size(56.dp)
                 .border(4.dp, palette.surface, CircleShape)
-                .testTag("AddFab"),
+                .testTag(TestTags.ADD_ITEM_BUTTON),
             shape = CircleShape,
             containerColor = palette.accent,
             contentColor = Color.White,
@@ -263,7 +268,7 @@ private fun BottomPillNav(
 private fun RowScope.NavSlot(tab: HomeTab, selected: Boolean, onSelect: (HomeTab) -> Unit) {
     IconButton(
         onClick = { onSelect(tab) },
-        modifier = Modifier.weight(1f).testTag("Tab-${tab.label}"),
+        modifier = Modifier.weight(1f).testTag(TestTags.tab(tab.label)),
     ) {
         Icon(
             imageVector = if (selected) tab.selectedIcon else tab.icon,

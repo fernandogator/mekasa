@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import app.mekasa.fable.data.model.InventoryItem
 import app.mekasa.fable.session.SessionState
 import app.mekasa.fable.session.SessionViewModel
+import app.mekasa.fable.ui.TestTags
 import app.mekasa.fable.ui.components.Card
 import app.mekasa.fable.ui.components.Chip
 import app.mekasa.fable.ui.components.HomePhoto
@@ -67,7 +68,7 @@ fun DashboardScreen(
     val approvals = data.pendingApprovals
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().testTag("DashboardScreen"),
+        modifier = Modifier.fillMaxSize().testTag(TestTags.DASHBOARD_VIEW),
         contentPadding = PaddingValues(
             start = Space.lg,
             end = Space.lg,
@@ -89,7 +90,7 @@ fun DashboardScreen(
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(Space.md)) {
                 StatCard(
-                    modifier = Modifier.weight(1f).testTag("LowStockStat"),
+                    modifier = Modifier.weight(1f).testTag(TestTags.LOW_STOCK_STAT_BUTTON),
                     label = "Low stock",
                     value = plural(lowStock.size, "item"),
                     icon = Icons.Outlined.WarningAmber,
@@ -98,7 +99,7 @@ fun DashboardScreen(
                     onClick = onOpenInventory,
                 )
                 StatCard(
-                    modifier = Modifier.weight(1f).testTag("SpendStat"),
+                    modifier = Modifier.weight(1f).testTag(TestTags.SPEND_STAT_BUTTON),
                     label = "Spend",
                     value = data.spending?.let { moneyCompact(it.total, it.currency) } ?: "—",
                     suffix = "/${data.spendingPeriod.take(2)}",
@@ -138,7 +139,12 @@ fun DashboardScreen(
         }
 
         item {
-            SectionHeading("Low stock", actionLabel = "See inventory", onAction = onOpenInventory)
+            SectionHeading(
+                "Low stock",
+                actionLabel = "See inventory",
+                onAction = onOpenInventory,
+                actionTag = TestTags.ALL_INVENTORY_BUTTON,
+            )
         }
         if (lowStock.isEmpty()) {
             item {
@@ -156,7 +162,7 @@ fun DashboardScreen(
         }
 
         item {
-            SectionHeading("Shopping list", actionLabel = "Open list", onAction = onOpenList)
+            SectionHeading("Shopping list", actionLabel = "Open list", onAction = onOpenList, actionTag = TestTags.OPEN_LIST_BUTTON)
             Spacer(Modifier.height(Space.sm))
             val open = data.openShopping
             Card(onClick = onOpenList) {
@@ -208,7 +214,7 @@ private fun HeroBand(
                 .height(190.dp)
                 .clip(Shapes.card)
                 .clickable(onClick = onEdit)
-                .testTag("HomeHero"),
+                .testTag(TestTags.HOME_PHOTO_HERO),
         ) {
             HomePhoto(photoUrl = photoUrl, modifier = Modifier.fillMaxSize())
             Box(
@@ -236,7 +242,7 @@ private fun HeroBand(
                     .padding(Space.md)
                     .size(40.dp)
                     .background(Color.White.copy(alpha = 0.25f), CircleShape)
-                    .testTag("EditHomeButton"),
+                    .testTag(TestTags.EDIT_HOME_BUTTON),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.Filled.PhotoCamera, contentDescription = "Edit home photo", tint = Color.White, modifier = Modifier.size(20.dp))

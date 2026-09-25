@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.mekasa.fable.session.SessionState
 import app.mekasa.fable.session.SessionViewModel
+import app.mekasa.fable.ui.TestTags
 import app.mekasa.fable.ui.components.Card
 import app.mekasa.fable.ui.components.EmptyMessage
 import app.mekasa.fable.ui.components.ScreenHeader
@@ -51,7 +52,7 @@ fun SpendingScreen(
     val report = state.data.spending
     val period = state.data.spendingPeriod
 
-    Column(modifier = Modifier.fillMaxSize().testTag("SpendingScreen")) {
+    Column(modifier = Modifier.fillMaxSize().testTag(TestTags.SPENDING_VIEW)) {
         ScreenHeader(title = "Spending", eyebrow = "Household total")
         Column(
             modifier = Modifier
@@ -64,9 +65,9 @@ fun SpendingScreen(
             PeriodToggle(selected = period, onSelect = session::selectSpendingPeriod)
 
             if (report == null) {
-                EmptyMessage("No spending recorded yet. Receipts with prices show up here.", modifier = Modifier.testTag("SpendingEmpty"))
+                EmptyMessage("No spending recorded yet. Receipts with prices show up here.", modifier = Modifier.testTag(TestTags.SPENDING_EMPTY))
             } else {
-                Card(modifier = Modifier.testTag("SpendingTotal")) {
+                Card(modifier = Modifier.testTag(TestTags.SPENDING_TOTAL)) {
                     SectionLabel("This ${report.period}")
                     Text(money(report.total, report.currency), style = Type.hero, color = palette.text)
                     Text(
@@ -106,7 +107,7 @@ private fun PeriodToggle(selected: String, onSelect: (String) -> Unit) {
             .background(palette.surfaceElevated, Shapes.pill)
             .border(1.dp, palette.brandMuted.copy(alpha = 0.3f), Shapes.pill)
             .padding(4.dp)
-            .testTag("PeriodToggle"),
+            .testTag(TestTags.PERIOD_TOGGLE),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         PERIODS.forEach { (key, label) ->
@@ -117,7 +118,7 @@ private fun PeriodToggle(selected: String, onSelect: (String) -> Unit) {
                     .background(if (active) palette.brand else Color.Transparent, Shapes.pill)
                     .clickable { onSelect(key) }
                     .padding(vertical = Space.sm)
-                    .testTag("Period-$key"),
+                    .testTag(TestTags.period(key)),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(

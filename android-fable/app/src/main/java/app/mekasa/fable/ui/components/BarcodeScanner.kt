@@ -46,6 +46,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import app.mekasa.fable.ui.TestTags
 import app.mekasa.fable.ui.theme.MekasaTheme
 import app.mekasa.fable.ui.theme.Shapes
 import app.mekasa.fable.ui.theme.Space
@@ -81,7 +82,7 @@ fun BarcodeScanner(
             .height(height.dp)
             .clip(Shapes.card)
             .background(palette.brand)
-            .testTag("BarcodeScanner"),
+            .testTag(TestTags.BARCODE_SCANNER),
     ) {
         if (granted) {
             CameraPreview(generation = generation, onBarcode = onBarcode, modifier = Modifier.fillMaxSize())
@@ -111,7 +112,7 @@ fun BarcodeScanner(
                 SecondaryButton(
                     text = "Allow camera",
                     onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
-                    modifier = Modifier.testTag("AllowCamera"),
+                    modifier = Modifier.testTag(TestTags.ALLOW_CAMERA),
                 )
             }
         }

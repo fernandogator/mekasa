@@ -130,7 +130,7 @@ class DemoBackend(
 
     // ---------------------------------------------------------- inventory
 
-    override suspend fun inventory(householdId: String): List<InventoryItem> = lock.withLock { inventoryRows.toList() }
+    override suspend fun inventory(householdId: String): List<InventoryItem> = lock.withLock { inventoryRows.filterNot { it.deleted } }
 
     override suspend fun addInventory(householdId: String, draft: InventoryDraft): InventoryItem = lock.withLock {
         InventoryItem(
@@ -188,6 +188,17 @@ class DemoBackend(
     }
 
     override suspend fun unknownScans(householdId: String): List<UnknownBarcodeEvent> = lock.withLock { unknownRows.toList() }
+
+    override suspend fun softDeleteInventory(householdId: String, itemId: String) {
+        replaceInventory(itemId) { it.copy(deleted = true) }
+    }
+
+    override suspend fun restoreInventory(householdId: String, itemId: String): InventoryItem =
+        replaceInventory(itemId) { it.copy(deleted = false) }
+
+    override suspend fun purgeInventory(householdId: String, itemId: String) {
+        lock.withLock { inventoryRows.removeAll { it.id == itemId } }
+    }
 
     private suspend fun replaceInventory(itemId: String, transform: (InventoryItem) -> InventoryItem): InventoryItem =
         lock.withLock {

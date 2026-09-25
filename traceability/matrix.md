@@ -1,7 +1,7 @@
 # Mekasa Traceability Matrix
 
 Spec version: 1.0  
-Last updated: 2026-09-12
+Last updated: 2026-09-25
 
 | Requirement ID | Description | Design Artifact | Test Case ID | Test File | Status | Last Verified |
 |----------------|-------------|-----------------|--------------|-----------|--------|---------------|
@@ -26,12 +26,12 @@ Last updated: 2026-09-12
 | REQ-019 | Household Member Invitation | design/mockups/FamilyMembers.jsx | done | done | unit (invites API) | InviteView + FamilyMembersView |
 | REQ-020 | Real-Time Multi-Device Sync | — | FirestoreDocumentMapperTests | ios/MekasaTests/FirestoreDocumentMapperTests.swift | unit (doc map) + listeners | 2026-09-19 |
 | REQ-022 | Expired Session Auto Sign-Out | design/mockups/OnboardingHouseholdSetup.jsx | SessionExpiryTests / test_auth_session | ios/MekasaTests/SessionExpiryTests.swift; tests/backend/test_auth_session.py | implemented | 2026-09-10 |
-| UI-001 | Native Android Interface | design/mockups/ (all screens) | pending | android/src/test/ui/ | not tested | — |
+| UI-001 | Native Android Interface | design/mockups/ (all screens); design/baselines/android/ | android-fable Layer 1 (*UITest) + Layer 2 (ScreenSnapshotTest, 16 baselines) | android-fable/app/src/test/java/app/mekasa/fable/ui/*UITest.kt; android-fable/app/src/test/java/app/mekasa/fable/ui/ScreenSnapshotTest.kt | tested (Robolectric structural + Roborazzi snapshot, CI job android-fable) | 2026-09-25 |
 | UI-002 | Native iOS Interface | design/mockups/ (all screens) | pending | ios/MekasaTests/UI/ | not tested | — |
-| UI-003 | Onboarding Flow | design/mockups/OnboardingStoreSelection.jsx | pending | android/src/test/ui/OnboardingUITest.kt; ios/MekasaTests/UI/OnboardingUITest.swift | not tested | — |
-| UI-004 | Home Dashboard | design/mockups/Dashboard.jsx | pending | android/src/test/ui/DashboardUITest.kt; ios/MekasaTests/UI/DashboardUITest.swift | not tested | — |
-| UI-005 | Trash Station Mode | design/mockups/TrashStationMode.jsx | pending | android/src/test/ui/TrashStationUITest.kt; ios/MekasaTests/UI/TrashStationUITest.swift | not tested | — |
-| UI-006 | Inventory List Thumbnails and Item Detail | design/pages/inventory-list.html; design/pages/item-detail.html; design/mockups/InventoryList.jsx; design/mockups/ItemDetail.jsx | pending | android/src/test/ui/InventoryScreenUITest.kt; ios/MekasaTests/UI/InventoryScreenUITest.swift | not tested | — |
+| UI-003 | Onboarding Flow | design/mockups/OnboardingStoreSelection.jsx; design/baselines/android/{Welcome,HouseholdName,Address,StoreSelection}_baseline.png | OnboardingUITest (Android); ScreenSnapshotTest.welcome/householdName/address/storeSelection | android-fable/app/src/test/java/app/mekasa/fable/ui/OnboardingUITest.kt; ios/MekasaTests/UI/OnboardingUITest.swift | tested (Android structural + snapshot); iOS pending | 2026-09-25 |
+| UI-004 | Home Dashboard | design/mockups/Dashboard.jsx; design/baselines/android/Dashboard_baseline.png | DashboardUITest (Android); ScreenSnapshotTest.dashboard | android-fable/app/src/test/java/app/mekasa/fable/ui/DashboardUITest.kt; ios/MekasaTests/UI/DashboardUITest.swift | tested (Android structural + snapshot); iOS pending | 2026-09-25 |
+| UI-005 | Trash Station Mode | design/mockups/TrashStationMode.jsx; design/baselines/android/TrashStation_baseline.png | TrashStationModeUITest (Android, kiosk + dispose; camera fallback on JVM); ScreenSnapshotTest.trashStation | android-fable/app/src/test/java/app/mekasa/fable/ui/TrashStationModeUITest.kt; ios/MekasaTests/UI/TrashStationUITest.swift | tested (Android structural + snapshot); iOS pending | 2026-09-25 |
+| UI-006 | Inventory List Thumbnails and Item Detail | design/pages/inventory-list.html; design/pages/item-detail.html; design/mockups/InventoryList.jsx; design/mockups/ItemDetail.jsx; design/baselines/android/{InventoryList,InventorySwipeUseOne,InventorySwipeRemove,InventoryUndoToast,ItemDetail}_baseline.png | InventoryScreenUITest + ItemDetailUITest (Android, incl. REQ-INV-014..017 swipe/undo via performTouchInput); ScreenSnapshotTest.inventory*/itemDetail; ios/Tests/UI/Structure/UI006StructureTests.swift; ios/Tests/Snapshots/UI006SnapshotTests.swift | android-fable/app/src/test/java/app/mekasa/fable/ui/InventoryScreenUITest.kt; android-fable/app/src/test/java/app/mekasa/fable/ui/ItemDetailUITest.kt; ios/Tests/UI/Structure/UI006StructureTests.swift | tested (Android structural + snapshot; iOS structural + snapshot) | 2026-09-25 |
 | NFR-001 | Scan Performance | — | pending | pending | not tested | — |
 | NFR-002 | Data Privacy | — | pending | pending | not tested | — |
 | NFR-003 | Offline Resilience | — | pending | pending | not tested | — |

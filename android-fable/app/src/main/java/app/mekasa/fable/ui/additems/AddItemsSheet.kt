@@ -72,6 +72,7 @@ import app.mekasa.fable.data.model.ProductHit
 import app.mekasa.fable.data.model.ReceiptLine
 import app.mekasa.fable.session.SessionState
 import app.mekasa.fable.session.SessionViewModel
+import app.mekasa.fable.ui.TestTags
 import app.mekasa.fable.ui.components.Card
 import app.mekasa.fable.ui.components.Chip
 import app.mekasa.fable.ui.components.EmptyMessage
@@ -145,7 +146,7 @@ fun AddItemsSheet(
         containerColor = palette.surface,
         shape = Shapes.sheet,
         dragHandle = null,
-        modifier = Modifier.testTag("AddItemsSheet"),
+        modifier = Modifier.testTag(TestTags.ADD_ITEMS_HUB),
     ) {
         Column(
             modifier = Modifier
@@ -212,7 +213,7 @@ private fun SheetTitle(step: AddStep, onBack: () -> Unit, onClose: () -> Unit) {
     }
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         if (step.depth > 0) {
-            IconButton(onClick = onBack, modifier = Modifier.testTag("AddBack")) {
+            IconButton(onClick = onBack, modifier = Modifier.testTag(TestTags.ADD_BACK)) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = palette.text)
             }
         } else {
@@ -234,7 +235,7 @@ private fun HubStep(onPick: (AddStep) -> Unit, onOpenTrash: () -> Unit) {
             title = "Scan barcode",
             detail = "Point the camera at a UPC to look it up",
             tint = palette.accent,
-            tag = "Add-Barcode",
+            tag = TestTags.ADD_BARCODE,
             onClick = { onPick(AddStep.Barcode) },
         )
         HubOption(
@@ -242,7 +243,7 @@ private fun HubStep(onPick: (AddStep) -> Unit, onOpenTrash: () -> Unit) {
             title = "Search products",
             detail = "Find it by name in the catalog",
             tint = palette.brand,
-            tag = "Add-Search",
+            tag = TestTags.ADD_SEARCH,
             onClick = { onPick(AddStep.Search) },
         )
         HubOption(
@@ -250,7 +251,7 @@ private fun HubStep(onPick: (AddStep) -> Unit, onOpenTrash: () -> Unit) {
             title = "Voice",
             detail = "“Two gallons of milk” — we parse the rest",
             tint = palette.success,
-            tag = "Add-Voice",
+            tag = TestTags.ADD_VOICE,
             onClick = { onPick(AddStep.Voice) },
         )
         HubOption(
@@ -258,7 +259,7 @@ private fun HubStep(onPick: (AddStep) -> Unit, onOpenTrash: () -> Unit) {
             title = "Receipt",
             detail = "Add a whole grocery haul at once",
             tint = palette.warning,
-            tag = "Add-Receipt",
+            tag = TestTags.ADD_RECEIPT,
             onClick = { onPick(AddStep.Receipt) },
         )
         Spacer(Modifier.height(Space.xs))
@@ -267,7 +268,7 @@ private fun HubStep(onPick: (AddStep) -> Unit, onOpenTrash: () -> Unit) {
                 .fillMaxWidth()
                 .clickable(onClick = onOpenTrash)
                 .padding(vertical = Space.sm)
-                .testTag("Add-Trash"),
+                .testTag(TestTags.ADD_TRASH),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(Icons.Outlined.RestoreFromTrash, contentDescription = null, tint = palette.textMuted, modifier = Modifier.size(20.dp))
@@ -353,7 +354,7 @@ private fun BarcodeStep(
             keyboardType = KeyboardType.Number,
             imeAction = ImeAction.Search,
             onSubmit = { lookup(manual) },
-            testTag = "ManualBarcode",
+            testTag = TestTags.MANUAL_BARCODE,
         )
         val pending = looking
         if (pending != null) {
@@ -371,7 +372,7 @@ private fun BarcodeStep(
                     onClick = {
                         onDraft(InventoryDraft(name = "", barcode = missed.barcode, source = "barcode"))
                     },
-                    modifier = Modifier.testTag("AddUnknownBarcode"),
+                    modifier = Modifier.testTag(TestTags.ADD_UNKNOWN_BARCODE),
                 )
             }
         }
@@ -379,7 +380,7 @@ private fun BarcodeStep(
             text = "Look up",
             onClick = { lookup(manual) },
             enabled = manual.length >= 6 && looking == null,
-            modifier = Modifier.testTag("LookupBarcode"),
+            modifier = Modifier.testTag(TestTags.LOOKUP_BARCODE),
         )
     }
 }
@@ -439,14 +440,14 @@ private fun SearchStep(
             capitalization = KeyboardCapitalization.Words,
             imeAction = ImeAction.Search,
             onSubmit = ::search,
-            testTag = "SearchQuery",
+            testTag = TestTags.SEARCH_QUERY,
         )
         PrimaryButton(
             text = "Search",
             onClick = ::search,
             enabled = query.trim().length >= 2,
             loading = searching,
-            modifier = Modifier.testTag("SearchProducts"),
+            modifier = Modifier.testTag(TestTags.SEARCH_PRODUCTS),
         )
         ResultList(
             results = results,
@@ -475,7 +476,7 @@ private fun ResultList(
             verticalArrangement = Arrangement.spacedBy(Space.sm),
         ) {
             items(results, key = { it.barcode ?: it.name }) { hit ->
-                Card(onClick = { onPick(hit) }, modifier = Modifier.testTag("Result-${hit.name}"), padding = androidx.compose.foundation.layout.PaddingValues(Space.md)) {
+                Card(onClick = { onPick(hit) }, modifier = Modifier.testTag(TestTags.result(hit.name)), padding = androidx.compose.foundation.layout.PaddingValues(Space.md)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         ProductThumbnail(imageUrl = hit.imageUrl, name = hit.name, size = 44.dp)
                         Spacer(Modifier.width(Space.md))
@@ -499,7 +500,7 @@ private fun ResultList(
         LinkButton(
             text = "Add “$fallbackName” without a match",
             onClick = onManual,
-            modifier = Modifier.testTag("AddWithoutMatch"),
+            modifier = Modifier.testTag(TestTags.ADD_WITHOUT_MATCH),
         )
     }
 }
@@ -551,7 +552,7 @@ private fun VoiceStep(
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(Space.base)) {
-        Card(tint = palette.successTint, onClick = startListening, modifier = Modifier.testTag("VoiceMic")) {
+        Card(tint = palette.successTint, onClick = startListening, modifier = Modifier.testTag(TestTags.VOICE_MIC)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier.size(56.dp).background(palette.success, CircleShape),
@@ -573,13 +574,13 @@ private fun VoiceStep(
             placeholder = "two gallons of milk",
             imeAction = ImeAction.Done,
             onSubmit = { interpret(phrase) },
-            testTag = "VoicePhrase",
+            testTag = TestTags.VOICE_PHRASE,
         )
         SecondaryButton(
             text = "Interpret",
             onClick = { interpret(phrase) },
             enabled = phrase.isNotBlank(),
-            modifier = Modifier.testTag("InterpretPhrase"),
+            modifier = Modifier.testTag(TestTags.INTERPRET_PHRASE),
         )
         val p = parsed
         if (phrase.isNotBlank() && p == null) {
@@ -589,7 +590,7 @@ private fun VoiceStep(
             Card {
                 SectionLabel("Heard")
                 Spacer(Modifier.height(Space.xs))
-                Text("${p.quantity} × ${p.displayName}", style = Type.subhead, color = palette.text, modifier = Modifier.testTag("VoiceParsed"))
+                Text("${p.quantity} × ${p.displayName}", style = Type.subhead, color = palette.text, modifier = Modifier.testTag(TestTags.VOICE_PARSED))
             }
             if (searching) BusyLine("Matching “${p.query}”…")
             ResultList(
@@ -665,7 +666,7 @@ private fun ReceiptStep(
                 },
                 icon = Icons.Filled.PhotoCamera,
                 enabled = !busy && !encoding,
-                modifier = Modifier.weight(1f).testTag("ReceiptCamera"),
+                modifier = Modifier.weight(1f).testTag(TestTags.RECEIPT_CAMERA),
             )
             SecondaryButton(
                 text = "Gallery",
@@ -674,7 +675,7 @@ private fun ReceiptStep(
                         .onFailure { legacyPicker.launch("image/*") }
                 },
                 enabled = !busy && !encoding,
-                modifier = Modifier.weight(1f).testTag("ReceiptGallery"),
+                modifier = Modifier.weight(1f).testTag(TestTags.RECEIPT_GALLERY),
             )
         }
         LabeledField(
@@ -685,13 +686,13 @@ private fun ReceiptStep(
             singleLine = false,
             capitalization = KeyboardCapitalization.Characters,
             imeAction = ImeAction.Default,
-            testTag = "ReceiptText",
+            testTag = TestTags.RECEIPT_TEXT,
         )
         if (isDemo) {
             LinkButton(
                 text = "Use the sample Publix receipt",
                 onClick = { rawText = DemoBackend.DEMO_RECEIPT_TEXT },
-                modifier = Modifier.testTag("SampleReceipt"),
+                modifier = Modifier.testTag(TestTags.SAMPLE_RECEIPT),
             )
         }
         PrimaryButton(
@@ -699,7 +700,7 @@ private fun ReceiptStep(
             onClick = { session.scanReceipt(rawText = rawText.trim(), onResult = onScanned) },
             enabled = rawText.isNotBlank() && !busy,
             loading = busy || encoding,
-            modifier = Modifier.testTag("ScanReceipt"),
+            modifier = Modifier.testTag(TestTags.SCAN_RECEIPT),
         )
     }
 }
@@ -737,7 +738,7 @@ private fun ReceiptConfirmStep(
                             selected.value = if (checked) picked - index else picked + index
                         },
                         padding = androidx.compose.foundation.layout.PaddingValues(Space.md),
-                        modifier = Modifier.testTag("ReceiptLine-$index"),
+                        modifier = Modifier.testTag(TestTags.receiptLine(index)),
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(
@@ -784,7 +785,7 @@ private fun ReceiptConfirmStep(
             },
             enabled = picked.isNotEmpty() && !busy,
             loading = busy,
-            modifier = Modifier.testTag("SaveReceipt"),
+            modifier = Modifier.testTag(TestTags.SAVE_RECEIPT),
         )
     }
 }
@@ -822,7 +823,7 @@ private fun ConfirmStep(
             onValueChange = { name = it },
             placeholder = "What is it?",
             capitalization = KeyboardCapitalization.Words,
-            testTag = "ConfirmName",
+            testTag = TestTags.CONFIRM_NAME,
         )
         LabeledField(
             label = "Category",
@@ -830,20 +831,20 @@ private fun ConfirmStep(
             onValueChange = { category = it },
             placeholder = "Beverages",
             capitalization = KeyboardCapitalization.Words,
-            testTag = "ConfirmCategory",
+            testTag = TestTags.CONFIRM_CATEGORY,
         )
         Column {
             SectionLabel("Quantity")
             Spacer(Modifier.height(Space.sm))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                StepButton(Icons.Filled.Remove, enabled = quantity > 1, tag = "QtyMinus") { quantity-- }
+                StepButton(Icons.Filled.Remove, enabled = quantity > 1, tag = TestTags.QTY_MINUS) { quantity-- }
                 Text(
                     quantity.toString(),
                     style = Type.stat,
                     color = palette.text,
-                    modifier = Modifier.padding(horizontal = Space.lg).testTag("QtyValue"),
+                    modifier = Modifier.padding(horizontal = Space.lg).testTag(TestTags.QTY_VALUE),
                 )
-                StepButton(Icons.Filled.Add, enabled = quantity < 999, tag = "QtyPlus") { quantity++ }
+                StepButton(Icons.Filled.Add, enabled = quantity < 999, tag = TestTags.QTY_PLUS) { quantity++ }
             }
         }
         LabeledField(
@@ -853,7 +854,7 @@ private fun ConfirmStep(
             placeholder = "3.49",
             keyboardType = KeyboardType.Decimal,
             imeAction = ImeAction.Done,
-            testTag = "ConfirmPrice",
+            testTag = TestTags.CONFIRM_PRICE,
         )
         PrimaryButton(
             text = "Add to inventory",
@@ -870,7 +871,7 @@ private fun ConfirmStep(
             enabled = name.isNotBlank() && !busy,
             loading = busy,
             icon = Icons.Filled.Check,
-            modifier = Modifier.testTag("SaveItem"),
+            modifier = Modifier.testTag(TestTags.SAVE_ITEM),
         )
     }
 }
