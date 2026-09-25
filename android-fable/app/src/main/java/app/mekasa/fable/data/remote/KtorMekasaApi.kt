@@ -192,6 +192,15 @@ class KtorMekasaApi(
     override suspend fun listUnknownScans(token: String, householdId: String): List<UnknownBarcodeEvent> =
         call(HttpMethod.Get, "/v1/households/$householdId/trash-scans/unknown", token)
 
+    override suspend fun deleteInventoryItem(token: String, householdId: String, itemId: String) =
+        callNoContent(HttpMethod.Delete, "/v1/households/$householdId/inventory/$itemId", token)
+
+    override suspend fun restoreInventoryItem(token: String, householdId: String, itemId: String): InventoryItem =
+        call(HttpMethod.Post, "/v1/households/$householdId/inventory/$itemId/restore", token)
+
+    override suspend fun purgeInventoryItem(token: String, householdId: String, itemId: String) =
+        callNoContent(HttpMethod.Post, "/v1/households/$householdId/inventory/$itemId/purge", token)
+
     override suspend fun listShopping(token: String, householdId: String): ShoppingListResponse =
         call(HttpMethod.Get, "/v1/households/$householdId/shopping-list", token)
 
@@ -298,6 +307,15 @@ class KtorMekasaApi(
             extra()
         }
         return unwrap(response)
+    }
+
+    /** For 204 routes (soft delete, purge): success is the status alone. */
+    private suspend fun callNoContent(method: HttpMethod, path: String, token: String) {
+        val response = client.request(root + path) {
+            this.method = method
+            bearerAuth(token)
+        }
+        if (!response.status.isSuccess()) throw response.toApiException()
     }
 
     private suspend inline fun <reified T> unwrap(response: HttpResponse): T {

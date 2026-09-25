@@ -51,6 +51,15 @@ interface HouseholdBackend {
     suspend fun refreshImage(householdId: String, itemId: String): InventoryItem
     suspend fun unknownScans(householdId: String): List<UnknownBarcodeEvent>
 
+    /** REQ-INV-016: hide the row server-side but keep the document for [restoreInventory]. */
+    suspend fun softDeleteInventory(householdId: String, itemId: String)
+
+    /** REQ-INV-017: bring a soft-deleted item back. */
+    suspend fun restoreInventory(householdId: String, itemId: String): InventoryItem
+
+    /** REQ-INV-018: hard-delete once the undo window has passed. */
+    suspend fun purgeInventory(householdId: String, itemId: String)
+
     suspend fun shoppingList(householdId: String): List<ShoppingItem>
     suspend fun addShoppingItem(householdId: String, name: String, quantity: Int): ShoppingItem
     suspend fun setShoppingChecked(householdId: String, itemId: String, checked: Boolean): ShoppingItem

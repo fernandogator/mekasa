@@ -18,6 +18,7 @@ import app.mekasa.fable.data.remote.MekasaApi
 import app.mekasa.fable.data.remote.RemoteBackend
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +39,8 @@ class SessionViewModel(
     private val emailMemory: EmailMemory = InMemoryEmailMemory(),
     allowTestTokenSignIn: Boolean = false,
     private val demoBackendFactory: () -> HouseholdBackend = { DemoBackend() },
+    /** REQ-INV-016 AC3 / REQ-INV-018: how long Undo stays available before the purge. */
+    private val undoWindowMillis: Long = UNDO_WINDOW_MILLIS,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
@@ -54,6 +57,7 @@ class SessionViewModel(
     private var idToken: String? = null
     private var backend: HouseholdBackend? = null
     private var authWatcher: Job? = null
+    private var purgeJob: Job? = null
 
     private val current: SessionState get() = _state.value
 
@@ -118,6 +122,8 @@ class SessionViewModel(
     private fun endSession(notice: String?) {
         authWatcher?.cancel()
         authWatcher = null
+        purgeJob?.cancel()
+        purgeJob = null
         runCatching { auth.signOut() }
         val remembered = current.account?.email?.takeIf { !current.isDemo } ?: current.rememberedEmail
         emailMemory.save(remembered)
@@ -334,6 +340,59 @@ class SessionViewModel(
         replaceInventory(updated)
     }
 
+    /**
+     * REQ-INV-015/016: Remove hides the row at once, soft-deletes it server-side and starts
+     * the undo window. Only one removal is undoable at a time; starting another purges the
+     * previous one immediately.
+     */
+    fun removeInventoryItem(itemId: String) {
+        val inventory = current.data.inventory
+        val index = inventory.indexOfFirst { it.id == itemId }
+        if (index < 0) return
+        val item = inventory[index]
+
+        purgeJob?.cancel()
+        current.pendingRemoval?.let { previous -> guarded { require().purgeInventory(householdId(), previous.item.id) } }
+
+        _state.update {
+            it.copy(
+                data = it.data.copy(inventory = it.data.inventory.filterNot { row -> row.id == itemId }),
+                pendingRemoval = PendingRemoval(item, index),
+            )
+        }
+        guarded(onFailure = { cancelRemoval(item, index) }) {
+            require().softDeleteInventory(householdId(), itemId)
+        }
+        purgeJob = viewModelScope.launch {
+            delay(undoWindowMillis)
+            if (current.pendingRemoval?.item?.id != itemId) return@launch
+            _state.update { it.copy(pendingRemoval = null) }
+            guarded { require().purgeInventory(householdId(), itemId) }
+        }
+    }
+
+    /** REQ-INV-017: Undo within the window restores the item at its original position. */
+    fun undoInventoryRemove() {
+        val pending = current.pendingRemoval ?: return
+        purgeJob?.cancel()
+        purgeJob = null
+        cancelRemoval(pending.item, pending.index)
+        guarded {
+            val restored = require().restoreInventory(householdId(), pending.item.id)
+            replaceInventory(restored)
+        }
+    }
+
+    private fun cancelRemoval(item: InventoryItem, index: Int) = _state.update {
+        val rows = it.data.inventory
+        val restored = if (rows.any { row -> row.id == item.id }) {
+            rows
+        } else {
+            rows.toMutableList().apply { add(index.coerceIn(0, size), item) }
+        }
+        it.copy(data = it.data.copy(inventory = restored), pendingRemoval = null)
+    }
+
     fun consumeByBarcode(barcode: String, amount: Int = 1, onResult: (ConsumeOutcome) -> Unit = {}) {
         val code = barcode.trim()
         if (code.isEmpty()) {
@@ -543,6 +602,7 @@ class SessionViewModel(
         const val OWNER_ONLY_PHOTO = "Only the household owner can change the home name or photo."
         private const val MAX_PHOTO_BYTES = 5_000_000
         private const val SCAN_FEED_LIMIT = 20
+        const val UNDO_WINDOW_MILLIS = 5_000L
     }
 }
 
