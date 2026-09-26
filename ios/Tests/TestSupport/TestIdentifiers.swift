@@ -75,4 +75,14 @@ enum TestIdentifiers {
     static let homePhotoLibraryButton = "HomePhotoLibraryButton"
     static let homePhotoNameField = "HomePhotoNameField"
     static let homePhotoSaveBottomButton = "HomePhotoSaveBottomButton"
+
+    // MARK: - Health grade + avoidances (REQ-021)
+    static let healthGradeBadge = "HealthGradeBadge"
+    static let healthSummaryCard = "HealthSummaryCard"
+    static let memberWarningBanner = "MemberWarningBanner"
+    static let avoidEditorView = "AvoidEditorView"
+    static let avoidCustomField = "AvoidCustomField"
+    static let avoidSaveButton = "AvoidSaveButton"
+    static let memberAvoidLabel = "MemberAvoidLabel"
+    static let memberAvoidEditButton = "MemberAvoidEditButton"
 }

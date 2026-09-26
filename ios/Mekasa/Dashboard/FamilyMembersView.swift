@@ -12,6 +12,8 @@ struct FamilyMembersView: View {
     @State private var role = "member"
     @State private var statusMessage: String?
     @State private var isLoading = false
+    /// REQ-021: member whose avoid list is being edited.
+    @State private var avoidEditing: HouseholdMemberDTO?
 
     var body: some View {
         ScrollView {
@@ -63,6 +65,26 @@ struct FamilyMembersView: View {
             .padding(.bottom, 140)
         }
         .task { await refresh() }
+        .sheet(item: $avoidEditing) { member in
+            NavigationStack {
+                AvoidEditorView(member: member) {
+                    Task { await refresh() }
+                }
+            }
+            .environmentObject(session)
+        }
+    }
+
+    private func avoidSummary(for member: HouseholdMemberDTO) -> String {
+        if member.avoid.isEmpty {
+            return member.uid == session.userUID ? "No allergies or avoided ingredients yet" : "Nothing avoided"
+        }
+        let labels = member.avoid.map { AvoidanceMatcher.label(for: $0, options: session.avoidanceOptions) }
+        return "Avoids " + labels.joined(separator: ", ")
+    }
+
+    private func canEditAvoid(_ member: HouseholdMemberDTO) -> Bool {
+        member.uid == session.userUID || session.isHouseholdOwner
     }
 
     private var membersSection: some View {
@@ -77,21 +99,44 @@ struct FamilyMembersView: View {
                     .foregroundStyle(MekasaTheme.textMuted)
             } else {
                 ForEach(members) { member in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(member.name ?? member.email ?? member.uid)
-                                .font(.system(size: 16, weight: .bold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
-                            Text(member.role.capitalized)
-                                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.textMuted)
-                        }
-                        Spacer()
-                        if member.uid != session.household?.ownerUID, member.role == "member" {
-                            Button("Make owner") {
-                                Task { await promote(member) }
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(member.name ?? member.email ?? member.uid)
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundStyle(MekasaTheme.brand)
+                                Text(member.role.capitalized)
+                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(MekasaTheme.textMuted)
                             }
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            Spacer()
+                            if member.uid != session.household?.ownerUID, member.role == "member" {
+                                Button("Make owner") {
+                                    Task { await promote(member) }
+                                }
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                            }
+                        }
+
+                        // REQ-021 AC1: allergies / avoid list — self-editable, owners edit anyone.
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: member.avoid.isEmpty ? "leaf" : "exclamationmark.shield.fill")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(member.avoid.isEmpty ? MekasaTheme.brandMuted : MekasaTheme.accent)
+                                .padding(.top, 2)
+                            Text(avoidSummary(for: member))
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundStyle(member.avoid.isEmpty ? MekasaTheme.textMuted : MekasaTheme.brand)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier(TestIdentifiers.memberAvoidLabel)
+                            Spacer(minLength: 0)
+                            if canEditAvoid(member) {
+                                Button(member.avoid.isEmpty ? "Add" : "Edit") {
+                                    avoidEditing = member
+                                }
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .accessibilityIdentifier(TestIdentifiers.memberAvoidEditButton)
+                            }
                         }
                     }
                     .padding(14)
@@ -174,6 +219,7 @@ struct FamilyMembersView: View {
 
     private func refresh() async {
         guard let token = session.idToken, let householdID = session.household?.id, !session.isUIPreview else {
+            members = session.householdMembers
             return
         }
         isLoading = true
@@ -189,6 +235,7 @@ struct FamilyMembersView: View {
             )
             members = try await membersTask.members
             invites = try await invitesTask.invites
+            session.householdMembers = members
         } catch {
             session.handleAPIFailure(error)
             statusMessage = error.localizedDescription

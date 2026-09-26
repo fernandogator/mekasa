@@ -49,6 +49,18 @@ struct InventoryListView: View {
                                                 .accessibilityIdentifier(TestIdentifiers.itemSubtitle)
                                         }
                                         Spacer()
+                                        // REQ-021: grade + "someone here avoids this" marker.
+                                        if let health = item.health {
+                                            if !session.memberWarnings(for: health).isEmpty {
+                                                Image(systemName: "exclamationmark.triangle.fill")
+                                                    .font(.system(size: 13, weight: .bold))
+                                                    .foregroundStyle(MekasaTheme.accent)
+                                                    .accessibilityLabel("A household member avoids an ingredient in this item")
+                                            }
+                                            if health.hasGrade {
+                                                HealthGradeBadge(grade: health.grade, size: 24)
+                                            }
+                                        }
                                         if item.isLowStock {
                                             Text("Low")
                                                 .font(.system(size: 11, weight: .heavy, design: .rounded))

@@ -8,6 +8,8 @@ struct BarcodeScanView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var confirmItems: [InventoryItem] = []
+    /// REQ-021 member warnings from the household-scoped lookup, keyed by draft id.
+    @State private var confirmWarnings: [String: [MemberWarning]] = [:]
     @State private var showConfirm = false
     @State private var showManual = false
     @State private var unknownPrompt = false
@@ -88,7 +90,7 @@ struct BarcodeScanView: View {
             }
         }
         .navigationDestination(isPresented: $showConfirm) {
-            ItemConfirmView(drafts: confirmItems, title: "Confirm item")
+            ItemConfirmView(drafts: confirmItems, title: "Confirm item", serverWarnings: confirmWarnings)
         }
         .navigationDestination(isPresented: $showManual) {
             ManualEntryView()
@@ -178,19 +180,26 @@ struct BarcodeScanView: View {
         // Prefer live API when signed in; fall back to local demo catalog.
         if session.canSyncInventory, let token = session.idToken {
             do {
-                let result = try await MekasaAPIClient.shared.lookupBarcode(code: code, token: token)
+                let result = try await MekasaAPIClient.shared.lookupBarcode(
+                    code: code,
+                    householdID: session.household?.id,
+                    token: token
+                )
                 if result.found, let name = result.name {
-                    confirmItems = [
-                        InventoryItem(
-                            name: name,
-                            category: result.category ?? InventoryCategory.other.rawValue,
-                            quantity: result.quantity,
-                            barcode: result.barcode,
-                            source: .barcode,
-                            imageURL: result.imageUrl
-                        )
-                    ]
-                    statusMessage = "Found — confirm to add"
+                    let draft = InventoryItem(
+                        name: name,
+                        category: result.category ?? InventoryCategory.other.rawValue,
+                        quantity: result.quantity,
+                        barcode: result.barcode,
+                        source: .barcode,
+                        imageURL: result.imageUrl,
+                        health: result.health
+                    )
+                    confirmItems = [draft]
+                    confirmWarnings = result.warnings.isEmpty ? [:] : [draft.id: result.warnings]
+                    statusMessage = result.warnings.isEmpty
+                        ? "Found — confirm to add"
+                        : "Found — \(result.warnings.map(\.memberName).joined(separator: ", ")) should avoid this"
                     showConfirm = true
                     return
                 }

@@ -113,9 +113,12 @@ struct InventoryItemDTO: Codable, Equatable, Identifiable {
     let updatedByUid: String?
     let createdAt: Date?
     let updatedAt: Date?
+    /// REQ-021
+    let health: ProductHealth?
+    let warnings: [MemberWarning]
 
     enum CodingKeys: String, CodingKey {
-        case id, name, category, quantity, barcode, source
+        case id, name, category, quantity, barcode, source, health, warnings
         case householdId = "household_id"
         case lowStockThreshold = "low_stock_threshold"
         case pricePaid = "price_paid"
@@ -124,6 +127,26 @@ struct InventoryItemDTO: Codable, Equatable, Identifiable {
         case updatedByUid = "updated_by_uid"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        householdId = try container.decode(String.self, forKey: .householdId)
+        name = try container.decode(String.self, forKey: .name)
+        category = try container.decode(String.self, forKey: .category)
+        quantity = try container.decode(Int.self, forKey: .quantity)
+        lowStockThreshold = try container.decodeIfPresent(Int.self, forKey: .lowStockThreshold) ?? 1
+        pricePaid = try container.decodeIfPresent(Double.self, forKey: .pricePaid)
+        barcode = try container.decodeIfPresent(String.self, forKey: .barcode)
+        imageURL = try container.decodeIfPresent(String.self, forKey: .imageURL)
+        source = try container.decodeIfPresent(String.self, forKey: .source) ?? "manual"
+        createdByUid = try container.decodeIfPresent(String.self, forKey: .createdByUid)
+        updatedByUid = try container.decodeIfPresent(String.self, forKey: .updatedByUid)
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
+        health = try container.decodeIfPresent(ProductHealth.self, forKey: .health)
+        warnings = try container.decodeIfPresent([MemberWarning].self, forKey: .warnings) ?? []
     }
 
     func toLocal() -> InventoryItem {
@@ -137,6 +160,7 @@ struct InventoryItemDTO: Codable, Equatable, Identifiable {
             barcode: barcode,
             source: InventorySource(rawValue: source) ?? .manual,
             imageURL: imageURL,
+            health: health,
             updatedAt: updatedAt ?? Date()
         )
     }
@@ -161,9 +185,10 @@ struct InventoryItemCreateBody: Encodable {
     let barcode: String?
     let imageURL: String?
     let source: String
+    let health: ProductHealth?
 
     enum CodingKeys: String, CodingKey {
-        case name, category, quantity, barcode, source
+        case name, category, quantity, barcode, source, health
         case lowStockThreshold = "low_stock_threshold"
         case pricePaid = "price_paid"
         case imageURL = "image_url"
@@ -178,6 +203,7 @@ struct InventoryItemCreateBody: Encodable {
         barcode = item.barcode
         imageURL = item.imageURL
         source = item.source.rawValue
+        health = item.health
     }
 }
 
@@ -293,10 +319,51 @@ struct BarcodeLookupDTO: Codable, Equatable {
     let quantity: Int
     let imageUrl: String?
     let source: String
+    /// REQ-021: grade data + members whose avoid list this product triggers.
+    let health: ProductHealth?
+    let warnings: [MemberWarning]
 
     enum CodingKeys: String, CodingKey {
-        case barcode, found, name, brand, category, quantity, source
+        case barcode, found, name, brand, category, quantity, source, health, warnings
         case imageUrl = "image_url"
+    }
+
+    init(
+        barcode: String,
+        found: Bool,
+        name: String?,
+        brand: String?,
+        category: String?,
+        quantity: Int,
+        imageUrl: String?,
+        source: String,
+        health: ProductHealth? = nil,
+        warnings: [MemberWarning] = []
+    ) {
+        self.barcode = barcode
+        self.found = found
+        self.name = name
+        self.brand = brand
+        self.category = category
+        self.quantity = quantity
+        self.imageUrl = imageUrl
+        self.source = source
+        self.health = health
+        self.warnings = warnings
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        barcode = try container.decode(String.self, forKey: .barcode)
+        found = try container.decode(Bool.self, forKey: .found)
+        name = try container.decodeIfPresent(String.self, forKey: .name)
+        brand = try container.decodeIfPresent(String.self, forKey: .brand)
+        category = try container.decodeIfPresent(String.self, forKey: .category)
+        quantity = try container.decodeIfPresent(Int.self, forKey: .quantity) ?? 1
+        imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
+        source = try container.decodeIfPresent(String.self, forKey: .source) ?? "none"
+        health = try container.decodeIfPresent(ProductHealth.self, forKey: .health)
+        warnings = try container.decodeIfPresent([MemberWarning].self, forKey: .warnings) ?? []
     }
 }
 
@@ -308,10 +375,40 @@ struct ProductSearchHitDTO: Codable, Equatable, Identifiable {
     let category: String
     let imageUrl: String?
     let source: String
+    let health: ProductHealth?
 
     enum CodingKeys: String, CodingKey {
-        case barcode, name, brand, category, source
+        case barcode, name, brand, category, source, health
         case imageUrl = "image_url"
+    }
+
+    init(
+        barcode: String?,
+        name: String,
+        brand: String?,
+        category: String,
+        imageUrl: String?,
+        source: String,
+        health: ProductHealth? = nil
+    ) {
+        self.barcode = barcode
+        self.name = name
+        self.brand = brand
+        self.category = category
+        self.imageUrl = imageUrl
+        self.source = source
+        self.health = health
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        barcode = try container.decodeIfPresent(String.self, forKey: .barcode)
+        name = try container.decode(String.self, forKey: .name)
+        brand = try container.decodeIfPresent(String.self, forKey: .brand)
+        category = try container.decodeIfPresent(String.self, forKey: .category) ?? "Other"
+        imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
+        source = try container.decodeIfPresent(String.self, forKey: .source) ?? "openfoodfacts"
+        health = try container.decodeIfPresent(ProductHealth.self, forKey: .health)
     }
 
     func toDraft(
@@ -326,7 +423,8 @@ struct ProductSearchHitDTO: Codable, Equatable, Identifiable {
             pricePaid: pricePaid,
             barcode: barcode,
             source: source,
-            imageURL: imageUrl
+            imageURL: imageUrl,
+            health: health
         )
     }
 }
@@ -458,9 +556,11 @@ struct HouseholdMemberDTO: Codable, Equatable, Identifiable {
     let role: String
     let status: String
     let permissions: [String]
+    /// REQ-021 AC1: ingredients / allergens this member avoids (catalog keys or free text).
+    let avoid: [String]
 
     enum CodingKeys: String, CodingKey {
-        case uid, name, email, phone, role, status, permissions
+        case uid, name, email, phone, role, status, permissions, avoid
         case householdId = "household_id"
     }
 
@@ -472,7 +572,8 @@ struct HouseholdMemberDTO: Codable, Equatable, Identifiable {
         phone: String?,
         role: String,
         status: String,
-        permissions: [String] = []
+        permissions: [String] = [],
+        avoid: [String] = []
     ) {
         self.uid = uid
         self.householdId = householdId
@@ -482,6 +583,7 @@ struct HouseholdMemberDTO: Codable, Equatable, Identifiable {
         self.role = role
         self.status = status
         self.permissions = permissions
+        self.avoid = avoid
     }
 
     init(from decoder: Decoder) throws {
@@ -494,6 +596,7 @@ struct HouseholdMemberDTO: Codable, Equatable, Identifiable {
         role = try container.decode(String.self, forKey: .role)
         status = try container.decode(String.self, forKey: .status)
         permissions = try container.decodeIfPresent([String].self, forKey: .permissions) ?? []
+        avoid = try container.decodeIfPresent([String].self, forKey: .avoid) ?? []
     }
 }
 
