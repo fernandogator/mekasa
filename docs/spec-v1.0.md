@@ -122,6 +122,9 @@ Acceptance Criteria:
 - AC1: Threshold is settable from the item detail screen
 - AC2: Default threshold is 1 if not set
 - AC3: Changes apply immediately to low-stock calculations
+- AC4: The item detail screen offers a "Use 1" action that consumes one
+  unit through the same path as swipe / trash-station and reports the
+  remaining quantity
 
 ### REQ-INV-014: Swipe Use One
 Priority: P0
@@ -263,6 +266,9 @@ Acceptance Criteria:
 - AC1: Invite requires name plus email or phone number
 - AC2: Invited user receives a notification or link to download and join
 - AC3: Role is set at invitation and changeable by any Owner later
+- AC4: Family screen shows the signed-in account, the household name and
+  address, and each member's role and status, with a "Refresh data"
+  action that re-pulls household data
 
 ### REQ-020: Real-Time Multi-Device Sync
 Priority: P0

@@ -9,6 +9,7 @@ struct ItemDetailView: View {
     let itemID: String
     @State private var threshold: Int = 1
     @State private var quantity: Int = 1
+    @State private var useOneMessage: String?
 
     private var item: InventoryItem? {
         session.inventory.first(where: { $0.id == itemID })
@@ -65,6 +66,19 @@ struct ItemDetailView: View {
                             )
                             .font(MekasaTheme.bodyFont)
                             .foregroundStyle(MekasaTheme.textMuted)
+
+                            // Parity with the Android row action: dispose one without leaving the screen.
+                            SecondaryButton(title: "Use 1", disabled: quantity == 0) {
+                                useOne(item)
+                            }
+                            .accessibilityIdentifier(TestIdentifiers.itemDetailUseOneButton)
+
+                            if let useOneMessage {
+                                Text(useOneMessage)
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .foregroundStyle(MekasaTheme.brand)
+                                    .accessibilityIdentifier(TestIdentifiers.itemDetailUseOneStatus)
+                            }
                         }
                         .padding(.horizontal, 24)
                         .padding(.top, 12)
@@ -89,6 +103,25 @@ struct ItemDetailView: View {
         .task(id: itemID) {
             await refetchMissingImageIfNeeded()
             await backfillHealthIfNeeded()
+        }
+    }
+
+    /// Same consume path as the inventory swipe and the trash station.
+    private func useOne(_ item: InventoryItem) {
+        let result = session.consumeInventoryItem(id: item.id)
+        quantity = session.inventory.first(where: { $0.id == item.id })?.quantity ?? quantity
+        useOneMessage = Self.useOneMessage(for: result)
+    }
+
+    /// "Used 1 — 2 left" / "Marked gone" / nil when the row vanished underneath us.
+    static func useOneMessage(for result: AppSession.ConsumeResult) -> String? {
+        switch result {
+        case let .decremented(_, remaining):
+            return "Used 1 — \(remaining) left"
+        case .depleted:
+            return "Marked gone — now on the shopping list if it’s tracked"
+        case .unknown:
+            return nil
         }
     }
 
