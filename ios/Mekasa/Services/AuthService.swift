@@ -155,7 +155,7 @@ final class AuthService: ObservableObject {
 
     /// Maps AuthenticationServices failures to actionable errors; nil means "not an
     /// ASAuthorization error, let the Firebase formatter handle it".
-    static func appleAuthorizationError(from error: Error) -> AuthServiceError? {
+    nonisolated static func appleAuthorizationError(from error: Error) -> AuthServiceError? {
         let ns = error as NSError
         guard ns.domain == ASAuthorizationError.errorDomain else { return nil }
         switch ns.code {
