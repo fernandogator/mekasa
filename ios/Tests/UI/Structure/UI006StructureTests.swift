@@ -88,9 +88,16 @@ final class UI006StructureTests: XCTestCase {
             headers.count, 2,
             "Fixture inventory spans several categories, so at least two section headers should render"
         )
+        // Sections are alphabetical and List cells are lazy, so "Produce" starts below the
+        // fold; scroll until its header is realised before asserting.
+        let produceHeader = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label ==[c] %@", "Produce")).firstMatch
+        let list = UITestLaunch.element(app, TestIdentifiers.itemList)
+        for _ in 0 ..< 4 where !produceHeader.exists {
+            (list.exists ? list : app).swipeUp()
+        }
         XCTAssertTrue(
-            app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "Produce")).firstMatch.exists
-                || app.otherElements.matching(NSPredicate(format: "label ==[c] %@", "Produce")).firstMatch.exists,
+            produceHeader.waitForExistence(timeout: 3),
             "Bananas should sit under a Produce header"
         )
         let summary = UITestLaunch.element(app, TestIdentifiers.inventorySummary)
