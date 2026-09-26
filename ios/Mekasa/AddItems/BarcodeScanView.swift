@@ -208,8 +208,14 @@ struct BarcodeScanView: View {
                 statusMessage = "No product for that code"
                 return
             } catch {
-                session.lastError = error.localizedDescription
-                statusMessage = "Lookup failed — try again or enter manually"
+                if let apiError = error as? APIError,
+                   case let .server(status, _) = apiError,
+                   status == 503 {
+                    statusMessage = "Product database is busy — scan again in a moment"
+                } else {
+                    session.lastError = error.localizedDescription
+                    statusMessage = "Lookup failed — try again or enter manually"
+                }
                 return
             }
         }

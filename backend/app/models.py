@@ -344,7 +344,9 @@ class BarcodeLookupResponse(BaseModel):
     category: str | None = None
     quantity: int = 1
     image_url: str | None = None
-    source: Literal["openfoodfacts", "none"] = "none"
+    source: Literal[
+        "openfoodfacts", "openproductsfacts", "openbeautyfacts", "openpetfoodfacts", "none"
+    ] = "none"
     health: ProductHealth | None = None
     # Filled when the lookup is scoped to a household (?household_id=…)
     warnings: list[MemberWarning] = Field(default_factory=list)

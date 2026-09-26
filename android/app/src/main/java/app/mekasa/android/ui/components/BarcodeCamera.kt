@@ -32,6 +32,7 @@ import app.mekasa.android.ui.theme.MekasaColor
 import app.mekasa.android.ui.theme.MekasaType
 import app.mekasa.android.ui.theme.Spacing
 import com.google.mlkit.vision.barcode.BarcodeScanner
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
@@ -112,7 +113,18 @@ fun BarcodeCameraPreview(
                             .build()
                         analysisRef.set(analysis)
 
-                        val scanner = runCatching { BarcodeScanning.getClient() }.getOrNull()
+                        val scanner = runCatching {
+                            BarcodeScanning.getClient(
+                                BarcodeScannerOptions.Builder()
+                                    .setBarcodeFormats(
+                                        Barcode.FORMAT_EAN_13,
+                                        Barcode.FORMAT_EAN_8,
+                                        Barcode.FORMAT_UPC_A,
+                                        Barcode.FORMAT_UPC_E,
+                                    )
+                                    .build(),
+                            )
+                        }.getOrNull()
                             ?: return@addListener
                         scannerRef.set(scanner)
 
@@ -136,12 +148,15 @@ fun BarcodeCameraPreview(
                                         activeScanner.process(image)
                                             .addOnSuccessListener { barcodes ->
                                                 if (isDisposed.get()) return@addOnSuccessListener
+                                                // Retail symbologies only; a QR / Code 128 on the
+                                                // pack must not be sent to the UPC lookup.
                                                 val value = barcodes.firstOrNull {
-                                                    it.format == Barcode.FORMAT_EAN_13 ||
-                                                        it.format == Barcode.FORMAT_EAN_8 ||
-                                                        it.format == Barcode.FORMAT_UPC_A ||
-                                                        it.format == Barcode.FORMAT_UPC_E ||
-                                                        it.rawValue != null
+                                                    (
+                                                        it.format == Barcode.FORMAT_EAN_13 ||
+                                                            it.format == Barcode.FORMAT_EAN_8 ||
+                                                            it.format == Barcode.FORMAT_UPC_A ||
+                                                            it.format == Barcode.FORMAT_UPC_E
+                                                        ) && !it.rawValue.isNullOrBlank()
                                                 }?.rawValue
                                                 if (value != null && handled.compareAndSet(false, true)) {
                                                     ContextCompat.getMainExecutor(ctx).execute {

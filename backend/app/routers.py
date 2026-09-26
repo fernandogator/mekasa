@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 
 from app.auth import AuthUser, verify_bearer_token
-from app.barcode_lookup import lookup_barcode, search_products
+from app.barcode_lookup import ProductLookupUnavailableError, lookup_barcode, search_products
 from app.config import Settings, get_settings
 from app.devices_repository import DevicesRepository, get_devices_repository
 from app.household_access import assert_household_member, assert_household_owner
@@ -755,11 +755,20 @@ async def lookup_barcode_endpoint(
     Acceptance criteria: AC1, AC2
     Spec version: 1.0
 
-    Looks up a UPC/EAN via Open Food Facts. Unknown codes return found=false
-    so the client can fall back to manual entry. With `household_id` the
-    response also lists members whose avoid list matches the product.
+    Looks up a UPC/EAN via the Open Food Facts family (UPC-E expanded, sister
+    databases consulted). Unknown codes return found=false so the client can
+    fall back to manual entry; when the databases themselves are unreachable
+    the endpoint answers 503 so the client offers a retry instead of "unknown".
+    With `household_id` the response also lists members whose avoid list
+    matches the product.
     """
-    result = await lookup_barcode(code)
+    try:
+        result = await lookup_barcode(code, raise_when_unavailable=True)
+    except ProductLookupUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Product database is temporarily unavailable. Try again in a moment.",
+        ) from exc
     if household_id and result.health is not None:
         members = _household_members_for_warnings(household_id, user.uid)
         if members:
@@ -793,7 +802,13 @@ async def search_products_endpoint(
     variants for the user to pick during manual or voice entry.
     """
     _ = user
-    return await search_products(q, limit=limit)
+    try:
+        return await search_products(q, limit=limit)
+    except ProductLookupUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Product search is temporarily unavailable. Try again in a moment.",
+        ) from exc
 
 
 @api_router.post(

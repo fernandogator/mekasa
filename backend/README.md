@@ -14,7 +14,7 @@ Python FastAPI service for Cloud Run. Covers:
 - Household **shopping list** CRUD + low-stock sync (`REQ-011`–`REQ-014`)
 - **Purchase events + spending reports** (`REQ-015`, `REQ-017`, `REQ-018`)
 - Durable **members/invites** (Firestore when prod) + member ACL on inventory/shopping
-- **Barcode / UPC lookup** via Open Food Facts (`REQ-004`)
+- **Barcode / UPC lookup** via the Open Food Facts family (`REQ-004`): UPC-E is expanded to UPC-A, UPC-A/EAN-13 shapes are unified, Open Products / Beauty / Pet Food Facts are consulted when OFF has no record, hits and misses are cached in-process, and an upstream outage answers `503` instead of `found: false`
 - **Health grade + member avoidances** — Nutri-Score / NOVA / additives → A–E grade; per-member allergen list with scan-time warnings (`REQ-021`, `app/product_health.py`)
 - **Device tokens + invite push hooks** (FCM best-effort; PRD §8 scaffold)
 
@@ -82,7 +82,7 @@ PYTHONPATH=. ALLOW_TEST_AUTH=true pytest ../tests/backend -q
 | POST | `/v1/households/{id}/photo` | yes | Household photo (data-URL thin path) |
 | GET/POST | `/v1/households/{id}/members` / invites | yes | Family members + invites (REQ-019) |
 | POST | `/v1/invites/accept` | yes | Accept invite token |
-| GET | `/v1/barcode/{code}?household_id=` | yes | Open Food Facts UPC lookup (`found` false if unknown); includes `health` grade data and, when scoped to a household, member `warnings` (REQ-021) |
+| GET | `/v1/barcode/{code}?household_id=` | yes | Open Food Facts family UPC lookup (`found` false if unknown; `503` when the databases are unreachable so the client can retry); `source` names the database that answered; includes `health` grade data and, when scoped to a household, member `warnings` (REQ-021) |
 | POST | `/v1/households/{id}/inventory/{item_id}/refresh-health` | yes | Backfill `health` for a barcoded row that has none (REQ-021 AC4) |
 | GET | `/v1/health/avoidances` | yes | Catalog of allergens / additives a member can avoid (REQ-021) |
 | PUT | `/v1/households/{id}/members/{uid}/avoid` | yes | Replace a member's "I avoid" list — self or Owner (REQ-021) |
@@ -133,6 +133,10 @@ chmod +x scripts/deploy-cloud-run.sh
 ```
 
 After deploy, `/health` should include `"persistence":"firestore","firestore_database":"mekasa-db"`.
+
+Cold starts add ~6 s to the first request after idle (noticeable on barcode scans).
+`CLOUD_RUN_MIN_INSTANCES=1 ./scripts/deploy-cloud-run.sh` keeps one instance warm
+(billed while idle); the default stays 0.
 
 Clients send Firebase ID tokens; the API verifies them. Keep `ALLOW_TEST_AUTH=false` in prod.
 Full checklist: [`docs/gcp-firebase-setup.md`](../docs/gcp-firebase-setup.md).
