@@ -131,6 +131,9 @@ struct MekasaTextField: View {
     var autocapitalization: TextInputAutocapitalization = .sentences
     var submitLabel: SubmitLabel = .done
     var onSubmit: (() -> Void)? = nil
+    /// Applied to the inner text field (not the wrapper) so XCUITest `textFields[...]`
+    /// queries resolve to the editable element.
+    var fieldIdentifier: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -151,6 +154,7 @@ struct MekasaTextField: View {
                         .textInputAutocapitalization(autocapitalization)
                 }
             }
+            .accessibilityIdentifier(fieldIdentifier ?? "")
             .submitLabel(submitLabel)
             .onSubmit { onSubmit?() }
             .font(.system(size: 18, weight: .heavy, design: .rounded))
