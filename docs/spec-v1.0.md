@@ -54,6 +54,13 @@ Acceptance Criteria:
   inventory item for list thumbnails and item detail (UI-006)
 - AC5: Missing image does not fail the lookup; client shows a category
   placeholder instead
+- AC6: Equivalent code shapes resolve to the same product: UPC-E is
+  expanded to UPC-A, and UPC-A / zero-padded EAN-13 are treated as one
+  code, so the same can scans identically on iOS and Android
+- AC7: A provider outage (timeout, rate limit, 5xx) is reported as a
+  retryable error, never as "unknown product"; sister databases
+  (Open Products / Beauty / Pet Food Facts) are consulted before a code
+  is declared unknown
 
 ### REQ-005: Receipt Scanning and Bulk Entry
 Priority: P0
