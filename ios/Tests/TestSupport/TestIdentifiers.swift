@@ -96,4 +96,14 @@ enum TestIdentifiers {
     static let memberAvoidEditButton = "MemberAvoidEditButton"
     static let affectedMembersChip = "AffectedMembersChip"
     static let affectedMembersCaption = "AffectedMembersCaption"
+
+    // MARK: - Item detail "Use 1" (REQ-009) + Family cards (REQ-019)
+    static let itemDetailUseOneButton = "ItemDetailUseOneButton"
+    static let itemDetailUseOneStatus = "ItemDetailUseOneStatus"
+    static let familyAccountTitle = "FamilyAccountTitle"
+    static let familyOfflineNotice = "FamilyOfflineNotice"
+    static let familyHouseholdTitle = "FamilyHouseholdTitle"
+    static let familyHouseholdAddress = "FamilyHouseholdAddress"
+    static let familyMemberSubtitle = "FamilyMemberSubtitle"
+    static let familyRefreshButton = "FamilyRefreshButton"
 }

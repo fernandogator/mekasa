@@ -189,6 +189,29 @@ final class UI006StructureTests: XCTestCase {
 
     /// REQ-INV-014: trailing swipe on a qty > 1 row reveals Use 1; tapping decrements
     /// without any confirmation alert. Fixture: Bananas (qty 6, TestFixtures.standardItemList).
+    /// REQ-009 parity: "Use 1" on the detail screen consumes one unit in place.
+    func testItemDetail_useOneDecrementsInPlace() throws {
+        openInventoryList()
+        let row = try requireRow(named: "Bananas")
+        row.tap()
+
+        let useOne = UITestLaunch.element(app, TestIdentifiers.itemDetailUseOneButton)
+        guard useOne.waitForExistence(timeout: UITestLaunch.elementTimeout) else {
+            throw XCTSkip("Item detail did not open for Bananas under --uitesting")
+        }
+        if !useOne.isHittable {
+            app.scrollViews.firstMatch.swipeUp()
+        }
+        useOne.tap()
+
+        let status = UITestLaunch.element(app, TestIdentifiers.itemDetailUseOneStatus)
+        XCTAssertTrue(status.waitForExistence(timeout: UITestLaunch.elementTimeout))
+        XCTAssertTrue(
+            status.label.contains("5 left"),
+            "Bananas start at qty 6, so one use should leave 5; got \(status.label)"
+        )
+    }
+
     func testSwipe_useOneWhenQuantityGreaterThanOne() throws {
         openInventoryList()
         let row = try requireRow(named: "Bananas")

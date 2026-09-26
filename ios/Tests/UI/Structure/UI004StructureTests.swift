@@ -61,6 +61,33 @@ final class UI004StructureTests: XCTestCase {
         )
     }
 
+    /// REQ-019 parity: Family tab shows who's signed in, which house, and role · status per member.
+    func testFamily_accountHouseholdAndMemberCards() {
+        let familyTab = app.buttons["Family"]
+        XCTAssertTrue(familyTab.waitForExistence(timeout: UITestLaunch.elementTimeout))
+        familyTab.tap()
+
+        let account = UITestLaunch.element(app, TestIdentifiers.familyAccountTitle)
+        XCTAssertTrue(account.waitForExistence(timeout: UITestLaunch.elementTimeout), "Account card missing")
+        XCTAssertEqual(account.label, "UI Test")
+        XCTAssertTrue(
+            UITestLaunch.element(app, TestIdentifiers.familyOfflineNotice).exists,
+            "--uitesting runs in preview mode, so the offline notice should show"
+        )
+
+        let house = UITestLaunch.element(app, TestIdentifiers.familyHouseholdTitle)
+        XCTAssertTrue(house.exists)
+        XCTAssertEqual(house.label, "The Test House")
+        XCTAssertEqual(UITestLaunch.element(app, TestIdentifiers.familyHouseholdAddress).label, "100 Test St")
+
+        let subtitles = app.staticTexts.matching(identifier: TestIdentifiers.familyMemberSubtitle)
+        XCTAssertTrue(subtitles.firstMatch.waitForExistence(timeout: UITestLaunch.elementTimeout))
+        XCTAssertTrue(
+            subtitles.firstMatch.label.contains("·"),
+            "Member subtitle should read 'Role · status'; got \(subtitles.firstMatch.label)"
+        )
+    }
+
     func testShoppingList_itemListStructure() {
         let listTab = UITestLaunch.element(app, TestIdentifiers.listTab)
         if listTab.waitForExistence(timeout: UITestLaunch.elementTimeout) {

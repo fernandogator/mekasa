@@ -12,6 +12,7 @@ struct FamilyMembersView: View {
     @State private var role = "member"
     @State private var statusMessage: String?
     @State private var isLoading = false
+    @State private var isRefreshingAll = false
     /// REQ-021: member whose avoid list is being edited.
     @State private var avoidEditing: HouseholdMemberDTO?
 
@@ -22,11 +23,8 @@ struct FamilyMembersView: View {
                     .font(MekasaTheme.titleFont)
                     .foregroundStyle(MekasaTheme.brand)
 
-                if let email = session.email {
-                    Text(email)
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(MekasaTheme.textMuted)
-                }
+                accountCard
+                householdCard
 
                 membersSection
                 inviteSection
@@ -54,6 +52,11 @@ struct FamilyMembersView: View {
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
                         .foregroundStyle(MekasaTheme.brand)
                 }
+
+                SecondaryButton(title: isRefreshingAll ? "Refreshing…" : "Refresh data", disabled: isRefreshingAll) {
+                    Task { await refreshAll() }
+                }
+                .accessibilityIdentifier(TestIdentifiers.familyRefreshButton)
 
                 SecondaryButton(title: "Sign out") {
                     try? AuthService.shared.signOut()
@@ -87,6 +90,58 @@ struct FamilyMembersView: View {
         member.uid == session.userUID || session.isHouseholdOwner
     }
 
+    private var accountCard: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(FamilySummary.accountTitle(displayName: session.displayName, email: session.email))
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(MekasaTheme.brand)
+                .accessibilityIdentifier(TestIdentifiers.familyAccountTitle)
+            if let subtitle = FamilySummary.accountSubtitle(displayName: session.displayName, email: session.email) {
+                Text(subtitle)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(MekasaTheme.textMuted)
+            }
+            if session.isUIPreview {
+                Text(FamilySummary.offlinePreviewNotice)
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(MekasaTheme.accent)
+                    .padding(.top, 4)
+                    .accessibilityIdentifier(TestIdentifiers.familyOfflineNotice)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(MekasaTheme.surfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var householdCard: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "house.fill")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(MekasaTheme.brand)
+                .frame(width: 40, height: 40)
+                .background(Color(red: 0xea / 255, green: 0xf1 / 255, blue: 0xec / 255))
+                .clipShape(Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(FamilySummary.householdTitle(session.household))
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(MekasaTheme.brand)
+                    .accessibilityIdentifier(TestIdentifiers.familyHouseholdTitle)
+                Text(FamilySummary.householdAddress(session.household))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(MekasaTheme.textMuted)
+                    .lineLimit(2)
+                    .accessibilityIdentifier(TestIdentifiers.familyHouseholdAddress)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(MekasaTheme.surfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
     private var membersSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Members")
@@ -105,9 +160,10 @@ struct FamilyMembersView: View {
                                 Text(member.name ?? member.email ?? member.uid)
                                     .font(.system(size: 16, weight: .bold, design: .rounded))
                                     .foregroundStyle(MekasaTheme.brand)
-                                Text(member.role.capitalized)
+                                Text(FamilySummary.memberSubtitle(role: member.role, status: member.status))
                                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                                     .foregroundStyle(MekasaTheme.textMuted)
+                                    .accessibilityIdentifier(TestIdentifiers.familyMemberSubtitle)
                             }
                             Spacer()
                             if member.uid != session.household?.ownerUID, member.role == "member" {
@@ -240,6 +296,22 @@ struct FamilyMembersView: View {
             session.handleAPIFailure(error)
             statusMessage = error.localizedDescription
         }
+    }
+
+    /// Android "Refresh data": pull inventory, list, spending and membership again.
+    private func refreshAll() async {
+        isRefreshingAll = true
+        defer { isRefreshingAll = false }
+        guard !session.isUIPreview else {
+            statusMessage = "Up to date."
+            return
+        }
+        await session.refreshInventory()
+        await session.refreshShoppingList(syncLowStock: true)
+        await session.refreshSpending()
+        await session.refreshMyMembership()
+        await refresh()
+        statusMessage = session.lastError == nil ? "Up to date." : statusMessage
     }
 
     private func sendInvite() async {
