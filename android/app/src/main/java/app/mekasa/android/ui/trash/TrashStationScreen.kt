@@ -21,8 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -34,8 +32,10 @@ import app.mekasa.android.ui.components.BarcodeCameraOrPermission
 import app.mekasa.android.ui.components.MekasaScreen
 import app.mekasa.android.ui.components.MekasaTextField
 import app.mekasa.android.ui.components.PrimaryButton
+import app.mekasa.android.ui.components.ScanFeedback
 import app.mekasa.android.ui.components.SecondaryButton
 import app.mekasa.android.ui.components.SoftCard
+import app.mekasa.android.ui.components.rememberScanFeedbackContext
 import app.mekasa.android.ui.theme.MekasaColor
 import app.mekasa.android.ui.theme.MekasaType
 import app.mekasa.android.ui.theme.Spacing
@@ -49,7 +49,7 @@ fun TrashStationScreen(
     onExit: () -> Unit,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
-    val haptics = LocalHapticFeedback.current
+    val feedbackContext = rememberScanFeedbackContext()
     var scanKey by remember { mutableIntStateOf(0) }
     var manualCode by remember { mutableStateOf("") }
     var toast by remember { mutableStateOf<String?>(null) }
@@ -88,10 +88,11 @@ fun TrashStationScreen(
                 is ConsumeResult.Failed -> result.message
             }
             when (result) {
-                is ConsumeResult.Decremented, is ConsumeResult.Depleted -> ScanFeedback.accepted()
-                is ConsumeResult.Unknown, is ConsumeResult.Failed -> ScanFeedback.unknown()
+                is ConsumeResult.Decremented, is ConsumeResult.Depleted ->
+                    ScanFeedback.accepted(feedbackContext)
+                is ConsumeResult.Unknown, is ConsumeResult.Failed ->
+                    ScanFeedback.unknown(feedbackContext)
             }
-            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
             manualCode = ""
             cooldownGeneration += 1
         }

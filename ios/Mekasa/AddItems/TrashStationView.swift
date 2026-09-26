@@ -145,6 +145,7 @@ struct TrashStationView: View {
         .accessibilityIdentifier(TestIdentifiers.trashStationView)
         .navigationBarHidden(true)
         .task {
+            ScanFeedback.prepare()
             guard !session.isUITesting else { return }
             await session.refreshUnknownTrashScans()
         }

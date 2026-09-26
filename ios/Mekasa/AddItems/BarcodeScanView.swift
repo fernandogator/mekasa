@@ -84,6 +84,7 @@ struct BarcodeScanView: View {
         }
         .navigationBarHidden(true)
         .task {
+            ScanFeedback.prepare()
             cameraAuthorized = await BarcodeCameraPermission.requestIfNeeded()
             if !cameraAuthorized {
                 cameraError = "Camera access is off. Enable it in Settings, or enter a code below."
@@ -200,14 +201,17 @@ struct BarcodeScanView: View {
                     statusMessage = result.warnings.isEmpty
                         ? "Found — confirm to add"
                         : "Found — \(result.warnings.map(\.memberName).joined(separator: ", ")) should avoid this"
+                    ScanFeedback.accepted()
                     showConfirm = true
                     return
                 }
+                ScanFeedback.unknown()
                 unknownCode = code
                 unknownPrompt = true
                 statusMessage = "No product for that code"
                 return
             } catch {
+                ScanFeedback.unknown()
                 if let apiError = error as? APIError,
                    case let .server(status, _) = apiError,
                    status == 503 {
@@ -223,8 +227,10 @@ struct BarcodeScanView: View {
         if let item = InventoryDemoCatalog.lookup(barcode: code) {
             confirmItems = [item]
             statusMessage = "Found (demo catalog)"
+            ScanFeedback.accepted()
             showConfirm = true
         } else {
+            ScanFeedback.unknown()
             unknownCode = code
             unknownPrompt = true
             statusMessage = "Sign in for live UPC lookup, or enter manually"

@@ -30,8 +30,10 @@ import app.mekasa.android.session.PendingInventoryDraft
 import app.mekasa.android.ui.components.BarcodeCameraOrPermission
 import app.mekasa.android.ui.components.MekasaTextField
 import app.mekasa.android.ui.components.PrimaryButton
+import app.mekasa.android.ui.components.ScanFeedback
 import app.mekasa.android.ui.components.SecondaryButton
 import app.mekasa.android.ui.components.SoftCard
+import app.mekasa.android.ui.components.rememberScanFeedbackContext
 import app.mekasa.android.ui.theme.MekasaColor
 import app.mekasa.android.ui.theme.MekasaType
 import app.mekasa.android.ui.theme.Spacing
@@ -206,6 +208,7 @@ private fun BarcodeContent(
     var status by remember { mutableStateOf<String?>(null) }
     var scanKey by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
+    val feedbackContext = rememberScanFeedbackContext()
 
     fun lookup(raw: String) {
         val trimmed = raw.trim()
@@ -218,6 +221,7 @@ private fun BarcodeContent(
             status = null
             try {
                 if (state.isOfflinePreview) {
+                    ScanFeedback.accepted(feedbackContext)
                     onDraft(
                         PendingInventoryDraft(
                             name = "Scanned item $trimmed",
@@ -238,11 +242,15 @@ private fun BarcodeContent(
                             source = "barcode",
                         ),
                     )
-                    if (!result.found) {
+                    if (result.found) {
+                        ScanFeedback.accepted(feedbackContext)
+                    } else {
+                        ScanFeedback.unknown(feedbackContext)
                         status = "Not in catalog — confirm name before saving"
                     }
                 }
             } catch (e: Exception) {
+                ScanFeedback.unknown(feedbackContext)
                 status = e.message
             } finally {
                 lookingUp = false
