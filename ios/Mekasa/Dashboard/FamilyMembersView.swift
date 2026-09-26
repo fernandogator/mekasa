@@ -15,6 +15,7 @@ struct FamilyMembersView: View {
     @State private var isRefreshingAll = false
     /// REQ-021: member whose avoid list is being edited.
     @State private var avoidEditing: HouseholdMemberDTO?
+    @State private var scanSoundsEnabled = ScanFeedback.soundsEnabled
 
     var body: some View {
         ScrollView {
@@ -28,6 +29,7 @@ struct FamilyMembersView: View {
 
                 membersSection
                 inviteSection
+                scanSoundsSection
                 trashKioskSection
 
                 if let pending = session.pendingInviteToken, !pending.isEmpty {
@@ -257,6 +259,34 @@ struct FamilyMembersView: View {
                 }
             }
         }
+    }
+
+    private var scanSoundsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Scanner")
+                .font(.system(size: 18, weight: .heavy, design: .rounded))
+                .foregroundStyle(MekasaTheme.brand)
+            Toggle(isOn: $scanSoundsEnabled) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Scan sounds")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(MekasaTheme.brand)
+                    Text("Beep and haptic when a barcode is read.")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(MekasaTheme.textMuted)
+                }
+            }
+            .tint(MekasaTheme.accent)
+            .onChange(of: scanSoundsEnabled) { _, enabled in
+                ScanFeedback.soundsEnabled = enabled
+                if enabled { ScanFeedback.prepare() }
+            }
+            .accessibilityIdentifier(TestIdentifiers.scanSoundsToggle)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(MekasaTheme.surfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private var trashKioskSection: some View {

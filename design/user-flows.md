@@ -27,4 +27,11 @@ flowchart TD
   AddItems --> TrashStation[Trash Station Mode]
 
   ShoppingList --> RequestApproval[Approve / Reject Request]
+
+  Settings --> ScanSounds[Scan sounds toggle]
+  BarcodeScanner -.->|beep + haptic| ScanFeedback[ScanFeedback]
+  TrashStation -.->|beep + haptic / 5s cooldown| ScanFeedback
+  ScanSounds -.->|mute| ScanFeedback
 ```
+
+**Scan feedback:** accepted barcodes play `design/scanner-beep.mp3` plus haptic/vibrate; unknown lookups use a nack tone. Family / Settings → **Scan sounds** (default on) mutes both. Trash station also enforces a 5-second cooldown after each accepted scan.

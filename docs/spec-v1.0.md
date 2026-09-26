@@ -61,6 +61,11 @@ Acceptance Criteria:
   retryable error, never as "unknown product"; sister databases
   (Open Products / Beauty / Pet Food Facts) are consulted before a code
   is declared unknown
+- AC8: A successful barcode read plays the bundled scanner beep
+  (`design/scanner-beep.mp3`) plus a success haptic (iOS) or short
+  vibration (Android); unknown / failed lookups use a distinct nack
+  tone plus warning haptic / longer vibration. Feedback is muted when
+  Family → Scan sounds is off and during UI tests
 
 ### REQ-005: Receipt Scanning and Bulk Entry
 Priority: P0
@@ -113,6 +118,11 @@ Acceptance Criteria:
   the household account
 - AC2: Scanning a known item barcode decrements quantity by 1 immediately
 - AC3: Unknown item scans are logged but do not create negative quantities
+- AC4: Accepted scans play the scanner beep + haptic/vibrate (same as
+  REQ-004 AC8); unknown scans play the nack feedback. A 5-second cooldown
+  disarms the camera after each accepted scan so one toss is not
+  double-counted
+- AC5: Scan sounds honour the Family → Scan sounds toggle (default on)
 
 ### REQ-009: Low Stock Threshold — Manual
 Priority: P0
@@ -269,6 +279,8 @@ Acceptance Criteria:
 - AC4: Family screen shows the signed-in account, the household name and
   address, and each member's role and status, with a "Refresh data"
   action that re-pulls household data
+- AC5: Family → Scanner shows a "Scan sounds" toggle (default on) that
+  enables or mutes barcode beep + haptic/vibrate on this device
 
 ### REQ-020: Real-Time Multi-Device Sync
 Priority: P0
@@ -353,13 +365,18 @@ Acceptance Criteria:
 Priority: P0
 Design Artifact: design/mockups/TrashStationMode.jsx
 User Flow: design/user-flows.md
-Test File: android/src/test/ui/TrashStationUITest.kt, ios/MekasaTests/UI/TrashStationUITest.swift
+Test File: ios/Tests/UI/Structure/UI005StructureTests.swift,
+  android/app/src/test/java/app/mekasa/android/ui/TrashStationModeUITest.kt,
+  ios/MekasaTests/ScanFeedbackTests.swift, ios/MekasaTests/ScanCooldownTests.swift
 Acceptance Criteria:
 - AC1: Simplified single-purpose UI for scanning only
 - AC2: No navigation or non-scanning elements visible
 - AC3: Scan confirmation is displayed briefly then resets
 - AC4: A typed-UPC fallback ("Or type UPC", 6–14 digits) consumes the
   matching item through the same path as a camera scan
+- AC5: Accepted / unknown scans fire audible + haptic feedback per
+  REQ-008 AC4–AC5 (scanner beep asset, nack tone, Scan sounds toggle,
+  5 s cooldown after an accepted scan)
 
 ### UI-006: Inventory List Thumbnails and Item Detail
 Priority: P0

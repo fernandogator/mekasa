@@ -23,6 +23,16 @@ All screens are **390×844** (mobile-first, iPhone SE/13 mini) with full navigat
 | UI-007 | Spending Report | Category analytics & budget tracking | `pages/spending-report.html` |
 | UI-008 | Family Members | Household roster & member roles | `pages/family-members.html` |
 
+### 🔊 Scanner beep
+
+`scanner-beep.mp3` is the barcode **accept** sound (paired with haptic / vibrate). Spec: REQ-004 AC8, REQ-008 AC4–AC5, REQ-019 AC5, UI-005 AC5.
+
+```bash
+./design/scripts/sync_scanner_beep.sh
+```
+
+That copies to `ios/Mekasa/Sounds/scanner-beep.mp3` and `android/app/src/main/res/raw/scanner_beep.mp3`. Unknown scans use a platform nack tone instead. Family → **Scan sounds** (default on) mutes beep + haptic/vibrate on that device. Quiet under UI tests.
+
 ### 📚 Documentation
 
 - **DESIGN_SYSTEM.md** — Complete color palette, typography, spacing, component patterns, and design tokens

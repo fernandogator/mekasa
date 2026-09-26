@@ -1,33 +1,42 @@
-// Verifies: UI-004
-// AC1, AC2, AC3
+// Verifies: REQ-004 AC8 · UI-004 Add Items / barcode
 // Design: design/mockups/AddItems.jsx
 
 package app.mekasa.android.ui
 
+import app.mekasa.android.ui.components.ScanFeedback
+import org.junit.Assert.assertTrue
 import org.junit.Ignore
 import org.junit.Test
 
 /**
- * Compose UI test stubs for Add Items / Scanner entry points.
- * Layout + interaction + flow + semantic visual verification.
- * Visual verification is structural (not pixel-exact).
+ * Add Items / Scanner entry points.
+ * Feedback contract is unit-tested via [ScanFeedback]; Compose layout tests stay
+ * stubs until an instrumented suite is wired.
  */
 class ScannerUITest {
 
     @Test
-    @Ignore("Stub — implement when AddItems/Scanner composable exists")
+    fun scanFeedback_acceptedAndUnknownAreSafeWithoutContext() {
+        // BarcodeContent calls ScanFeedback after lookup; must never crash offline.
+        ScanFeedback.accepted(context = null)
+        ScanFeedback.unknown(context = null)
+        assertTrue(ScanFeedback.soundsEnabled(null))
+    }
+
+    @Test
+    @Ignore("Stub — instrumented Compose test when AddItems sheet harness exists")
     fun layout_keyComposablesVisible() {
         // Layout test: verify key composables exist and are visible
     }
 
     @Test
-    @Ignore("Stub — implement when AddItems/Scanner composable exists")
+    @Ignore("Stub — instrumented Compose test when AddItems sheet harness exists")
     fun interaction_tapsInputsAndNavigationTriggers() {
         // Interaction test: verify taps, inputs, and navigation triggers
     }
 
     @Test
-    @Ignore("Stub — implement when AddItems/Scanner composable exists")
+    @Ignore("Stub — instrumented Compose test when AddItems sheet harness exists")
     fun flow_navigatesToNextScreen() {
         // Flow test: verify navigation to next screen completes correctly
     }
@@ -37,6 +46,5 @@ class ScannerUITest {
     fun visual_semanticStructureMatchesBaseline() {
         // Visual verification: capture screenshot; compare semantic structure
         // to design/baselines/android/AddItems_baseline.png
-        // Tolerance: 15% color/content; fail only on structural divergence
     }
 }

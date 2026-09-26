@@ -123,4 +123,5 @@ enum TestIdentifiers {
     static let familyHouseholdAddress = "FamilyHouseholdAddress"
     static let familyMemberSubtitle = "FamilyMemberSubtitle"
     static let familyRefreshButton = "FamilyRefreshButton"
+    static let scanSoundsToggle = "ScanSoundsToggle"
 }
