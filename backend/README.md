@@ -134,5 +134,9 @@ chmod +x scripts/deploy-cloud-run.sh
 
 After deploy, `/health` should include `"persistence":"firestore","firestore_database":"mekasa-db"`.
 
+Cold starts add ~6 s to the first request after idle (noticeable on barcode scans).
+`CLOUD_RUN_MIN_INSTANCES=1 ./scripts/deploy-cloud-run.sh` keeps one instance warm
+(billed while idle); the default stays 0.
+
 Clients send Firebase ID tokens; the API verifies them. Keep `ALLOW_TEST_AUTH=false` in prod.
 Full checklist: [`docs/gcp-firebase-setup.md`](../docs/gcp-firebase-setup.md).
