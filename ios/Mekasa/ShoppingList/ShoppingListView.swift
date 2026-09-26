@@ -174,9 +174,18 @@ struct ShoppingListView: View {
             }
             .opacity(item.isChecked ? 0.5 : 1)
             Spacer()
+            // REQ-021 AC2: the linked inventory product contains something a member avoids.
+            AffectedMembersChip(warnings: shoppingWarnings(for: item))
         }
         .padding(12)
         .contentShape(Rectangle())
+    }
+
+    /// Warnings for the inventory product behind a list row (by id, else by name).
+    private func shoppingWarnings(for item: ShoppingListItem) -> [MemberWarning] {
+        let linked = session.inventory.first(where: { $0.id == item.inventoryItemID })
+            ?? session.inventory.first(where: { $0.name.caseInsensitiveCompare(item.name) == .orderedSame })
+        return session.memberWarnings(for: linked?.health)
     }
 
     private func pendingRow(_ item: ShoppingListItem) -> some View {

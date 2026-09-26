@@ -17,6 +17,46 @@ struct HealthGradeBadge: View {
     }
 }
 
+/// Compact "⚠ Leo" capsule for list rows: this item contains something a member avoids.
+struct AffectedMembersChip: View {
+    let warnings: [MemberWarning]
+
+    var body: some View {
+        if !warnings.isEmpty {
+            HStack(spacing: 4) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 10, weight: .bold))
+                Text(AffectedMembers.names(warnings))
+                    .font(.system(size: 11, weight: .heavy, design: .rounded))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(MekasaTheme.accent)
+            .clipShape(Capsule())
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(AffectedMembers.summary(warnings))
+            .accessibilityIdentifier(TestIdentifiers.affectedMembersChip)
+        }
+    }
+}
+
+/// One-line "Contains MSG · affects Leo" caption under a row title.
+struct AffectedMembersCaption: View {
+    let warnings: [MemberWarning]
+
+    var body: some View {
+        if !warnings.isEmpty {
+            Text("\(AffectedMembers.contains(warnings)) · affects \(AffectedMembers.names(warnings))")
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(MekasaTheme.accent)
+                .lineLimit(2)
+                .accessibilityIdentifier(TestIdentifiers.affectedMembersCaption)
+        }
+    }
+}
+
 /// "Leo avoids MSG, Peanuts" banner shown at scan-confirm and on item detail (REQ-021 AC2).
 struct MemberWarningBanner: View {
     let warnings: [MemberWarning]

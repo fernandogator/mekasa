@@ -207,6 +207,33 @@ final class ProductHealthTests: XCTestCase {
         )
     }
 
+    // MARK: - Row copy (REQ-021 AC2)
+
+    func testAffectedMembersCopy() {
+        let leo = MemberWarning(memberUid: "1", memberName: "Leo Martinez", matched: ["MSG"])
+        let mia = MemberWarning(memberUid: "2", memberName: "Mia", matched: ["Gluten", "MSG"])
+        let sam = MemberWarning(memberUid: "3", memberName: "Sam", matched: ["Peanuts"])
+
+        XCTAssertEqual(AffectedMembers.names([]), "")
+        XCTAssertEqual(AffectedMembers.names([leo]), "Leo")
+        XCTAssertEqual(AffectedMembers.names([leo, mia]), "Leo & Mia")
+        XCTAssertEqual(AffectedMembers.names([leo, mia, sam]), "Leo, Mia +1")
+        XCTAssertEqual(AffectedMembers.contains([leo, mia]), "Contains MSG, Gluten")
+        XCTAssertEqual(AffectedMembers.summary([leo, mia]), "Contains MSG, Gluten — affects Leo & Mia")
+        XCTAssertEqual(AffectedMembers.summary([]), "")
+    }
+
+    @MainActor
+    func testFixtureOatMilkFlagsMiaOnly() {
+        let session = AppSession()
+        session.startUITesting()
+        let oatMilk = session.inventory.first(where: { $0.id == "inv-1" })
+        let warnings = session.memberWarnings(for: oatMilk?.health)
+        XCTAssertEqual(warnings.map(\.memberName), ["Mia"])
+        XCTAssertEqual(AffectedMembers.summary(warnings), "Contains Gluten — affects Mia")
+        XCTAssertTrue(session.memberWarnings(for: session.inventory.first(where: { $0.id == "inv-2" })?.health).isEmpty)
+    }
+
     // MARK: - Grade display
 
     func testGradeLabelsAndColors() {

@@ -47,19 +47,14 @@ struct InventoryListView: View {
                                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                                                 .foregroundStyle(MekasaTheme.textMuted)
                                                 .accessibilityIdentifier(TestIdentifiers.itemSubtitle)
+                                            // REQ-021 AC2: say what it contains and who it affects.
+                                            AffectedMembersCaption(warnings: session.memberWarnings(for: item.health))
                                         }
                                         Spacer()
-                                        // REQ-021: grade + "someone here avoids this" marker.
-                                        if let health = item.health {
-                                            if !session.memberWarnings(for: health).isEmpty {
-                                                Image(systemName: "exclamationmark.triangle.fill")
-                                                    .font(.system(size: 13, weight: .bold))
-                                                    .foregroundStyle(MekasaTheme.accent)
-                                                    .accessibilityLabel("A household member avoids an ingredient in this item")
-                                            }
-                                            if health.hasGrade {
-                                                HealthGradeBadge(grade: health.grade, size: 24)
-                                            }
+                                        // REQ-021: affected-member chip + grade badge.
+                                        AffectedMembersChip(warnings: session.memberWarnings(for: item.health))
+                                        if let health = item.health, health.hasGrade {
+                                            HealthGradeBadge(grade: health.grade, size: 24)
                                         }
                                         if item.isLowStock {
                                             Text("Low")

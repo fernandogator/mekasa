@@ -31,6 +31,7 @@ enum TestFixtures {
             barcode: "012345678905",
             source: .barcode,
             imageURL: "https://placehold.co/400x400/eeebe3/171e19/png?text=Dairy",
+            health: oatMilkHealth,
             updatedAt: fixedDate
         ),
         InventoryItem(
@@ -214,6 +215,19 @@ enum TestFixtures {
             avoid: ["gluten"]
         ),
     ]
+
+    /// Clean product that still carries a gluten trace — trips Mia above (REQ-021 AC2).
+    static let oatMilkHealth = ProductHealth(
+        grade: "A",
+        score: 90,
+        nutriscore: "A",
+        novaGroup: 3,
+        additives: [],
+        allergens: [],
+        traces: ["Gluten"],
+        ingredientsText: "Water, oats, sunflower oil, sea salt",
+        flags: []
+    )
 
     /// Ultra-processed product with MSG + gluten — trips Leo and Mia above.
     static let ramenHealth = ProductHealth(

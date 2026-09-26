@@ -85,4 +85,6 @@ enum TestIdentifiers {
     static let avoidSaveButton = "AvoidSaveButton"
     static let memberAvoidLabel = "MemberAvoidLabel"
     static let memberAvoidEditButton = "MemberAvoidEditButton"
+    static let affectedMembersChip = "AffectedMembersChip"
+    static let affectedMembersCaption = "AffectedMembersCaption"
 }

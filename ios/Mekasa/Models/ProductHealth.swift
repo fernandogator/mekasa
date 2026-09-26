@@ -139,6 +139,42 @@ struct MemberWarning: Codable, Equatable, Hashable, Identifiable {
     var sentence: String {
         "\(memberName) avoids \(matched.joined(separator: ", "))"
     }
+
+    /// First name only, for compact chips ("Leo" from "Leo Martinez").
+    var shortName: String {
+        memberName.split(separator: " ").first.map(String.init) ?? memberName
+    }
+}
+
+/// Compact copy for list rows: who is affected and by what (REQ-021 AC2).
+enum AffectedMembers {
+    /// "Leo" · "Leo & Mia" · "Leo, Mia +1"
+    static func names(_ warnings: [MemberWarning]) -> String {
+        let names = warnings.map(\.shortName)
+        switch names.count {
+        case 0: return ""
+        case 1: return names[0]
+        case 2: return "\(names[0]) & \(names[1])"
+        default: return "\(names[0]), \(names[1]) +\(names.count - 2)"
+        }
+    }
+
+    /// Distinct matched ingredients across members: "Contains MSG, Gluten".
+    static func contains(_ warnings: [MemberWarning]) -> String {
+        var seen: [String] = []
+        for warning in warnings {
+            for match in warning.matched where !seen.contains(match) {
+                seen.append(match)
+            }
+        }
+        return seen.isEmpty ? "" : "Contains " + seen.joined(separator: ", ")
+    }
+
+    /// Full accessibility sentence: "Contains MSG, Gluten — affects Leo & Mia".
+    static func summary(_ warnings: [MemberWarning]) -> String {
+        guard !warnings.isEmpty else { return "" }
+        return "\(contains(warnings)) — affects \(names(warnings))"
+    }
 }
 
 /// Catalog entry from `GET /v1/health/avoidances`.
