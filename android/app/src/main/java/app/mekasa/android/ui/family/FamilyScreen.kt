@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -20,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -30,6 +32,7 @@ import app.mekasa.android.session.AppSession
 import app.mekasa.android.session.AppUiState
 import app.mekasa.android.ui.components.MekasaTextField
 import app.mekasa.android.ui.components.PrimaryButton
+import app.mekasa.android.ui.components.ScanFeedback
 import app.mekasa.android.ui.components.SecondaryButton
 import app.mekasa.android.ui.components.SoftCard
 import app.mekasa.android.ui.theme.MekasaColor
@@ -45,9 +48,15 @@ fun FamilyScreen(
     var inviteName by remember { mutableStateOf("") }
     var inviteEmail by remember { mutableStateOf("") }
     val context = LocalContext.current
+    var scanSoundsEnabled by remember {
+        mutableStateOf(ScanFeedback.soundsEnabled(context.applicationContext))
+    }
 
     LaunchedEffect(state.household?.id, state.isOfflinePreview) {
         session.refreshFamily()
+    }
+    LaunchedEffect(Unit) {
+        ScanFeedback.prepare(context.applicationContext)
     }
 
     Column(
@@ -199,6 +208,32 @@ fun FamilyScreen(
                         Text("Share link", color = MekasaColor.accent, style = MekasaType.label)
                     }
                 }
+            }
+        }
+
+        Text(text = "Scanner", style = MekasaType.subhead, color = MekasaColor.brand)
+        SoftCard(modifier = Modifier.testTag("ScanSoundsToggle")) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = Spacing.md)) {
+                    Text(text = "Scan sounds", style = MekasaType.body, color = MekasaColor.brand)
+                    Text(
+                        text = "Beep and vibrate when a barcode is read.",
+                        style = MekasaType.label,
+                        color = MekasaColor.textMuted,
+                    )
+                }
+                Switch(
+                    checked = scanSoundsEnabled,
+                    onCheckedChange = { enabled ->
+                        scanSoundsEnabled = enabled
+                        ScanFeedback.setSoundsEnabled(context.applicationContext, enabled)
+                        if (enabled) ScanFeedback.prepare(context.applicationContext)
+                    },
+                )
             }
         }
 

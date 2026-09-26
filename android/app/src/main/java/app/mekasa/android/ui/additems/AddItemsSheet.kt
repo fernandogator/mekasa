@@ -13,6 +13,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -209,6 +210,10 @@ private fun BarcodeContent(
     var scanKey by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
     val feedbackContext = rememberScanFeedbackContext()
+
+    LaunchedEffect(Unit) {
+        ScanFeedback.prepare(feedbackContext)
+    }
 
     fun lookup(raw: String) {
         val trimmed = raw.trim()

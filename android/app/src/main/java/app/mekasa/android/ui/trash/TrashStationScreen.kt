@@ -60,6 +60,7 @@ fun TrashStationScreen(
     val inStock = state.inventory.filter { it.quantity > 0 }
 
     LaunchedEffect(Unit) {
+        ScanFeedback.prepare(feedbackContext)
         session.refreshUnknownTrashScans()
     }
 
