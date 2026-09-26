@@ -83,6 +83,7 @@ PYTHONPATH=. ALLOW_TEST_AUTH=true pytest ../tests/backend -q
 | GET/POST | `/v1/households/{id}/members` / invites | yes | Family members + invites (REQ-019) |
 | POST | `/v1/invites/accept` | yes | Accept invite token |
 | GET | `/v1/barcode/{code}?household_id=` | yes | Open Food Facts UPC lookup (`found` false if unknown); includes `health` grade data and, when scoped to a household, member `warnings` (REQ-021) |
+| POST | `/v1/households/{id}/inventory/{item_id}/refresh-health` | yes | Backfill `health` for a barcoded row that has none (REQ-021 AC4) |
 | GET | `/v1/health/avoidances` | yes | Catalog of allergens / additives a member can avoid (REQ-021) |
 | PUT | `/v1/households/{id}/members/{uid}/avoid` | yes | Replace a member's "I avoid" list — self or Owner (REQ-021) |
 | GET | `/v1/products/search?q=&limit=` | yes | Name search → product variants (manual / voice pick list) |

@@ -332,3 +332,58 @@ def test_inventory_item_persists_health_and_lists_warnings(client: TestClient) -
     assert patched.status_code == 200
     assert patched.json()["health"]["grade"] == "B"
     assert patched.json()["health"]["additives"] == []
+
+
+def test_refresh_health_backfills_barcoded_item(client: TestClient) -> None:
+    """
+    Satisfies: REQ-021 AC4
+    Spec version: 1.0
+    """
+    household_id = _household(client)
+    _invite_member(client, household_id, "member-2", "Sam")
+    client.put(
+        f"/v1/households/{household_id}/members/member-2/avoid",
+        json={"avoid": ["msg"]},
+        headers=_auth("member-2"),
+    )
+    created = client.post(
+        f"/v1/households/{household_id}/inventory",
+        json={"name": "Old Ramen", "category": "Pantry", "barcode": "0000000012345"},
+        headers=_auth("owner-1"),
+    )
+    item_id = created.json()["id"]
+    assert created.json()["health"] is None
+
+    with _mock_off(RAMEN_PRODUCT):
+        refreshed = client.post(
+            f"/v1/households/{household_id}/inventory/{item_id}/refresh-health",
+            headers=_auth("owner-1"),
+        )
+    assert refreshed.status_code == 200
+    body = refreshed.json()
+    assert body["health"]["grade"] == "E"
+    assert body["warnings"][0]["matched"] == ["MSG"]
+
+    # Second call is a no-op (no lookup) once health exists.
+    with patch("app.inventory_image.lookup_barcode", new_callable=AsyncMock) as lookup:
+        again = client.post(
+            f"/v1/households/{household_id}/inventory/{item_id}/refresh-health",
+            headers=_auth("owner-1"),
+        )
+        lookup.assert_not_called()
+    assert again.json()["health"]["grade"] == "E"
+
+    # Manual items without a barcode are returned unchanged.
+    manual = client.post(
+        f"/v1/households/{household_id}/inventory",
+        json={"name": "Bananas", "category": "Produce"},
+        headers=_auth("owner-1"),
+    )
+    with patch("app.inventory_image.lookup_barcode", new_callable=AsyncMock) as lookup:
+        unchanged = client.post(
+            f"/v1/households/{household_id}/inventory/{manual.json()['id']}/refresh-health",
+            headers=_auth("owner-1"),
+        )
+        lookup.assert_not_called()
+    assert unchanged.status_code == 200
+    assert unchanged.json()["health"] is None

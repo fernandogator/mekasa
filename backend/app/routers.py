@@ -7,7 +7,7 @@ from app.barcode_lookup import lookup_barcode, search_products
 from app.config import Settings, get_settings
 from app.devices_repository import DevicesRepository, get_devices_repository
 from app.household_access import assert_household_member, assert_household_owner
-from app.inventory_image import refresh_item_image
+from app.inventory_image import refresh_item_health, refresh_item_image
 from app.inventory_repository import InventoryRepository, get_inventory_repository
 from app.models import (
     AddressUpdateRequest,
@@ -413,6 +413,41 @@ async def refresh_inventory_item_image(
         return await refresh_item_image(item, update=_update)
     except (KeyError, PermissionError) as exc:
         raise _map_inventory_errors(exc) from exc
+
+
+@inventory_router.post(
+    "/households/{household_id}/inventory/{item_id}/refresh-health",
+    response_model=InventoryItemResponse,
+)
+async def refresh_inventory_item_health(
+    household_id: str,
+    item_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: InventoryRepository = Depends(get_inventory_repository),
+) -> InventoryItemResponse:
+    """
+    Satisfies: REQ-021 AC4
+    Spec version: 1.0
+
+    Backfill health grade data for a barcoded item that has none (rows created
+    before grading, or via manual entry with a UPC). Returns the row with
+    member warnings applied.
+    """
+    try:
+        item = repo.get(household_id, item_id, user.uid)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    def _update(payload: InventoryItemUpdateRequest) -> InventoryItemResponse:
+        return repo.update(household_id, item_id, user.uid, payload)
+
+    try:
+        refreshed = await refresh_item_health(item, update=_update)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+    return _with_warnings(refreshed, _household_members_for_warnings(household_id, user.uid))
 
 
 @inventory_router.delete(

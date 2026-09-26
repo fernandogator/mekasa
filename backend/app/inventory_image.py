@@ -45,3 +45,25 @@ async def refresh_item_image(
         return item
 
     return update(InventoryItemUpdateRequest(image_url=image_url))
+
+
+async def refresh_item_health(
+    item: InventoryItemResponse,
+    *,
+    update,
+) -> InventoryItemResponse:
+    """
+    REQ-021 AC4: backfill `health` for barcoded rows saved before grading existed.
+
+    Items that already carry health data, or have no barcode, are returned unchanged.
+    Unknown barcodes / OFF products without nutrition data leave the row untouched so
+    a later open can retry.
+    """
+    if item.health is not None or not (item.barcode and item.barcode.strip()):
+        return item
+
+    hit = await lookup_barcode(item.barcode)
+    if not hit.found or hit.health is None:
+        return item
+
+    return update(InventoryItemUpdateRequest(health=hit.health))
