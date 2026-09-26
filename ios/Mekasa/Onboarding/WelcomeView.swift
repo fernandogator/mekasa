@@ -162,10 +162,10 @@ struct WelcomeView: View {
         }
         .accessibilityIdentifier(TestIdentifiers.welcomeView)
         .onAppear { prefillLastSignedInEmail() }
-        .onChange(of: session.lastSignedInEmail) { _ in
+        .onChange(of: session.lastSignedInEmail) {
             prefillLastSignedInEmail()
         }
-        .onChange(of: session.onboardingStep) { step in
+        .onChange(of: session.onboardingStep) { _, step in
             if step == .welcome {
                 prefillLastSignedInEmail()
             }
