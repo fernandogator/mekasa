@@ -22,7 +22,8 @@ final class HouseholdSyncService: ObservableObject {
     private var db: Firestore? {
         guard FirebaseBootstrap.isConfigured else { return nil }
         let firestore = Firestore.firestore(database: Self.databaseID)
-        var settings = firestore.settings
+        // FirestoreSettings is a class, so the binding never changes — only the object.
+        let settings = firestore.settings
         settings.cacheSettings = PersistentCacheSettings()
         firestore.settings = settings
         return firestore
