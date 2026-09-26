@@ -863,6 +863,17 @@ final class AppSession: ObservableObject {
         Task { await persistShoppingReject(itemID: id) }
     }
 
+    /// Remove a row from the list (any member; REQ-012). Pending requests should go
+    /// through approve/reject when the caller is an owner.
+    func removeShoppingItem(id: String) {
+        guard let idx = shoppingList.firstIndex(where: { $0.id == id }) else { return }
+        let name = shoppingList[idx].name
+        shoppingList.remove(at: idx)
+        logActivity("Removed \(name) from list", kind: .warning)
+        guard canSyncShoppingList else { return }
+        Task { await persistShoppingDelete(itemID: id) }
+    }
+
     // MARK: - Local inventory mutators
 
     private func applyLocalAdd(_ item: InventoryItem) {
@@ -1129,6 +1140,24 @@ final class AppSession: ObservableObject {
                 return
             }
             lastError = "Couldn’t sync approval: \(error.localizedDescription)"
+        }
+    }
+
+    private func persistShoppingDelete(itemID: String) async {
+        guard let token = idToken, let householdID = household?.id else { return }
+        do {
+            try await MekasaAPIClient.shared.deleteShoppingListItem(
+                householdID: householdID,
+                itemID: itemID,
+                token: token
+            )
+        } catch {
+            if SessionExpiry.isUnauthorized(error) {
+                handleAPIFailure(error)
+                return
+            }
+            lastError = "Couldn’t remove that item: \(error.localizedDescription)"
+            await refreshShoppingList()
         }
     }
 
