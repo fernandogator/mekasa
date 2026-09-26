@@ -70,4 +70,32 @@ final class ShoppingListSessionTests: XCTestCase {
         session.rejectShoppingRequest(id: rejectID)
         XCTAssertTrue(session.shoppingList.isEmpty)
     }
+
+    /// REQ-012 AC4: any member can remove a row, no owner role required.
+    @MainActor
+    func testRemoveShoppingItem_removesRowForNonOwner() {
+        let session = AppSession()
+        session.didSeedShoppingList = true
+        session.shoppingList = TestFixtures.standardShoppingList
+        let before = session.activity.count
+
+        session.removeShoppingItem(id: "shop-4")
+
+        XCTAssertFalse(session.shoppingList.contains { $0.id == "shop-4" })
+        XCTAssertEqual(session.shoppingList.count, TestFixtures.standardShoppingList.count - 1)
+        XCTAssertEqual(session.activity.count, before + 1)
+        XCTAssertEqual(session.activity.first?.title, "Removed Avocados from list")
+        XCTAssertNil(session.lastError)
+    }
+
+    @MainActor
+    func testRemoveShoppingItem_unknownIDIsNoOp() {
+        let session = AppSession()
+        session.didSeedShoppingList = true
+        session.shoppingList = TestFixtures.standardShoppingList
+
+        session.removeShoppingItem(id: "does-not-exist")
+
+        XCTAssertEqual(session.shoppingList, TestFixtures.standardShoppingList)
+    }
 }

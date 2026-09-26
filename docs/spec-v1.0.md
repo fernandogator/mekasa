@@ -177,6 +177,9 @@ Acceptance Criteria:
 - AC1: Item appears on shopping list within 5 seconds of crossing threshold
 - AC2: No approval step required for auto-additions
 - AC3: Item is removed from shopping list once marked purchased
+- AC4: Auto-added rows carry an "Auto" chip so a shopper can tell them
+  from manual additions; the list is grouped into Needs approval /
+  To buy / Purchased sections with a "N to buy" header summary
 
 ### REQ-012: Child Shopping Request Submission
 Priority: P1
@@ -187,6 +190,8 @@ Acceptance Criteria:
   member's name
 - AC2: Request appears in pending state visible to all Owners
 - AC3: Request does not appear as confirmed until approved
+- AC4: Any household member can remove a row from the list (their own
+  request or a plain item); removal is synced to the household
 
 ### REQ-013: Request Approval Workflow
 Priority: P1
@@ -204,7 +209,8 @@ Description: Only Owners can mark shopping list items as purchased in v1.0.
 Design Artifact: design/mockups/ShoppingList.jsx
 Acceptance Criteria:
 - AC1: Purchase action is only available to Owner-role users
-- AC2: Member-role users can view but not mark items purchased
+- AC2: Member-role users can view but not mark items purchased; the
+  list shows a "Only household owners can mark items purchased." notice
 - AC3: Data model supports a future "buyer" permission without schema migration
 
 ### REQ-015: Price Capture from Receipt

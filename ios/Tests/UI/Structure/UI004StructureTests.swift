@@ -61,13 +61,17 @@ final class UI004StructureTests: XCTestCase {
         )
     }
 
-    func testShoppingList_itemListStructure() {
+    private func openListTab() {
         let listTab = UITestLaunch.element(app, TestIdentifiers.listTab)
         if listTab.waitForExistence(timeout: UITestLaunch.elementTimeout) {
             listTab.tap()
         } else if app.buttons["List"].waitForExistence(timeout: 5) {
             app.buttons["List"].tap()
         }
+    }
+
+    func testShoppingList_itemListStructure() {
+        openListTab()
         let list = UITestLaunch.element(app, TestIdentifiers.itemList)
         let empty = UITestLaunch.element(app, TestIdentifiers.emptyStateView)
         let shopping = UITestLaunch.element(app, TestIdentifiers.shoppingListView)
@@ -88,5 +92,62 @@ final class UI004StructureTests: XCTestCase {
                 "Expected a shopping row (item or pending request)"
             )
         }
+    }
+
+    /// REQ-011 AC4: rows grouped into Needs approval / To buy / Purchased with a
+    /// "N to buy" header summary. Fixtures: 1 pending, 3 to buy, 1 purchased.
+    func testShoppingList_groupsIntoSectionsWithSummary() {
+        openListTab()
+        let headers = app.staticTexts.matching(identifier: TestIdentifiers.shoppingSectionHeader)
+        XCTAssertTrue(
+            headers.firstMatch.waitForExistence(timeout: UITestLaunch.elementTimeout),
+            "Expected section headers on the shopping list"
+        )
+        XCTAssertGreaterThanOrEqual(headers.count, 2, "Fixtures should produce at least two sections")
+
+        let summary = UITestLaunch.element(app, TestIdentifiers.shoppingToBuySummary)
+        XCTAssertTrue(summary.waitForExistence(timeout: UITestLaunch.elementTimeout))
+        XCTAssertTrue(
+            summary.label.localizedCaseInsensitiveContains("3 to buy"),
+            "Summary should count approved, unchecked rows; got \(summary.label)"
+        )
+    }
+
+    /// REQ-011 AC4: auto-added rows carry an "Auto" chip.
+    func testShoppingList_autoRowsShowAutoChip() {
+        openListTab()
+        // The chip text may be folded into the row button's accessibility label, so
+        // accept either the chip element or an "auto-added" row label.
+        let chips = app.staticTexts.matching(identifier: TestIdentifiers.shoppingAutoChip)
+        let autoRows = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "auto-added"))
+        XCTAssertTrue(
+            chips.firstMatch.waitForExistence(timeout: UITestLaunch.elementTimeout)
+                || autoRows.firstMatch.waitForExistence(timeout: 5),
+            "Expected an Auto chip on the Eggs / 2% milk rows"
+        )
+    }
+
+    /// REQ-012 AC4: the trash control removes a row from the list.
+    func testShoppingList_removeButtonRemovesRow() {
+        openListTab()
+        // The row's toggle button carries "Avocados, not purchased"; the remove control
+        // is a sibling button labelled "Remove Avocados".
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Avocados")).firstMatch
+        let remove = app.buttons.matching(NSPredicate(format: "label == %@", "Remove Avocados")).firstMatch
+        XCTAssertTrue(remove.waitForExistence(timeout: UITestLaunch.elementTimeout))
+        XCTAssertTrue(row.exists)
+        if !remove.isHittable {
+            app.swipeUp()
+        }
+        remove.tap()
+
+        let gone = NSPredicate(format: "exists == false")
+        let expectation = XCTNSPredicateExpectation(predicate: gone, object: remove)
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [expectation], timeout: UITestLaunch.elementTimeout),
+            .completed,
+            "Remove control for Avocados should disappear once the row is removed"
+        )
+        XCTAssertFalse(row.exists, "Avocados row should be gone after removal")
     }
 }
