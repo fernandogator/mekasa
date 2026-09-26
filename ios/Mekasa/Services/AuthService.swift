@@ -146,12 +146,29 @@ final class AuthService: ObservableObject {
         } catch let error as AuthServiceError {
             throw error
         } catch {
-            let ns = error as NSError
-            if ns.domain == ASAuthorizationError.errorDomain,
-               ns.code == ASAuthorizationError.Code.canceled.rawValue {
-                throw AuthServiceError.cancelled
+            if let mapped = Self.appleAuthorizationError(from: error) {
+                throw mapped
             }
             throw AuthErrorFormatter.wrap(error)
+        }
+    }
+
+    /// Maps AuthenticationServices failures to actionable errors; nil means "not an
+    /// ASAuthorization error, let the Firebase formatter handle it".
+    static func appleAuthorizationError(from error: Error) -> AuthServiceError? {
+        let ns = error as NSError
+        guard ns.domain == ASAuthorizationError.errorDomain else { return nil }
+        switch ns.code {
+        case ASAuthorizationError.Code.canceled.rawValue:
+            return .cancelled
+        case ASAuthorizationError.Code.unknown.rawValue,
+             ASAuthorizationError.Code.notInteractive.rawValue:
+            // 1000 is what the system returns when the app lacks the Sign in with Apple
+            // entitlement (Debug builds omit it so personal teams can sign them) or when
+            // no Apple ID is signed in on the device/simulator.
+            return .appleSignInUnavailable
+        default:
+            return nil
         }
     }
 
@@ -222,6 +239,7 @@ enum AuthServiceError: LocalizedError, Equatable {
     case missingGoogleURLScheme
     case missingAppleCredential
     case missingAppleToken
+    case appleSignInUnavailable
     case cancelled
     case sessionExpired
     case firebaseAuthFailed(String)
@@ -240,6 +258,12 @@ enum AuthServiceError: LocalizedError, Equatable {
             return "Sign in with Apple did not return an Apple ID credential."
         case .missingAppleToken:
             return "Sign in with Apple did not return an identity token."
+        case .appleSignInUnavailable:
+            #if DEBUG
+            return "Sign in with Apple isn’t available in Debug builds: they’re signed without the Sign in with Apple entitlement so a personal Apple team can run them. Use Continue with Google or email here, or test Apple sign-in with a Release build on a paid team."
+            #else
+            return "Sign in with Apple isn’t available right now. Make sure an Apple ID is signed in on this device, then try again — or use Continue with Google or email."
+            #endif
         case .cancelled:
             return "Sign-in was cancelled."
         case .sessionExpired:
