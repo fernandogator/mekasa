@@ -9,7 +9,8 @@ struct ReceiptScanView: View {
 
     @State private var photoItem: PhotosPickerItem?
     @State private var isScanning = false
-    @State private var statusMessage = "Photograph a receipt or run the demo haul."
+    @State private var pastedText = ""
+    @State private var statusMessage = "Photograph a receipt, paste its text, or run the demo haul."
     @State private var showConfirm = false
     @State private var drafts: [InventoryItem] = []
     @State private var engineLabel: String?
@@ -60,6 +61,8 @@ struct ReceiptScanView: View {
                             Task { await scanPhoto(item) }
                         }
 
+                        pasteTextSection
+
                         SecondaryButton(title: isScanning ? "Scanning…" : "Use demo haul") {
                             Task { await scanDemo() }
                         }
@@ -71,9 +74,75 @@ struct ReceiptScanView: View {
                 }
             }
         }
+        .accessibilityIdentifier(TestIdentifiers.receiptScanView)
         .navigationBarHidden(true)
         .navigationDestination(isPresented: $showConfirm) {
             ItemConfirmView(drafts: drafts, title: "Confirm haul")
+        }
+    }
+
+    /// Paste text from an emailed / app receipt when there's no paper copy to photograph.
+    private var pasteTextSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Or paste receipt text")
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .tracking(1)
+                .textCase(.uppercase)
+                .foregroundStyle(MekasaTheme.textMuted)
+                .padding(.leading, 16)
+
+            ZStack(alignment: .topLeading) {
+                if pastedText.isEmpty {
+                    Text("BANANAS 1.29\nWHOLE MILK 3.49")
+                        .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(MekasaTheme.textMuted.opacity(0.6))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 18)
+                        .allowsHitTesting(false)
+                }
+                TextEditor(text: $pastedText)
+                    .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(MekasaTheme.brand)
+                    .scrollContentBackground(.hidden)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .frame(minHeight: 120, maxHeight: 180)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .accessibilityIdentifier(TestIdentifiers.receiptPasteField)
+            }
+            .background(MekasaTheme.surfaceElevated)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1)
+            )
+
+            let lines = ReceiptTextInput.lineCount(pastedText)
+            if lines > 0 {
+                Text("\(lines) line\(lines == 1 ? "" : "s") ready to parse")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(MekasaTheme.textMuted)
+                    .padding(.leading, 16)
+                    .accessibilityIdentifier(TestIdentifiers.receiptPasteLineCount)
+            }
+
+            PrimaryButton(
+                title: isScanning ? "Scanning…" : "Parse pasted text",
+                disabled: isScanning || !ReceiptTextInput.isSubmittable(pastedText)
+            ) {
+                Task { await scanPastedText() }
+            }
+            .accessibilityIdentifier(TestIdentifiers.receiptPasteButton)
+        }
+    }
+
+    private func scanPastedText() async {
+        let text = ReceiptTextInput.normalize(pastedText)
+        guard ReceiptTextInput.isSubmittable(text) else { return }
+        await runScan(imageBase64: nil, rawText: text)
+        if showConfirm {
+            pastedText = ""
         }
     }
 

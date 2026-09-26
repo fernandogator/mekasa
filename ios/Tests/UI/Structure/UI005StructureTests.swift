@@ -41,6 +41,39 @@ final class UI005StructureTests: XCTestCase {
         )
     }
 
+    /// UI-005 AC4: a typed UPC goes through the same consume path as a camera scan.
+    /// Fixture "Diet Coke Soft Drink" has barcode 049000028911 and qty 1, so it depletes.
+    func testTrashStation_typedUPCConsumesItem() {
+        UITestLaunch.addItemButton(app).tap()
+        let trashEntry = UITestLaunch.element(app, TestIdentifiers.trashStationView)
+        if trashEntry.waitForExistence(timeout: UITestLaunch.elementTimeout) {
+            trashEntry.tap()
+        } else {
+            app.staticTexts["Trash station"].tap()
+        }
+
+        let field = app.textFields[TestIdentifiers.trashManualBarcodeField]
+        XCTAssertTrue(field.waitForExistence(timeout: UITestLaunch.elementTimeout), "Manual UPC field missing")
+        let useButton = UITestLaunch.element(app, TestIdentifiers.trashManualBarcodeButton)
+        XCTAssertTrue(useButton.exists)
+        XCTAssertFalse(useButton.isEnabled, "Use barcode should be disabled until 6+ digits are typed")
+
+        field.tap()
+        field.typeText("049000028911")
+        XCTAssertTrue(useButton.isEnabled)
+        if !useButton.isHittable {
+            app.scrollViews.firstMatch.swipeUp()
+        }
+        useButton.tap()
+
+        let last = UITestLaunch.element(app, TestIdentifiers.lastScannedItem)
+        XCTAssertTrue(last.waitForExistence(timeout: UITestLaunch.elementTimeout))
+        XCTAssertTrue(
+            last.label.contains("Diet Coke"),
+            "Typed UPC should resolve to the fixture item; got \(last.label)"
+        )
+    }
+
     func testTrashStation_emptyStateWhenNoInventory() {
         app.terminate()
         app = UITestLaunch.app(empty: true)

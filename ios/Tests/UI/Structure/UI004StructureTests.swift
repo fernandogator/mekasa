@@ -111,6 +111,42 @@ final class UI004StructureTests: XCTestCase {
         )
     }
 
+    /// REQ-005 AC7: pasted receipt text goes through the same parse + confirm path as a photo.
+    func testAddHub_receiptPasteTextReachesConfirm() {
+        UITestLaunch.addItemButton(app).tap()
+        let entry = UITestLaunch.element(app, TestIdentifiers.receiptScanEntry)
+        if entry.waitForExistence(timeout: UITestLaunch.elementTimeout) {
+            entry.tap()
+        } else {
+            app.staticTexts["Scan receipt"].tap()
+        }
+
+        let field = app.textViews[TestIdentifiers.receiptPasteField]
+        XCTAssertTrue(field.waitForExistence(timeout: UITestLaunch.elementTimeout), "Paste field missing")
+        let parse = UITestLaunch.element(app, TestIdentifiers.receiptPasteButton)
+        XCTAssertTrue(parse.exists)
+        XCTAssertFalse(parse.isEnabled, "Parse should be disabled until text is pasted")
+
+        field.tap()
+        field.typeText("BANANAS 1.29\nWHOLE MILK 3.49")
+        XCTAssertTrue(
+            UITestLaunch.element(app, TestIdentifiers.receiptPasteLineCount)
+                .waitForExistence(timeout: UITestLaunch.elementTimeout)
+        )
+        XCTAssertTrue(parse.isEnabled)
+        if !parse.isHittable {
+            app.scrollViews.firstMatch.swipeUp()
+        }
+        parse.tap()
+
+        XCTAssertTrue(
+            app.staticTexts["Confirm haul"].waitForExistence(timeout: UITestLaunch.elementTimeout)
+                || UITestLaunch.element(app, TestIdentifiers.itemDetailView)
+                    .waitForExistence(timeout: 5),
+            "Parsing pasted text should land on the confirm screen"
+        )
+    }
+
     private func openListTab() {
         let listTab = UITestLaunch.element(app, TestIdentifiers.listTab)
         if listTab.waitForExistence(timeout: UITestLaunch.elementTimeout) {

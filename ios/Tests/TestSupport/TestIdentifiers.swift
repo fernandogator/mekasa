@@ -14,6 +14,13 @@ enum TestIdentifiers {
     static let itemSubtitle = "ItemSubtitle"
     static let emptyStateView = "EmptyStateView"
 
+    // MARK: - Receipt scan (REQ-005 AC7)
+    static let receiptScanView = "ReceiptScanView"
+    static let receiptScanEntry = "ReceiptScanEntry"
+    static let receiptPasteField = "ReceiptPasteField"
+    static let receiptPasteLineCount = "ReceiptPasteLineCount"
+    static let receiptPasteButton = "ReceiptPasteButton"
+
     // MARK: - Inventory list / swipe (UI-006 · REQ-INV-014–018)
     static let inventoryListView = "InventoryListView"
     static let inventoryUseOneAction = "InventoryUseOneAction"
@@ -64,6 +71,8 @@ enum TestIdentifiers {
     static let lastScannedItem = "LastScannedItem"
     static let trashEventList = "TrashEventList"
     static let scanCooldownOverlay = "ScanCooldownOverlay"
+    static let trashManualBarcodeField = "TrashManualBarcodeField"
+    static let trashManualBarcodeButton = "TrashManualBarcodeButton"
 
     // MARK: - Shell / onboarding / dashboard (UI-002–UI-004)
     static let rootView = "RootView"

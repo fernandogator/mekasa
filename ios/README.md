@@ -191,6 +191,20 @@ Then **Product → Clean Build Folder** and resolve SPM packages if prompted.
 
 Signing → your Team → Run on **iPhone 17 Pro** simulator (not “Any iOS Device”).
 
+### Signing with a free Personal Team
+
+Personal teams cannot create provisioning profiles that include **Sign in with Apple**, so Xcode would otherwise fail with:
+
+> Cannot create a iOS App Development provisioning profile for "com.fernandogator.mekasa". Personal development teams … do not support the Sign In with Apple capability.
+
+To keep device builds working, the **Debug** configuration signs with `Mekasa/Mekasa.debug.entitlements` (no Sign in with Apple), while **Release** keeps `Mekasa/Mekasa.entitlements` (with it). This is wired in `project.yml` under `settings.configs.Debug.CODE_SIGN_ENTITLEMENTS`, so `xcodegen generate` preserves it.
+
+Consequences:
+
+- Debug builds on any team: **Continue with Apple** fails fast with “Sign in with Apple isn’t available in Debug builds…”. Use Google or email while developing.
+- To test Apple sign-in: sign with a paid Apple Developer team and run a **Release** build (Edit Scheme → Run → Build Configuration → Release), after finishing `docs/gcp-firebase-setup.md` §2b.
+- Archives / TestFlight use Release, so production is unaffected.
+
 ### DEBUG: offline UI walkthrough
 
 **Browse UI offline** walks onboarding with local fixtures (no Firebase/network).
