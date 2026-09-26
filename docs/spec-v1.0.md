@@ -363,6 +363,12 @@ Acceptance Criteria:
 - AC5: When item detail opens for a row with no stored `image_url`, the
   client calls `POST .../inventory/{id}/refresh-image`; the API looks up
   Open Food Facts (or a category placeholder) and persists `image_url`
+- AC6: The list is grouped under category headers (sorted by category,
+  then item name), the header summarises "N items · M low" for the whole
+  inventory, and a search field filters rows by name or category
+  (case-insensitive) with a "No items match" state
+- AC7: The list offers an Add entry point (header button, and an
+  "Add items" CTA in the empty state) that opens the Add Items hub
 
 ---
 

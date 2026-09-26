@@ -23,6 +23,15 @@ enum TestIdentifiers {
     static let allInventoryButton = "AllInventoryButton"
     static let lowStockStatButton = "LowStockStatButton"
 
+    // MARK: - Inventory search / grouping / Add (UI-006 AC6–AC7)
+    static let inventorySummary = "InventorySummary"
+    static let inventoryAddButton = "InventoryAddButton"
+    static let inventoryEmptyAddButton = "InventoryEmptyAddButton"
+    static let inventorySearchField = "InventorySearch"
+    static let inventorySearchClear = "InventorySearchClear"
+    static let inventorySectionHeader = "InventorySectionHeader"
+    static let inventoryNoMatches = "InventoryNoMatches"
+
     // MARK: - Item Detail
     static let itemDetailView = "ItemDetailView"
     static let itemImage = "ItemImage"

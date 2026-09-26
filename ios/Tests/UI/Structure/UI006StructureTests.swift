@@ -73,6 +73,120 @@ final class UI006StructureTests: XCTestCase {
         )
     }
 
+    /// UI-006 AC6: rows are grouped under category headers and the header eyebrow
+    /// counts the whole inventory. Fixtures span several categories.
+    func testInventoryList_groupsRowsByCategory() throws {
+        openInventoryList()
+        guard UITestLaunch.element(app, TestIdentifiers.itemCell)
+            .waitForExistence(timeout: UITestLaunch.elementTimeout)
+        else {
+            throw XCTSkip("No inventory fixture rows under --uitesting")
+        }
+        let headers = app.descendants(matching: .any)
+            .matching(identifier: TestIdentifiers.inventorySectionHeader)
+        XCTAssertGreaterThanOrEqual(
+            headers.count, 2,
+            "Fixture inventory spans several categories, so at least two section headers should render"
+        )
+        XCTAssertTrue(
+            app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "Produce")).firstMatch.exists
+                || app.otherElements.matching(NSPredicate(format: "label ==[c] %@", "Produce")).firstMatch.exists,
+            "Bananas should sit under a Produce header"
+        )
+        let summary = UITestLaunch.element(app, TestIdentifiers.inventorySummary)
+        XCTAssertTrue(summary.waitForExistence(timeout: UITestLaunch.elementTimeout), "Header eyebrow should render")
+        XCTAssertTrue(
+            summary.label.localizedCaseInsensitiveContains("items")
+                && summary.label.localizedCaseInsensitiveContains("low"),
+            "Eyebrow should read like '7 items · 3 low', got \(summary.label)"
+        )
+    }
+
+    /// UI-006 AC6: typing in the search field narrows rows by name and hides other
+    /// categories; clearing restores them.
+    func testInventoryList_searchFiltersRows() throws {
+        openInventoryList()
+        guard UITestLaunch.element(app, TestIdentifiers.itemCell)
+            .waitForExistence(timeout: UITestLaunch.elementTimeout)
+        else {
+            throw XCTSkip("No inventory fixture rows under --uitesting")
+        }
+        let cells = app.descendants(matching: .any).matching(identifier: TestIdentifiers.itemCell)
+        let unfilteredCount = cells.count
+        XCTAssertGreaterThanOrEqual(unfilteredCount, 2, "Fixtures should render several rows before filtering")
+
+        let field = searchField()
+        XCTAssertTrue(field.waitForExistence(timeout: UITestLaunch.elementTimeout), "Search field should render")
+        field.tap()
+        field.typeText("banana")
+
+        XCTAssertTrue(app.staticTexts["Bananas"].waitForExistence(timeout: UITestLaunch.elementTimeout))
+        XCTAssertFalse(
+            app.staticTexts["Cheerios 12oz"].waitForExistence(timeout: 2),
+            "Non-matching rows should be filtered out"
+        )
+
+        field.typeText("zz")
+        XCTAssertTrue(
+            UITestLaunch.element(app, TestIdentifiers.inventoryNoMatches)
+                .waitForExistence(timeout: UITestLaunch.elementTimeout)
+                || app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "No items match")).firstMatch
+                .waitForExistence(timeout: 2),
+            "A query with no hits should show the no-matches copy"
+        )
+
+        let clear = UITestLaunch.element(app, TestIdentifiers.inventorySearchClear)
+        if clear.waitForExistence(timeout: 3) {
+            clear.tap()
+        } else {
+            let typed = (field.value as? String) ?? "bananazz"
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: typed.count))
+        }
+        let restored = NSPredicate { _, _ in cells.count >= min(unfilteredCount, 2) }
+        let restoredExpectation = XCTNSPredicateExpectation(predicate: restored, object: nil)
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [restoredExpectation], timeout: UITestLaunch.elementTimeout),
+            .completed,
+            "Clearing the search should restore the rows"
+        )
+    }
+
+    /// UI-006 AC7: the header Add button opens the Add Items hub from the list.
+    func testInventoryList_addButtonOpensAddItemsHub() throws {
+        openInventoryList()
+        let add = UITestLaunch.element(app, TestIdentifiers.inventoryAddButton)
+        guard add.waitForExistence(timeout: UITestLaunch.elementTimeout) else {
+            throw XCTSkip("Inventory Add button not found under --uitesting")
+        }
+        add.tap()
+        XCTAssertTrue(
+            UITestLaunch.element(app, TestIdentifiers.addItemsHub).waitForExistence(timeout: UITestLaunch.elementTimeout)
+                || UITestLaunch.element(app, TestIdentifiers.scanButton).waitForExistence(timeout: 2),
+            "Add should present the Add Items hub"
+        )
+    }
+
+    /// UI-006 AC7: the empty state offers an Add items CTA that opens the hub.
+    func testInventoryList_emptyStateAddCTAOpensHub() {
+        app.terminate()
+        app = UITestLaunch.app(empty: true)
+        app.launch()
+        XCTAssertTrue(UITestLaunch.waitForShell(app))
+        openInventoryList()
+        let cta = UITestLaunch.element(app, TestIdentifiers.inventoryEmptyAddButton)
+        let fallback = app.buttons["Add items"]
+        XCTAssertTrue(
+            cta.waitForExistence(timeout: UITestLaunch.elementTimeout) || fallback.waitForExistence(timeout: 2),
+            "Empty inventory should offer an Add items CTA"
+        )
+        (cta.exists ? cta : fallback).tap()
+        XCTAssertTrue(
+            UITestLaunch.element(app, TestIdentifiers.addItemsHub).waitForExistence(timeout: UITestLaunch.elementTimeout)
+                || UITestLaunch.element(app, TestIdentifiers.scanButton).waitForExistence(timeout: 2),
+            "Add items CTA should present the Add Items hub"
+        )
+    }
+
     /// REQ-INV-014: trailing swipe on a qty > 1 row reveals Use 1; tapping decrements
     /// without any confirmation alert. Fixture: Bananas (qty 6, TestFixtures.standardItemList).
     func testSwipe_useOneWhenQuantityGreaterThanOne() throws {
@@ -161,7 +275,16 @@ final class UI006StructureTests: XCTestCase {
     /// Row anchor: the visible title text inside the cell (swiping the text swipes the row).
     private func requireRow(named name: String) throws -> XCUIElement {
         let title = app.staticTexts[name]
-        guard title.waitForExistence(timeout: UITestLaunch.elementTimeout) else {
+        if title.waitForExistence(timeout: UITestLaunch.elementTimeout), title.isHittable {
+            return title
+        }
+        // Rows are grouped by category, so a fixture row can start below the fold;
+        // List cells are created lazily, so scroll until the title is on screen.
+        let list = UITestLaunch.element(app, TestIdentifiers.itemList)
+        for _ in 0 ..< 4 where !(title.exists && title.isHittable) {
+            (list.exists ? list : app).swipeUp()
+        }
+        guard title.waitForExistence(timeout: 3), title.isHittable else {
             throw XCTSkip("No inventory fixture row named \(name) under --uitesting")
         }
         return title
@@ -220,6 +343,14 @@ final class UI006StructureTests: XCTestCase {
         let byLabel = app.buttons[label]
         if byLabel.exists { return byLabel }
         return app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", label)).firstMatch
+    }
+
+    private func searchField() -> XCUIElement {
+        let byId = app.textFields[TestIdentifiers.inventorySearchField]
+        if byId.exists { return byId }
+        let anyById = UITestLaunch.element(app, TestIdentifiers.inventorySearchField)
+        if anyById.exists { return anyById }
+        return app.textFields.matching(NSPredicate(format: "placeholderValue CONTAINS[c] %@", "Search")).firstMatch
     }
 
     private func undoButton() -> XCUIElement {
