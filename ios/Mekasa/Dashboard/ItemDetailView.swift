@@ -40,6 +40,12 @@ struct ItemDetailView: View {
                                     .accessibilityIdentifier(TestIdentifiers.itemBarcodeLabel)
                             }
 
+                            // REQ-021: who in the house should steer clear, then the grade breakdown.
+                            if let health = item.health {
+                                MemberWarningBanner(warnings: session.memberWarnings(for: health))
+                                HealthSummaryCard(health: health)
+                            }
+
                             stepperCard(title: "Quantity", value: $quantity) {
                                 quantity = max(0, quantity)
                                 session.updateLowStockThreshold(itemID: item.id, threshold: threshold)
@@ -82,6 +88,7 @@ struct ItemDetailView: View {
         }
         .task(id: itemID) {
             await refetchMissingImageIfNeeded()
+            await backfillHealthIfNeeded()
         }
     }
 
@@ -149,6 +156,33 @@ struct ItemDetailView: View {
             await session.refreshShoppingList(syncLowStock: true)
         } catch {
             session.handleAPIFailure(error)
+        }
+    }
+
+    /// REQ-021 AC4: barcoded rows saved before grading get their health data on first open.
+    private func backfillHealthIfNeeded() async {
+        guard let item,
+              item.health == nil,
+              let barcode = item.barcode, !barcode.isEmpty,
+              session.canSyncInventory,
+              let token = session.idToken,
+              let householdID = session.household?.id
+        else { return }
+
+        do {
+            let remote = try await MekasaAPIClient.shared.refreshInventoryItemHealth(
+                householdID: householdID,
+                itemID: item.id,
+                token: token
+            )
+            guard remote.health != nil else { return }
+            if let idx = session.inventory.firstIndex(where: { $0.id == remote.id }) {
+                session.inventory[idx] = remote.toLocal()
+            }
+        } catch {
+            if SessionExpiry.isUnauthorized(error) {
+                session.handleAPIFailure(error)
+            }
         }
     }
 

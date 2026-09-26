@@ -205,6 +205,8 @@ struct DashboardView: View {
                                     .foregroundStyle(MekasaTheme.textMuted)
                             }
                             Spacer()
+                            // REQ-021 AC2: flag items a family member should avoid.
+                            AffectedMembersChip(warnings: session.memberWarnings(for: item.health))
                             Image(systemName: "chevron.right")
                                 .foregroundStyle(MekasaTheme.textMuted)
                         }

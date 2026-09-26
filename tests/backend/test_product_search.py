@@ -111,7 +111,8 @@ def test_product_search_short_query_empty(client: TestClient) -> None:
     assert response.json()["results"] == []
 
 
-def test_product_search_http_error_returns_empty(client: TestClient) -> None:
+def test_product_search_http_error_returns_503(client: TestClient) -> None:
+    """An OFF outage is reported as 503, not as an empty result list."""
     import httpx
 
     mock_client = AsyncMock()
@@ -125,10 +126,39 @@ def test_product_search_http_error_returns_empty(client: TestClient) -> None:
             headers=_auth(),
         )
 
-    assert response.status_code == 200
-    assert response.json()["results"] == []
+    assert response.status_code == 503
+    assert "unavailable" in response.json()["detail"].casefold()
     # Retries transient OFF failures before giving up.
     assert mock_client.get.await_count >= 3
+
+
+def test_product_search_partial_outage_still_returns_hits(client: TestClient) -> None:
+    """If one expanded query fails but another succeeds, hits are returned normally."""
+    import httpx
+
+    ok = MagicMock()
+    ok.status_code = 200
+    ok.raise_for_status = MagicMock()
+    ok.json.return_value = {
+        "products": [
+            {
+                "code": "0049000006346",
+                "product_name": "Coca-Cola Classic",
+                "brands": "Coca-Cola",
+                "categories_tags": ["en:sodas"],
+            }
+        ]
+    }
+    mock_client = AsyncMock()
+    # "coke" query fails on every retry, the "coca-cola" alias succeeds.
+    mock_client.get.side_effect = [httpx.ConnectError("offline")] * 3 + [ok] * 10
+    mock_client.aclose = AsyncMock()
+
+    with patch("app.barcode_lookup.httpx.AsyncClient", return_value=mock_client):
+        response = client.get("/v1/products/search", params={"q": "coke"}, headers=_auth())
+
+    assert response.status_code == 200
+    assert response.json()["results"][0]["name"] == "Coca-Cola Classic"
 
 
 def test_product_search_coke_expands_to_coca_cola(client: TestClient) -> None:

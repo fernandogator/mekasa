@@ -31,6 +31,7 @@ enum TestFixtures {
             barcode: "012345678905",
             source: .barcode,
             imageURL: "https://placehold.co/400x400/eeebe3/171e19/png?text=Dairy",
+            health: oatMilkHealth,
             updatedAt: fixedDate
         ),
         InventoryItem(
@@ -195,6 +196,55 @@ enum TestFixtures {
     ]
 
     static let emptyMembers: [HouseholdMember] = []
+
+    /// API-shaped members with REQ-021 avoid lists for `--uitesting` and unit tests.
+    static let standardMemberDTOs: [HouseholdMemberDTO] = [
+        HouseholdMemberDTO(
+            uid: "uitesting-owner", householdId: "uitest-household", name: "UI Test",
+            email: "uitesting@mekasa.local", phone: nil, role: "owner", status: "active",
+            avoid: ["shellfish"]
+        ),
+        HouseholdMemberDTO(
+            uid: "mem-2", householdId: "uitest-household", name: "Leo",
+            email: "leo@mekasa.local", phone: nil, role: "member", status: "active",
+            avoid: ["msg", "peanuts"]
+        ),
+        HouseholdMemberDTO(
+            uid: "mem-3", householdId: "uitest-household", name: "Mia",
+            email: "mia@mekasa.local", phone: nil, role: "member", status: "active",
+            avoid: ["gluten"]
+        ),
+    ]
+
+    /// Clean product that still carries a gluten trace — trips Mia above (REQ-021 AC2).
+    static let oatMilkHealth = ProductHealth(
+        grade: "A",
+        score: 90,
+        nutriscore: "A",
+        novaGroup: 3,
+        additives: [],
+        allergens: [],
+        traces: ["Gluten"],
+        ingredientsText: "Water, oats, sunflower oil, sea salt",
+        flags: []
+    )
+
+    /// Ultra-processed product with MSG + gluten — trips Leo and Mia above.
+    static let ramenHealth = ProductHealth(
+        grade: "E",
+        score: 0,
+        nutriscore: "D",
+        novaGroup: 4,
+        additives: [
+            ProductHealth.Additive(code: "E621", name: "Monosodium glutamate (MSG)", concern: "moderate"),
+            ProductHealth.Additive(code: "E627", name: "Disodium guanylate", concern: "moderate"),
+            ProductHealth.Additive(code: "E330", name: "Citric acid", concern: "none"),
+        ],
+        allergens: ["Gluten", "Soybeans"],
+        traces: ["Eggs"],
+        ingredientsText: "Wheat flour, palm oil, salt, monosodium glutamate, soy sauce powder",
+        flags: ["Palm oil"]
+    )
 
     static let singleMember: [HouseholdMember] = [
         HouseholdMember(id: "mem-single", name: "Solo Owner", email: "solo@mekasa.local", role: .owner),

@@ -130,6 +130,8 @@ class InMemoryInventoryRepository:
                     updates["barcode"] = payload.barcode
                 if payload.image_url:
                     updates["image_url"] = payload.image_url
+                if payload.health is not None:
+                    updates["health"] = payload.health
                 merged = existing.model_copy(update=updates)
                 bucket[existing.id] = merged
                 return merged
@@ -146,6 +148,7 @@ class InMemoryInventoryRepository:
                 barcode=payload.barcode,
                 image_url=payload.image_url,
                 source=payload.source,
+                health=payload.health,
                 created_by_uid=owner_uid,
                 updated_by_uid=owner_uid,
                 created_at=now,
@@ -171,6 +174,9 @@ class InMemoryInventoryRepository:
                 data["name"] = data["name"].strip()
             if "category" in data and data["category"] is not None:
                 data["category"] = data["category"].strip()
+            if "health" in data:
+                # keep the typed model on the cached row (model_copy does not re-validate)
+                data["health"] = payload.health
             data["updated_by_uid"] = owner_uid
             data["updated_at"] = _utcnow()
             updated = item.model_copy(update=data)

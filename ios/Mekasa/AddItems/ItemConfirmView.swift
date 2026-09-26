@@ -214,6 +214,8 @@ struct ItemConfirmView: View {
 
     @State var drafts: [InventoryItem]
     var title: String = "Confirm items"
+    /// REQ-021 warnings returned by the barcode lookup, keyed by draft id.
+    @State var serverWarnings: [String: [MemberWarning]] = [:]
     var onFinished: (() -> Void)?
 
     @State private var saved = false
@@ -338,6 +340,21 @@ struct ItemConfirmView: View {
                             .foregroundStyle(MekasaTheme.textMuted)
                             .accessibilityIdentifier(TestIdentifiers.itemBarcodeLabel)
                     }
+                    if let health = draft.wrappedValue.health, health.hasGrade {
+                        HStack(spacing: 8) {
+                            HealthGradeBadge(grade: health.grade, size: 22)
+                            Text(HealthGrade.label(for: health.grade))
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundStyle(HealthGrade.color(for: health.grade))
+                            if !health.flaggedAdditives.isEmpty {
+                                Text("· \(health.flaggedAdditives.map(\.code).joined(separator: ", "))")
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(MekasaTheme.textMuted)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .padding(.top, 2)
+                    }
                 }
                 Spacer(minLength: 0)
                 if drafts.count > 1 {
@@ -354,6 +371,11 @@ struct ItemConfirmView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("Remove item")
                 }
+            }
+
+            // REQ-021 AC2: warn before anything saves.
+            if let health = draft.wrappedValue.health {
+                MemberWarningBanner(warnings: warnings(for: draft.wrappedValue, health: health))
             }
 
             if !draft.wrappedValue.isIdentified, session.canSyncInventory {
@@ -458,13 +480,22 @@ struct ItemConfirmView: View {
         )
     }
 
+    /// Server-provided warnings (barcode scan scoped to the household) win; otherwise
+    /// match locally against the cached member avoid lists.
+    private func warnings(for draft: InventoryItem, health: ProductHealth) -> [MemberWarning] {
+        if let server = serverWarnings[draft.id], !server.isEmpty { return server }
+        return session.memberWarnings(for: health)
+    }
+
     private func applyMatch(_ hit: ProductSearchHitDTO, to draftID: String) {
         guard let idx = drafts.firstIndex(where: { $0.id == draftID }) else { return }
         drafts[idx].name = hit.name
         drafts[idx].category = hit.category
         drafts[idx].barcode = hit.barcode
         drafts[idx].imageURL = hit.imageUrl
+        drafts[idx].health = hit.health
         drafts[idx].isIdentified = true
+        serverWarnings[draftID] = nil
         matchRoute = nil
     }
 }

@@ -200,6 +200,19 @@ actor MekasaAPIClient {
         )
     }
 
+    /// REQ-021 AC4: backfill health grade data for a barcoded row that has none.
+    func refreshInventoryItemHealth(
+        householdID: String,
+        itemID: String,
+        token: String
+    ) async throws -> InventoryItemDTO {
+        try await request(
+            path: "/v1/households/\(householdID)/inventory/\(itemID)/refresh-health",
+            method: "POST",
+            token: token
+        )
+    }
+
     func deleteInventoryItem(householdID: String, itemID: String, token: String) async throws {
         _ = try await rawRequest(
             path: "/v1/households/\(householdID)/inventory/\(itemID)",
@@ -510,11 +523,34 @@ actor MekasaAPIClient {
 
     // MARK: - Barcode lookup (REQ-004)
 
-    func lookupBarcode(code: String, token: String) async throws -> BarcodeLookupDTO {
-        try await request(
-            path: "/v1/barcode/\(code)",
-            method: "GET",
-            token: token
+    /// Pass `householdID` to get REQ-021 member warnings alongside the product.
+    func lookupBarcode(code: String, householdID: String? = nil, token: String) async throws -> BarcodeLookupDTO {
+        var path = "/v1/barcode/\(code)"
+        if let householdID, !householdID.isEmpty {
+            let encoded = householdID.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? householdID
+            path += "?household_id=\(encoded)"
+        }
+        return try await request(path: path, method: "GET", token: token)
+    }
+
+    // MARK: - Health grade + avoidances (REQ-021)
+
+    func listAvoidances(token: String) async throws -> AvoidancesResponseDTO {
+        try await request(path: "/v1/health/avoidances", method: "GET", token: token)
+    }
+
+    func updateHouseholdMemberAvoid(
+        householdID: String,
+        memberUID: String,
+        avoid: [String],
+        token: String
+    ) async throws -> HouseholdMemberDTO {
+        struct Body: Encodable { let avoid: [String] }
+        return try await request(
+            path: "/v1/households/\(householdID)/members/\(memberUID)/avoid",
+            method: "PUT",
+            token: token,
+            body: Body(avoid: avoid)
         )
     }
 

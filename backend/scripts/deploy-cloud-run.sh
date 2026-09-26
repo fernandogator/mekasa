@@ -6,6 +6,9 @@ set -euo pipefail
 PROJECT_ID="${GCP_PROJECT_ID:-hackathon2025-472017}"
 REGION="${GCP_REGION:-us-central1}"
 SERVICE="${CLOUD_RUN_SERVICE:-mekasa-api}"
+# Cold starts add ~6 s to the first barcode lookup after idle. Set
+# CLOUD_RUN_MIN_INSTANCES=1 to keep one warm instance (billed while idle).
+MIN_INSTANCES="${CLOUD_RUN_MIN_INSTANCES:-0}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -14,6 +17,7 @@ echo "Project:  $PROJECT_ID"
 echo "Region:   $REGION"
 echo "Service:  $SERVICE"
 echo "Source:   $ROOT"
+echo "Min inst: $MIN_INSTANCES"
 
 gcloud config set project "$PROJECT_ID"
 
@@ -32,6 +36,7 @@ gcloud run deploy "$SERVICE" \
   --region "$REGION" \
   --project "$PROJECT_ID" \
   --allow-unauthenticated \
+  --min-instances "$MIN_INSTANCES" \
   --set-env-vars "ENVIRONMENT=prod,GCP_PROJECT_ID=${PROJECT_ID},FIREBASE_PROJECT_ID=${PROJECT_ID},FIRESTORE_DATABASE_ID=mekasa-db,HOUSEHOLD_PERSISTENCE=firestore,ALLOW_TEST_AUTH=false" \
   --service-account "mekasa-api@${PROJECT_ID}.iam.gserviceaccount.com"
 
