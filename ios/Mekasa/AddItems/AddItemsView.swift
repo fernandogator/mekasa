@@ -66,6 +66,7 @@ struct AddItemsView: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier(TestIdentifiers.receiptScanEntry)
 
                         NavigationLink {
                             VoiceAddView()

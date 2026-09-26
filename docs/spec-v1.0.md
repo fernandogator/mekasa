@@ -78,6 +78,8 @@ Acceptance Criteria:
 - AC6: From the confirm haul screen, the user can search the product
   catalog for an unidentified line and apply a match (name, image, UPC)
   before saving
+- AC7: Receipt text (e.g. from an emailed receipt) can be pasted and sent
+  as `raw_text` through the same parse + confirm flow as a photo
 
 ### REQ-006: Manual Item Entry
 Priority: P1
