@@ -9,6 +9,10 @@ final class ScanFeedbackTests: XCTestCase {
         super.tearDown()
     }
 
+    func testPreferenceKeyIsStable() {
+        XCTAssertEqual(ScanFeedback.preferenceKey, "mekasa.scanSoundsEnabled")
+    }
+
     func testSoundsEnabledDefaultsOn() {
         UserDefaults.standard.removeObject(forKey: ScanFeedback.preferenceKey)
         XCTAssertTrue(ScanFeedback.soundsEnabled)

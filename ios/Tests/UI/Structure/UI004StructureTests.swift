@@ -111,6 +111,28 @@ final class UI004StructureTests: XCTestCase {
         )
     }
 
+    /// REQ-019 AC5: Family → Scanner → Scan sounds toggle is present and on by default.
+    func testFamily_scanSoundsToggleExists() {
+        let familyTab = app.buttons["Family"]
+        XCTAssertTrue(familyTab.waitForExistence(timeout: UITestLaunch.elementTimeout))
+        familyTab.tap()
+
+        let toggle = app.switches[TestIdentifiers.scanSoundsToggle]
+        if !toggle.waitForExistence(timeout: 5) {
+            app.swipeUp()
+        }
+        XCTAssertTrue(
+            toggle.waitForExistence(timeout: UITestLaunch.elementTimeout),
+            "Scan sounds toggle missing on Family tab"
+        )
+        // XCUISwitch value is "1" when on.
+        XCTAssertEqual(toggle.value as? String, "1", "Scan sounds should default to on")
+        toggle.tap()
+        XCTAssertEqual(toggle.value as? String, "0", "Toggle should turn Scan sounds off")
+        toggle.tap()
+        XCTAssertEqual(toggle.value as? String, "1", "Toggle should turn Scan sounds back on")
+    }
+
     /// REQ-005 AC7: pasted receipt text goes through the same parse + confirm path as a photo.
     func testAddHub_receiptPasteTextReachesConfirm() {
         UITestLaunch.addItemButton(app).tap()

@@ -348,6 +348,15 @@ Focused Modes:
 - Done button also returns to Add Items
 - No persistent nav elements
 - Search + filter UI at top
+- Scan feedback: `design/scanner-beep.mp3` + haptic/vibrate on accept;
+  distinct nack tone on unknown; 5 s camera cooldown after accept
+- Typed UPC fallback ("Or type UPC") uses the same consume path
+- Family → **Scan sounds** mutes beep + haptic/vibrate on this device
+
+### Family / settings
+- Account + household cards, members, invites, trash kiosk entry
+- **Scanner → Scan sounds** toggle (default on), persisted per device
+  (`UserDefaults` / `SharedPreferences`)
 
 ### Approval Workflow
 - Item in need of approval: Warning chip
