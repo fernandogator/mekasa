@@ -332,6 +332,8 @@ Acceptance Criteria:
 - AC1: Displays low-stock items prominently
 - AC2: Displays pending child requests for Owner users
 - AC3: Displays home photo as top hero band if set (tap to change via camera/Photos)
+- AC4: Displays a shopping list teaser ("N items to pick up" / "List is
+  clear" with a preview of open rows) that opens the List tab
 
 ### UI-005: Trash Station Mode
 Priority: P0

@@ -46,6 +46,29 @@ final class UI004StructureTests: XCTestCase {
         )
     }
 
+    /// UI-004 AC4: shopping teaser summarises open rows and jumps to the List tab.
+    /// Fixtures: 4 unchecked rows (1 pending + 3 to buy).
+    func testDashboard_shoppingTeaserOpensList() {
+        let teaser = UITestLaunch.element(app, TestIdentifiers.dashboardShoppingTeaser)
+        if !teaser.waitForExistence(timeout: 5) {
+            app.swipeUp()
+        }
+        XCTAssertTrue(teaser.waitForExistence(timeout: UITestLaunch.elementTimeout), "Shopping teaser missing")
+        XCTAssertTrue(
+            teaser.label.contains("4 items to pick up"),
+            "Teaser should count unchecked rows; got \(teaser.label)"
+        )
+        if !teaser.isHittable {
+            app.swipeUp()
+        }
+        teaser.tap()
+        XCTAssertTrue(
+            UITestLaunch.element(app, TestIdentifiers.shoppingListView)
+                .waitForExistence(timeout: UITestLaunch.elementTimeout),
+            "Tapping the teaser should switch to the List tab"
+        )
+    }
+
     func testDashboard_addOpensHubThenScanPath() {
         UITestLaunch.addItemButton(app).tap()
         XCTAssertTrue(
