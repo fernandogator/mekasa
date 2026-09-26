@@ -33,27 +33,30 @@ targets:
         optional: true
         buildPhase: resources
 
-    entitlements:
-      path: Mekasa/Mekasa.entitlements
-      properties:
-        com.apple.developer.applesignin:
-          - Default
     configFiles:
       Debug: Config/Version.xcconfig
       Release: Config/Version.xcconfig
     settings:
-      PRODUCT_BUNDLE_IDENTIFIER: com.fernandogator.mekasa
-      INFOPLIST_FILE: Mekasa/Info.plist
-      GENERATE_INFOPLIST_FILE: NO
-      SWIFT_OBJC_BRIDGING_HEADER: Mekasa/Mekasa-Bridging-Header.h
-      CODE_SIGN_ENTITLEMENTS: Mekasa/Mekasa.entitlements
-      TARGETED_DEVICE_FAMILY: "1"
-      # MARKETING_VERSION + CURRENT_PROJECT_VERSION come from Config/Version.xcconfig
-      # (marketing starts at 1.0.0; build number is unique per build via preBuildScripts).
-      VERSIONING_SYSTEM: apple-generic
-      DEVELOPMENT_TEAM: ""
-      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-      OTHER_LDFLAGS: "$(inherited) -ObjC"
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.fernandogator.mekasa
+        INFOPLIST_FILE: Mekasa/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_OBJC_BRIDGING_HEADER: Mekasa/Mekasa-Bridging-Header.h
+        # Release carries Sign in with Apple (Mekasa/Mekasa.entitlements, tracked in git).
+        CODE_SIGN_ENTITLEMENTS: Mekasa/Mekasa.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
+        # MARKETING_VERSION + CURRENT_PROJECT_VERSION come from Config/Version.xcconfig
+        # (marketing starts at 1.0.0; build number is unique per build via preBuildScripts).
+        VERSIONING_SYSTEM: apple-generic
+        DEVELOPMENT_TEAM: ""
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        OTHER_LDFLAGS: "$(inherited) -ObjC"
+      configs:
+        Debug:
+          # Personal (free) Apple teams cannot provision Sign in with Apple, so Debug
+          # signs with an entitlements file that omits it. Apple sign-in therefore only
+          # works in Release builds; Debug surfaces AuthServiceError.appleSignInUnavailable.
+          CODE_SIGN_ENTITLEMENTS: Mekasa/Mekasa.debug.entitlements
     preBuildScripts:
       - name: Sync Google Sign-In URL scheme
         basedOnDependencyAnalysis: false
