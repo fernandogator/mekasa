@@ -342,6 +342,8 @@ Acceptance Criteria:
 - AC1: Simplified single-purpose UI for scanning only
 - AC2: No navigation or non-scanning elements visible
 - AC3: Scan confirmation is displayed briefly then resets
+- AC4: A typed-UPC fallback ("Or type UPC", 6–14 digits) consumes the
+  matching item through the same path as a camera scan
 
 ### UI-006: Inventory List Thumbnails and Item Detail
 Priority: P0
