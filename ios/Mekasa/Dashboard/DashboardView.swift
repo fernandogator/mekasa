@@ -32,6 +32,7 @@ struct DashboardView: View {
                         .padding(.top, 8)
                     lowStockSection
                     needsApprovalSection
+                    shoppingTeaserSection
                     recentActivitySection
                 }
                 .padding(.horizontal, 24)
@@ -339,6 +340,62 @@ struct DashboardView: View {
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier(TestIdentifiers.requestQueue)
             }
+        }
+    }
+
+    /// UI-004 AC4: one-glance shopping status with a jump to the List tab.
+    private var shoppingTeaserSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Shopping list")
+                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .foregroundStyle(MekasaTheme.brand)
+                Spacer()
+                Button("Open list") {
+                    selectedTab = .list
+                }
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .textCase(.uppercase)
+                .tracking(0.8)
+                .foregroundStyle(MekasaTheme.textMuted)
+                .accessibilityIdentifier(TestIdentifiers.dashboardOpenListButton)
+            }
+
+            Button {
+                selectedTab = .list
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: "cart")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(MekasaTheme.brand)
+                        .frame(width: 44, height: 44)
+                        .background(Color(red: 0xea / 255, green: 0xf1 / 255, blue: 0xec / 255))
+                        .clipShape(Circle())
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(ShoppingTeaser.headline(session.shoppingList))
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(MekasaTheme.brand)
+                            .accessibilityIdentifier(TestIdentifiers.dashboardShoppingHeadline)
+                        if let preview = ShoppingTeaser.preview(session.shoppingList) {
+                            Text(preview)
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundStyle(MekasaTheme.textMuted)
+                                .lineLimit(1)
+                        }
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(MekasaTheme.textMuted)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(MekasaTheme.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(ShoppingTeaser.headline(session.shoppingList))
+            .accessibilityHint("Opens the shopping list")
+            .accessibilityIdentifier(TestIdentifiers.dashboardShoppingTeaser)
         }
     }
 

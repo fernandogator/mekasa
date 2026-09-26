@@ -15,6 +15,7 @@ struct ShoppingListView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 header
+                purchaseLockNotice
                 listCard
                 addCustomButton
             }
@@ -62,6 +63,9 @@ struct ShoppingListView: View {
                     Label(householdTitle, systemImage: "house.fill")
                         .labelStyle(.titleAndIcon)
                     Text("·")
+                    Text(ShoppingListSections.toBuySummary(session.shoppingList))
+                        .accessibilityIdentifier(TestIdentifiers.shoppingToBuySummary)
+                    Text("·")
                     HStack(spacing: 6) {
                         Circle()
                             .fill(MekasaTheme.success)
@@ -94,6 +98,26 @@ struct ShoppingListView: View {
         }
     }
 
+    private var grouped: ShoppingListSections.Grouped {
+        ShoppingListSections.group(session.shoppingList)
+    }
+
+    @ViewBuilder
+    private var purchaseLockNotice: some View {
+        if !session.canMarkShoppingPurchased {
+            HStack(spacing: 8) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 12, weight: .bold))
+                Text(ShoppingListSections.purchaseLockNotice)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+            }
+            .foregroundStyle(MekasaTheme.textMuted)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier(TestIdentifiers.purchaseLockNotice)
+        }
+    }
+
     private var listCard: some View {
         Group {
             if session.shoppingList.isEmpty {
@@ -106,10 +130,10 @@ struct ShoppingListView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
                     .accessibilityIdentifier(TestIdentifiers.emptyStateView)
             } else {
-                VStack(spacing: 4) {
-                    ForEach(session.shoppingList) { item in
-                        row(item)
-                    }
+                VStack(alignment: .leading, spacing: 4) {
+                    section("Needs approval", items: grouped.pending)
+                    section("To buy", items: grouped.toBuy)
+                    section("Purchased", items: grouped.purchased)
                 }
                 .padding(8)
                 .background(MekasaTheme.surfaceElevated)
@@ -126,6 +150,51 @@ struct ShoppingListView: View {
     }
 
     @ViewBuilder
+    private func section(_ title: String, items: [ShoppingListItem]) -> some View {
+        if !items.isEmpty {
+            Text(title)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .tracking(1)
+                .textCase(.uppercase)
+                .foregroundStyle(MekasaTheme.textMuted)
+                .padding(.horizontal, 12)
+                .padding(.top, 10)
+                .padding(.bottom, 2)
+                .accessibilityIdentifier(TestIdentifiers.shoppingSectionHeader)
+            ForEach(items) { item in
+                row(item)
+            }
+        }
+    }
+
+    private func removeButton(_ item: ShoppingListItem) -> some View {
+        Button {
+            session.removeShoppingItem(id: item.id)
+            showToast("Removed \(item.name)")
+        } label: {
+            Image(systemName: "trash")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(MekasaTheme.textMuted)
+                .frame(width: 36, height: 36)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Remove \(item.name)")
+        .accessibilityIdentifier(TestIdentifiers.shoppingRemoveButton)
+    }
+
+    private func chip(_ label: String) -> some View {
+        Text(label)
+            .font(.system(size: 10, weight: .bold, design: .rounded))
+            .tracking(0.6)
+            .textCase(.uppercase)
+            .foregroundStyle(MekasaTheme.success)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .overlay(Capsule().stroke(MekasaTheme.success.opacity(0.5), lineWidth: 1))
+            .accessibilityIdentifier(TestIdentifiers.shoppingAutoChip)
+    }
+
+    @ViewBuilder
     private func row(_ item: ShoppingListItem) -> some View {
         if item.needsApproval {
             pendingRow(item)
@@ -136,7 +205,10 @@ struct ShoppingListView: View {
 
     private func standardRow(_ item: ShoppingListItem) -> some View {
         let canPurchase = session.canMarkShoppingPurchased
-        return Group {
+        // The remove control sits beside (not inside) the toggle button so the two
+        // taps never compete.
+        let origin = item.kind == .auto ? ", auto-added" : ""
+        return HStack(spacing: 0) {
             if canPurchase {
                 Button {
                     session.toggleShoppingItemChecked(id: item.id)
@@ -144,14 +216,16 @@ struct ShoppingListView: View {
                     shoppingRowLabel(item, showCheckbox: true)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("\(item.name), \(item.isChecked ? "purchased" : "not purchased")")
+                .accessibilityLabel("\(item.name)\(origin), \(item.isChecked ? "purchased" : "not purchased")")
                 .accessibilityIdentifier(TestIdentifiers.itemCell)
             } else {
                 shoppingRowLabel(item, showCheckbox: true)
-                    .accessibilityLabel("\(item.name), view only")
+                    .accessibilityLabel("\(item.name)\(origin), view only")
                     .accessibilityIdentifier(TestIdentifiers.itemCell)
             }
+            removeButton(item)
         }
+        .padding(.trailing, 4)
     }
 
     private func shoppingRowLabel(_ item: ShoppingListItem, showCheckbox: Bool) -> some View {
@@ -165,11 +239,17 @@ struct ShoppingListView: View {
                     .strikethrough(item.isChecked)
                     .foregroundStyle(MekasaTheme.brand)
                     .accessibilityIdentifier(TestIdentifiers.itemTitle)
-                if !item.displayQuantity.isEmpty {
-                    Text(item.displayQuantity)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(MekasaTheme.textMuted)
-                        .accessibilityIdentifier(TestIdentifiers.itemSubtitle)
+                HStack(spacing: 8) {
+                    if !item.displayQuantity.isEmpty {
+                        Text(item.displayQuantity)
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(MekasaTheme.textMuted)
+                            .accessibilityIdentifier(TestIdentifiers.itemSubtitle)
+                    }
+                    // Rows added by low-stock sync are marked so a shopper knows why they're here.
+                    if let label = ShoppingListSections.chipLabel(for: item) {
+                        chip(label)
+                    }
                 }
             }
             .opacity(item.isChecked ? 0.5 : 1)
@@ -253,6 +333,8 @@ struct ShoppingListView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Approve \(item.name)")
                 .accessibilityIdentifier(TestIdentifiers.approveButton)
+            } else {
+                removeButton(item)
             }
         }
         .padding(12)
