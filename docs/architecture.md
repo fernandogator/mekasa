@@ -17,16 +17,21 @@ graph TD
   iOSApp[iOS App\nSwiftUI]
   API[Cloud Run API\nREST]
   DB[(Cloud Firestore\nDatabase)]
-  OCR[Cloud Vision API\nReceipt OCR]
+  OCR[Cloud Vision API\nReceipt OCR fallback]
+  Gemini[Vertex AI — Gemini Pro\nReceipt line-item extraction]
+  Tasks[Cloud Tasks\nreceipt-parse / enrichment queues]
   Barcode[Third-Party Barcode API\nUPC / Open Food Facts]
   ImageAPI[Open Food Facts / UPC ItemDB\nImage API]
   Places[Google Places API\nStore Discovery]
   Secrets[GCP Secret Manager]
-  Storage[Cloud Storage\nHome Photos]
+  Storage[Cloud Storage\nHome Photos · Receipt images]
 
   AndroidApp --> API
   iOSApp --> API
   API --> DB
+  API --> Gemini
+  API --> Tasks
+  Tasks --> API
   API --> OCR
   API --> Barcode
   API --> ImageAPI
@@ -54,11 +59,17 @@ Dashboard / Inventory Screen shows rows with product thumbnails
 quantity, and low-stock threshold → tap image opens full-screen
 lightbox → back returns to list
 
-### Receipt Scan Flow
-Mobile client captures receipt image → uploads to Cloud Storage →
-API triggers Cloud Vision OCR → returns parsed line items →
-client presents for user review → confirmed items written to
-Firestore → sync pushes to all household devices
+### Receipt Scan Flow (ADR-007; design/gemini-receipt-parser.md)
+Mobile client captures receipt image → `POST /receipts` → API stores
+image in Cloud Storage, creates `receipts` + `llm_parse_jobs` → Gemini
+(Vertex AI) extracts all line items in one call → response validated
+against the versioned JSON schema (corrective retry ≤ 2, then Cloud
+Vision + regex fallback) → line items persisted → matched against the
+shared `products` database (UPC → scan-event correlation → alias →
+fuzzy) → unmatched lines create `llm_ocr` products + enrichment jobs →
+client reviews / resolves low-confidence lines → `POST /confirm`
+writes inventory items + purchase events to Firestore → sync pushes
+to all household devices
 
 ### Trash Station Flow
 Dedicated device scans barcode → sends to API → API decrements
@@ -289,3 +300,122 @@ Implementation Notes:
 Trade-off: Two external API dependencies instead of one.
 Mitigated by Open Food Facts requiring no key and UPC ItemDB
 free tier being sufficient for household-scale usage.
+
+### ADR-007: Gemini on Vertex AI for Receipt Line-Item Extraction
+Date: 2026-09-26
+Status: Proposed (phase-1 review; supersedes the "OCR + heuristic
+parsing" half of ADR-003 — server-side processing itself stands)
+Decision: Parse receipts with Gemini Pro invoked through the Vertex
+AI SDK, sending the whole receipt image in a single request with a
+versioned system prompt and a JSON response schema. Cloud Vision OCR
+plus the existing regex parser remain as the fallback engine.
+
+Context: `receipt_ocr.parse_receipt_text` extracts lines with a
+`<name> <price>` regex over Cloud Vision text. It loses multi-line
+descriptions, mis-attributes coupons, cannot expand store
+abbreviations, and has no notion of confidence. Building the shared
+UPC product database (ADR-008) needs cleaner descriptions, quantities,
+per-line confidence, and store-aware normalisation.
+
+Options considered:
+
+**Option A — Public Gemini API (API key)**
+- Simplest SDK setup
+- Weakness: API key must live in Secret Manager and be rotated;
+  consumer terms, no data-residency controls, separate billing
+
+**Option B — Gemini via Vertex AI (chosen)**
+- IAM/ADC with the existing Cloud Run runtime service account — no
+  key material anywhere (GUARDRAILS rule 4, NFR-004)
+- Same project, billing, audit logging, and region (`us-central1`)
+  as the rest of the stack; enterprise data-use terms
+- Native `response_schema` constrained decoding
+- Weakness: slightly heavier SDK and IAM setup (`roles/aiplatform.user`)
+
+**Option C — Cloud Document AI (Expense parser)**
+- Purpose-built receipt model with entities for line items
+- Weakness: fixed schema, weaker at abbreviation expansion and
+  categorisation, per-page pricing comparable to Gemini, no
+  store-aware prompting
+
+**Option D — Keep Cloud Vision + improve regex**
+- Zero new dependencies
+- Weakness: ceiling is low; every store format needs handcrafted rules
+
+Decision details:
+- Whole receipt per call (not per line): coupons and continuation
+  lines only make sense with context; one call is also cheaper.
+- Response validated server-side against the same JSON Schema sent as
+  `response_schema`; invalid → corrective retry, max 2 (REQ-RCP-004);
+  exhausted → fallback engine (REQ-RCP-005).
+- Prompt versions are immutable directories under
+  `backend/prompts/receipt_parse/vN/`; every job records
+  `prompt_version`, `prompt_sha256`, `schema_version`, `model`
+  (REQ-RCP-017) and retains raw output (REQ-RCP-018).
+- Per-attempt timeout 60 s. This is the documented exception to the
+  10 s external-call rule in `docs/code-standards.md`; LLM inference
+  cannot meet 10 s on full receipts.
+- Async-first API (`202` + poll) with a bounded synchronous
+  `wait_seconds` so current clients keep a synchronous path.
+- Runs inside the existing Cloud Run service with Cloud Tasks for
+  background execution rather than separate Cloud Functions: one auth
+  path, one persistence switch, one test harness.
+
+Trade-off: Non-deterministic output and LLM cost per receipt
+(~US$0.01–0.03 with Gemini Pro at typical receipt sizes). Mitigated by
+schema-constrained decoding, retries, raw-output audit, and the option
+to switch to Flash per prompt version once accuracy is measured.
+
+### ADR-008: Shared, Provenance-Tracked UPC Product Database
+Date: 2026-09-26
+Status: Proposed (phase-1 review)
+Decision: Maintain a single top-level Firestore collection `products`
+keyed by UPC (or a deterministic `llm:` id until a UPC is known),
+grown from receipts, barcode scans, and enrichment sources, with
+`source`, `confidence_score`, `confirmation_count`, and a
+`status` lifecycle `unverified → pending → verified`.
+
+Context: ADR-004 anticipated that "our own database grows organically
+as users scan items not found in the third-party source", but nothing
+persists product knowledge today — every lookup goes live to Open
+Food Facts and receipt matches are discarded after the response.
+Receipt parsing (ADR-007) produces store-specific descriptions that
+third-party databases do not know; households repeatedly confirming
+the same line is the signal that turns them into trustworthy entries.
+
+Options considered:
+
+**Option A — Per-household product cache**
+- Trivially private
+- Weakness: no network effect; every household re-teaches the same
+  Publix abbreviations
+
+**Option B — Shared `products` collection in Firestore (chosen)**
+- Consistent with ADR-002a; the queries needed (equality on chain +
+  `array_contains` on aliases/tokens) are Firestore-native with
+  composite indexes
+- Cross-household learning without storing household identity:
+  confirmations are counted via salted household hashes; product
+  documents carry no `household_id`/`uid` (NFR-002 AC1)
+- Weakness: fuzzy search is token-based, not full-text — acceptable
+  since matching is always chain-scoped and aliases dominate
+
+**Option C — Cloud SQL / AlloyDB product table with trigram search**
+- Better fuzzy matching
+- Weakness: reopens ADR-002a; second datastore to operate for a
+  household-scale app
+
+Rules embedded in the decision:
+- Provenance weights: `gs1_registry 0.9 > store_site 0.8 > user_scan
+  0.7 > llm_ocr 0.4`; only GS1 and store-site hits are authoritative
+  for status transitions.
+- `verified` entries are immutable to the parser and to individual
+  users (REQ-RCP-014); disagreements are written to
+  `product_conflicts` for curation.
+- Enrichment order store site → GS1 → UPCitemdb → Open Food Facts →
+  crowdsourced pending (REQ-RCP-010), reusing the ADR-006 waterfall.
+
+Trade-off: Curation workload for conflicts and for promoting
+`pending` entries. Mitigated by conservative automatic thresholds
+(3 distinct households, or authoritative + 1) and by keeping the
+curation surface (`/v1/admin/product-conflicts`) as a follow-up.
