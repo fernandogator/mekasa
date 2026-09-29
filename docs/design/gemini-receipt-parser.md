@@ -17,7 +17,7 @@ Phase 1 deliverables are in this PR. Nothing under `backend/app/` changes yet.
 | # | Deliverable | Where |
 |---|-------------|-------|
 | 1a | Household data model + migration `0001_receipt_parser` (Firestore) | `backend/firestore/migrations/0001_receipt_parser.md`, `backend/firestore/schema/*.schema.json`, `backend/firestore/firestore.indexes.json` |
-| 1b | Shared catalog data model + migration `0001_catalog` (Cloud SQL Postgres) | `backend/catalog/migrations/0001_catalog.sql` (+ `.down.sql`), `backend/catalog/seed/store_chains.sql`, `backend/catalog/alembic/`, `backend/catalog/README.md` |
+| 1b | Shared catalog data model + migration `0001_shared_products` (Cloud SQL Postgres) | `backend/postgres/migrations/0001_shared_products.sql` (+ `.down.sql`), `backend/postgres/seed/store_chains.sql`, `backend/postgres/README.md` |
 | 3 | API contract (OpenAPI 3.1) | `docs/api/receipt-parser.openapi.yaml` |
 | — | Gemini prompt + response schema contract (v1) | `backend/prompts/receipt_parse/v1/` |
 | — | Spec entries REQ-RCP-001 … 018, ADR-007, ADR-008, traceability rows | `docs/spec-v1.0.md`, `docs/architecture.md`, `traceability/matrix.*` |
@@ -117,13 +117,13 @@ graph TD
 | Gemini invocation | `app/gemini_receipt_parser.py` | Build request from versioned prompt, call Vertex AI, validate, corrective retry, persist attempts + raw JSON |
 | Matching / resolution | `app/product_resolver.py` | UPC → scan correlation → alias → fuzzy (trigram); confidence thresholds; verified-conflict guard |
 | Enrichment dispatcher | `app/enrichment_dispatcher.py` | Create `enrichment_jobs` rows, run adapter chain, upgrade product `source`/`status` |
-| Catalog repository | `app/catalog_repository.py` | Protocol + `InMemoryCatalogRepository` + `PostgresCatalogRepository` (SQLAlchemy Core over the Cloud SQL Python Connector); `products`, `product_aliases`, `product_confirmations`, `store_chains`, `enrichment_jobs`, `product_conflicts`; status transitions; once-per-household confirmation counting |
+| Products repository | `app/products_repository.py` | Targets **Postgres**: Protocol + `InMemoryProductsRepository` (when `DATABASE_URL` is unset) + `PostgresProductsRepository` (`psycopg` 3, `psycopg_pool`, `/cloudsql` socket); `products`, `product_aliases`, `product_confirmations`, `store_chains`, `enrichment_jobs`, `product_conflicts`; status transitions; once-per-household confirmation counting; the §4.1 transactions |
 | Scan events | `app/scan_events_repository.py` | Replaces in-memory `unknown_barcode_log` with a persisted household subcollection |
 
 One service, not separate Cloud Functions: keeps auth, Firestore clients, and
 the memory/Firestore persistence switch (`HOUSEHOLD_PERSISTENCE`) that all
-tests rely on. The catalog gets the same treatment:
-`CATALOG_PERSISTENCE=memory|postgres|auto`, in-memory by default in tests. Cloud Tasks targets an internal route on the same service
+tests rely on. The catalog gets the same treatment: `DATABASE_URL` unset →
+in-memory repository, so unit tests never open a database connection. Cloud Tasks targets an internal route on the same service
 (OIDC-authenticated, `X-CloudTasks-QueueName` checked). Local/test mode runs
 jobs inline.
 
@@ -207,11 +207,17 @@ Order stops at the first hit; every step records `match_method` and
 3. **alias** — `product_aliases` primary-key lookup
    `(store_chain_id, catalog_normalize_name(raw_text))`. One alias maps to
    exactly one product per chain, so a hit is confidence 0.95.
-4. **fuzzy** — `pg_trgm` similarity on `products.normalized_name` (GIN index),
-   chain-scoped, brand-gated when the line has a `brand`:
+4. **fuzzy** — `pg_trgm` similarity on `products.normalized_name` and
+   `product_aliases.alias` (GIN trigram indexes), chain-scoped, brand-gated when
+   the line has a `brand`:
+   `SET LOCAL pg_trgm.similarity_threshold = 0.3;` then
    `WHERE store_chain_id = $chain AND normalized_name % $q ORDER BY
-   similarity(normalized_name, $q) DESC LIMIT 5`; take best if ≥ 0.5, the rest
-   become `candidate_product_ids`.
+   similarity(normalized_name, $q) DESC LIMIT 5`. Thresholds: the `%` operator
+   at **0.3** bounds the candidate set (index-assisted); the best candidate is
+   accepted as the match only at similarity **≥ 0.5**, and its
+   `match_confidence` is the similarity value, so REQ-RCP-012's bands apply
+   unchanged (≥ 0.85 auto, 0.5–0.85 needs confirmation). The remaining
+   candidates become `candidate_product_ids`.
 5. **none** → REQ-RCP-009: upsert `products` row
    `llm:{sha1(chain|normalized_name)}` with `source: llm_ocr`,
    `status: unverified`, `confidence_score` = Gemini line confidence × 0.6, and
@@ -379,10 +385,11 @@ trash_station`, `outcome: consumed|unknown`). The existing
   `household_hash` columns are constraint-checked to be SHA-256 hex.
   `verified_by_uid` is intentionally absent; curation actions are logged in
   `product_conflicts`/`enrichment_steps` by id only.
-- Secrets: none introduced. Vertex AI, Cloud Storage, and Cloud SQL all use
-  IAM/ADC — the API is an IAM database user, so there is no database password
-  to store or rotate. Optional `UPCITEMDB_API_KEY` and the Kroger client
-  credentials stay in Secret Manager (ADR-006, §3.6).
+- Secrets: one introduced — the catalog connection string, Secret Manager
+  `mekasa-database-url`, injected as `DATABASE_URL`; never in files, CI
+  variables, or logs. Vertex AI and Cloud Storage use IAM/ADC. Optional
+  `UPCITEMDB_API_KEY` and the Kroger client credentials stay in Secret Manager
+  (ADR-006, §3.6).
 
 ---
 
@@ -391,17 +398,17 @@ trash_station`, `outcome: consumed|unknown`). The existing
 Two stores, one rule: anything owned by a household is a Firestore document
 under `households/{hid}` (real-time sync, offline cache, existing security
 model); anything shared by all accounts is a Postgres table in the catalog
-database (`backend/catalog/`). They reference each other only by opaque string
+database (`backend/postgres/`). They reference each other only by opaque string
 ids, and the catalog never stores a household or user id.
 
 Full field tables: `backend/firestore/migrations/0001_receipt_parser.md` +
 `backend/firestore/schema/` (Firestore) and
-`backend/catalog/migrations/0001_catalog.sql` (Postgres; column comments are the
+`backend/postgres/migrations/0001_shared_products.sql` (Postgres; column comments are the
 documentation).
 
 | Kickoff table | Location | Notes |
 |---|---|---|
-| `stores` | existing `households.store_ids` (Places ids, Firestore) **+ new** table `store_chains` (Postgres) | Chain is what the prompt, matching, and `store_api` adapter selection need; Places store keeps the physical location for REQ-015 AC3. Seed: `backend/catalog/seed/store_chains.sql` |
+| `stores` | existing `households.store_ids` (Places ids, Firestore) **+ new** table `store_chains` (Postgres) | Chain is what the prompt, matching, and `store_api` adapter selection need; Places store keeps the physical location for REQ-015 AC3. Seed: `backend/postgres/seed/store_chains.sql` |
 | `products` | **new** table `products` (Postgres) | `product_id` = UPC when known, else `plu:<code>` / `llm:<sha1>` — enforced by a `CHECK`; `UNIQUE (upc)`; kickoff fields + `brand`, `unit_size`, `image_url`, `dispute_count`, provenance, `superseded_by` |
 | — | **new** table `product_aliases` (Postgres) | `(store_chain_id, alias) → product_id`; alias must equal `catalog_normalize_name(alias)`; trigram index |
 | — | **new** table `product_confirmations` (Postgres) | `(product_id, household_hash)` primary key = once per household |
@@ -416,11 +423,87 @@ Additions to existing Firestore documents (all optional, backwards compatible):
 - `households/{hid}/inventory_items`: `product_id`, `receipt_line_item_id`
 - `households/{hid}/purchases`: `receipt_id`, `receipt_line_item_id`, `product_id`
 
-Catalog access (phase 2): SQLAlchemy Core (no ORM) behind
-`CatalogRepository`; Cloud Run connects through the Cloud SQL Python Connector
-with IAM authentication (`CATALOG_INSTANCE_CONNECTION_NAME`, `CATALOG_DB_NAME`,
-`CATALOG_DB_IAM_USER` — names, not secrets); migrations via Alembic through the
-Cloud SQL Auth Proxy. `backend/catalog/README.md` has the commands.
+Catalog access (phase 2): `psycopg` 3 + `psycopg_pool` behind
+`products_repository`; Cloud Run connects over the Cloud SQL Unix socket with
+`DATABASE_URL` from Secret Manager `mekasa-database-url` (instance `mekasa-pg`,
+database `mekasa`, user `mekasa_api`); `DATABASE_URL` unset → in-memory.
+Migrations are idempotent SQL applied with `psql`. `backend/postgres/README.md`
+has the commands.
+
+### 4.1 Catalog transactions
+
+Two write paths touch shared rows; both are single transactions in
+`products_repository`, never a sequence of independent statements.
+
+**Receipt save (after resolution, per receipt).** One transaction covers
+every line of the receipt:
+
+```sql
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext($store_chain_id));   -- serialises saves per chain
+-- per line: upsert product (llm: rows) …
+INSERT INTO products (...) VALUES (...)
+  ON CONFLICT (product_id) DO UPDATE SET last_seen_at = now();
+-- … and its alias
+INSERT INTO product_aliases (store_chain_id, alias, product_id)
+  VALUES ($chain, catalog_normalize_name($raw_text), $product_id)
+  ON CONFLICT (store_chain_id, alias) DO UPDATE
+    SET seen_count = product_aliases.seen_count + 1, last_seen_at = now()
+    WHERE product_aliases.product_id = EXCLUDED.product_id;           -- never re-point (§9.11)
+-- enrichment job for new llm: rows (partial unique index makes this idempotent)
+INSERT INTO enrichment_jobs (product_id, trigger, chain) VALUES (...) ON CONFLICT DO NOTHING;
+COMMIT;
+```
+
+The advisory lock is chain-scoped, not global: two households saving Kroger
+and H-E-B receipts run in parallel; two saving H-E-B receipts run one after
+the other, so neither can observe the other's half-written alias set. Receipt
+saves are seconds apart per chain even at scale, so serialising them costs
+nothing measurable; if it ever does, the lock narrows to
+`hashtext(store_chain_id || alias)` per line. Firestore-side writes (line
+items' `matched_product_id`) happen after this commit and only reference ids
+that now exist.
+
+**Re-key `llm:` → UPC (REQ-RCP-010 AC2; enrichment hit or forward scan
+correlation).** Also one transaction:
+
+```sql
+BEGIN;
+SELECT * FROM products WHERE product_id IN ($llm_id, $upc) FOR UPDATE;
+INSERT INTO products (product_id, code_kind, upc, ...)                 -- create or merge into the UPC row
+  SELECT $upc, 'upc', $upc, store_chain_id, name, normalized_name, brand, category, unit_size, image_url,
+         $source, array_append(sources_seen, $source), $confidence, confirmation_count, dispute_count, ...
+  FROM products WHERE product_id = $llm_id
+  ON CONFLICT (product_id) DO UPDATE SET
+    confirmation_count = products.confirmation_count + EXCLUDED.confirmation_count,
+    dispute_count      = products.dispute_count + EXCLUDED.dispute_count,
+    sources_seen       = (SELECT array_agg(DISTINCT s) FROM unnest(products.sources_seen || EXCLUDED.sources_seen) s),
+    last_seen_at       = greatest(products.last_seen_at, EXCLUDED.last_seen_at);
+UPDATE product_aliases SET product_id = $upc WHERE product_id = $llm_id;
+  -- cannot collide: (store_chain_id, alias) is the PK, so no alias is on both rows
+INSERT INTO product_confirmations (product_id, household_hash, confirmed_at)
+  SELECT $upc, household_hash, confirmed_at FROM product_confirmations WHERE product_id = $llm_id
+  ON CONFLICT DO NOTHING;                                              -- same household counted once
+UPDATE products SET confirmation_count = (SELECT count(*) FROM product_confirmations WHERE product_id = $upc)
+  WHERE product_id = $upc;                                             -- recount after the merge
+UPDATE products SET superseded_by = $upc WHERE product_id = $llm_id;
+COMMIT;
+```
+
+`FOR UPDATE` on both rows keeps a concurrent confirmation from landing on the
+`llm:` row between the copy and the `superseded_by` stamp. The old row stays
+(so existing `matched_product_id` strings in Firestore still resolve — readers
+follow `superseded_by`); nothing is deleted, so a failure anywhere simply
+rolls back to the pre-re-key state.
+
+**Reviewing the catalog** needs no new indexes, just SQL — e.g. open
+conflicts per chain:
+
+```sql
+SELECT p.store_chain_id, p.name, c.field, c.verified_value, c.observed_value, c.created_at
+FROM product_conflicts c JOIN products p USING (product_id)
+WHERE c.status = 'open' AND p.store_chain_id = 'heb' ORDER BY c.created_at DESC;
+```
 
 ---
 
@@ -480,14 +563,14 @@ validation, no secret-like tokens.
 | `test_receipt_confirm_writes_inventory.py` | REQ-RCP-015, REQ-005 AC3, REQ-015 |
 | `test_enrichment_dispatcher.py` — adapter order + stop-at-first-authoritative | REQ-RCP-010 |
 | `test_prompt_contract.py` — schema meta-valid, fixtures validate, placeholder whitelist | REQ-RCP-003/017 |
-| `test_catalog_repository_postgres.py` — runs only when `CATALOG_DATABASE_URL` is set (CI `services: postgres:16`): migration `upgrade head` + seed apply, `UNIQUE (upc)`, alias PK, once-per-household confirmation, verified-evidence `CHECK`, one live enrichment job per product, trigram fuzzy search, `downgrade base` | REQ-RCP-007/009/011/013/014 |
+| `test_products_repository_postgres.py` — skipped unless `TEST_DATABASE_URL` points at a scratch database (CI `services: postgres:16`): applies `0001_shared_products.sql` twice + seed, unique `upc`, alias PK, once-per-household confirmation, verified-evidence `CHECK`, one live enrichment job per product, trigram fuzzy search, §4.1 re-key transaction, `.down.sql` | REQ-RCP-007/009/011/013/014 |
 
 Gemini is behind a `ReceiptLLMClient` protocol; tests use
 `FakeReceiptLLMClient` scripted from `tests/backend/fixtures/gemini/*.json`.
-No test ever calls Vertex AI. All other tests run with
-`CATALOG_PERSISTENCE=memory`; the `test-backend` CI job gains a
-`services: postgres:16` container and sets `CATALOG_DATABASE_URL` so the
-Postgres repository tests and the DDL are exercised on every PR (phase 2).
+No test ever calls Vertex AI. All other tests run with `DATABASE_URL` unset
+(in-memory repository); the `test-backend` CI job gains a
+`services: postgres:16` container and sets `TEST_DATABASE_URL` so the Postgres
+repository tests and the DDL are exercised on every PR (phase 2).
 
 ---
 
@@ -508,9 +591,12 @@ Postgres repository tests and the DDL are exercised on every PR (phase 2).
   household confirmations, verified-requires-evidence — which are constraints
   in SQL and application code in Firestore, and `pg_trgm` gives real fuzzy
   matching. Household data stays in Firestore (ADR-002a's real-time/offline
-  reasons apply there, not to a server-only catalog). IAM database
-  authentication, no password anywhere; `db-f1-micro` (~US$10/month);
-  in-memory repository for tests. Households are never stored in the catalog.
+  reasons apply there, not to a server-only catalog). Costs accepted: a
+  second database to run, ~US$10/month always-on, no realtime listeners on
+  shared data (served via the API anyway); ADR-002a amended, not replaced.
+  Connection over the `/cloudsql` socket with `DATABASE_URL` from Secret
+  Manager; in-memory repository when unset. Households are never stored in
+  the catalog.
   Retailer data enters only through official APIs; scraping behind bot
   protection or against `robots.txt` is prohibited.
 - Single Cloud Run service + Cloud Tasks, not separate Cloud Functions —
@@ -544,10 +630,10 @@ Postgres repository tests and the DDL are exercised on every PR (phase 2).
 8. **Receipt duplicates**: same image uploaded twice → reject by content hash
    within 24 h (proposed) or allow and let user delete?
 9. **Currency**: assume `USD` for v1 (matches `SpendingReportResponse`)?
-10. **Cloud SQL sizing/network**: `db-f1-micro`, zonal, public IP + IAM auth
-    (no authorised networks; connector/proxy only) is proposed for dev. Move
-    to private IP + Serverless VPC connector for prod? Also confirm the
-    instance name `mekasa-catalog-dev` and database `mekasa_catalog`.
+10. **Cloud SQL sizing/network**: `mekasa-pg` as `db-f1-micro`, zonal, socket
+    access only (no authorised networks) for dev. Move to private IP +
+    Serverless VPC connector, or to IAM database authentication (drops the
+    password from `mekasa-database-url`), for prod?
 11. **Alias uniqueness**: `product_aliases` makes a printed alias map to one
     product per chain. When the same text is later confirmed to a different
     product (e.g. `HEB MILK` for whole vs 2 %), proposal: keep the first
@@ -559,14 +645,16 @@ Postgres repository tests and the DDL are exercised on every PR (phase 2).
 ## 10. Rollout
 
 1. Phase 1: docs, schema, contract, prompt v1 — review pause. Revision: shared
-   catalog on Cloud SQL (`0001_catalog` DDL + Alembic, validated locally on
-   Postgres 16: apply, constraint checks, downgrade, re-apply).
+   catalog on Cloud SQL (`0001_shared_products` idempotent DDL, validated
+   locally on Postgres 16: apply twice, constraint checks, §4.1 transactions,
+   rollback, re-apply).
 2. Phase 2: repositories + services + routes behind `RECEIPT_PARSER=gemini|legacy`
    (default `legacy` until Vertex IAM is granted), test stubs, CI lint, and a
    `services: postgres:16` container on the `test-backend` job applying
-   `0001_catalog` + seed on every PR.
-3. Migrations: `0001_catalog` (create instance `mekasa-catalog-dev`, IAM users,
-   `alembic upgrade head`, seed `store_chains` — `backend/catalog/README.md`)
+   `0001_shared_products` + seed on every PR.
+3. Migrations: `0001_shared_products` (create instance `mekasa-pg`, database
+   `mekasa`, user `mekasa_api`, secret `mekasa-database-url`, `psql -f`, seed
+   `store_chains` — `backend/postgres/README.md`)
    and `0001_receipt_parser` (deploy indexes, create bucket + queues, grant
    `roles/aiplatform.user`); no data backfill required.
 4. Flip `RECEIPT_PARSER=gemini` on dev; clients adopt `/receipts` +

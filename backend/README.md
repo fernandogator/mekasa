@@ -131,14 +131,16 @@ Data model and contracts for REQ-RCP-001…018:
   `firestore/` (`migrations/0001_receipt_parser.md`, `schema/*.schema.json`,
   `firestore.indexes.json`).
 - Shared product catalog (all accounts) — Cloud SQL for PostgreSQL, ADR-008:
-  `catalog/` (`migrations/0001_catalog.sql`, Alembic wrapper, `seed/store_chains.sql`,
-  `README.md` with local/Cloud SQL commands; IAM auth, no DB password).
+  `postgres/` (`migrations/0001_shared_products.sql` idempotent DDL + `.down.sql`,
+  `seed/store_chains.sql`, `README.md` with local/Cloud SQL commands). Runtime reads
+  `DATABASE_URL` (Secret Manager `mekasa-database-url`, `/cloudsql` socket); unset →
+  in-memory repository.
 - Gemini prompt/schema contract: `prompts/receipt_parse/v1/`.
 - API contract: `docs/api/receipt-parser.openapi.yaml`; design:
   `docs/design/gemini-receipt-parser.md`.
 
 No runtime code yet — see the design doc's review checklist. Local catalog check:
-`CATALOG_DATABASE_URL=postgresql+psycopg://… alembic -c catalog/alembic.ini upgrade head`.
+`psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f postgres/migrations/0001_shared_products.sql` (twice — idempotent).
 
 ## Deploy
 

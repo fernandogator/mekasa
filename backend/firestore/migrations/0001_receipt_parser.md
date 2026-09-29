@@ -6,8 +6,8 @@ REQ-RCP-015 … REQ-RCP-018 · Design: `docs/design/gemini-receipt-parser.md`
 This is the **household-scoped half** of the receipt-parser data model. The
 shared product catalog (`store_chains`, `products`, `product_aliases`,
 `product_confirmations`, `enrichment_jobs`, `product_conflicts`) lives in Cloud
-SQL for PostgreSQL and is migrated separately — see `backend/catalog/`
-(`migrations/0001_catalog.sql`, ADR-008). Firestore documents reference catalog
+SQL for PostgreSQL and is migrated separately — see `backend/postgres/`
+(`migrations/0001_shared_products.sql`, ADR-008). Firestore documents reference catalog
 rows only by opaque string ids (`matched_product_id`, `product_id`,
 `conflict_id`).
 
@@ -45,10 +45,10 @@ gcloud projects add-iam-policy-binding hackathon2025-472017 \
   --role=roles/aiplatform.user
 ```
 
-Catalog database (Cloud SQL instance, IAM database users, Alembic
-`upgrade head`, `store_chains` seed): follow `backend/catalog/README.md`. It
-introduces no secrets either — the runtime service account authenticates to
-Postgres with IAM.
+Catalog database (Cloud SQL instance `mekasa-pg`, database `mekasa`, user
+`mekasa_api`, `psql -f 0001_shared_products.sql`, `store_chains` seed): follow
+`backend/postgres/README.md`. Its one secret, the connection string, lives in
+Secret Manager as `mekasa-database-url` and is injected as `DATABASE_URL`.
 
 No secrets are introduced for Vertex AI or GCS (runtime service account).
 The Kroger `store_api` adapter needs `KROGER_CLIENT_ID` / `KROGER_CLIENT_SECRET`
@@ -64,20 +64,20 @@ printf '%s' "$KROGER_CLIENT_SECRET" | gcloud secrets create KROGER_CLIENT_SECRET
 Indexes and TTL policies can be deleted; collections can be left in place
 (unused) or purged with a scripted delete. No existing document is modified by
 this migration, so rollback of code is sufficient to restore prior behaviour.
-Catalog rollback: `alembic -c catalog/alembic.ini downgrade base`.
+Catalog rollback: `psql "$DATABASE_URL" -f backend/postgres/migrations/0001_shared_products.down.sql`.
 
 ---
 
 ## New collections
 
-### Shared catalog → Cloud SQL (`backend/catalog/migrations/0001_catalog.sql`)
+### Shared catalog → Cloud SQL (`backend/postgres/migrations/0001_shared_products.sql`)
 
 `store_chains`, `products`, `product_aliases`, `product_confirmations`,
 `enrichment_jobs`/`enrichment_steps`, and `product_conflicts` are Postgres
 tables, not collections (ADR-008). Column-level notes are comments in the DDL;
 the seed for `store_chains` (Walmart `api_provider: walmart`, Kroger `kroger`,
 H-E-B / Publix / Costco / Target `none`, `unknown`) is
-`backend/catalog/seed/store_chains.sql`.
+`backend/postgres/seed/store_chains.sql`.
 
 `products.product_id` = UPC/GTIN digits when known, `plu:<IFPS code>` for bulk
 produce (shared across chains), otherwise
@@ -200,7 +200,7 @@ Supersedes the in-memory `unknown_barcode_log`.
 ## Index rationale (see `firestore.indexes.json`)
 
 Catalog lookups (alias, trigram fuzzy match, curation lists, enrichment
-queue, conflict queue) are Postgres indexes in `0001_catalog.sql`.
+queue, conflict queue) are Postgres indexes in `0001_shared_products.sql`.
 
 | Query | Index |
 |---|---|

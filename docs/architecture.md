@@ -135,9 +135,8 @@ Cloud Run's simplicity and prior GCP experience from FALLOUT.
 
 ### ADR-002a: Firestore over Cloud SQL as the Database Layer
 Date: 2026-09-06
-Status: Accepted (scope narrowed by ADR-008 on 2026-09-29: household
-data stays in Firestore; the account-wide shared product catalog is
-in Cloud SQL for PostgreSQL)
+Status: Accepted; amended 2026-09-29 — Firestore for household data;
+Postgres for cross-account shared catalog data (ADR-008)
 Decision: Use Cloud Firestore as the primary database rather
 than Cloud SQL (PostgreSQL).
 
@@ -409,8 +408,8 @@ Options considered:
 - Weakness: no network effect; every household re-teaches the same
   Publix abbreviations
 
-**Option B — Shared `products` collection in Firestore** (chosen in
-the 2026-09-26 draft, superseded)
+**Option B — Shared `products` collection in Firestore** (rejected;
+chosen in the 2026-09-26 draft, reversed on product-owner review)
 - One datastore; consistent with ADR-002a
 - Weakness: no uniqueness constraints — UPC and alias uniqueness had
   to be simulated with document ids and transactions
@@ -422,7 +421,7 @@ the 2026-09-26 draft, superseded)
   are array fields with 1 MiB document limits, not queries
 
 **Option C — Cloud SQL for PostgreSQL (chosen)**
-- Constraints express the rules: `UNIQUE (upc)`, `PRIMARY KEY
+- Constraints express the rules: unique `upc` (partial index), `PRIMARY KEY
   (store_chain_id, alias)`, `PRIMARY KEY (product_id, household_hash)`
   for once-per-household confirmations, a `CHECK` that a `verified`
   row has a UPC and evidence, a partial unique index for one live
@@ -431,31 +430,73 @@ the 2026-09-26 draft, superseded)
   give real similarity search for the fuzzy step and the picker
 - Foreign keys between products, aliases, confirmations, jobs, steps,
   conflicts; `superseded_by` re-keying is a self-reference
-- Migrations are reviewable DDL under Alembic; the schema is the
+- Migrations are reviewable, idempotent SQL files; the schema is the
   documentation
-- Weakness: a second datastore to operate. Mitigated: smallest
-  shared-core instance (`db-f1-micro`, ~US$10/month), IAM database
-  authentication (no password anywhere), in-memory repository for
-  tests, Postgres in CI via a service container
-- Weakness: Cloud Run cold starts add a connection handshake.
-  Mitigated by a small pool (2 + 3 overflow) and the Cloud SQL Python
-  Connector's cached IAM tokens
+- Costs (recorded, accepted):
+  - a second database to run: Cloud SQL instance, backups, schema
+    migrations, a connection pool per Cloud Run instance
+  - a small always-on monthly cost (`db-f1-micro`, ~US$10/month)
+  - no realtime client listeners; shared product data reaches clients
+    through the API, which is intended anyway — the catalog is
+    server-owned
+  - ADR-002a is amended rather than replaced: it still governs every
+    household-scoped collection
 
 **Option D — AlloyDB / Cloud Spanner**
 - Weakness: cost and operational weight far beyond a household-scale
   catalog; nothing here needs their scale
 
+What Postgres gives this particular database (the reasons the
+decision rests on):
+
+1. **Safe concurrent writes to the same rows.** Every household's
+   receipts and scans update the same product, alias, and store rows.
+   Firestore handles this with per-document transactions that retry
+   on contention; each receipt line is its own retry loop. In
+   Postgres a whole receipt — its lines' product upserts, their
+   aliases, the store row — commits in one transaction, and the save
+   takes a per-chain advisory lock
+   (`pg_advisory_xact_lock(hashtext(store_chain_id))`), so two
+   households saving the same chain's receipts at once cannot
+   overwrite each other's alias mappings (design §4.1).
+2. **Fuzzy matching of receipt text.** Lines like `GV CHOC CHP CKY`
+   must be matched to known products. `pg_trgm` trigram similarity
+   with a GIN index does this server-side; Firestore can only do
+   exact token matches (`array_contains_any` on a `name_tokens`
+   list), so misspellings and abbreviations miss unless that exact
+   token was seen before.
+3. **The database enforces data quality.** Crowd-sourced data is
+   messy. Constraints enforce one row per UPC, valid `status` /
+   `source` values, aliases that cannot point at products that do not
+   exist, and confirmations that cannot name a raw household. With
+   Firestore these were JSON Schemas that only the application
+   checked.
+4. **Moving a product to its UPC is atomic.** A product is keyed
+   `llm:<hash>` until its UPC is found; then the UPC-keyed `products` row is
+   created, aliases and confirmations move, counts merge, and the old
+   row is marked `superseded_by`. In SQL that is one transaction
+   (design §4.1); in Firestore it is a multi-document job that has to
+   cope with failing halfway.
+5. **Reviewing the data is easy.** "Which H-E-B items conflict?",
+   "confirmation counts per chain", "codes seen at more than one
+   store" are plain SQL joins over products, aliases, chains, and
+   conflicts. In Firestore each new question needs a new composite
+   index or an export.
+
 Rules embedded in the decision:
-- Connection and identity: the API connects through the Cloud SQL
-  Python Connector (`pg8000`, `enable_iam_auth=True`, ADC) as the IAM
-  database user `mekasa-api@…iam`; migrations run through the Cloud
-  SQL Auth Proxy with `--auto-iam-authn` under the operator's own
-  identity. No database password exists; nothing about the database
-  is a secret except its data (GUARDRAILS rule 4, NFR-004).
-- Persistence switch `CATALOG_PERSISTENCE=memory|postgres|auto`
-  mirrors `HOUSEHOLD_PERSISTENCE`; repositories stay Protocols with
-  in-memory and Postgres implementations so unit tests never need a
-  database.
+- Connection: Cloud Run connects over the Cloud SQL Unix socket.
+  `DATABASE_URL=postgresql://USER:PASS@/DB?host=/cloudsql/PROJECT:REGION:INSTANCE`
+  is read from Secret Manager secret `mekasa-database-url`; only the
+  secret's name appears in code or config (GUARDRAILS rule 4,
+  NFR-004). Driver `psycopg` 3 with `psycopg_pool`. Runtime service
+  account roles: `roles/cloudsql.client`,
+  `roles/secretmanager.secretAccessor`. Instance `mekasa-pg`
+  (Postgres 16, `us-central1`), database `mekasa`, user `mekasa_api`.
+- Local and tests: `DATABASE_URL` unset → in-memory
+  `products_repository`; Postgres tests run only when
+  `TEST_DATABASE_URL` points at a scratch database and are skipped
+  otherwise. Repositories stay Protocols with in-memory and Postgres
+  implementations, as `HOUSEHOLD_PERSISTENCE` does today.
 - The catalog holds **no household or user identifiers** (NFR-002):
   households appear only as `SHA-256(household_id + server salt)` in
   `product_confirmations` and `product_conflicts`; a `CHECK` enforces
@@ -491,8 +532,8 @@ Rules embedded in the decision:
 
 Trade-off: A second datastore (~US$10/month idle, one more thing to
 migrate and back up) and curation workload for conflicts and for
-promoting `pending` entries. Mitigated by IAM-only access with no
-credentials to rotate, Alembic migrations validated in CI against a
-Postgres service container, conservative automatic thresholds (3
+promoting `pending` entries. Mitigated by a single Secret Manager
+secret, idempotent SQL migrations validated in CI against a Postgres
+service container, conservative automatic thresholds (3
 distinct households, or authoritative + 1), and by keeping the
 curation surface (`/v1/admin/product-conflicts`) as a follow-up.
