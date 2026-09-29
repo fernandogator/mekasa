@@ -5,4 +5,7 @@ __pycache__/
 .env
 *.json
 !requirements.txt
+# Schema / index / prompt-contract JSON only (never credentials — GUARDRAILS rule 4)
+!firestore/**/*.json
+!prompts/**/*.json
 .Python

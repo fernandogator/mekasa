@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mekasa.app/schema/firestore/enrichment_jobs.schema.json",
+  "title": "enrichment_jobs/{job_id}",
+  "description": "Enrichment dispatcher state for one product. Satisfies: REQ-RCP-009, REQ-RCP-010.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["product_id", "trigger", "chain", "steps", "status", "expires_at", "created_at", "updated_at"],
+  "properties": {
+    "product_id": { "$ref": "_common.schema.json#/$defs/docId" },
+    "trigger": { "type": "string", "enum": ["unmatched_line", "manual", "reverify"] },
+    "chain": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/adapter" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["adapter", "status", "started_at"],
+        "properties": {
+          "adapter": { "$ref": "#/$defs/adapter" },
+          "status": { "type": "string", "enum": ["skipped", "hit", "miss", "error", "not_implemented"] },
+          "started_at": { "$ref": "_common.schema.json#/$defs/timestamp" },
+          "finished_at": { "$ref": "_common.schema.json#/$defs/nullableTimestamp" },
+          "upc": { "anyOf": [{ "$ref": "_common.schema.json#/$defs/upc" }, { "type": "null" }] },
+          "note": { "type": ["string", "null"], "maxLength": 300 }
+        }
+      }
+    },
+    "status": { "type": "string", "enum": ["queued", "running", "succeeded", "exhausted", "failed"] },
+    "result_source": {
+      "anyOf": [{ "$ref": "_common.schema.json#/$defs/productSource" }, { "type": "null" }]
+    },
+    "expires_at": { "$ref": "_common.schema.json#/$defs/timestamp" },
+    "created_at": { "$ref": "_common.schema.json#/$defs/timestamp" },
+    "updated_at": { "$ref": "_common.schema.json#/$defs/timestamp" }
+  },
+  "$defs": {
+    "adapter": {
+      "type": "string",
+      "enum": ["store_site", "gs1_registry", "upcitemdb", "openfoodfacts", "crowdsourced_pending"]
+    }
+  }
+}

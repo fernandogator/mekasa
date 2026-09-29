@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mekasa.app/schema/firestore/products.schema.json",
+  "title": "products/{product_id}",
+  "description": "Shared UPC product database (ADR-008). Satisfies: REQ-RCP-009, REQ-RCP-011, REQ-RCP-013, REQ-RCP-014. No household or user identifiers may appear in this document (NFR-002).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "store_chain_id",
+    "name",
+    "normalized_name",
+    "name_tokens",
+    "category",
+    "source",
+    "sources_seen",
+    "confidence_score",
+    "confirmation_count",
+    "dispute_count",
+    "status",
+    "first_seen_at",
+    "last_seen_at",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "upc": { "anyOf": [{ "$ref": "_common.schema.json#/$defs/upc" }, { "type": "null" }] },
+    "store_chain_id": { "$ref": "_common.schema.json#/$defs/storeChainId" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "normalized_name": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "name_tokens": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 2, "maxLength": 40 },
+      "maxItems": 10,
+      "uniqueItems": true
+    },
+    "receipt_aliases": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 120 },
+      "maxItems": 25,
+      "uniqueItems": true,
+      "default": []
+    },
+    "brand": { "type": ["string", "null"], "maxLength": 80 },
+    "category": { "$ref": "_common.schema.json#/$defs/category" },
+    "unit_size": { "type": ["string", "null"], "maxLength": 40 },
+    "image_url": { "type": ["string", "null"], "maxLength": 2048 },
+    "source": { "$ref": "_common.schema.json#/$defs/productSource" },
+    "sources_seen": {
+      "type": "array",
+      "items": { "$ref": "_common.schema.json#/$defs/productSource" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "confidence_score": { "$ref": "_common.schema.json#/$defs/confidence" },
+    "confirmation_count": { "type": "integer", "minimum": 0 },
+    "confirming_household_hashes": {
+      "type": "array",
+      "items": { "$ref": "_common.schema.json#/$defs/sha256" },
+      "uniqueItems": true,
+      "default": []
+    },
+    "dispute_count": { "type": "integer", "minimum": 0 },
+    "status": { "$ref": "_common.schema.json#/$defs/productStatus" },
+    "status_changed_at": { "$ref": "_common.schema.json#/$defs/nullableTimestamp" },
+    "origin_parse_job_id": { "type": ["string", "null"] },
+    "origin_prompt_version": {
+      "anyOf": [{ "$ref": "_common.schema.json#/$defs/promptVersion" }, { "type": "null" }]
+    },
+    "superseded_by": { "anyOf": [{ "$ref": "_common.schema.json#/$defs/upc" }, { "type": "null" }] },
+    "first_seen_at": { "$ref": "_common.schema.json#/$defs/timestamp" },
+    "last_seen_at": { "$ref": "_common.schema.json#/$defs/timestamp" },
+    "created_at": { "$ref": "_common.schema.json#/$defs/timestamp" },
+    "updated_at": { "$ref": "_common.schema.json#/$defs/timestamp" }
+  },
+  "allOf": [
+    {
+      "$comment": "REQ-RCP-011: a verified product must have a UPC and at least one confirmation or an authoritative source.",
+      "if": { "properties": { "status": { "const": "verified" } } },
+      "then": {
+        "required": ["upc"],
+        "properties": { "upc": { "$ref": "_common.schema.json#/$defs/upc" } },
+        "anyOf": [
+          { "properties": { "confirmation_count": { "minimum": 1 } } },
+          { "properties": { "source": { "enum": ["gs1_registry", "store_site"] } } }
+        ]
+      }
+    }
+  ]
+}

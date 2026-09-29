@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mekasa.app/schema/prompts/receipt_parse/v1/response.schema.json",
+  "title": "Gemini receipt parse response (receipt_parse/v1)",
+  "description": "Contract for the single-call whole-receipt extraction. Used verbatim as the Vertex AI response_schema and re-validated server-side (REQ-RCP-003). Vertex AI supports a subset of JSON Schema: no $ref, no allOf/if-then, no patterns on nested strings beyond enum; keep this file within that subset.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "store", "purchased_at", "currency", "totals", "line_items", "notes"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["receipt_parse/v1"]
+    },
+    "store": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chain_detected", "matches_expected"],
+      "properties": {
+        "chain_detected": { "type": ["string", "null"], "maxLength": 80 },
+        "matches_expected": { "type": "boolean" }
+      }
+    },
+    "purchased_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "currency": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 3
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subtotal", "tax", "total"],
+      "properties": {
+        "subtotal": { "type": ["number", "null"], "minimum": 0 },
+        "tax": { "type": ["number", "null"], "minimum": 0 },
+        "total": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+    "line_items": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "line_no",
+          "raw_text",
+          "description",
+          "qty",
+          "unit",
+          "unit_price",
+          "price",
+          "discount",
+          "printed_code",
+          "category",
+          "confidence"
+        ],
+        "properties": {
+          "line_no": { "type": "integer", "minimum": 1 },
+          "raw_text": { "type": "string", "minLength": 1, "maxLength": 240 },
+          "description": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "qty": { "type": "number", "exclusiveMinimum": 0, "maximum": 9999 },
+          "unit": { "type": "string", "enum": ["each", "lb", "oz", "kg", "g", "l", "ml", "gal", "pack"] },
+          "unit_price": { "type": ["number", "null"], "minimum": 0 },
+          "price": { "type": "number", "minimum": 0 },
+          "discount": { "type": ["number", "null"], "maximum": 0 },
+          "printed_code": { "type": ["string", "null"], "maxLength": 20 },
+          "category": {
+            "type": "string",
+            "enum": [
+              "Produce", "Dairy", "Meat", "Seafood", "Bakery", "Pantry", "Frozen",
+              "Beverages", "Snacks", "Household", "Personal Care", "Baby", "Pet",
+              "Alcohol", "Other"
+            ]
+          },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+    "notes": {
+      "type": ["string", "null"],
+      "maxLength": 200,
+      "description": "Free-text caveat for operators, e.g. \"not_a_receipt\", \"bottom_cut_off\". Never contains PII."
+    }
+  }
+}
