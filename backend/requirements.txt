@@ -8,8 +8,7 @@ google-cloud-firestore==2.21.0
 python-multipart==0.0.20
 pytest==8.4.1
 google-cloud-vision==3.10.1
-# Shared product catalog (Cloud SQL Postgres, ADR-008): migrations + local/CI driver.
-# Runtime pool via cloud-sql-python-connector[pg8000] arrives with phase 2.
-SQLAlchemy==2.1.1
-alembic==1.20.0
+# Shared product catalog (Cloud SQL Postgres over the /cloudsql Unix socket, ADR-008).
+# Migrations are plain SQL via psql; the runtime repository (phase 2) uses these.
 psycopg[binary]==3.3.6
+psycopg-pool==3.3.3

@@ -1,4 +1,4 @@
--- Seed: store_chains (idempotent). Apply after 0001_catalog.
+-- Seed: store_chains (idempotent). Apply after 0001_shared_products.
 -- Spec version: 1.0 · Satisfies: REQ-RCP-002 (prompt chain name), REQ-RCP-010 AC6 (api_provider)
 --
 -- Chains come from the Places names already returned by stub_nearby_stores /

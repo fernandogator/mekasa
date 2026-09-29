@@ -1,4 +1,4 @@
--- Rollback of 0001_catalog. Drops every catalog object; household data in
+-- Rollback of 0001_shared_products. Drops every catalog object; household data in
 -- Firestore is untouched (it only holds opaque product_id strings).
 DROP TABLE IF EXISTS product_conflicts;
 DROP TABLE IF EXISTS enrichment_steps;
