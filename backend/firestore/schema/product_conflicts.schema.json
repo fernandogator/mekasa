@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mekasa.app/schema/firestore/product_conflicts.schema.json",
+  "title": "product_conflicts/{conflict_id}",
+  "description": "Observed disagreement with a verified product; the verified document is never modified by the parser. Satisfies: REQ-RCP-014.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "product_id",
+    "household_hash",
+    "receipt_id",
+    "line_item_id",
+    "field",
+    "verified_value",
+    "observed_value",
+    "status",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "product_id": { "$ref": "_common.schema.json#/$defs/docId" },
+    "household_hash": { "$ref": "_common.schema.json#/$defs/sha256" },
+    "receipt_id": { "$ref": "_common.schema.json#/$defs/docId" },
+    "line_item_id": { "$ref": "_common.schema.json#/$defs/docId" },
+    "field": { "type": "string", "enum": ["name", "brand", "unit_size", "category", "upc"] },
+    "verified_value": { "type": "string", "maxLength": 200 },
+    "observed_value": { "type": "string", "maxLength": 200 },
+    "status": { "type": "string", "enum": ["open", "dismissed", "accepted"] },
+    "created_at": { "$ref": "_common.schema.json#/$defs/timestamp" },
+    "updated_at": { "$ref": "_common.schema.json#/$defs/timestamp" }
+  }
+}

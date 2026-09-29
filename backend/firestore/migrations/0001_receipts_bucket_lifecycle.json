@@ -1,0 +1,12 @@
+{
+  "rule": [
+    {
+      "action": { "type": "Delete" },
+      "condition": { "age": 400, "matchesPrefix": ["households/"] }
+    },
+    {
+      "action": { "type": "Delete" },
+      "condition": { "age": 180, "matchesPrefix": ["llm/"] }
+    }
+  ]
+}

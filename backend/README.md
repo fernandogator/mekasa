@@ -123,6 +123,14 @@ Shopping list documents live at `households/{id}/shopping_list_items/{item_id}`.
 
 Purchase events live at `households/{id}/purchase_events/{event_id}` (REQ-015–018). Members + invites live under `households/{id}/members|invites` with `invite_tokens/{token}` and `user_memberships/{uid}/households/{id}` for durable join (REQ-019). Active members can read/write inventory and shopping list; invite create/role changes stay owner-only.
 
+### Receipt parser (Gemini) — phase 1, design only
+
+Data model, indexes, and Gemini prompt/schema contracts for REQ-RCP-001…018 live in
+`firestore/` (`migrations/0001_receipt_parser.md`, `schema/*.schema.json`,
+`firestore.indexes.json`) and `prompts/receipt_parse/v1/`. API contract:
+`docs/api/receipt-parser.openapi.yaml`; design: `docs/design/gemini-receipt-parser.md`.
+No runtime code yet — see the design doc's review checklist.
+
 ## Deploy
 
 Project: `hackathon2025-472017` · Region: `us-central1` · Auth: Google + email first

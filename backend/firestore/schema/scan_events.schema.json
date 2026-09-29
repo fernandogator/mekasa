@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mekasa.app/schema/firestore/scan_events.schema.json",
+  "title": "households/{household_id}/scan_events/{event_id}",
+  "description": "Persisted barcode scan (supersedes in-memory unknown_barcode_log). Satisfies: REQ-RCP-016, REQ-RCP-008, REQ-008 AC3.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["upc", "scanned_by_uid", "scanned_at", "context", "outcome", "created_at"],
+  "properties": {
+    "upc": { "type": "string", "pattern": "^[0-9]{6,14}$" },
+    "scanned_by_uid": { "$ref": "_common.schema.json#/$defs/uid" },
+    "scanned_at": { "$ref": "_common.schema.json#/$defs/timestamp" },
+    "context": { "type": "string", "enum": ["add_items", "trash_station", "manual_entry"] },
+    "outcome": { "type": "string", "enum": ["found", "unknown", "consumed"] },
+    "lookup_source": { "type": ["string", "null"], "enum": ["openfoodfacts", "products", "none", null] },
+    "product_name_at_scan": { "type": ["string", "null"], "maxLength": 120 },
+    "product_id": { "type": ["string", "null"] },
+    "correlated_receipt_id": { "type": ["string", "null"] },
+    "correlated_line_item_id": { "type": ["string", "null"] },
+    "created_at": { "$ref": "_common.schema.json#/$defs/timestamp" }
+  }
+}

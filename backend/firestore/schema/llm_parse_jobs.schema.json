@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mekasa.app/schema/firestore/llm_parse_jobs.schema.json",
+  "title": "llm_parse_jobs/{job_id}",
+  "description": "One Gemini parse job for a receipt, including every attempt and its raw response. Satisfies: REQ-RCP-002, REQ-RCP-003, REQ-RCP-004, REQ-RCP-005, REQ-RCP-017, REQ-RCP-018.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "household_id",
+    "receipt_id",
+    "provider",
+    "model",
+    "vertex_location",
+    "prompt_version",
+    "prompt_sha256",
+    "schema_version",
+    "store_chain_name",
+    "input_kind",
+    "status",
+    "attempt",
+    "max_attempts",
+    "attempts",
+    "requested_by_uid",
+    "expires_at",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "household_id": { "$ref": "_common.schema.json#/$defs/docId" },
+    "receipt_id": { "$ref": "_common.schema.json#/$defs/docId" },
+    "provider": { "const": "vertex_ai" },
+    "model": { "type": "string", "pattern": "^gemini-[a-z0-9.-]+$" },
+    "vertex_location": { "type": "string", "pattern": "^[a-z]+-[a-z]+[0-9]$" },
+    "prompt_version": { "$ref": "_common.schema.json#/$defs/promptVersion" },
+    "prompt_sha256": { "$ref": "_common.schema.json#/$defs/sha256" },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^receipt_parse/v[0-9]+/response\\.schema\\.json@[a-f0-9]{12}$"
+    },
+    "store_chain_name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "input_kind": { "type": "string", "enum": ["image", "text"] },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "running", "validating", "retrying", "succeeded", "failed"]
+    },
+    "attempt": { "type": "integer", "minimum": 0, "maximum": 3 },
+    "max_attempts": { "const": 3 },
+    "attempts": {
+      "type": "array",
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/attempt" }
+    },
+    "error_code": {
+      "type": ["string", "null"],
+      "enum": ["schema_invalid", "model_error", "timeout", "safety_blocked", "pii_detected", null]
+    },
+    "result_summary": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "line_count": { "type": "integer", "minimum": 0 },
+        "store_chain_detected": { "type": ["string", "null"] },
+        "totals_mismatch": { "type": "boolean" }
+      }
+    },
+    "requested_by_uid": { "$ref": "_common.schema.json#/$defs/uid" },
+    "expires_at": { "$ref": "_common.schema.json#/$defs/timestamp" },
+    "created_at": { "$ref": "_common.schema.json#/$defs/timestamp" },
+    "updated_at": { "$ref": "_common.schema.json#/$defs/timestamp" }
+  },
+  "$defs": {
+    "attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt", "started_at", "corrective_prompt_applied", "validation_errors"],
+      "properties": {
+        "attempt": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "started_at": { "$ref": "_common.schema.json#/$defs/timestamp" },
+        "finished_at": { "$ref": "_common.schema.json#/$defs/nullableTimestamp" },
+        "latency_ms": { "type": ["integer", "null"], "minimum": 0 },
+        "corrective_prompt_applied": { "type": "boolean" },
+        "validation_errors": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 500 },
+          "maxItems": 50
+        },
+        "raw_response": {
+          "type": ["string", "null"],
+          "maxLength": 200000,
+          "description": "Verbatim model output when <= 200 KB (REQ-RCP-018)"
+        },
+        "raw_response_gcs_uri": { "type": ["string", "null"], "pattern": "^gs://[a-z0-9._-]+/llm/.+\\.json$" },
+        "usage": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "input_tokens": { "type": "integer", "minimum": 0 },
+            "output_tokens": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "finish_reason": { "type": ["string", "null"], "maxLength": 40 }
+      },
+      "anyOf": [
+        { "properties": { "finished_at": { "type": "null" } } },
+        { "required": ["raw_response"], "properties": { "raw_response": { "type": "string" } } },
+        { "required": ["raw_response_gcs_uri"], "properties": { "raw_response_gcs_uri": { "type": "string" } } },
+        { "properties": { "validation_errors": { "minItems": 1 } } }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "failed" } } },
+      "then": { "required": ["error_code"], "properties": { "error_code": { "type": "string" } } }
+    }
+  ]
+}

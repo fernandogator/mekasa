@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mekasa.app/schema/firestore/receipt_line_items.schema.json",
+  "title": "households/{household_id}/receipts/{receipt_id}/line_items/{line_item_id}",
+  "description": "One product line extracted from a receipt. Satisfies: REQ-RCP-006, REQ-RCP-007, REQ-RCP-008, REQ-RCP-012, REQ-RCP-014.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "line_no",
+    "raw_text",
+    "description",
+    "price",
+    "qty",
+    "category",
+    "extraction_confidence",
+    "matched_product_id",
+    "resolution_status",
+    "candidate_product_ids",
+    "image_url",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "line_no": { "type": "integer", "minimum": 1 },
+    "raw_text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "not": { "pattern": "(?:[0-9][ -]?){13,}" },
+      "$comment": "PII guard: 13+ digits are rejected even when separated by spaces/dashes (card, loyalty, transaction ids) — design §3.10. The H-E-B prototype run showed spaced transaction ids slipping past a strict [0-9]{13,} check."
+    },
+    "description": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "brand": { "type": ["string", "null"], "maxLength": 80 },
+    "unit_size": { "type": ["string", "null"], "maxLength": 40 },
+    "price": { "$ref": "_common.schema.json#/$defs/money" },
+    "unit_price": { "anyOf": [{ "$ref": "_common.schema.json#/$defs/money" }, { "type": "null" }] },
+    "qty": { "type": "number", "exclusiveMinimum": 0, "maximum": 9999 },
+    "unit": { "type": ["string", "null"], "maxLength": 12 },
+    "discount": { "type": ["number", "null"], "maximum": 0 },
+    "printed_code": { "type": ["string", "null"], "pattern": "^[0-9A-Za-z-]{3,20}$" },
+    "category": { "$ref": "_common.schema.json#/$defs/category" },
+    "extraction_confidence": { "$ref": "_common.schema.json#/$defs/confidence" },
+    "matched_product_id": { "type": ["string", "null"], "maxLength": 128 },
+    "match_method": {
+      "type": ["string", "null"],
+      "enum": ["exact_upc", "scan_correlation", "alias", "fuzzy", "enrichment", "user", null]
+    },
+    "match_confidence": {
+      "anyOf": [{ "$ref": "_common.schema.json#/$defs/confidence" }, { "type": "null" }]
+    },
+    "resolution_status": {
+      "type": "string",
+      "enum": ["auto_matched", "needs_confirmation", "unmatched", "confirmed", "rejected", "skipped"]
+    },
+    "candidate_product_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 5,
+      "uniqueItems": true
+    },
+    "conflict_id": { "type": ["string", "null"] },
+    "image_url": { "type": "string", "minLength": 1, "maxLength": 2048 },
+    "barcode": { "anyOf": [{ "$ref": "_common.schema.json#/$defs/upc" }, { "type": "null" }] },
+    "inventory_item_id": { "type": ["string", "null"] },
+    "purchase_event_id": { "type": ["string", "null"] },
+    "resolved_by_uid": { "anyOf": [{ "$ref": "_common.schema.json#/$defs/uid" }, { "type": "null" }] },
+    "resolved_at": { "$ref": "_common.schema.json#/$defs/nullableTimestamp" },
+    "created_at": { "$ref": "_common.schema.json#/$defs/timestamp" },
+    "updated_at": { "$ref": "_common.schema.json#/$defs/timestamp" }
+  },
+  "allOf": [
+    {
+      "$comment": "A linked line must say how it was linked.",
+      "if": { "properties": { "matched_product_id": { "type": "string" } } },
+      "then": { "required": ["match_method", "match_confidence"] }
+    },
+    {
+      "$comment": "auto_matched / confirmed imply a product link.",
+      "if": { "properties": { "resolution_status": { "enum": ["auto_matched", "confirmed"] } } },
+      "then": { "properties": { "matched_product_id": { "type": "string" } } }
+    }
+  ]
+}

@@ -1,0 +1,932 @@
+openapi: 3.1.0
+info:
+  title: Mekasa API — Receipt Intelligence (Gemini parser)
+  version: 0.7.0-draft
+  summary: Receipt upload, Gemini parse jobs, line-item resolution and confirmation.
+  description: |
+    Contract for the receipt-parser feature (spec REQ-RCP-001 … REQ-RCP-018;
+    design `docs/design/gemini-receipt-parser.md`). Draft for review — the
+    FastAPI implementation in phase 2 must generate an `/openapi.json` whose
+    paths and schemas match this file (a phase-2 CI check diffs them).
+
+    Conventions (unchanged from the rest of the Mekasa API):
+    * Bearer Firebase ID token; `Bearer test:<uid>` when `ALLOW_TEST_AUTH=true`.
+    * Every household route checks membership → `403 Forbidden` for
+      non-members, `404` for unknown household/receipt/line.
+    * Timestamps are RFC 3339 UTC. Money is a JSON number (USD in v1).
+    * Error body: `{"detail": "<snake_case_code>"}`.
+servers:
+  - url: https://mekasa-api-934775015882.us-central1.run.app
+    description: dev (Cloud Run)
+  - url: http://localhost:8080
+    description: local
+security:
+  - bearerAuth: []
+tags:
+  - name: receipts
+  - name: line-items
+  - name: parse-jobs
+  - name: products
+  - name: scan-events
+  - name: internal
+  - name: deprecated
+
+paths:
+  /v1/households/{household_id}/receipts:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+    post:
+      tags: [receipts]
+      operationId: createReceipt
+      summary: Upload a receipt and start a Gemini parse job
+      description: |
+        Satisfies: REQ-RCP-001, REQ-RCP-002 · Spec version: 1.0
+
+        Creates `receipts/{id}` (status `uploaded`) and `llm_parse_jobs/{id}`
+        (status `queued`). With `wait_seconds > 0` the job runs inline and the
+        response is `200` with line items when finished in time; otherwise
+        `202` with `status: parsing` and the client polls `GET /receipts/{id}`.
+      parameters:
+        - name: wait_seconds
+          in: query
+          description: Bounded synchronous wait (0 = always async).
+          schema: { type: integer, minimum: 0, maximum: 45, default: 0 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReceiptCreateRequest' }
+            examples:
+              image:
+                value:
+                  image_base64: "/9j/4AAQSkZJRgABAQ..."
+                  content_type: image/jpeg
+                  store_id: publix-stub
+              pastedText:
+                value:
+                  raw_text: "WHOLE MILK 3.49\nBANANAS 1.29\nTOTAL 4.78"
+      responses:
+        '200':
+          description: Parsed within `wait_seconds`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReceiptDetailResponse' }
+        '202':
+          description: Accepted; parsing continues asynchronously.
+          headers:
+            Location:
+              schema: { type: string }
+              description: URL of `GET /receipts/{receipt_id}`.
+            Retry-After:
+              schema: { type: integer }
+              description: Suggested poll interval in seconds.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReceiptDetailResponse' }
+        '400':
+          description: '`image_or_text_required`, `image_too_large` (> 10 MB), `unsupported_content_type`'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: '`duplicate_receipt` — same `image_sha256` uploaded within 24 h (see design §9.8)'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '429':
+          description: '`parse_rate_limited` — per-household parse quota exceeded'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    get:
+      tags: [receipts]
+      operationId: listReceipts
+      summary: List household receipts (newest first)
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/ReceiptStatus' }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReceiptListResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/households/{household_id}/receipts/{receipt_id}:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+      - $ref: '#/components/parameters/ReceiptId'
+    get:
+      tags: [receipts]
+      operationId: getReceipt
+      summary: Receipt with line items and parse-job summary
+      description: 'Satisfies: REQ-RCP-005, REQ-RCP-006, REQ-RCP-012 · Spec version: 1.0'
+      parameters:
+        - name: include_image_url
+          in: query
+          description: Return a 15-minute signed URL for the original image.
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReceiptDetailResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [receipts]
+      operationId: deleteReceipt
+      summary: Delete an unconfirmed receipt (owner or uploader)
+      responses:
+        '204': { description: Deleted (image object removed, job docs retained for audit). }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: '`receipt_confirmed` — confirmed receipts are immutable'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /v1/households/{household_id}/receipts/{receipt_id}/parse-job:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+      - $ref: '#/components/parameters/ReceiptId'
+    get:
+      tags: [parse-jobs]
+      operationId: getReceiptParseJob
+      summary: Latest parse job for the receipt
+      description: |
+        Satisfies: REQ-RCP-004, REQ-RCP-005, REQ-RCP-017, REQ-RCP-018 · Spec version: 1.0
+
+        Attempts include validation errors and token usage. Raw model output is
+        omitted unless `include_raw=true`, which requires the Owner role.
+      parameters:
+        - name: include_raw
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ParseJobResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/households/{household_id}/receipts/{receipt_id}/reparse:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+      - $ref: '#/components/parameters/ReceiptId'
+    post:
+      tags: [parse-jobs]
+      operationId: reparseReceipt
+      summary: Start a new parse job for an unconfirmed receipt (Owner)
+      parameters:
+        - name: wait_seconds
+          in: query
+          schema: { type: integer, minimum: 0, maximum: 45, default: 0 }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                store_id:
+                  type: [string, 'null']
+                  description: Override the store hint for `{{store_chain_name}}`.
+      responses:
+        '200':
+          content: { application/json: { schema: { $ref: '#/components/schemas/ReceiptDetailResponse' } } }
+        '202':
+          content: { application/json: { schema: { $ref: '#/components/schemas/ReceiptDetailResponse' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: '`receipt_confirmed` or `job_in_progress`'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /v1/households/{household_id}/receipts/{receipt_id}/line-items/{line_item_id}:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+      - $ref: '#/components/parameters/ReceiptId'
+      - $ref: '#/components/parameters/LineItemId'
+    patch:
+      tags: [line-items]
+      operationId: updateLineItem
+      summary: Edit quantity, price, category, or description before confirm
+      description: 'Satisfies: REQ-005 AC2, REQ-RCP-006 · Spec version: 1.0'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LineItemUpdateRequest' }
+      responses:
+        '200':
+          content: { application/json: { schema: { $ref: '#/components/schemas/LineItem' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: '`receipt_confirmed`'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /v1/households/{household_id}/receipts/{receipt_id}/line-items/{line_item_id}/candidates:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+      - $ref: '#/components/parameters/ReceiptId'
+      - $ref: '#/components/parameters/LineItemId'
+    get:
+      tags: [line-items]
+      operationId: listLineItemCandidates
+      summary: Product candidates for the confirm-haul picker
+      description: |
+        Satisfies: REQ-RCP-007, REQ-RCP-012, REQ-005 AC6 · Spec version: 1.0
+
+        Returns stored `candidate_product_ids` expanded, plus live results from
+        the shared `products` collection and Open Food Facts when `q` is given.
+      parameters:
+        - name: q
+          in: query
+          description: Override search text (defaults to the line description).
+          schema: { type: string, maxLength: 120 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 10, default: 5 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CandidateListResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/households/{household_id}/receipts/{receipt_id}/line-items/{line_item_id}/resolve:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+      - $ref: '#/components/parameters/ReceiptId'
+      - $ref: '#/components/parameters/LineItemId'
+    post:
+      tags: [line-items]
+      operationId: resolveLineItem
+      summary: Link the line to a product (user confirmation)
+      description: |
+        Satisfies: REQ-RCP-012, REQ-RCP-013, REQ-RCP-014 · Spec version: 1.0
+
+        Exactly one of `product_id`, `upc`, `candidate_index`, or `manual` must
+        be provided. Sets `resolution_status: confirmed`, `match_method: user`,
+        increments `products.confirmation_count` (once per household per
+        product) and re-evaluates `products.status`. When the target product is
+        `verified` and the submitted attributes contradict it, the verified
+        document is left untouched, a conflict record is written, and the
+        response carries `conflict` (REQ-RCP-014).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LineItemResolveRequest' }
+            examples:
+              pickCandidate: { value: { candidate_index: 0 } }
+              byUpc: { value: { upc: "041220576037" } }
+              manual:
+                value:
+                  manual: { name: "Publix Whole Milk", brand: "Publix", category: Dairy, unit_size: "1 gal" }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LineItemResolveResponse' }
+        '400':
+          description: '`exactly_one_target_required`, `invalid_upc`, `candidate_index_out_of_range`'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: '`receipt_confirmed`'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /v1/households/{household_id}/receipts/{receipt_id}/line-items/{line_item_id}/reject:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+      - $ref: '#/components/parameters/ReceiptId'
+      - $ref: '#/components/parameters/LineItemId'
+    post:
+      tags: [line-items]
+      operationId: rejectLineItem
+      summary: Mark the line as not a product / skip it
+      description: 'Satisfies: REQ-RCP-012 · Spec version: 1.0'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                reason:
+                  type: string
+                  enum: [not_a_product, duplicate, skip]
+                  default: skip
+      responses:
+        '200':
+          content: { application/json: { schema: { $ref: '#/components/schemas/LineItem' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: '`receipt_confirmed`'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /v1/households/{household_id}/receipts/{receipt_id}/confirm:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+      - $ref: '#/components/parameters/ReceiptId'
+    post:
+      tags: [receipts]
+      operationId: confirmReceipt
+      summary: Write confirmed lines to inventory and purchase events
+      description: |
+        Satisfies: REQ-RCP-015, REQ-RCP-013, REQ-005 AC2–AC3, REQ-015 AC1/AC3 · Spec version: 1.0
+
+        For every line whose `resolution_status` is `auto_matched`,
+        `confirmed`, or (with `include_unmatched=true`) `unmatched` /
+        `needs_confirmation`: upsert an inventory item (`source: receipt`) and
+        create a purchase event (`source: receipt`, `store_id`). Rejected and
+        skipped lines are ignored. Idempotent — a confirmed receipt returns the
+        same result.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReceiptConfirmRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReceiptConfirmResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: '`receipt_not_parsed` (status is `uploaded`/`parsing`/`failed` with no fallback lines)'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /v1/households/{household_id}/scan-events:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+    get:
+      tags: [scan-events]
+      operationId: listScanEvents
+      summary: Recent barcode scan events
+      description: 'Satisfies: REQ-RCP-016, REQ-008 AC3 · Spec version: 1.0'
+      parameters:
+        - name: outcome
+          in: query
+          schema: { type: string, enum: [found, unknown, consumed] }
+        - name: since
+          in: query
+          schema: { type: string, format: date-time }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScanEventListResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v1/products/{product_id}:
+    parameters:
+      - name: product_id
+        in: path
+        required: true
+        schema: { type: string }
+        description: UPC digits or `llm:<sha1>` id.
+    get:
+      tags: [products]
+      operationId: getProduct
+      summary: Read a shared product entry
+      description: 'Satisfies: REQ-RCP-011 · Spec version: 1.0. Any signed-in user; no household data is exposed.'
+      responses:
+        '200':
+          content: { application/json: { schema: { $ref: '#/components/schemas/Product' } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/products/search:
+    get:
+      tags: [products]
+      operationId: searchProducts
+      summary: Search the shared product database
+      description: 'Satisfies: REQ-RCP-007, REQ-006 AC4 · Spec version: 1.0'
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 2, maxLength: 120 }
+        - name: store_chain_id
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/ProductStatus' }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 20, default: 8 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [query, results]
+                properties:
+                  query: { type: string }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/Product' }
+
+  /v1/internal/parse-jobs/{job_id}/run:
+    parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [internal]
+      operationId: runParseJob
+      summary: Cloud Tasks target — execute a queued parse job
+      description: |
+        Satisfies: REQ-RCP-002, REQ-RCP-004, REQ-RCP-005 · Spec version: 1.0
+
+        Not callable by clients. Authenticated with a Google OIDC token for the
+        Cloud Run invoker service account; `X-CloudTasks-QueueName` must be
+        `receipt-parse`. Idempotent: a job already `succeeded`/`failed` returns
+        `200` without re-running.
+      security:
+        - cloudTasksOidc: []
+      responses:
+        '200':
+          content: { application/json: { schema: { $ref: '#/components/schemas/ParseJobResponse' } } }
+        '401': { description: Missing/invalid OIDC token. }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503':
+          description: Transient model/infra error; Cloud Tasks retries with backoff.
+
+  /v1/households/{household_id}/receipts/scan:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+    post:
+      tags: [deprecated]
+      deprecated: true
+      operationId: scanReceiptLegacy
+      summary: (Deprecated) synchronous scan — alias for `POST /receipts?wait_seconds=45`
+      description: |
+        Satisfies: REQ-005 AC1 · Spec version: 1.0
+
+        Kept for current iOS/Android builds. Creates a receipt + job, waits up
+        to 45 s, and returns the legacy `ReceiptScanResponse`. The new
+        `receipt_id` is returned so clients can migrate incrementally.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                image_base64: { type: [string, 'null'] }
+                raw_text: { type: [string, 'null'] }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LegacyReceiptScanResponse' }
+        '400':
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Firebase ID token
+    cloudTasksOidc:
+      type: http
+      scheme: bearer
+      bearerFormat: Google OIDC (Cloud Tasks)
+
+  parameters:
+    HouseholdId:
+      name: household_id
+      in: path
+      required: true
+      schema: { type: string }
+    ReceiptId:
+      name: receipt_id
+      in: path
+      required: true
+      schema: { type: string }
+    LineItemId:
+      name: line_item_id
+      in: path
+      required: true
+      schema: { type: string }
+
+  responses:
+    Forbidden:
+      description: Caller is not a member of the household (or lacks the Owner role where required).
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    NotFound:
+      description: Household, receipt, line item, or product not found.
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  schemas:
+    Error:
+      type: object
+      required: [detail]
+      properties:
+        detail: { type: string, examples: [image_or_text_required] }
+
+    ReceiptStatus:
+      type: string
+      enum: [uploaded, parsing, parsed, needs_review, confirmed, failed]
+    ExtractionEngine:
+      type: string
+      enum: [gemini, vision_regex, text_regex, stub]
+    ResolutionStatus:
+      type: string
+      enum: [auto_matched, needs_confirmation, unmatched, confirmed, rejected, skipped]
+    MatchMethod:
+      type: string
+      enum: [exact_upc, scan_correlation, alias, fuzzy, enrichment, user]
+    ProductSource:
+      type: string
+      enum: [user_scan, store_api, gs1_registry, llm_ocr]
+      description: '`store_api` = official retailer API (Kroger/Walmart.io); `gs1_registry` = UPC verified against GS1. Scraped pages are never a source.'
+    ProductStatus:
+      type: string
+      enum: [unverified, pending, verified]
+    ParseJobStatus:
+      type: string
+      enum: [queued, running, validating, retrying, succeeded, failed]
+
+    ReceiptCreateRequest:
+      type: object
+      additionalProperties: false
+      description: Provide `image_base64` (preferred) or `raw_text`.
+      properties:
+        image_base64:
+          type: [string, 'null']
+          description: Base64 (data-URL prefix tolerated). Max 10 MB decoded.
+        content_type:
+          type: string
+          enum: [image/jpeg, image/png, image/heic]
+          default: image/jpeg
+        raw_text:
+          type: [string, 'null']
+          maxLength: 20000
+          description: Pasted/OCR text; used when no image is supplied.
+        store_id:
+          type: [string, 'null']
+          description: One of the household's `store_ids`; hint for `{{store_chain_name}}`.
+        purchased_at:
+          type: [string, 'null']
+          format: date-time
+          description: Client override when the printed date is unreadable.
+        client_request_id:
+          type: [string, 'null']
+          maxLength: 64
+          description: Idempotency key; repeated calls return the same receipt.
+
+    ReceiptSummary:
+      type: object
+      required: [id, household_id, status, store_chain_id, currency, line_item_count, unresolved_count, created_by_uid, created_at, updated_at]
+      properties:
+        id: { type: string }
+        household_id: { type: string }
+        status: { $ref: '#/components/schemas/ReceiptStatus' }
+        extraction_engine:
+          oneOf: [{ $ref: '#/components/schemas/ExtractionEngine' }, { type: 'null' }]
+        store_id: { type: [string, 'null'] }
+        store_chain_id: { type: string }
+        store_chain_detected: { type: [string, 'null'] }
+        purchased_at: { type: [string, 'null'], format: date-time }
+        currency: { type: string, examples: [USD] }
+        subtotal: { type: [number, 'null'] }
+        tax: { type: [number, 'null'] }
+        total: { type: [number, 'null'] }
+        line_item_count: { type: integer }
+        unresolved_count: { type: integer }
+        parse_job_id: { type: [string, 'null'] }
+        image_url:
+          type: [string, 'null']
+          description: Signed URL, only when `include_image_url=true`.
+        created_by_uid: { type: string }
+        confirmed_at: { type: [string, 'null'], format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ReceiptDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/ReceiptSummary'
+        - type: object
+          required: [items, parse_job]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/LineItem' }
+            parse_job:
+              oneOf: [{ $ref: '#/components/schemas/ParseJobSummary' }, { type: 'null' }]
+
+    ReceiptListResponse:
+      type: object
+      required: [household_id, receipts]
+      properties:
+        household_id: { type: string }
+        receipts:
+          type: array
+          items: { $ref: '#/components/schemas/ReceiptSummary' }
+        next_cursor: { type: [string, 'null'] }
+
+    LineItem:
+      type: object
+      description: |
+        Superset of the legacy `ReceiptLineItem`: `name`, `category`,
+        `quantity`, `price_paid`, `barcode`, `image_url`, `identified` keep
+        their old meaning so existing confirm-haul screens keep working.
+      required: [id, line_no, raw_text, name, category, quantity, qty, price_paid, image_url, identified, extraction_confidence, matched_product_id, resolution_status, candidate_product_ids]
+      properties:
+        id: { type: string }
+        line_no: { type: integer, minimum: 1 }
+        raw_text: { type: string }
+        name:
+          type: string
+          description: Cleaned description (legacy field name).
+        category: { type: string }
+        quantity:
+          type: integer
+          minimum: 1
+          description: Integer quantity for inventory (legacy; `qty` rounded, min 1).
+        qty: { type: number, exclusiveMinimum: 0 }
+        unit: { type: [string, 'null'] }
+        price_paid:
+          type: [number, 'null']
+          description: Extended price after discounts (legacy field name).
+        unit_price: { type: [number, 'null'] }
+        discount: { type: [number, 'null'] }
+        printed_code: { type: [string, 'null'] }
+        barcode:
+          type: [string, 'null']
+          description: UPC of the matched product, when known.
+        image_url: { type: string }
+        identified:
+          type: boolean
+          description: '`resolution_status` in {auto_matched, confirmed}.'
+        extraction_confidence: { type: number, minimum: 0, maximum: 1 }
+        matched_product_id: { type: [string, 'null'] }
+        match_method:
+          oneOf: [{ $ref: '#/components/schemas/MatchMethod' }, { type: 'null' }]
+        match_confidence: { type: [number, 'null'], minimum: 0, maximum: 1 }
+        resolution_status: { $ref: '#/components/schemas/ResolutionStatus' }
+        candidate_product_ids:
+          type: array
+          maxItems: 5
+          items: { type: string }
+        conflict:
+          oneOf: [{ $ref: '#/components/schemas/ProductConflict' }, { type: 'null' }]
+        inventory_item_id: { type: [string, 'null'] }
+        purchase_event_id: { type: [string, 'null'] }
+
+    LineItemUpdateRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        category: { type: string, minLength: 1, maxLength: 60 }
+        quantity: { type: integer, minimum: 1, maximum: 9999 }
+        price_paid: { type: number, minimum: 0 }
+
+    LineItemResolveRequest:
+      type: object
+      additionalProperties: false
+      description: Exactly one of the four targets.
+      properties:
+        product_id: { type: string }
+        upc: { type: string, pattern: '^[0-9]{8,14}$' }
+        candidate_index: { type: integer, minimum: 0, maximum: 4 }
+        manual:
+          type: object
+          additionalProperties: false
+          required: [name]
+          properties:
+            name: { type: string, minLength: 1, maxLength: 120 }
+            brand: { type: [string, 'null'], maxLength: 80 }
+            category: { type: string, maxLength: 60 }
+            unit_size: { type: [string, 'null'], maxLength: 40 }
+            upc: { type: [string, 'null'], pattern: '^[0-9]{8,14}$' }
+      oneOf:
+        - required: [product_id]
+        - required: [upc]
+        - required: [candidate_index]
+        - required: [manual]
+
+    LineItemResolveResponse:
+      type: object
+      required: [line_item, product, confirmation_counted]
+      properties:
+        line_item: { $ref: '#/components/schemas/LineItem' }
+        product: { $ref: '#/components/schemas/Product' }
+        confirmation_counted:
+          type: boolean
+          description: False when this household already confirmed this product.
+        conflict:
+          oneOf: [{ $ref: '#/components/schemas/ProductConflict' }, { type: 'null' }]
+
+    CandidateListResponse:
+      type: object
+      required: [line_item_id, query, candidates]
+      properties:
+        line_item_id: { type: string }
+        query: { type: string }
+        candidates:
+          type: array
+          items:
+            type: object
+            required: [index, source, name, category, score]
+            properties:
+              index: { type: integer }
+              source:
+                type: string
+                enum: [products, openfoodfacts]
+              product_id: { type: [string, 'null'] }
+              barcode: { type: [string, 'null'] }
+              name: { type: string }
+              brand: { type: [string, 'null'] }
+              category: { type: string }
+              image_url: { type: [string, 'null'] }
+              status:
+                oneOf: [{ $ref: '#/components/schemas/ProductStatus' }, { type: 'null' }]
+              score: { type: number, minimum: 0, maximum: 1 }
+
+    ReceiptConfirmRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        include_unmatched:
+          type: boolean
+          default: true
+          description: Also save `unmatched`/`needs_confirmation` lines as plain inventory items (legacy behaviour).
+        overrides:
+          type: array
+          description: Per-line edits applied atomically before saving.
+          items:
+            type: object
+            required: [line_item_id]
+            properties:
+              line_item_id: { type: string }
+              name: { type: string }
+              category: { type: string }
+              quantity: { type: integer, minimum: 1 }
+              price_paid: { type: number, minimum: 0 }
+              skip: { type: boolean }
+
+    ReceiptConfirmResponse:
+      type: object
+      required: [receipt, created_inventory_item_ids, updated_inventory_item_ids, purchase_event_ids, skipped_line_item_ids]
+      properties:
+        receipt: { $ref: '#/components/schemas/ReceiptSummary' }
+        created_inventory_item_ids: { type: array, items: { type: string } }
+        updated_inventory_item_ids: { type: array, items: { type: string } }
+        purchase_event_ids: { type: array, items: { type: string } }
+        skipped_line_item_ids: { type: array, items: { type: string } }
+
+    ParseJobSummary:
+      type: object
+      required: [id, status, model, prompt_version, attempt, max_attempts, created_at, updated_at]
+      properties:
+        id: { type: string }
+        status: { $ref: '#/components/schemas/ParseJobStatus' }
+        model: { type: string, examples: [gemini-2.5-pro] }
+        prompt_version: { type: string, examples: [receipt_parse/v1] }
+        attempt: { type: integer }
+        max_attempts: { type: integer, const: 3 }
+        error_code:
+          type: [string, 'null']
+          enum: [schema_invalid, model_error, timeout, safety_blocked, pii_detected, null]
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ParseJobResponse:
+      allOf:
+        - $ref: '#/components/schemas/ParseJobSummary'
+        - type: object
+          required: [receipt_id, provider, vertex_location, prompt_sha256, schema_version, store_chain_name, input_kind, attempts]
+          properties:
+            receipt_id: { type: string }
+            provider: { type: string, const: vertex_ai }
+            vertex_location: { type: string }
+            prompt_sha256: { type: string }
+            schema_version: { type: string }
+            store_chain_name: { type: string }
+            input_kind: { type: string, enum: [image, text] }
+            result_summary:
+              type: [object, 'null']
+              properties:
+                line_count: { type: integer }
+                store_chain_detected: { type: [string, 'null'] }
+                totals_mismatch: { type: boolean }
+            attempts:
+              type: array
+              items:
+                type: object
+                required: [attempt, started_at, corrective_prompt_applied, validation_errors]
+                properties:
+                  attempt: { type: integer }
+                  started_at: { type: string, format: date-time }
+                  finished_at: { type: [string, 'null'], format: date-time }
+                  latency_ms: { type: [integer, 'null'] }
+                  corrective_prompt_applied: { type: boolean }
+                  validation_errors: { type: array, items: { type: string } }
+                  finish_reason: { type: [string, 'null'] }
+                  usage:
+                    type: [object, 'null']
+                    properties:
+                      input_tokens: { type: integer }
+                      output_tokens: { type: integer }
+                  raw_response:
+                    type: [string, 'null']
+                    description: Only with `include_raw=true` (Owner).
+
+    Product:
+      type: object
+      required: [id, upc, store_chain_id, name, category, source, confidence_score, confirmation_count, status]
+      properties:
+        id: { type: string }
+        upc: { type: [string, 'null'] }
+        store_chain_id: { type: string }
+        name: { type: string }
+        brand: { type: [string, 'null'] }
+        category: { type: string }
+        unit_size: { type: [string, 'null'] }
+        image_url: { type: [string, 'null'] }
+        source: { $ref: '#/components/schemas/ProductSource' }
+        confidence_score: { type: number, minimum: 0, maximum: 1 }
+        confirmation_count: { type: integer, minimum: 0 }
+        status: { $ref: '#/components/schemas/ProductStatus' }
+        superseded_by: { type: [string, 'null'] }
+
+    ProductConflict:
+      type: object
+      required: [id, product_id, field, verified_value, observed_value, status]
+      properties:
+        id: { type: string }
+        product_id: { type: string }
+        field: { type: string, enum: [name, brand, unit_size, category, upc] }
+        verified_value: { type: string }
+        observed_value: { type: string }
+        status: { type: string, enum: [open, dismissed, accepted] }
+
+    ScanEvent:
+      type: object
+      required: [id, upc, scanned_by_uid, scanned_at, context, outcome]
+      properties:
+        id: { type: string }
+        upc: { type: string }
+        scanned_by_uid: { type: string }
+        scanned_at: { type: string, format: date-time }
+        context: { type: string, enum: [add_items, trash_station, manual_entry] }
+        outcome: { type: string, enum: [found, unknown, consumed] }
+        product_name_at_scan: { type: [string, 'null'] }
+        product_id: { type: [string, 'null'] }
+        correlated_receipt_id: { type: [string, 'null'] }
+        correlated_line_item_id: { type: [string, 'null'] }
+
+    ScanEventListResponse:
+      type: object
+      required: [household_id, events]
+      properties:
+        household_id: { type: string }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/ScanEvent' }
+
+    LegacyReceiptScanResponse:
+      type: object
+      description: Existing `ReceiptScanResponse` plus `receipt_id`.
+      required: [household_id, engine, items]
+      properties:
+        household_id: { type: string }
+        engine: { type: string, examples: [gemini, text, vision, stub] }
+        receipt_id: { type: [string, 'null'] }
+        items:
+          type: array
+          items:
+            type: object
+            required: [name, category, quantity, identified]
+            properties:
+              name: { type: string }
+              category: { type: string }
+              quantity: { type: integer }
+              price_paid: { type: [number, 'null'] }
+              barcode: { type: [string, 'null'] }
+              image_url: { type: [string, 'null'] }
+              identified: { type: boolean }
