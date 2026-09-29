@@ -3,7 +3,9 @@
 ## 1. System Overview
 Mekasa consists of two native mobile clients (Android/Jetpack Compose
 and iOS/SwiftUI), a GCP-based backend REST API served via Cloud Run,
-and a real-time sync layer via Cloud Firestore. All clients communicate
+and a real-time sync layer via Cloud Firestore; the account-wide
+product catalog shared by all households lives in Cloud SQL for
+PostgreSQL (ADR-008). All clients communicate
 through the same API, making future desktop clients straightforward
 to add without any SDK dependency changes.
 
@@ -16,7 +18,8 @@ graph TD
   AndroidApp[Android App\nJetpack Compose]
   iOSApp[iOS App\nSwiftUI]
   API[Cloud Run API\nREST]
-  DB[(Cloud Firestore\nDatabase)]
+  DB[(Cloud Firestore\nHousehold data)]
+  Catalog[(Cloud SQL — PostgreSQL\nShared product catalog)]
   OCR[Cloud Vision API\nReceipt OCR fallback]
   Gemini[Vertex AI — Gemini Pro\nReceipt line-item extraction]
   Tasks[Cloud Tasks\nreceipt-parse / enrichment queues]
@@ -29,6 +32,7 @@ graph TD
   AndroidApp --> API
   iOSApp --> API
   API --> DB
+  API --> Catalog
   API --> Gemini
   API --> Tasks
   Tasks --> API
@@ -66,7 +70,8 @@ image in Cloud Storage, creates `receipts` + `llm_parse_jobs` → Gemini
 against the versioned JSON schema (corrective retry ≤ 2, then Cloud
 Vision + regex fallback) → line items persisted → matched against the
 shared `products` database (UPC → scan-event correlation → alias →
-fuzzy) → unmatched lines create `llm_ocr` products + enrichment jobs →
+fuzzy, all in the Cloud SQL catalog) → unmatched lines create
+`llm_ocr` products + enrichment jobs →
 client reviews / resolves low-confidence lines → `POST /confirm`
 writes inventory items + purchase events to Firestore → sync pushes
 to all household devices
@@ -130,7 +135,8 @@ Cloud Run's simplicity and prior GCP experience from FALLOUT.
 
 ### ADR-002a: Firestore over Cloud SQL as the Database Layer
 Date: 2026-09-06
-Status: Accepted
+Status: Accepted; amended 2026-09-29 — Firestore for household data;
+Postgres for cross-account shared catalog data (ADR-008)
 Decision: Use Cloud Firestore as the primary database rather
 than Cloud SQL (PostgreSQL).
 
@@ -367,13 +373,18 @@ schema-constrained decoding, retries, raw-output audit, and the option
 to switch to Flash per prompt version once accuracy is measured.
 
 ### ADR-008: Shared, Provenance-Tracked UPC Product Database
-Date: 2026-09-26
+Date: 2026-09-26 · Revised: 2026-09-29 (datastore changed to Cloud SQL)
 Status: Proposed (phase-1 review)
-Decision: Maintain a single top-level Firestore collection `products`
-keyed by UPC (or a deterministic `llm:` id until a UPC is known),
-grown from receipts, barcode scans, and enrichment sources, with
-`source`, `confidence_score`, `confirmation_count`, and a
-`status` lifecycle `unverified → pending → verified`.
+Decision: Maintain a single **shared product catalog in Cloud SQL for
+PostgreSQL** — tables `store_chains`, `products`, `product_aliases`,
+`product_confirmations`, `enrichment_jobs`/`enrichment_steps`,
+`product_conflicts` — keyed by UPC (or a deterministic `llm:` /
+`plu:` id until a UPC is known), grown from receipts, barcode scans,
+and enrichment sources, with `source`, `confidence_score`,
+`confirmation_count`, and a `status` lifecycle
+`unverified → pending → verified`. Household data (receipts, line
+items, scan events, parse jobs, inventory) stays in Firestore per
+ADR-002a; the stores reference each other only by opaque string ids.
 
 Context: ADR-004 anticipated that "our own database grows organically
 as users scan items not found in the third-party source", but nothing
@@ -382,6 +393,13 @@ Food Facts and receipt matches are discarded after the response.
 Receipt parsing (ADR-007) produces store-specific descriptions that
 third-party databases do not know; households repeatedly confirming
 the same line is the signal that turns them into trustworthy entries.
+Unlike every other Mekasa collection, this data is not owned by a
+household: it is one catalog shared by all accounts, read on every
+receipt line and barcode scan, and its value lies in uniqueness (one
+row per UPC, one product per printed alias per chain) and fuzzy
+matching — the two things ADR-002a explicitly listed as Firestore
+weaknesses. ADR-002a's reasons for Firestore (real-time multi-device
+sync, offline cache) do not apply to a server-only catalog.
 
 Options considered:
 
@@ -390,22 +408,101 @@ Options considered:
 - Weakness: no network effect; every household re-teaches the same
   Publix abbreviations
 
-**Option B — Shared `products` collection in Firestore (chosen)**
-- Consistent with ADR-002a; the queries needed (equality on chain +
-  `array_contains` on aliases/tokens) are Firestore-native with
-  composite indexes
-- Cross-household learning without storing household identity:
-  confirmations are counted via salted household hashes; product
-  documents carry no `household_id`/`uid` (NFR-002 AC1)
-- Weakness: fuzzy search is token-based, not full-text — acceptable
-  since matching is always chain-scoped and aliases dominate
+**Option B — Shared `products` collection in Firestore** (rejected;
+chosen in the 2026-09-26 draft, reversed on product-owner review)
+- One datastore; consistent with ADR-002a
+- Weakness: no uniqueness constraints — UPC and alias uniqueness had
+  to be simulated with document ids and transactions
+- Weakness: fuzzy matching limited to `array_contains_any` over ≤ 10
+  hand-built tokens; brand + size gating (REQ-RCP-010 AC8) needs
+  client-side filtering after over-fetching
+- Weakness: cross-household aggregates (distinct confirming
+  households, curation queues, "most disputed verified products")
+  are array fields with 1 MiB document limits, not queries
 
-**Option C — Cloud SQL / AlloyDB product table with trigram search**
-- Better fuzzy matching
-- Weakness: reopens ADR-002a; second datastore to operate for a
-  household-scale app
+**Option C — Cloud SQL for PostgreSQL (chosen)**
+- Constraints express the rules: unique `upc` (partial index), `PRIMARY KEY
+  (store_chain_id, alias)`, `PRIMARY KEY (product_id, household_hash)`
+  for once-per-household confirmations, a `CHECK` that a `verified`
+  row has a UPC and evidence, a partial unique index for one live
+  enrichment job per product (REQ-RCP-009 AC3)
+- `pg_trgm` GIN indexes on `normalized_name`, `brand`, and aliases
+  give real similarity search for the fuzzy step and the picker
+- Foreign keys between products, aliases, confirmations, jobs, steps,
+  conflicts; `superseded_by` re-keying is a self-reference
+- Migrations are reviewable, idempotent SQL files; the schema is the
+  documentation
+- Costs (recorded, accepted):
+  - a second database to run: Cloud SQL instance, backups, schema
+    migrations, a connection pool per Cloud Run instance
+  - a small always-on monthly cost (`db-f1-micro`, ~US$10/month)
+  - no realtime client listeners; shared product data reaches clients
+    through the API, which is intended anyway — the catalog is
+    server-owned
+  - ADR-002a is amended rather than replaced: it still governs every
+    household-scoped collection
+
+**Option D — AlloyDB / Cloud Spanner**
+- Weakness: cost and operational weight far beyond a household-scale
+  catalog; nothing here needs their scale
+
+What Postgres gives this particular database (the reasons the
+decision rests on):
+
+1. **Safe concurrent writes to the same rows.** Every household's
+   receipts and scans update the same product, alias, and store rows.
+   Firestore handles this with per-document transactions that retry
+   on contention; each receipt line is its own retry loop. In
+   Postgres a whole receipt — its lines' product upserts, their
+   aliases, the store row — commits in one transaction, and the save
+   takes a per-chain advisory lock
+   (`pg_advisory_xact_lock(hashtext(store_chain_id))`), so two
+   households saving the same chain's receipts at once cannot
+   overwrite each other's alias mappings (design §4.1).
+2. **Fuzzy matching of receipt text.** Lines like `GV CHOC CHP CKY`
+   must be matched to known products. `pg_trgm` trigram similarity
+   with a GIN index does this server-side; Firestore can only do
+   exact token matches (`array_contains_any` on a `name_tokens`
+   list), so misspellings and abbreviations miss unless that exact
+   token was seen before.
+3. **The database enforces data quality.** Crowd-sourced data is
+   messy. Constraints enforce one row per UPC, valid `status` /
+   `source` values, aliases that cannot point at products that do not
+   exist, and confirmations that cannot name a raw household. With
+   Firestore these were JSON Schemas that only the application
+   checked.
+4. **Moving a product to its UPC is atomic.** A product is keyed
+   `llm:<hash>` until its UPC is found; then the UPC-keyed `products` row is
+   created, aliases and confirmations move, counts merge, and the old
+   row is marked `superseded_by`. In SQL that is one transaction
+   (design §4.1); in Firestore it is a multi-document job that has to
+   cope with failing halfway.
+5. **Reviewing the data is easy.** "Which H-E-B items conflict?",
+   "confirmation counts per chain", "codes seen at more than one
+   store" are plain SQL joins over products, aliases, chains, and
+   conflicts. In Firestore each new question needs a new composite
+   index or an export.
 
 Rules embedded in the decision:
+- Connection: Cloud Run connects over the Cloud SQL Unix socket.
+  `DATABASE_URL=postgresql://USER:PASS@/DB?host=/cloudsql/PROJECT:REGION:INSTANCE`
+  is read from Secret Manager secret `mekasa-database-url`; only the
+  secret's name appears in code or config (GUARDRAILS rule 4,
+  NFR-004). Driver `psycopg` 3 with `psycopg_pool`. Runtime service
+  account roles: `roles/cloudsql.client`,
+  `roles/secretmanager.secretAccessor`. Instance `mekasa-pg`
+  (Postgres 16, `us-central1`), database `mekasa`, user `mekasa_api`.
+- Local and tests: `DATABASE_URL` unset → in-memory
+  `products_repository`; Postgres tests run only when
+  `TEST_DATABASE_URL` points at a scratch database and are skipped
+  otherwise. Repositories stay Protocols with in-memory and Postgres
+  implementations, as `HOUSEHOLD_PERSISTENCE` does today.
+- The catalog holds **no household or user identifiers** (NFR-002):
+  households appear only as `SHA-256(household_id + server salt)` in
+  `product_confirmations` and `product_conflicts`; a `CHECK` enforces
+  the hash shape.
+- Enumerations are `TEXT` + named `CHECK` constraints (not
+  `CREATE TYPE`) so values can be added in one transaction.
 - Provenance weights: `gs1_registry 0.9 > store_api 0.8 > user_scan
   0.7 > llm_ocr 0.4`; only GS1-verified and official-store-API hits
   are authoritative for status transitions.
@@ -433,7 +530,10 @@ Rules embedded in the decision:
   scan correlation — including the forward pass on later Add-Items
   and trash-station scans (REQ-RCP-008 AC5) — and Open Food Facts.
 
-Trade-off: Curation workload for conflicts and for promoting
-`pending` entries. Mitigated by conservative automatic thresholds
-(3 distinct households, or authoritative + 1) and by keeping the
+Trade-off: A second datastore (~US$10/month idle, one more thing to
+migrate and back up) and curation workload for conflicts and for
+promoting `pending` entries. Mitigated by a single Secret Manager
+secret, idempotent SQL migrations validated in CI against a Postgres
+service container, conservative automatic thresholds (3
+distinct households, or authoritative + 1), and by keeping the
 curation surface (`/v1/admin/product-conflicts`) as a follow-up.

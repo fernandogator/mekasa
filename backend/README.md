@@ -125,11 +125,22 @@ Purchase events live at `households/{id}/purchase_events/{event_id}` (REQ-015–
 
 ### Receipt parser (Gemini) — phase 1, design only
 
-Data model, indexes, and Gemini prompt/schema contracts for REQ-RCP-001…018 live in
-`firestore/` (`migrations/0001_receipt_parser.md`, `schema/*.schema.json`,
-`firestore.indexes.json`) and `prompts/receipt_parse/v1/`. API contract:
-`docs/api/receipt-parser.openapi.yaml`; design: `docs/design/gemini-receipt-parser.md`.
-No runtime code yet — see the design doc's review checklist.
+Data model and contracts for REQ-RCP-001…018:
+
+- Household data (receipts, line items, scan events, parse jobs) — Firestore:
+  `firestore/` (`migrations/0001_receipt_parser.md`, `schema/*.schema.json`,
+  `firestore.indexes.json`).
+- Shared product catalog (all accounts) — Cloud SQL for PostgreSQL, ADR-008:
+  `postgres/` (`migrations/0001_shared_products.sql` idempotent DDL + `.down.sql`,
+  `seed/store_chains.sql`, `README.md` with local/Cloud SQL commands). Runtime reads
+  `DATABASE_URL` (Secret Manager `mekasa-database-url`, `/cloudsql` socket); unset →
+  in-memory repository.
+- Gemini prompt/schema contract: `prompts/receipt_parse/v1/`.
+- API contract: `docs/api/receipt-parser.openapi.yaml`; design:
+  `docs/design/gemini-receipt-parser.md`.
+
+No runtime code yet — see the design doc's review checklist. Local catalog check:
+`psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f postgres/migrations/0001_shared_products.sql` (twice — idempotent).
 
 ## Deploy
 

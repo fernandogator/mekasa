@@ -26,18 +26,15 @@
       "maxLength": 60,
       "description": "Mekasa category vocabulary (Produce, Dairy, Pantry, Meat, Frozen, Beverages, Household, Other, ...)"
     },
-    "productSource": {
-      "type": "string",
-      "enum": ["user_scan", "store_api", "gs1_registry", "llm_ocr"],
-      "description": "store_api = official retailer API (Kroger, Walmart.io); gs1_registry = UPC verified against GS1. Scraped retailer pages are never a source (ADR-008)."
-    },
-    "productStatus": {
-      "type": "string",
-      "enum": ["unverified", "pending", "verified"]
-    },
     "storeChainId": {
       "type": "string",
-      "pattern": "^[a-z0-9_-]{1,40}$"
+      "pattern": "^[a-z0-9_-]{1,40}$",
+      "description": "References catalog table store_chains.chain_id (Cloud SQL, ADR-008); same shape as its CHECK constraint"
+    },
+    "productId": {
+      "type": "string",
+      "pattern": "^([0-9]{8,14}|plu:[0-9]{4,5}|llm:[0-9a-f]{40})$",
+      "description": "Opaque key into catalog table products.product_id (Cloud SQL, ADR-008). Product enums (source, status) are CHECK constraints in backend/catalog/migrations/0001_catalog.sql"
     },
     "promptVersion": {
       "type": "string",

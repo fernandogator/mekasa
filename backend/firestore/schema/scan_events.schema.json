@@ -14,7 +14,7 @@
     "outcome": { "type": "string", "enum": ["found", "unknown", "consumed"] },
     "lookup_source": { "type": ["string", "null"], "enum": ["openfoodfacts", "products", "none", null] },
     "product_name_at_scan": { "type": ["string", "null"], "maxLength": 120 },
-    "product_id": { "type": ["string", "null"] },
+    "product_id": { "anyOf": [{ "$ref": "_common.schema.json#/$defs/productId" }, { "type": "null" }] },
     "correlated_receipt_id": { "type": ["string", "null"] },
     "correlated_line_item_id": { "type": ["string", "null"] },
     "created_at": { "$ref": "_common.schema.json#/$defs/timestamp" }

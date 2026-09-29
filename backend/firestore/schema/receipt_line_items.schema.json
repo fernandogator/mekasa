@@ -40,7 +40,7 @@
     "printed_code": { "type": ["string", "null"], "pattern": "^[0-9A-Za-z-]{3,20}$" },
     "category": { "$ref": "_common.schema.json#/$defs/category" },
     "extraction_confidence": { "$ref": "_common.schema.json#/$defs/confidence" },
-    "matched_product_id": { "type": ["string", "null"], "maxLength": 128 },
+    "matched_product_id": { "anyOf": [{ "$ref": "_common.schema.json#/$defs/productId" }, { "type": "null" }] },
     "match_method": {
       "type": ["string", "null"],
       "enum": ["exact_upc", "scan_correlation", "alias", "fuzzy", "enrichment", "user", null]
@@ -54,11 +54,11 @@
     },
     "candidate_product_ids": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": { "$ref": "_common.schema.json#/$defs/productId" },
       "maxItems": 5,
       "uniqueItems": true
     },
-    "conflict_id": { "type": ["string", "null"] },
+    "conflict_id": { "type": ["string", "null"], "format": "uuid", "description": "catalog product_conflicts.conflict_id (Cloud SQL)" },
     "image_url": { "type": "string", "minLength": 1, "maxLength": 2048 },
     "barcode": { "anyOf": [{ "$ref": "_common.schema.json#/$defs/upc" }, { "type": "null" }] },
     "inventory_item_id": { "type": ["string", "null"] },
