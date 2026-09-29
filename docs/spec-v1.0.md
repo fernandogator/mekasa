@@ -560,13 +560,18 @@ Acceptance Criteria:
 Priority: P1
 Description: **While** a receipt is being resolved, the system **shall**
 correlate unmatched line items with the household's uncorrelated barcode
-`scan_events` from the 72 h before purchase to recover UPCs.
+`scan_events` from the 72 h before purchase (backward pass); **when** a new
+scan event arrives, the system **shall** correlate it with the household's
+still-unmatched line items from the previous 30 days (forward pass), so UPCs
+are recovered for chains that print none.
 Test File: tests/backend/test_receipt_scan_correlation.py
 Acceptance Criteria:
-- AC1: Only events with `context=add_items`, `correlated_receipt_id=null`, and `scanned_at ∈ [purchased_at − 72 h, receipt.created_at + 1 h]` are considered
+- AC1: Backward pass considers only events with `context=add_items`, `correlated_receipt_id=null`, and `scanned_at ∈ [purchased_at − 72 h, receipt.created_at + 1 h]`
 - AC2: Assignment is one-to-one by name similarity ≥ 0.6; the line gets `match_method=scan_correlation` and the event's UPC
 - AC3: The scan event is stamped with `correlated_receipt_id` and `correlated_line_item_id` and is never reused
 - AC4: Correlation never lowers a confidence already obtained by exact UPC match
+- AC5: Forward pass runs on every new scan event in any context (`add_items`, `trash_station`, `manual_entry`) against the household's `unmatched`/`needs_confirmation` lines with `created_at ≥ now − 30 d`; the scanned UPC is named via `products` or Open Food Facts before similarity is computed
+- AC6: A forward-pass hit on a line already confirmed to an `llm:` product re-keys that product to the UPC (REQ-RCP-010 AC2) instead of altering the confirmed line
 
 ### REQ-RCP-009: Unmatched Lines Create Unverified Products and Enrichment Jobs
 Priority: P0
@@ -582,17 +587,20 @@ Acceptance Criteria:
 
 ### REQ-RCP-010: Enrichment Source Order
 Priority: P1
-Description: The enrichment dispatcher **shall** attempt sources in the order
-store website → GS1 registry → UPCitemdb → Open Food Facts → crowdsourced
-pending, stopping at the first source that returns a UPC or authoritative
-product data.
+Description: The enrichment dispatcher **shall** attempt discovery sources in
+the order official store API → UPCitemdb → Open Food Facts, stopping at the
+first that returns a UPC; **shall** then verify any known UPC against the GS1
+registry; and **shall** mark the product crowdsourced-pending when no UPC is
+found. The dispatcher **shall not** scrape retailer websites.
 Test File: tests/backend/test_enrichment_dispatcher.py
 Acceptance Criteria:
 - AC1: Each step is recorded in `enrichment_jobs.steps` with `hit|miss|error|not_implemented|skipped`
-- AC2: A hit re-keys an `llm:` product to `products/{upc}` and sets `superseded_by` on the old doc
-- AC3: `gs1_registry` and `store_site` hits set `source` accordingly and count as authoritative for REQ-RCP-011 transitions; UPCitemdb/OFF hits are recorded as `user_scan` grade
-- AC4: External calls honour the 10 s timeout / 3-retry standard and the UPCitemdb free-tier rate limit via the `enrichment` queue
-- AC5: With no hit, the product stays `unverified` and is flagged `crowdsourced_pending` in the job result
+- AC2: A discovery hit re-keys an `llm:` product to `products/{upc}` and sets `superseded_by` on the old doc
+- AC3: `store_api` hits set `source=store_api`; a GS1-verified UPC sets `source=gs1_registry`; both count as authoritative for REQ-RCP-011 transitions. UPCitemdb/OFF hits are recorded as `user_scan` grade
+- AC4: External calls honour the 10 s timeout / 3-retry standard and provider quotas (UPCitemdb free tier, Kroger daily limit) via the `enrichment` queue
+- AC5: With no discovery hit, the product stays `unverified` and is flagged `crowdsourced_pending` in the job result
+- AC6: `store_api` adapters use only official, documented retailer APIs with credentials in Secret Manager (first adapter: Kroger Products API; Walmart.io behind a flag pending approval). Chains without an official API (H-E-B, Publix, Costco, Target) return `not_implemented`; no adapter may fetch retailer web pages, bypass bot protection, ignore `robots.txt`, or call undocumented app endpoints
+- AC7: `gs1_verify` runs only when a UPC is already known (discovery hit, scan correlation, or printed code); it never runs as a name search
 
 ### REQ-RCP-011: Product Provenance, Confidence, and Status
 Priority: P0

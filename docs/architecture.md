@@ -406,14 +406,28 @@ Options considered:
   household-scale app
 
 Rules embedded in the decision:
-- Provenance weights: `gs1_registry 0.9 > store_site 0.8 > user_scan
-  0.7 > llm_ocr 0.4`; only GS1 and store-site hits are authoritative
-  for status transitions.
+- Provenance weights: `gs1_registry 0.9 > store_api 0.8 > user_scan
+  0.7 > llm_ocr 0.4`; only GS1-verified and official-store-API hits
+  are authoritative for status transitions.
 - `verified` entries are immutable to the parser and to individual
   users (REQ-RCP-014); disagreements are written to
   `product_conflicts` for curation.
-- Enrichment order store site → GS1 → UPCitemdb → Open Food Facts →
+- Enrichment order: official store API → UPCitemdb → Open Food Facts
+  (discovery, stop at first UPC) → GS1 verification of any known UPC →
   crowdsourced pending (REQ-RCP-010), reusing the ADR-006 waterfall.
+  GS1 is a verification step, not a discovery step: its lookups are
+  GTIN → product and cannot find a UPC from a receipt description.
+- **Retailer data only through official APIs — no scraping.** The
+  `store_api` adapter is implemented per chain only where a documented
+  API exists (Kroger Products API first; Walmart.io once approved).
+  Probing heb.com on 2026-09-29 showed `robots.txt` disallowing
+  `/search`, `/graphql` and `*/ajax/*`, and Imperva bot management
+  challenging every non-browser request, including the sitemap.
+  Circumventing that would breach terms of use, be perpetually
+  fragile, and taint the provenance weight this source carries.
+  Chains without an API (H-E-B, Publix, Costco, Target) get UPCs from
+  scan correlation — including the forward pass on later Add-Items
+  and trash-station scans (REQ-RCP-008 AC5) — and Open Food Facts.
 
 Trade-off: Curation workload for conflicts and for promoting
 `pending` entries. Mitigated by conservative automatic thresholds

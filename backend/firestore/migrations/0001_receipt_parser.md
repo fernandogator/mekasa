@@ -38,7 +38,14 @@ gcloud projects add-iam-policy-binding hackathon2025-472017 \
   --role=roles/aiplatform.user
 ```
 
-No secrets are introduced (Vertex AI + GCS use the runtime service account).
+No secrets are introduced for Vertex AI or GCS (runtime service account).
+The Kroger `store_api` adapter needs `KROGER_CLIENT_ID` / `KROGER_CLIENT_SECRET`
+in Secret Manager (register at developer.kroger.com; names only in code):
+
+```bash
+printf '%s' "$KROGER_CLIENT_ID"     | gcloud secrets create KROGER_CLIENT_ID     --data-file=-
+printf '%s' "$KROGER_CLIENT_SECRET" | gcloud secrets create KROGER_CLIENT_SECRET --data-file=-
+```
 
 ## Rollback
 
@@ -57,12 +64,14 @@ this migration, so rollback of code is sufficient to restore prior behaviour.
 | `chain_id` | string | slug, e.g. `publix`, `walmart`, `costco`, `kroger`, `unknown` |
 | `name` | string | display name injected as `{{store_chain_name}}` |
 | `aliases` | string[] | header spellings (`PUBLIX SUPER MARKETS`, `WAL-MART`) |
-| `website_domain` | string? | for the store-site enrichment adapter |
+| `website_domain` | string? | informational only (never fetched) |
+| `api_provider` | `none`\|`kroger`\|`walmart` | which official `store_api` adapter serves this chain |
 | `receipt_code_kind` | `none`\|`upc`\|`item_number` | what code the chain prints per line |
 | `created_at`, `updated_at` | timestamp | |
 
 Seeded from the Places names already returned by `stub_nearby_stores` /
-`places_lookup` (Walmart, Costco, Publix, Kroger) + `heb` (aliases
+`places_lookup` (Walmart `api_provider: walmart`, Costco `none`, Publix `none`,
+Kroger `kroger`) + `heb` (`none`) (aliases
 `H-E-B`, `HEB`, `H-E-B Food-Drugs`, `Central Market`; store brands H-E-B,
 Central Market, Mi Tienda, Hill Country Fare — first prototype receipt) +
 `unknown`.
@@ -90,7 +99,7 @@ written (merging counts) and the old doc gets `superseded_by: "<upc>"`.
 | `category` | string | ✔ | Mekasa category vocabulary (`Produce`, `Dairy`, …, `Other`) |
 | `unit_size` | string? | ✔ | free text as printed/enriched, e.g. `12 oz` |
 | `image_url` | string? | | ADR-006 waterfall result |
-| `source` | enum | ✔ | `user_scan` \| `store_site` \| `gs1_registry` \| `llm_ocr` — best source so far |
+| `source` | enum | ✔ | `user_scan` \| `store_api` \| `gs1_registry` \| `llm_ocr` — best source so far (kickoff's `store_site` renamed: retailer data enters only via official APIs, ADR-008) |
 | `sources_seen` | enum[] | | every source that contributed |
 | `confidence_score` | number 0–1 | ✔ | recomputed on every transition (design §3.5) |
 | `confirmation_count` | int ≥ 0 | ✔ | user confirmations (REQ-RCP-013) |
@@ -200,9 +209,9 @@ Supersedes the in-memory `unknown_barcode_log`.
 | Field | Type | Notes |
 |---|---|---|
 | `product_id` | string | |
-| `trigger` | enum | `unmatched_line` \| `manual` \| `reverify` |
-| `chain` | string[] | `["store_site","gs1_registry","upcitemdb","openfoodfacts","crowdsourced_pending"]` |
-| `steps` | array | `{adapter, status: skipped|hit|miss|error|not_implemented, started_at, finished_at, upc?, note?}` |
+| `trigger` | enum | `unmatched_line` \| `manual` \| `reverify` \| `scan_correlation` (forward pass found a UPC; job runs `gs1_verify` only) |
+| `chain` | string[] | `["store_api","upcitemdb","openfoodfacts","gs1_verify","crowdsourced_pending"]` — discovery adapters first, `gs1_verify` only runs on a known UPC |
+| `steps` | array | `{adapter, status: skipped|hit|miss|error|not_implemented, started_at, finished_at, upc?, note?}`; `adapter ∈ store_api|upcitemdb|openfoodfacts|gs1_verify|crowdsourced_pending` |
 | `status` | enum | `queued` \| `running` \| `succeeded` \| `exhausted` \| `failed` |
 | `result_source` | enum? | source that produced the hit |
 | `expires_at`, `created_at`, `updated_at` | timestamp | |

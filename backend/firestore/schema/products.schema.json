@@ -81,7 +81,7 @@
         "properties": { "upc": { "$ref": "_common.schema.json#/$defs/upc" } },
         "anyOf": [
           { "properties": { "confirmation_count": { "minimum": 1 } } },
-          { "properties": { "source": { "enum": ["gs1_registry", "store_site"] } } }
+          { "properties": { "source": { "enum": ["gs1_registry", "store_api"] } } }
         ]
       }
     }

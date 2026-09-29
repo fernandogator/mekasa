@@ -8,7 +8,7 @@
   "required": ["product_id", "trigger", "chain", "steps", "status", "expires_at", "created_at", "updated_at"],
   "properties": {
     "product_id": { "$ref": "_common.schema.json#/$defs/docId" },
-    "trigger": { "type": "string", "enum": ["unmatched_line", "manual", "reverify"] },
+    "trigger": { "type": "string", "enum": ["unmatched_line", "manual", "reverify", "scan_correlation"] },
     "chain": {
       "type": "array",
       "items": { "$ref": "#/$defs/adapter" },
@@ -42,7 +42,8 @@
   "$defs": {
     "adapter": {
       "type": "string",
-      "enum": ["store_site", "gs1_registry", "upcitemdb", "openfoodfacts", "crowdsourced_pending"]
+      "enum": ["store_api", "upcitemdb", "openfoodfacts", "gs1_verify", "crowdsourced_pending"],
+      "description": "Discovery adapters (store_api, upcitemdb, openfoodfacts) run in order until a UPC is found; gs1_verify runs only on a known UPC; crowdsourced_pending is terminal. store_api = official retailer APIs only (REQ-RCP-010 AC6)."
     }
   }
 }

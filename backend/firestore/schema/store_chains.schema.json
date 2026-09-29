@@ -5,7 +5,7 @@
   "description": "Retail chains referenced by products and receipts; name is injected into the Gemini prompt as {{store_chain_name}} (REQ-RCP-002).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["chain_id", "name", "aliases", "receipt_code_kind", "created_at", "updated_at"],
+  "required": ["chain_id", "name", "aliases", "receipt_code_kind", "api_provider", "created_at", "updated_at"],
   "properties": {
     "chain_id": { "$ref": "_common.schema.json#/$defs/storeChainId" },
     "name": { "type": "string", "minLength": 1, "maxLength": 80 },
@@ -14,7 +14,8 @@
       "items": { "type": "string", "minLength": 1, "maxLength": 80 },
       "uniqueItems": true
     },
-    "website_domain": { "type": ["string", "null"], "maxLength": 120 },
+    "website_domain": { "type": ["string", "null"], "maxLength": 120, "description": "Informational only; never fetched by the backend (ADR-008: no scraping)." },
+    "api_provider": { "type": "string", "enum": ["none", "kroger", "walmart"], "description": "Official store_api adapter for this chain, or none." },
     "receipt_code_kind": { "type": "string", "enum": ["none", "upc", "item_number"] },
     "created_at": { "$ref": "_common.schema.json#/$defs/timestamp" },
     "updated_at": { "$ref": "_common.schema.json#/$defs/timestamp" }

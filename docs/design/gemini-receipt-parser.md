@@ -53,8 +53,9 @@ Non-goals (v1 of this feature)
 - On-device LLM or on-device OCR of receipts (ADR-003 stands).
 - Price estimation (REQ-016) — untouched, but receipts now feed it better data.
 - A public/admin curation UI for `verified` products (open question §9).
-- Web scraping infrastructure for store sites — the enrichment dispatcher
-  defines the step; the store-site adapter ships as a stub in phase 2.
+- Scraping retailer websites — never (ADR-008). Retailer data comes only from
+  official APIs (`store_api`, Kroger first); chains without one fall back to
+  scan correlation and Open Food Facts.
 
 ---
 
@@ -71,7 +72,7 @@ Non-goals (v1 of this feature)
 | REQ-7  | REQ-RCP-007 | Each line matched against `products` scoped to store chain (ubiquitous) |
 | REQ-8  | REQ-RCP-008 | Unmatched lines correlated with recent household scan events to recover UPC (state-driven) |
 | REQ-9  | REQ-RCP-009 | No match → `llm_ocr` unverified product + enrichment job (event-driven) |
-| REQ-10 | REQ-RCP-010 | Enrichment order: store site → GS1 / UPCitemdb / Open Food Facts → crowdsourced pending (ubiquitous) |
+| REQ-10 | REQ-RCP-010 | Enrichment order: official store API → UPCitemdb / Open Food Facts → GS1 verification → crowdsourced pending (ubiquitous; GS1 repositioned as verification, see §3.6) |
 | REQ-11 | REQ-RCP-011 | Every product carries source, confidence_score, confirmation_count, status (ubiquitous) |
 | REQ-12 | REQ-RCP-012 | Below auto-accept confidence → user confirmation required before link (state-driven) |
 | REQ-13 | REQ-RCP-013 | User confirmation increments confirmation_count and re-evaluates status (event-driven) |
@@ -100,7 +101,7 @@ graph TD
   API -->|6. persist line_items,\nraw response| FS
   API -->|7. match / correlate| FS
   API -->|8. enrichment_jobs| Tasks
-  API -->|store site → GS1/UPCitemdb/OFF| Ext[Enrichment sources]
+  API -->|store API (Kroger) → UPCitemdb/OFF → GS1 verify| Ext[Enrichment sources]
   Client -->|GET receipt / resolve / confirm| API
 ```
 
@@ -179,13 +180,25 @@ Order stops at the first hit; every step records `match_method` and
 1. **exact_upc** — the receipt printed a UPC/item code and it matches
    `products/{upc}` for any chain (Walmart, Costco print item numbers; mapping
    table per chain is in `store_chains.receipt_code_kind`).
-2. **scan_correlation** (REQ-RCP-008) — `households/{hid}/scan_events` in
-   `[purchased_at − 72 h, receipt.created_at + 1 h]` with
-   `correlated_receipt_id == null`, context `add_items`. Greedy one-to-one
-   assignment by name similarity ≥ 0.6 (token overlap as in
-   `receipt_ocr._is_strong_match`, extended with chain aliases). The event is
-   stamped with `correlated_receipt_id/line_item_id`; the line inherits the
-   scan's UPC with confidence `0.8 + 0.2·similarity`.
+2. **scan_correlation** (REQ-RCP-008) — two passes over
+   `households/{hid}/scan_events` with `correlated_receipt_id == null`:
+   - *Backward pass (at parse time):* events with context `add_items` in
+     `[purchased_at − 72 h, receipt.created_at + 1 h]`.
+   - *Forward pass (at scan time):* whenever a new scan event arrives in any
+     context (`add_items` while unpacking, `trash_station` weeks later), the
+     resolver looks back at the household's `unmatched` / `needs_confirmation`
+     line items from the last 30 days. The scanned UPC is named via
+     `products` or Open Food Facts, then compared with the lines. Because every
+     product eventually passes the trash-station scanner, this loop closes
+     UPCs for chains that print none (H-E-B, Publix) without any retailer data.
+
+   Both passes use greedy one-to-one assignment by name similarity ≥ 0.6
+   (token overlap as in `receipt_ocr._is_strong_match`, extended with chain
+   aliases). The event is stamped with `correlated_receipt_id/line_item_id`;
+   the line inherits the scan's UPC with confidence `0.8 + 0.2·similarity`.
+   A forward-pass hit on a line the user already confirmed to an `llm:`
+   product re-keys that product to the UPC (see §3.6) rather than changing
+   the line.
 3. **alias** — `products` where `store_chain_id == chain` and
    `receipt_aliases array_contains normalized(raw_text)`. Confidence 0.95.
 4. **fuzzy** — `products` where `store_chain_id == chain` and
@@ -226,28 +239,58 @@ verified   ── never auto-downgraded; dispute_count ≥ 3 opens a conflict
 
 `confidence_score` (0–1) is recomputed on every transition:
 `clamp(source_weight + 0.05·confirmation_count − 0.1·dispute_count)` with
-weights `gs1_registry 0.9, store_site 0.8, user_scan 0.7, llm_ocr 0.4`.
+weights `gs1_registry 0.9, store_api 0.8, user_scan 0.7, llm_ocr 0.4`
+(`gs1_registry` means "UPC verified against GS1", see §3.6).
 Households are counted via a hashed `confirming_household_hashes[]`
 (SHA-256 of household id + server salt) so the shared collection holds no
 household identifiers (NFR-002 AC1).
 
 ### 3.6 Enrichment dispatcher (REQ-RCP-009 / 010)
 
-`enrichment_jobs/{id}` runs the adapter chain in order and stops at the first
-adapter that returns a UPC or authoritative product data:
+`enrichment_jobs/{id}` runs the adapter chain in order. Discovery adapters
+stop at the first one that returns a UPC; the verification adapter then runs
+on whatever UPC was found.
 
-1. `store_site` — per-chain adapter (phase 2 ships a stub returning
-   `not_implemented`; Publix/Walmart adapters are follow-ups).
-2. `gs1_registry` → `upcitemdb` → `openfoodfacts` (ADR-004/006 waterfall,
-   reusing `barcode_lookup.py`). Only `gs1_registry` and `store_site` count as
-   authoritative for status transitions; OFF/UPCitemdb hits are `user_scan`
-   grade.
-3. `crowdsourced_pending` — no external hit: product stays `unverified` and is
-   surfaced to the confirm-haul picker so household confirmations can move it
-   to `pending`.
+**Discovery (name → UPC)**
+
+1. `store_api` — **official retailer APIs only.** Per-chain adapters keyed by
+   `store_chains.api_provider`:
+   - `kroger` (first adapter, phase 2): Kroger Developer *Products API*, free
+     registration, OAuth2 client-credentials, search by term + location, returns
+     `upc`. Covers Kroger, Ralphs, Fry's, King Soopers, Smith's, Fred Meyer,
+     Harris Teeter, etc. Secrets `KROGER_CLIENT_ID` / `KROGER_CLIENT_SECRET`
+     live in Secret Manager (names only in code).
+   - `walmart` (follow-up): Walmart.io item search, returns `upc`; requires
+     publisher approval, so it ships behind a feature flag.
+   - Chains without an official API (H-E-B, Publix, Costco, Target) return
+     `not_implemented`. Scraping is out of scope by rule, not by omission:
+     heb.com's `robots.txt` disallows `/search`, `/graphql` and `*/ajax/*`, and
+     the whole site (even the sitemap) sits behind Imperva bot management. The
+     adapter contract forbids circumventing bot protection, ignoring
+     `robots.txt`, or using undocumented mobile-app endpoints (ADR-008).
+2. `upcitemdb` → `openfoodfacts` — name search (ADR-004/006 waterfall, reusing
+   `barcode_lookup.py`). Hits are `user_scan` grade, not authoritative.
+
+**Verification (UPC → confirmed product)**
+
+3. `gs1_verify` — runs only when a UPC exists (from a discovery hit, scan
+   correlation, or a printed code). GS1 lookups are GTIN → product (Verified
+   by GS1 / GS1 US Data Hub); they cannot discover a UPC from a name, which
+   is why this is a verification step and not first in the chain as the
+   kickoff sketched. A confirmed GTIN sets `source: gs1_registry` (weight 0.9)
+   and is authoritative for REQ-RCP-011 transitions, as are `store_api` hits.
+
+4. `crowdsourced_pending` — no discovery hit: product stays `unverified` and is
+   surfaced to the confirm-haul picker so household confirmations (and the
+   forward scan-correlation pass in §3.4) can move it to `pending`.
 
 Runs via Cloud Tasks (`enrichment` queue, rate-limited to respect the
-UPCitemdb 100/day free tier) or inline in tests.
+UPCitemdb 100/day free tier and Kroger's 10 000/day quota) or inline in tests.
+
+Why not scrape: beyond the ToS/robots issues, `store_api` carries provenance
+weight 0.8 because it is supposed to be an authoritative, legitimately
+obtained source. Data scraped through bot-protection evasion would undermine
+the provenance story of the shared product DB (ADR-008).
 
 ### 3.7 Receipt confirm → inventory + spending (REQ-RCP-015)
 
@@ -305,7 +348,7 @@ and `backend/firestore/schema/`.
 
 | Kickoff table | Firestore location | Notes |
 |---|---|---|
-| `stores` | existing `households.store_ids` (Places ids) **+ new** `store_chains/{chain_id}` | Chain is what the prompt and matching need; Places store keeps the physical location for REQ-015 AC3 |
+| `stores` | existing `households.store_ids` (Places ids) **+ new** `store_chains/{chain_id}` | Chain is what the prompt, matching, and `store_api` adapter selection need; Places store keeps the physical location for REQ-015 AC3 |
 | `products` | **new** `products/{product_id}` (top-level, shared) | id = UPC when known, else `llm:<sha1>`; fields exactly as the kickoff + `image_url`, `receipt_aliases`, `name_tokens`, `dispute_count`, provenance |
 | `receipts` | **new** `households/{hid}/receipts/{rid}` | household-scoped |
 | `receipt_line_items` | **new** `households/{hid}/receipts/{rid}/line_items/{lid}` | `raw_text`, `price`, `qty`, `matched_product_id` nullable + resolution fields |
@@ -397,6 +440,8 @@ No test ever calls Vertex AI.
   SQL (consistent with ADR-002a) — the matching queries needed are
   equality + `array_contains` on a chain-scoped subset, which Firestore
   handles with the composite indexes in `firestore.indexes.json`.
+  Retailer data enters only through official APIs; scraping behind bot
+  protection or against `robots.txt` is prohibited.
 - Single Cloud Run service + Cloud Tasks, not separate Cloud Functions —
   keeps one auth path, one persistence switch, one test harness.
 - Async-first contract with bounded sync wait — protects mobile UX and Cloud

@@ -28,7 +28,8 @@
     },
     "productSource": {
       "type": "string",
-      "enum": ["user_scan", "store_site", "gs1_registry", "llm_ocr"]
+      "enum": ["user_scan", "store_api", "gs1_registry", "llm_ocr"],
+      "description": "store_api = official retailer API (Kroger, Walmart.io); gs1_registry = UPC verified against GS1. Scraped retailer pages are never a source (ADR-008)."
     },
     "productStatus": {
       "type": "string",
