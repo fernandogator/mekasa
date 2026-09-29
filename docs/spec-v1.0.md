@@ -554,7 +554,7 @@ Acceptance Criteria:
 - AC1: Every matched line stores `matched_product_id`, `match_method`, `match_confidence`
 - AC2: Alias and fuzzy lookups only consider products with the same `store_chain_id` (or `unknown`)
 - AC3: `match_confidence ≥ 0.85` → `resolution_status=auto_matched`; otherwise see REQ-RCP-012
-- AC4: A successful match appends the normalized `raw_text` to `products.receipt_aliases` (max 25)
+- AC4: A successful match upserts the normalized `raw_text` into `product_aliases (store_chain_id, alias) → product_id` (one product per alias per chain; an alias already mapped to a different product is never overwritten — handling is design open question §9.11)
 
 ### REQ-RCP-008: Correlate Receipt Lines with Recent Scan Events
 Priority: P1
@@ -580,10 +580,10 @@ create an `llm_ocr` product entry with `status=unverified` and dispatch an
 enrichment job.
 Test File: tests/backend/test_receipt_parser_happy_path.py
 Acceptance Criteria:
-- AC1: Product id is `llm:<sha1(store_chain_id|normalized_name)>`; repeated sightings update the same doc (`last_seen_at`, aliases) instead of duplicating
+- AC1: Product id is `llm:<sha1(store_chain_id|normalized_name)>`; repeated sightings update the same row (`last_seen_at`, aliases) instead of duplicating
 - AC2: `source=llm_ocr`, `confidence_score = extraction_confidence × 0.6`, `origin_parse_job_id`, `origin_prompt_version` set
-- AC3: Exactly one `enrichment_jobs` document is created per new product (none for repeat sightings within 7 days)
-- AC4: Product documents contain no household or user identifiers
+- AC3: Exactly one `enrichment_jobs` row is created per new product (none for repeat sightings within 7 days); the catalog enforces at most one `queued`/`running` job per product
+- AC4: Catalog rows contain no household or user identifiers; households appear only as salted SHA-256 hashes in `product_confirmations` / `product_conflicts`
 
 ### REQ-RCP-010: Enrichment Source Order
 Priority: P1
@@ -594,15 +594,15 @@ registry; and **shall** mark the product crowdsourced-pending when no UPC is
 found. The dispatcher **shall not** scrape retailer websites.
 Test File: tests/backend/test_enrichment_dispatcher.py
 Acceptance Criteria:
-- AC1: Each step is recorded in `enrichment_jobs.steps` with `hit|miss|error|not_implemented|skipped`
-- AC2: A discovery hit re-keys an `llm:` product to `products/{upc}` and sets `superseded_by` on the old doc
+- AC1: Each step is recorded as an `enrichment_steps` row (`job_id`, `step_no`, `adapter`) with `hit|miss|error|not_implemented|skipped`
+- AC2: A discovery hit re-keys an `llm:` product to a `products` row with `product_id = <upc>` and sets `superseded_by` on the old row
 - AC3: `store_api` hits set `source=store_api`; a GS1-verified UPC sets `source=gs1_registry`; both count as authoritative for REQ-RCP-011 transitions. UPCitemdb/OFF hits are recorded as `user_scan` grade
 - AC4: External calls honour the 10 s timeout / 3-retry standard and provider quotas (UPCitemdb free tier, Kroger daily limit) via the `enrichment` queue
 - AC5: With no discovery hit, the product stays `unverified` and is flagged `crowdsourced_pending` in the job result
 - AC6: `store_api` adapters use only official, documented retailer APIs with credentials in Secret Manager (first adapter: Kroger Products API; Walmart.io behind a flag pending approval). Chains without an official API (H-E-B, Publix, Costco, Target) return `not_implemented`; no adapter may fetch retailer web pages, bypass bot protection, ignore `robots.txt`, or call undocumented app endpoints
 - AC7: `gs1_verify` runs only when a UPC is already known (discovery hit, scan correlation, or printed code); it never runs as a name search
 - AC8: Name search is brand-gated: lines with `brand=null` skip it; queries filter by brand and US market; a hit auto-links only when brand matches, `unit_size` is compatible or unknown, and name similarity ≥ 0.6 — otherwise the top 3 hits are stored as `candidate_product_ids` and the line stays `needs_confirmation`
-- AC9: Bulk produce resolves to `products/plu:<IFPS code>` (shared across chains) rather than a UPC
+- AC9: Bulk produce resolves to `products.product_id = 'plu:<IFPS code>'` (shared across chains) rather than a UPC
 
 ### REQ-RCP-011: Product Provenance, Confidence, and Status
 Priority: P0
@@ -639,7 +639,7 @@ confirm for auto-matched lines), the system **shall** increment the product's
 Test File: tests/backend/test_receipt_low_confidence_confirmation.py
 Acceptance Criteria:
 - AC1: `confirmation_count` increases by 1 the first time a household confirms a product; later confirmations from the same household do not increment (`confirmation_counted=false`)
-- AC2: `receipt_aliases` gains the line's normalized `raw_text`
+- AC2: `product_aliases` gains the line's normalized `raw_text` for the receipt's chain (or its `seen_count` increments)
 - AC3: Status transition rules of REQ-RCP-011 run immediately and `status_changed_at` is updated on change
 
 ### REQ-RCP-014: Verified Entries Are Never Mutated by the Parser
@@ -650,8 +650,8 @@ the conflict, and **shall** require user confirmation for the line.
 Test File: tests/backend/test_receipt_verified_conflict.py
 Acceptance Criteria:
 - AC1: A conflict is any of: name/brand similarity < 0.5, differing `unit_size`, differing `category`, or a different UPC submitted for a verified name
-- AC2: The verified document's `name`, `brand`, `category`, `unit_size`, `upc`, and `status` are byte-identical before and after the parse and after any user resolve
-- AC3: A `product_conflicts` document is written with `field`, `verified_value`, `observed_value`, `status=open`
+- AC2: The verified row's `name`, `brand`, `category`, `unit_size`, `upc`, and `status` are byte-identical before and after the parse and after any user resolve
+- AC3: A `product_conflicts` row is written with `field`, `verified_value`, `observed_value`, `status=open`
 - AC4: The line becomes `needs_confirmation` with the verified product as sole candidate and `conflict_id` set; a user confirmation increments `dispute_count`, not `confirmation_count`
 
 ### REQ-RCP-015: Receipt Confirm Writes Inventory and Purchase Events

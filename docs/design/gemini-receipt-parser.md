@@ -1,10 +1,12 @@
 # Design — Gemini-Based Receipt Scanner for the UPC Product Database
 
 Spec version: 1.0 (adds REQ-RCP-001 … REQ-RCP-018)
-Status: **Draft — awaiting review after data model + API contract (phase 1)**
+Status: **Draft — awaiting review after data model + API contract (phase 1;
+revised 2026-09-29: shared catalog moved to Cloud SQL Postgres)**
 Owner: backend
-Related: ADR-002a (Firestore), ADR-003 (server-side OCR), ADR-004 / ADR-006
-(UPC + image waterfall), ADR-007 (this design), ADR-008 (shared product DB)
+Related: ADR-002a (Firestore for household data), ADR-003 (server-side OCR),
+ADR-004 / ADR-006 (UPC + image waterfall), ADR-007 (this design), ADR-008
+(shared product catalog on Cloud SQL)
 
 ---
 
@@ -14,7 +16,8 @@ Phase 1 deliverables are in this PR. Nothing under `backend/app/` changes yet.
 
 | # | Deliverable | Where |
 |---|-------------|-------|
-| 1 | Data model + migration `0001_receipt_parser` | `backend/firestore/migrations/0001_receipt_parser.md`, `backend/firestore/schema/*.schema.json`, `backend/firestore/firestore.indexes.json` |
+| 1a | Household data model + migration `0001_receipt_parser` (Firestore) | `backend/firestore/migrations/0001_receipt_parser.md`, `backend/firestore/schema/*.schema.json`, `backend/firestore/firestore.indexes.json` |
+| 1b | Shared catalog data model + migration `0001_catalog` (Cloud SQL Postgres) | `backend/catalog/migrations/0001_catalog.sql` (+ `.down.sql`), `backend/catalog/seed/store_chains.sql`, `backend/catalog/alembic/`, `backend/catalog/README.md` |
 | 3 | API contract (OpenAPI 3.1) | `docs/api/receipt-parser.openapi.yaml` |
 | — | Gemini prompt + response schema contract (v1) | `backend/prompts/receipt_parse/v1/` |
 | — | Spec entries REQ-RCP-001 … 018, ADR-007, ADR-008, traceability rows | `docs/spec-v1.0.md`, `docs/architecture.md`, `traceability/matrix.*` |
@@ -39,10 +42,11 @@ Goals
 - Replace heuristic regex parsing of Cloud Vision text (`receipt_ocr.parse_receipt_text`)
   with a Gemini Pro call on Vertex AI that returns structured line items for
   the whole receipt in a single request.
-- Grow a **shared UPC product database** (`products`) from receipts, barcode
-  scans, and enrichment sources, with provenance (`source`), a
-  `confidence_score`, `confirmation_count`, and a `status` lifecycle
-  `unverified → pending → verified`.
+- Grow a **shared UPC product catalog** (`products` and friends in Cloud SQL
+  for PostgreSQL, one catalog for all accounts) from receipts, barcode scans,
+  and enrichment sources, with provenance (`source`), a `confidence_score`,
+  `confirmation_count`, and a `status` lifecycle `unverified → pending →
+  verified`.
 - Keep every LLM interaction auditable: versioned prompt, recorded model id,
   raw response retained per attempt.
 - Preserve the existing client contract (`ReceiptLineItem`, confirm-haul
@@ -93,13 +97,13 @@ Intelligence (Gemini parser)".
 graph TD
   Client[iOS / Android\nReceiptScanView] -->|POST /receipts (image or text)| API[Cloud Run API\nFastAPI]
   API -->|1. store image| GCS[(Cloud Storage\nmekasa-receipts)]
-  API -->|2. create receipt + llm_parse_job| FS[(Firestore mekasa-db)]
+  API -->|2. create receipt + llm_parse_job| FS[(Firestore mekasa-db\nhousehold data)]
+  API -->|7. match / correlate / upsert products| PG[(Cloud SQL Postgres\nshared catalog)]
   API -->|3. run job (in-request, wait_seconds)\nor enqueue| Tasks[Cloud Tasks\nreceipt-parse queue]
   Tasks -->|POST /internal/parse-jobs/{id}/run| API
   API -->|4. generate_content\nsystem prompt v1 + image| Vertex[Vertex AI\nGemini Pro]
   API -->|5. validate → retry ≤2| API
   API -->|6. persist line_items,\nraw response| FS
-  API -->|7. match / correlate| FS
   API -->|8. enrichment_jobs| Tasks
   API -->|store API (Kroger) → UPCitemdb/OFF → GS1 verify| Ext[Enrichment sources]
   Client -->|GET receipt / resolve / confirm| API
@@ -111,14 +115,15 @@ graph TD
 |-----------|------------------|----------------|
 | Receipt ingestion | `app/receipts_router.py`, `app/receipts_repository.py` | Auth + household membership, store image, create `receipts/{id}` and `llm_parse_jobs/{id}`, sync-wait or enqueue |
 | Gemini invocation | `app/gemini_receipt_parser.py` | Build request from versioned prompt, call Vertex AI, validate, corrective retry, persist attempts + raw JSON |
-| Matching / resolution | `app/product_resolver.py` | UPC → scan correlation → alias → fuzzy; confidence thresholds; verified-conflict guard |
-| Enrichment dispatcher | `app/enrichment_dispatcher.py` | Create `enrichment_jobs`, run adapter chain, upgrade product `source`/`status` |
-| Products repository | `app/products_repository.py` | Shared `products` + `store_chains`; status transitions; confirmation counting |
+| Matching / resolution | `app/product_resolver.py` | UPC → scan correlation → alias → fuzzy (trigram); confidence thresholds; verified-conflict guard |
+| Enrichment dispatcher | `app/enrichment_dispatcher.py` | Create `enrichment_jobs` rows, run adapter chain, upgrade product `source`/`status` |
+| Catalog repository | `app/catalog_repository.py` | Protocol + `InMemoryCatalogRepository` + `PostgresCatalogRepository` (SQLAlchemy Core over the Cloud SQL Python Connector); `products`, `product_aliases`, `product_confirmations`, `store_chains`, `enrichment_jobs`, `product_conflicts`; status transitions; once-per-household confirmation counting |
 | Scan events | `app/scan_events_repository.py` | Replaces in-memory `unknown_barcode_log` with a persisted household subcollection |
 
 One service, not separate Cloud Functions: keeps auth, Firestore clients, and
 the memory/Firestore persistence switch (`HOUSEHOLD_PERSISTENCE`) that all
-tests rely on. Cloud Tasks targets an internal route on the same service
+tests rely on. The catalog gets the same treatment:
+`CATALOG_PERSISTENCE=memory|postgres|auto`, in-memory by default in tests. Cloud Tasks targets an internal route on the same service
 (OIDC-authenticated, `X-CloudTasks-QueueName` checked). Local/test mode runs
 jobs inline.
 
@@ -178,8 +183,8 @@ Order stops at the first hit; every step records `match_method` and
 `match_confidence`.
 
 1. **exact_upc** — the receipt printed a UPC/item code and it matches
-   `products/{upc}` for any chain (Walmart, Costco print item numbers; mapping
-   table per chain is in `store_chains.receipt_code_kind`).
+   `products.upc` (`UNIQUE`) for any chain (Walmart, Costco print item numbers;
+   mapping table per chain is in `store_chains.receipt_code_kind`).
 2. **scan_correlation** (REQ-RCP-008) — two passes over
    `households/{hid}/scan_events` with `correlated_receipt_id == null`:
    - *Backward pass (at parse time):* events with context `add_items` in
@@ -199,14 +204,19 @@ Order stops at the first hit; every step records `match_method` and
    A forward-pass hit on a line the user already confirmed to an `llm:`
    product re-keys that product to the UPC (see §3.6) rather than changing
    the line.
-3. **alias** — `products` where `store_chain_id == chain` and
-   `receipt_aliases array_contains normalized(raw_text)`. Confidence 0.95.
-4. **fuzzy** — `products` where `store_chain_id == chain` and
-   `name_tokens array_contains_any top-3 tokens`; scored by Jaccard on token
-   sets; take best if ≥ 0.5.
-5. **none** → REQ-RCP-009: create `products/llm:{sha1(chain|normalized_name)}`
-   with `source: llm_ocr`, `status: unverified`, `confidence_score` = Gemini
-   line confidence × 0.6, and dispatch an `enrichment_jobs` doc.
+3. **alias** — `product_aliases` primary-key lookup
+   `(store_chain_id, catalog_normalize_name(raw_text))`. One alias maps to
+   exactly one product per chain, so a hit is confidence 0.95.
+4. **fuzzy** — `pg_trgm` similarity on `products.normalized_name` (GIN index),
+   chain-scoped, brand-gated when the line has a `brand`:
+   `WHERE store_chain_id = $chain AND normalized_name % $q ORDER BY
+   similarity(normalized_name, $q) DESC LIMIT 5`; take best if ≥ 0.5, the rest
+   become `candidate_product_ids`.
+5. **none** → REQ-RCP-009: upsert `products` row
+   `llm:{sha1(chain|normalized_name)}` with `source: llm_ocr`,
+   `status: unverified`, `confidence_score` = Gemini line confidence × 0.6, and
+   insert an `enrichment_jobs` row (a partial unique index guarantees one live
+   job per product).
 
 Thresholds (configurable, `RESOLVER_AUTO_ACCEPT=0.85`,
 `RESOLVER_MIN_SUGGEST=0.5`):
@@ -220,11 +230,12 @@ Thresholds (configurable, `RESOLVER_AUTO_ACCEPT=0.85`,
 **Verified-entry conflict (REQ-RCP-014).** If a step resolves to a product
 with `status: verified` and the extracted `description`/`brand` similarity to
 the verified `name` is < 0.5, or the extracted `unit_size` disagrees, the
-verified document is **not** modified. A `product_conflicts/{id}` doc is
-written `{product_id, receipt_id, line_item_id, field, verified_value,
+verified row is **not** modified. A `product_conflicts` row is written
+`{product_id, household_hash, receipt_id, line_item_id, field, verified_value,
 observed_value, status: open}`, the line becomes `needs_confirmation` with the
 verified product as the sole candidate, and a user confirmation only
-increments `products.dispute_count` — never fields on a verified doc. Resolving
+increments `products.dispute_count` — never descriptive columns on a verified
+row. Resolving
 conflicts is a curation action (open question §9.4).
 
 ### 3.5 Product lifecycle (REQ-RCP-011 / 013)
@@ -241,15 +252,19 @@ verified   ── never auto-downgraded; dispute_count ≥ 3 opens a conflict
 `clamp(source_weight + 0.05·confirmation_count − 0.1·dispute_count)` with
 weights `gs1_registry 0.9, store_api 0.8, user_scan 0.7, llm_ocr 0.4`
 (`gs1_registry` means "UPC verified against GS1", see §3.6).
-Households are counted via a hashed `confirming_household_hashes[]`
-(SHA-256 of household id + server salt) so the shared collection holds no
-household identifiers (NFR-002 AC1).
+Distinct households are rows in `product_confirmations (product_id,
+household_hash)` — `household_hash` = SHA-256 of household id + server salt,
+shape-checked by a constraint — so the shared catalog holds no household
+identifiers (NFR-002 AC1). `products.confirmation_count` is the denormalised
+count, updated in the same transaction; the primary key makes "once per
+household" (REQ-RCP-013 AC1) a constraint rather than application logic.
 
 ### 3.6 Enrichment dispatcher (REQ-RCP-009 / 010)
 
-`enrichment_jobs/{id}` runs the adapter chain in order. Discovery adapters
-stop at the first one that returns a UPC; the verification adapter then runs
-on whatever UPC was found.
+An `enrichment_jobs` row (with one `enrichment_steps` row per adapter run)
+drives the adapter chain in order. Discovery adapters stop at the first one
+that returns a UPC; the verification adapter then runs on whatever UPC was
+found.
 
 **Discovery (name → UPC)**
 
@@ -292,7 +307,7 @@ on whatever UPC was found.
    - Hits are `user_scan` grade, never authoritative.
    - **Produce:** bulk produce has no UPC. OFF returns IFPS PLU codes for it
      (`4026` Bosc pear, `4079` cauliflower, `94139` organic Granny Smith),
-     so produce lines resolve to `products/plu:<code>` with
+     so produce lines resolve to `products.product_id = 'plu:<code>'` with
      `code_kind: plu`; these are shared across every chain.
 
 **Verification (UPC → confirmed product)**
@@ -347,6 +362,9 @@ trash_station`, `outcome: consumed|unknown`). The existing
   when ≤ 200 KB, else `raw_response_gcs_uri` in the same bucket under
   `llm/{job_id}/attempt-{n}.json`. Firestore TTL on `llm_parse_jobs.expires_at`
   = 180 days (open question §9.5).
+- Catalog `enrichment_jobs.expires_at` (180 days) is purged by a daily Cloud
+  Scheduler `DELETE`; `product_conflicts` are kept until curated; `products`
+  are never expired.
 
 ### 3.10 Security / privacy
 
@@ -357,33 +375,52 @@ trash_station`, `outcome: consumed|unknown`). The existing
   `raw_text` matching a 13–19 digit PAN pattern (defence in depth) — a
   rejected line becomes a corrective retry, not a persisted PII leak.
 - No PII in logs: log job ids, counts, error codes, never `raw_text`.
-- Shared `products`/`store_chains` collections carry no household or user ids
-  (§3.5). `verified_by_uid` is intentionally absent; curation actions are
-  logged in `product_conflicts`/`enrichment_jobs` by job id only.
-- Secrets: none introduced. Vertex AI and Cloud Storage use ADC. Optional
-  `UPCITEMDB_API_KEY` stays in Secret Manager (ADR-006).
+- The shared catalog (Cloud SQL) carries no household or user ids (§3.5);
+  `household_hash` columns are constraint-checked to be SHA-256 hex.
+  `verified_by_uid` is intentionally absent; curation actions are logged in
+  `product_conflicts`/`enrichment_steps` by id only.
+- Secrets: none introduced. Vertex AI, Cloud Storage, and Cloud SQL all use
+  IAM/ADC — the API is an IAM database user, so there is no database password
+  to store or rotate. Optional `UPCITEMDB_API_KEY` and the Kroger client
+  credentials stay in Secret Manager (ADR-006, §3.6).
 
 ---
 
-## 4. Data model (Firestore) — summary
+## 4. Data model — summary (Firestore for household data, Cloud SQL for the shared catalog)
 
-Full field tables and JSON Schemas: `backend/firestore/migrations/0001_receipt_parser.md`
-and `backend/firestore/schema/`.
+Two stores, one rule: anything owned by a household is a Firestore document
+under `households/{hid}` (real-time sync, offline cache, existing security
+model); anything shared by all accounts is a Postgres table in the catalog
+database (`backend/catalog/`). They reference each other only by opaque string
+ids, and the catalog never stores a household or user id.
 
-| Kickoff table | Firestore location | Notes |
+Full field tables: `backend/firestore/migrations/0001_receipt_parser.md` +
+`backend/firestore/schema/` (Firestore) and
+`backend/catalog/migrations/0001_catalog.sql` (Postgres; column comments are the
+documentation).
+
+| Kickoff table | Location | Notes |
 |---|---|---|
-| `stores` | existing `households.store_ids` (Places ids) **+ new** `store_chains/{chain_id}` | Chain is what the prompt, matching, and `store_api` adapter selection need; Places store keeps the physical location for REQ-015 AC3 |
-| `products` | **new** `products/{product_id}` (top-level, shared) | id = UPC when known, else `llm:<sha1>`; fields exactly as the kickoff + `image_url`, `receipt_aliases`, `name_tokens`, `dispute_count`, provenance |
-| `receipts` | **new** `households/{hid}/receipts/{rid}` | household-scoped |
-| `receipt_line_items` | **new** `households/{hid}/receipts/{rid}/line_items/{lid}` | `raw_text`, `price`, `qty`, `matched_product_id` nullable + resolution fields |
-| `scan_events` | **new** `households/{hid}/scan_events/{id}` | supersedes in-memory unknown-barcode log |
-| `llm_parse_jobs` | **new** `llm_parse_jobs/{job_id}` (top-level) | ops need cross-household queries by status/prompt_version |
-| — | **new** `enrichment_jobs/{id}`, `product_conflicts/{id}` | dispatcher state, REQ-RCP-014 records |
+| `stores` | existing `households.store_ids` (Places ids, Firestore) **+ new** table `store_chains` (Postgres) | Chain is what the prompt, matching, and `store_api` adapter selection need; Places store keeps the physical location for REQ-015 AC3. Seed: `backend/catalog/seed/store_chains.sql` |
+| `products` | **new** table `products` (Postgres) | `product_id` = UPC when known, else `plu:<code>` / `llm:<sha1>` — enforced by a `CHECK`; `UNIQUE (upc)`; kickoff fields + `brand`, `unit_size`, `image_url`, `dispute_count`, provenance, `superseded_by` |
+| — | **new** table `product_aliases` (Postgres) | `(store_chain_id, alias) → product_id`; alias must equal `catalog_normalize_name(alias)`; trigram index |
+| — | **new** table `product_confirmations` (Postgres) | `(product_id, household_hash)` primary key = once per household |
+| `receipts` | **new** `households/{hid}/receipts/{rid}` (Firestore) | household-scoped |
+| `receipt_line_items` | **new** `households/{hid}/receipts/{rid}/line_items/{lid}` (Firestore) | `raw_text`, `price`, `qty`, `matched_product_id` (nullable key into `products`) + resolution fields |
+| `scan_events` | **new** `households/{hid}/scan_events/{id}` (Firestore) | supersedes in-memory unknown-barcode log |
+| `llm_parse_jobs` | **new** `llm_parse_jobs/{job_id}` (Firestore, top-level) | ops need cross-household queries by status/prompt_version; raw Gemini output lives here / in GCS |
+| — | **new** tables `enrichment_jobs`, `enrichment_steps`, `product_conflicts` (Postgres) | dispatcher state and REQ-RCP-014 records; both hang off `products` with foreign keys |
 
-Additions to existing documents (all optional, backwards compatible):
+Additions to existing Firestore documents (all optional, backwards compatible):
 
 - `households/{hid}/inventory_items`: `product_id`, `receipt_line_item_id`
 - `households/{hid}/purchases`: `receipt_id`, `receipt_line_item_id`, `product_id`
+
+Catalog access (phase 2): SQLAlchemy Core (no ORM) behind
+`CatalogRepository`; Cloud Run connects through the Cloud SQL Python Connector
+with IAM authentication (`CATALOG_INSTANCE_CONNECTION_NAME`, `CATALOG_DB_NAME`,
+`CATALOG_DB_IAM_USER` — names, not secrets); migrations via Alembic through the
+Cloud SQL Auth Proxy. `backend/catalog/README.md` has the commands.
 
 ---
 
@@ -443,10 +480,14 @@ validation, no secret-like tokens.
 | `test_receipt_confirm_writes_inventory.py` | REQ-RCP-015, REQ-005 AC3, REQ-015 |
 | `test_enrichment_dispatcher.py` — adapter order + stop-at-first-authoritative | REQ-RCP-010 |
 | `test_prompt_contract.py` — schema meta-valid, fixtures validate, placeholder whitelist | REQ-RCP-003/017 |
+| `test_catalog_repository_postgres.py` — runs only when `CATALOG_DATABASE_URL` is set (CI `services: postgres:16`): migration `upgrade head` + seed apply, `UNIQUE (upc)`, alias PK, once-per-household confirmation, verified-evidence `CHECK`, one live enrichment job per product, trigram fuzzy search, `downgrade base` | REQ-RCP-007/009/011/013/014 |
 
 Gemini is behind a `ReceiptLLMClient` protocol; tests use
 `FakeReceiptLLMClient` scripted from `tests/backend/fixtures/gemini/*.json`.
-No test ever calls Vertex AI.
+No test ever calls Vertex AI. All other tests run with
+`CATALOG_PERSISTENCE=memory`; the `test-backend` CI job gains a
+`services: postgres:16` container and sets `CATALOG_DATABASE_URL` so the
+Postgres repository tests and the DDL are exercised on every PR (phase 2).
 
 ---
 
@@ -458,12 +499,18 @@ No test ever calls Vertex AI.
   receipt in one call: line context (multi-line descriptions, discounts that
   apply to the previous line) is what regex parsing loses. Cloud Vision stays
   as the fallback engine.
-- **ADR-008 — Shared, provenance-tracked product database.** One top-level
-  `products` collection keyed by UPC, grown from receipts/scans/enrichment;
-  households are never stored on product docs. Firestore rather than Cloud
-  SQL (consistent with ADR-002a) — the matching queries needed are
-  equality + `array_contains` on a chain-scoped subset, which Firestore
-  handles with the composite indexes in `firestore.indexes.json`.
+- **ADR-008 — Shared, provenance-tracked product catalog on Cloud SQL for
+  PostgreSQL (revised 2026-09-29).** One catalog for all accounts: `products`
+  keyed by UPC, `product_aliases`, `product_confirmations`, `store_chains`,
+  `enrichment_jobs`/`enrichment_steps`, `product_conflicts`. Postgres rather
+  than a Firestore collection because the catalog's rules are uniqueness and
+  similarity — `UNIQUE (upc)`, one product per alias per chain, once-per-
+  household confirmations, verified-requires-evidence — which are constraints
+  in SQL and application code in Firestore, and `pg_trgm` gives real fuzzy
+  matching. Household data stays in Firestore (ADR-002a's real-time/offline
+  reasons apply there, not to a server-only catalog). IAM database
+  authentication, no password anywhere; `db-f1-micro` (~US$10/month);
+  in-memory repository for tests. Households are never stored in the catalog.
   Retailer data enters only through official APIs; scraping behind bot
   protection or against `robots.txt` is prohibited.
 - Single Cloud Run service + Cloud Tasks, not separate Cloud Functions —
@@ -497,16 +544,30 @@ No test ever calls Vertex AI.
 8. **Receipt duplicates**: same image uploaded twice → reject by content hash
    within 24 h (proposed) or allow and let user delete?
 9. **Currency**: assume `USD` for v1 (matches `SpendingReportResponse`)?
+10. **Cloud SQL sizing/network**: `db-f1-micro`, zonal, public IP + IAM auth
+    (no authorised networks; connector/proxy only) is proposed for dev. Move
+    to private IP + Serverless VPC connector for prod? Also confirm the
+    instance name `mekasa-catalog-dev` and database `mekasa_catalog`.
+11. **Alias uniqueness**: `product_aliases` makes a printed alias map to one
+    product per chain. When the same text is later confirmed to a different
+    product (e.g. `HEB MILK` for whole vs 2 %), proposal: keep the first
+    mapping, record a `product_conflicts` row with `field: name`, and let the
+    picker show both — or drop the alias and fall through to fuzzy?
 
 ---
 
 ## 10. Rollout
 
-1. Phase 1 (this PR): docs, schema, contract, prompt v1 — review pause.
+1. Phase 1: docs, schema, contract, prompt v1 — review pause. Revision: shared
+   catalog on Cloud SQL (`0001_catalog` DDL + Alembic, validated locally on
+   Postgres 16: apply, constraint checks, downgrade, re-apply).
 2. Phase 2: repositories + services + routes behind `RECEIPT_PARSER=gemini|legacy`
-   (default `legacy` until Vertex IAM is granted), test stubs, CI lint.
-3. Migration `0001_receipt_parser`: deploy indexes, create bucket + queues,
-   grant `roles/aiplatform.user`; no data backfill required (all new
-   collections/optional fields).
+   (default `legacy` until Vertex IAM is granted), test stubs, CI lint, and a
+   `services: postgres:16` container on the `test-backend` job applying
+   `0001_catalog` + seed on every PR.
+3. Migrations: `0001_catalog` (create instance `mekasa-catalog-dev`, IAM users,
+   `alembic upgrade head`, seed `store_chains` — `backend/catalog/README.md`)
+   and `0001_receipt_parser` (deploy indexes, create bucket + queues, grant
+   `roles/aiplatform.user`); no data backfill required.
 4. Flip `RECEIPT_PARSER=gemini` on dev; clients adopt `/receipts` +
    line-item resolution; deprecate `/receipts/scan`.
