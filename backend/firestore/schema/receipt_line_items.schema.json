@@ -26,8 +26,8 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 240,
-      "not": { "pattern": "[0-9]{13,19}" },
-      "$comment": "PII guard: card-number-length digit runs are rejected (design §3.10)"
+      "not": { "pattern": "(?:[0-9][ -]?){13,}" },
+      "$comment": "PII guard: 13+ digits are rejected even when separated by spaces/dashes (card, loyalty, transaction ids) — design §3.10. The H-E-B prototype run showed spaced transaction ids slipping past a strict [0-9]{13,} check."
     },
     "description": { "type": "string", "minLength": 1, "maxLength": 120 },
     "price": { "$ref": "_common.schema.json#/$defs/money" },

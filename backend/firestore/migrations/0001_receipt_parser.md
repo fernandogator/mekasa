@@ -62,7 +62,14 @@ this migration, so rollback of code is sufficient to restore prior behaviour.
 | `created_at`, `updated_at` | timestamp | |
 
 Seeded from the Places names already returned by `stub_nearby_stores` /
-`places_lookup` (Walmart, Costco, Publix, Kroger) + `unknown`.
+`places_lookup` (Walmart, Costco, Publix, Kroger) + `heb` (aliases
+`H-E-B`, `HEB`, `H-E-B Food-Drugs`, `Central Market`; store brands H-E-B,
+Central Market, Mi Tienda, Hill Country Fare — first prototype receipt) +
+`unknown`.
+
+`purchased_at` on receipts is stored as a UTC timestamp; Gemini returns naive
+store-local time, and the API localises it with the store's time zone (from
+Places) or, failing that, the household's.
 
 ### `products/{product_id}` (shared UPC product database — ADR-008)
 

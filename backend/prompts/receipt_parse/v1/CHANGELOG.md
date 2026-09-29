@@ -15,6 +15,12 @@ SHA-256 of `system.md` (REQ-RCP-017).
 - Corrective retry turn `corrective.md` with `{{attempt}}`,
   `{{validation_errors}}` (REQ-RCP-004).
 - Privacy rules: redact payment/loyalty identifiers; forbid ≥ 13-digit runs.
+- 2026-09-29 (still draft, no jobs reference v1 yet): after the H-E-B
+  prototype run (`docs/design/gemini-receipt-prototype.md` → Results),
+  `purchased_at` is naive store-local time (no offset) instead of strict
+  RFC 3339; system prompt gained store-brand prefix hints (HEB/CM/Mi Tienda),
+  a "lower confidence when the product noun is inferred" rule, and a note
+  that tax-status letters must not alter qty/unit/price.
 
 Allowed placeholders (enforced by the phase-2 prompt lint):
 `system.md` → `{{store_chain_name}}`; `corrective.md` → `{{attempt}}`,

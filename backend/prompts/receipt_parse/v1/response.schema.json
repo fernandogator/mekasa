@@ -22,7 +22,7 @@
     },
     "purchased_at": {
       "type": ["string", "null"],
-      "format": "date-time"
+      "description": "Printed date and time as YYYY-MM-DDTHH:MM:SS in the store's local time, without a UTC offset (receipts never print one; the server attaches the store/household time zone). Null when not legible."
     },
     "currency": {
       "type": "string",

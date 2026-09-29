@@ -162,6 +162,41 @@ JSON SCHEMA FOR PART 1 (informal; every key is required, use null where allowed)
 }
 ````
 
+## Results
+
+### Run 1 — H-E-B, Round Rock TX, 40 product lines / 54 units (2026-09-29, Gemini 2.5 Pro)
+
+Fixture (converted to the v1 shape): `tests/backend/fixtures/gemini/heb_round_rock_40_lines.v1.json`.
+
+Mechanical checks (scripted, not eyeballed):
+
+| Check | Result |
+|---|---|
+| Σ line prices vs printed subtotal | 236.21 = 236.21 (delta 0.00) |
+| Units (each-qty, weighed lines = 1) vs printed item count | 54 = 54 |
+| 14 multi-quantity / weighed lines `qty × unit_price` | all reproduce the printed extended price to the cent |
+| Tax flag interpretation | only line 20 (`TF`) marked taxable; 8.72 × 8.25 % (Round Rock rate) = 0.72 = printed tax |
+| PII in `line_items.raw_text` | none |
+| Validates against production `response.schema.json` | yes, after dropping prototype-only fields |
+
+Because both the money sum and the unit count reconcile exactly, line recall and price accuracy are effectively 1.0 for this receipt without needing the image.
+
+Qualitative:
+
+- Abbreviation expansion is strong and store-aware: `BRS HEAD … PISTA` → Boar's Head Mortadella with Pistachios, `CM ORG` → Central Market Organic, `JIF LS NATURL CRMY PNT BT`, `G2G` → Good2Grow; `2 Ea @ 2/ 6.00` correctly read as 2-for-$6. `brand` and `unit_size` (59 oz, 18 ct, 2 lb) were filled sensibly wherever the receipt supported it.
+- It corrected an OCR-level typo (`LIFENAY` → Lifeway) and flagged it in notes at 0.90 — good behaviour, but production must keep `raw_text` verbatim so the alias table learns the misspelling as printed.
+- Honest about uncertainty where it mattered (line 24, `AUX DELICES DES BOISE BF`, 0.85) and did not invent discounts for the unitemised "$1.90 savings" footer.
+- Two inferences were priced too confidently: eggs from `CAGE FREE XLG` (0.95) and butter from `BF` (0.85). The v1 prompt now asks for ≤ 0.9 whenever the product noun itself is inferred.
+- `FW` was guessed as "food/weighed" but appears on non-weighed produce (`CANTALOUPE FW 2.97`); tax/eligibility letters are chain-specific. v1 prompt now says they must not influence qty/unit/price; `taxable` stays a v2 candidate.
+- `purchased_at` came back as `2026-09-28T18:06:00` with no offset — correct, receipts never print one. The v1 schema no longer demands RFC 3339 with offset; the server localises with the store time zone.
+- PII: card digits, approval codes, cashier, and phone were redacted, but two spaced transaction ids (`1081 3707 0928 …`) slipped through the "13 consecutive digits" rule in `excluded_lines` (not persisted in production). The server-side guard now matches 13+ digits with optional spaces/dashes.
+- `matches_expected=false` because `{{store_chain_name}}` was left unset; H-E-B was also missing from the `store_chains` seed list — added.
+- `upc_candidates` stayed empty for all 40 lines (no printed codes on H-E-B receipts, and the model did not volunteer knowledge-based GTINs). That is the desired conservative behaviour; it also means the shared product DB will depend on scan correlation and enrichment for UPCs at chains that don't print them.
+
+Rubric: recall 1.0 · price accuracy 1.0 · expansion usefulness ≈ 0.97 (39/40 recognisable) · PII leaks 0 in persisted fields · reconciliation exact · category sanity ≈ 0.97 (Goya frozen pulp and eggs-as-Dairy are defensible).
+
+Still to run: Walmart (printed UPCs), Costco (item numbers + instant savings), a coupon-heavy Publix receipt, a faded/cut-off image, a void/refund, and a non-receipt.
+
 ## Differences from the production v1 contract
 
 | Prototype field | Production (`receipt_parse/v1`) |
