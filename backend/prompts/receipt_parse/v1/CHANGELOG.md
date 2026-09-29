@@ -21,6 +21,10 @@ SHA-256 of `system.md` (REQ-RCP-017).
   RFC 3339; system prompt gained store-brand prefix hints (HEB/CM/Mi Tienda),
   a "lower confidence when the product noun is inferred" rule, and a note
   that tax-status letters must not alter qty/unit/price.
+- 2026-09-29 (draft): `brand` and `unit_size` added as required nullable
+  line-item fields after the name→UPC evaluation (prototype Run 2) showed
+  brand-gated search removes all wrong-brand matches. Rule 4 added; later
+  rules renumbered.
 
 Allowed placeholders (enforced by the phase-2 prompt lint):
 `system.md` → `{{store_chain_name}}`; `corrective.md` → `{{attempt}}`,

@@ -83,7 +83,8 @@ Places) or, failing that, the household's.
 ### `products/{product_id}` (shared UPC product database — ADR-008)
 
 `product_id` = UPC/GTIN digits when known, otherwise
-`llm:<sha1(store_chain_id + "|" + normalized_name)>`. When enrichment finds a
+`llm:<sha1(store_chain_id + "|" + normalized_name)>`. Bulk produce uses
+`plu:<IFPS code>` (e.g. `plu:4026`), shared across chains. When enrichment finds a
 UPC for an `llm:` doc the doc is **re-keyed**: a new `products/{upc}` is
 written (merging counts) and the old doc gets `superseded_by: "<upc>"`.
 
@@ -210,7 +211,7 @@ Supersedes the in-memory `unknown_barcode_log`.
 |---|---|---|
 | `product_id` | string | |
 | `trigger` | enum | `unmatched_line` \| `manual` \| `reverify` \| `scan_correlation` (forward pass found a UPC; job runs `gs1_verify` only) |
-| `chain` | string[] | `["store_api","upcitemdb","openfoodfacts","gs1_verify","crowdsourced_pending"]` — discovery adapters first, `gs1_verify` only runs on a known UPC |
+| `chain` | string[] | `["store_api","openfoodfacts","upcitemdb","gs1_verify","crowdsourced_pending"]` — discovery adapters first, `gs1_verify` only runs on a known UPC |
 | `steps` | array | `{adapter, status: skipped|hit|miss|error|not_implemented, started_at, finished_at, upc?, note?}`; `adapter ∈ store_api|upcitemdb|openfoodfacts|gs1_verify|crowdsourced_pending` |
 | `status` | enum | `queued` \| `running` \| `succeeded` \| `exhausted` \| `failed` |
 | `result_source` | enum? | source that produced the hit |

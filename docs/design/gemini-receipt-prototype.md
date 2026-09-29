@@ -197,11 +197,60 @@ Rubric: recall 1.0 · price accuracy 1.0 · expansion usefulness ≈ 0.97 (39/40
 
 Still to run: Walmart (printed UPCs), Costco (item numbers + instant savings), a coupon-heavy Publix receipt, a faded/cut-off image, a void/refund, and a non-receipt.
 
+### Run 2 — name → UPC via Open Food Facts + UPCitemdb, same 40 lines (2026-09-29)
+
+Question: without any retailer data, how many UPCs can name search recover?
+Script: OFF search API (`search.openfoodfacts.org/search`) and the keyless
+UPCitemdb trial endpoint, one query per line, first hit accepted by the
+backend's existing `receipt_ocr._is_strong_match`. Then a second OFF pass
+constrained by `brands:"<brand>"` and `countries_tags:"en:united-states"`.
+
+Of the 40 lines, 9 are bulk produce (no UPC exists) and 31 are packaged goods.
+
+| Pass | Correct UPC (brand + product) | Right brand, wrong variant/size | **Wrong brand accepted as a match** | Nothing |
+|---|---|---|---|---|
+| A. Unconstrained, existing matcher (OFF ∪ UPCitemdb) | 9 / 31 | 12 / 31 | **10 / 31** | 0 |
+| B. OFF, brand + US filter, top-3 inspected | 7 exact + 3 near (size/organic) | 10 | **0** | 11 (all private label or deli) |
+
+Examples: Pass A linked H-E-B lactose-free milk to Lactaid, Lifeway kefir to
+Trader Joe's, O'Food ramen to Nongshim, and produced "matches" for an
+H-E-B onion (raisins) and a truffle butter (a French nougat cake) — all
+flagged `identified=true`. Pass B returned `a2 Grass Fed Whole Milk 59 fl oz`
+(the receipt says `59 OZ`), `Lifeway Plain Low Fat Kefir 946 ml`, `Goya Fruta
+Mango Pulp 041331092357` (UPCitemdb agreed), Bonne Maman Mixed Berries
+`0088702009521` and Raspberry `0088702015652` (13 oz), Good2Grow Fruit Punch
+`0883990250002`, H-E-B Cage Free Extra Large Eggs `0041220782529`.
+
+What this decided (already folded into the v1 contract, spec, and design):
+
+- `brand` and `unit_size` are now **required** line-item fields in
+  `receipt_parse/v1` — they are what makes name search usable.
+- Name search is brand-gated (REQ-RCP-010 AC8): no brand → no search;
+  auto-link only when brand and size agree; otherwise candidates for the
+  picker. This also exposes a **live defect** in today's REQ-005 enrichment
+  (`enrich_receipt_item` accepts wrong-brand hits and sets `identified=true`
+  with the wrong barcode) — worth a small fix independent of this feature.
+- Source order is OFF before UPCitemdb: OFF has H-E-B private label (prefix
+  `041220`) and produce; UPCitemdb had zero private-label coverage (every
+  H-E-B/Central Market/Mi Tienda query → 404) but was more precise for
+  national brands (Lifeway, Boar's Head, Spice Hunter). Its trial tier is
+  100 requests/day — ~2 receipts — so production needs a paid tier or skips it.
+- Bulk produce resolves to IFPS PLU codes (`plu:4026` Bosc pear, `plu:4079`
+  cauliflower, `plu:94139` organic Granny Smith), which OFF returns; the
+  product DB keys produce that way instead of pretending it has a UPC.
+- Use OFF's search API rather than the legacy `cgi/search.pl` (≈10 req/min
+  limit): 80+ queries in this run without a 429.
+- Expected steady-state for a chain with no printed UPCs and no API: roughly
+  a third of packaged lines get a confident UPC from name search on first
+  sight, another third get good candidates, and private-label/deli items
+  wait for scan correlation (forward pass) — which then benefits every other
+  household through the alias table.
+
 ## Differences from the production v1 contract
 
 | Prototype field | Production (`receipt_parse/v1`) |
 |---|---|
-| `brand`, `unit_size`, `taxable`, `inference_notes` | Candidates for v2 if the prototype shows they are reliable |
+| `taxable`, `inference_notes` | Candidates for v2 (`brand` and `unit_size` were promoted into v1 after Run 2) |
 | `upc_candidates` with `basis: knowledge` | Not in production — knowledge-based GTINs are hallucination-prone; production only trusts printed codes and the enrichment chain |
 | `excluded_lines`, `reconciliation`, `quality`, `payment` | Not persisted; `totals_mismatch` is computed server-side |
 | Part 2 analyst notes | Not requested; production is JSON-only with `response_schema` |

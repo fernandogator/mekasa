@@ -412,9 +412,13 @@ Rules embedded in the decision:
 - `verified` entries are immutable to the parser and to individual
   users (REQ-RCP-014); disagreements are written to
   `product_conflicts` for curation.
-- Enrichment order: official store API → UPCitemdb → Open Food Facts
+- Enrichment order: official store API → Open Food Facts → UPCitemdb
   (discovery, stop at first UPC) → GS1 verification of any known UPC →
   crowdsourced pending (REQ-RCP-010), reusing the ADR-006 waterfall.
+  Name search is brand-gated: measured on a real 40-line receipt, an
+  unconstrained token-overlap match picked the wrong brand for a third
+  of packaged lines; with a brand filter, none. Name-search hits are
+  candidates unless brand and size agree (REQ-RCP-010 AC8).
   GS1 is a verification step, not a discovery step: its lookups are
   GTIN → product and cannot find a UPC from a receipt description.
 - **Retailer data only through official APIs — no scraping.** The

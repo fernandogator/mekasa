@@ -268,8 +268,32 @@ on whatever UPC was found.
      the whole site (even the sitemap) sits behind Imperva bot management. The
      adapter contract forbids circumventing bot protection, ignoring
      `robots.txt`, or using undocumented mobile-app endpoints (ADR-008).
-2. `upcitemdb` → `openfoodfacts` — name search (ADR-004/006 waterfall, reusing
-   `barcode_lookup.py`). Hits are `user_scan` grade, not authoritative.
+2. `openfoodfacts` → `upcitemdb` — **brand-gated** name search. Measured on
+   the H-E-B prototype receipt (`gemini-receipt-prototype.md` → Run 2), an
+   unconstrained name search with the current token-overlap matcher
+   (`receipt_ocr._is_strong_match`) accepted the wrong brand for 10 of 31
+   packaged lines (Lactaid for H-E-B milk, Trader Joe's for Lifeway, Nongshim
+   for O'Food …). With the brand as a filter the wrong-brand rate dropped to
+   zero. Rules for this step:
+   - Query = description minus brand, filtered by `brands:"<brand>"` and
+     `countries_tags:"en:united-states"` on the OFF search API
+     (`search.openfoodfacts.org/search`, not the rate-limited
+     `cgi/search.pl` the legacy path uses). Lines with `brand: null` skip
+     name search entirely and go straight to `crowdsourced_pending`.
+   - A hit may **auto-link** only if brand matches, the hit's `quantity` is
+     compatible with the line's `unit_size` (or either is unknown), and name
+     similarity ≥ 0.6. Otherwise the top 3 hits become
+     `candidate_product_ids` and the line stays `needs_confirmation`.
+   - UPCitemdb runs only when OFF has no brand-matching hit and the brand
+     is a national brand (it has essentially no private-label coverage:
+     every H-E-B/Central Market/Mi Tienda query returned 404). Its keyless
+     trial allows 100 requests/day — enough for the prototype, not for
+     production; budget a paid tier or leave it disabled.
+   - Hits are `user_scan` grade, never authoritative.
+   - **Produce:** bulk produce has no UPC. OFF returns IFPS PLU codes for it
+     (`4026` Bosc pear, `4079` cauliflower, `94139` organic Granny Smith),
+     so produce lines resolve to `products/plu:<code>` with
+     `code_kind: plu`; these are shared across every chain.
 
 **Verification (UPC → confirmed product)**
 

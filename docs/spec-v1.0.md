@@ -588,7 +588,7 @@ Acceptance Criteria:
 ### REQ-RCP-010: Enrichment Source Order
 Priority: P1
 Description: The enrichment dispatcher **shall** attempt discovery sources in
-the order official store API → UPCitemdb → Open Food Facts, stopping at the
+the order official store API → Open Food Facts → UPCitemdb, stopping at the
 first that returns a UPC; **shall** then verify any known UPC against the GS1
 registry; and **shall** mark the product crowdsourced-pending when no UPC is
 found. The dispatcher **shall not** scrape retailer websites.
@@ -601,6 +601,8 @@ Acceptance Criteria:
 - AC5: With no discovery hit, the product stays `unverified` and is flagged `crowdsourced_pending` in the job result
 - AC6: `store_api` adapters use only official, documented retailer APIs with credentials in Secret Manager (first adapter: Kroger Products API; Walmart.io behind a flag pending approval). Chains without an official API (H-E-B, Publix, Costco, Target) return `not_implemented`; no adapter may fetch retailer web pages, bypass bot protection, ignore `robots.txt`, or call undocumented app endpoints
 - AC7: `gs1_verify` runs only when a UPC is already known (discovery hit, scan correlation, or printed code); it never runs as a name search
+- AC8: Name search is brand-gated: lines with `brand=null` skip it; queries filter by brand and US market; a hit auto-links only when brand matches, `unit_size` is compatible or unknown, and name similarity ≥ 0.6 — otherwise the top 3 hits are stored as `candidate_product_ids` and the line stays `needs_confirmation`
+- AC9: Bulk produce resolves to `products/plu:<IFPS code>` (shared across chains) rather than a UPC
 
 ### REQ-RCP-011: Product Provenance, Confidence, and Status
 Priority: P0
