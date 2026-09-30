@@ -1,7 +1,15 @@
-# Migration 0001 — receipt parser, shared products, scan events
+# Migration 0001 — receipt parser: receipts, line items, scan events, parse jobs
 
-Spec version: 1.0 · Satisfies: REQ-RCP-001 … REQ-RCP-018 · Design:
-`docs/design/gemini-receipt-parser.md`
+Spec version: 1.0 · Satisfies: REQ-RCP-001 … REQ-RCP-008, REQ-RCP-012,
+REQ-RCP-015 … REQ-RCP-018 · Design: `docs/design/gemini-receipt-parser.md`
+
+This is the **household-scoped half** of the receipt-parser data model. The
+shared product catalog (`store_chains`, `products`, `product_aliases`,
+`product_confirmations`, `enrichment_jobs`, `product_conflicts`) lives in Cloud
+SQL for PostgreSQL and is migrated separately — see `backend/postgres/`
+(`migrations/0001_shared_products.sql`, ADR-008). Firestore documents reference catalog
+rows only by opaque string ids (`matched_product_id`, `product_id`,
+`conflict_id`).
 
 Firestore has no `ALTER TABLE`; a "migration" here is (a) new collections and
 optional fields documented below and enforced by the JSON Schemas in
@@ -22,7 +30,6 @@ gcloud firestore indexes composite create --database=mekasa-db \
 
 # TTL for audit docs (REQ-RCP-018 retention; value under review, §9.5 of design)
 gcloud firestore fields ttls update expires_at --collection-group=llm_parse_jobs --database=mekasa-db --enable-ttl
-gcloud firestore fields ttls update expires_at --collection-group=enrichment_jobs --database=mekasa-db --enable-ttl
 
 # Receipt image bucket (no public access)
 gsutil mb -l us-central1 -b on gs://mekasa-receipts-dev
@@ -38,6 +45,11 @@ gcloud projects add-iam-policy-binding hackathon2025-472017 \
   --role=roles/aiplatform.user
 ```
 
+Catalog database (Cloud SQL instance `mekasa-pg`, database `mekasa`, user
+`mekasa_api`, `psql -f 0001_shared_products.sql`, `store_chains` seed): follow
+`backend/postgres/README.md`. Its one secret, the connection string, lives in
+Secret Manager as `mekasa-database-url` and is injected as `DATABASE_URL`.
+
 No secrets are introduced for Vertex AI or GCS (runtime service account).
 The Kroger `store_api` adapter needs `KROGER_CLIENT_ID` / `KROGER_CLIENT_SECRET`
 in Secret Manager (register at developer.kroger.com; names only in code):
@@ -52,66 +64,31 @@ printf '%s' "$KROGER_CLIENT_SECRET" | gcloud secrets create KROGER_CLIENT_SECRET
 Indexes and TTL policies can be deleted; collections can be left in place
 (unused) or purged with a scripted delete. No existing document is modified by
 this migration, so rollback of code is sufficient to restore prior behaviour.
+Catalog rollback: `psql "$DATABASE_URL" -f backend/postgres/migrations/0001_shared_products.down.sql`.
 
 ---
 
 ## New collections
 
-### `store_chains/{chain_id}` (shared, read-only for clients)
+### Shared catalog → Cloud SQL (`backend/postgres/migrations/0001_shared_products.sql`)
 
-| Field | Type | Notes |
-|---|---|---|
-| `chain_id` | string | slug, e.g. `publix`, `walmart`, `costco`, `kroger`, `unknown` |
-| `name` | string | display name injected as `{{store_chain_name}}` |
-| `aliases` | string[] | header spellings (`PUBLIX SUPER MARKETS`, `WAL-MART`) |
-| `website_domain` | string? | informational only (never fetched) |
-| `api_provider` | `none`\|`kroger`\|`walmart` | which official `store_api` adapter serves this chain |
-| `receipt_code_kind` | `none`\|`upc`\|`item_number` | what code the chain prints per line |
-| `created_at`, `updated_at` | timestamp | |
+`store_chains`, `products`, `product_aliases`, `product_confirmations`,
+`enrichment_jobs`/`enrichment_steps`, and `product_conflicts` are Postgres
+tables, not collections (ADR-008). Column-level notes are comments in the DDL;
+the seed for `store_chains` (Walmart `api_provider: walmart`, Kroger `kroger`,
+H-E-B / Publix / Costco / Target `none`, `unknown`) is
+`backend/postgres/seed/store_chains.sql`.
 
-Seeded from the Places names already returned by `stub_nearby_stores` /
-`places_lookup` (Walmart `api_provider: walmart`, Costco `none`, Publix `none`,
-Kroger `kroger`) + `heb` (`none`) (aliases
-`H-E-B`, `HEB`, `H-E-B Food-Drugs`, `Central Market`; store brands H-E-B,
-Central Market, Mi Tienda, Hill Country Fare — first prototype receipt) +
-`unknown`.
+`products.product_id` = UPC/GTIN digits when known, `plu:<IFPS code>` for bulk
+produce (shared across chains), otherwise
+`llm:<sha1(store_chain_id + "|" + normalized_name)>`. When enrichment or scan
+correlation finds a UPC for an `llm:` row, a new UPC row is written and the old
+row gets `superseded_by` (REQ-RCP-010 AC2). Firestore fields that hold these
+keys use the `productId` definition in `schema/_common.schema.json`.
 
 `purchased_at` on receipts is stored as a UTC timestamp; Gemini returns naive
 store-local time, and the API localises it with the store's time zone (from
 Places) or, failing that, the household's.
-
-### `products/{product_id}` (shared UPC product database — ADR-008)
-
-`product_id` = UPC/GTIN digits when known, otherwise
-`llm:<sha1(store_chain_id + "|" + normalized_name)>`. Bulk produce uses
-`plu:<IFPS code>` (e.g. `plu:4026`), shared across chains. When enrichment finds a
-UPC for an `llm:` doc the doc is **re-keyed**: a new `products/{upc}` is
-written (merging counts) and the old doc gets `superseded_by: "<upc>"`.
-
-| Field | Type | Kickoff | Notes |
-|---|---|---|---|
-| `upc` | string? | ✔ | 8–14 digits; null until resolved |
-| `store_chain_id` | string | ✔ | chain where first observed; `unknown` allowed |
-| `name` | string | ✔ | canonical display name |
-| `normalized_name` | string | | casefold, collapsed whitespace, no punctuation |
-| `name_tokens` | string[] | | ≤ 10 tokens, for `array_contains_any` fuzzy lookups |
-| `receipt_aliases` | string[] | | normalized raw receipt texts seen for this product (≤ 25) |
-| `brand` | string? | ✔ | |
-| `category` | string | ✔ | Mekasa category vocabulary (`Produce`, `Dairy`, …, `Other`) |
-| `unit_size` | string? | ✔ | free text as printed/enriched, e.g. `12 oz` |
-| `image_url` | string? | | ADR-006 waterfall result |
-| `source` | enum | ✔ | `user_scan` \| `store_api` \| `gs1_registry` \| `llm_ocr` — best source so far (kickoff's `store_site` renamed: retailer data enters only via official APIs, ADR-008) |
-| `sources_seen` | enum[] | | every source that contributed |
-| `confidence_score` | number 0–1 | ✔ | recomputed on every transition (design §3.5) |
-| `confirmation_count` | int ≥ 0 | ✔ | user confirmations (REQ-RCP-013) |
-| `confirming_household_hashes` | string[] | | SHA-256(household_id + salt); no raw household ids (NFR-002) |
-| `dispute_count` | int ≥ 0 | | confirmations that contradicted a verified doc (REQ-RCP-014) |
-| `status` | enum | ✔ | `unverified` \| `pending` \| `verified` |
-| `status_changed_at` | timestamp | | |
-| `origin_parse_job_id` | string? | | provenance for `llm_ocr` docs |
-| `origin_prompt_version` | string? | | e.g. `receipt_parse/v1` |
-| `superseded_by` | string? | | see re-keying above |
-| `first_seen_at`, `last_seen_at`, `created_at`, `updated_at` | timestamp | | |
 
 ### `households/{household_id}/receipts/{receipt_id}`
 
@@ -151,12 +128,12 @@ written (merging counts) and the old doc gets `superseded_by: "<upc>"`.
 | `printed_code` | string? | | UPC / item number if printed |
 | `category` | string | | Mekasa category (Gemini suggestion, user-editable) |
 | `extraction_confidence` | number 0–1 | | Gemini per-line confidence |
-| `matched_product_id` | string? | ✔ | nullable |
+| `matched_product_id` | string? | ✔ | nullable; key into catalog `products.product_id` (Cloud SQL) |
 | `match_method` | enum? | | `exact_upc` \| `scan_correlation` \| `alias` \| `fuzzy` \| `enrichment` \| `user` |
 | `match_confidence` | number 0–1? | | |
 | `resolution_status` | enum | | `auto_matched` \| `needs_confirmation` \| `unmatched` \| `confirmed` \| `rejected` \| `skipped` |
 | `candidate_product_ids` | string[] | | ≤ 5, ordered by confidence |
-| `conflict_id` | string? | | `product_conflicts` doc when REQ-RCP-014 fired |
+| `conflict_id` | string? | | catalog `product_conflicts.conflict_id` (UUID) when REQ-RCP-014 fired |
 | `image_url` | string | | catalog image or category placeholder (REQ-005 AC4) |
 | `barcode` | string? | | UPC exposed to legacy clients (= product `upc`) |
 | `inventory_item_id`, `purchase_event_id` | string? | | stamped on confirm |
@@ -178,7 +155,7 @@ Supersedes the in-memory `unknown_barcode_log`.
 | `outcome` | enum | `found` \| `unknown` \| `consumed` |
 | `lookup_source` | string? | `openfoodfacts` \| `products` \| `none` |
 | `product_name_at_scan` | string? | for correlation similarity |
-| `product_id` | string? | |
+| `product_id` | string? | catalog `products.product_id` |
 | `correlated_receipt_id`, `correlated_line_item_id` | string? | set once by REQ-RCP-008 |
 | `created_at` | timestamp | |
 
@@ -205,30 +182,6 @@ Supersedes the in-memory `unknown_barcode_log`.
 | `expires_at` | timestamp | TTL field (created_at + 180 d) |
 | `created_at`, `updated_at` | timestamp | |
 
-### `enrichment_jobs/{job_id}` (REQ-RCP-009/010)
-
-| Field | Type | Notes |
-|---|---|---|
-| `product_id` | string | |
-| `trigger` | enum | `unmatched_line` \| `manual` \| `reverify` \| `scan_correlation` (forward pass found a UPC; job runs `gs1_verify` only) |
-| `chain` | string[] | `["store_api","openfoodfacts","upcitemdb","gs1_verify","crowdsourced_pending"]` — discovery adapters first, `gs1_verify` only runs on a known UPC |
-| `steps` | array | `{adapter, status: skipped|hit|miss|error|not_implemented, started_at, finished_at, upc?, note?}`; `adapter ∈ store_api|upcitemdb|openfoodfacts|gs1_verify|crowdsourced_pending` |
-| `status` | enum | `queued` \| `running` \| `succeeded` \| `exhausted` \| `failed` |
-| `result_source` | enum? | source that produced the hit |
-| `expires_at`, `created_at`, `updated_at` | timestamp | |
-
-### `product_conflicts/{conflict_id}` (REQ-RCP-014)
-
-| Field | Type | Notes |
-|---|---|---|
-| `product_id` | string | the `verified` product |
-| `household_hash` | string | hashed household id (no raw id) |
-| `receipt_id`, `line_item_id` | string | |
-| `field` | enum | `name` \| `brand` \| `unit_size` \| `category` \| `upc` |
-| `verified_value`, `observed_value` | string | |
-| `status` | enum | `open` \| `dismissed` \| `accepted` |
-| `created_at`, `updated_at` | timestamp | |
-
 ## Additions to existing documents (optional fields, no backfill)
 
 | Collection | New field | Purpose |
@@ -240,21 +193,19 @@ Supersedes the in-memory `unknown_barcode_log`.
 ## Backfill
 
 - None required. Readers must treat missing optional fields as `null`.
-- Optional one-off: seed `products` from existing `inventory_items.barcode`
-  values as `source: user_scan`, `status: unverified` (script in phase 2,
-  gated behind `--apply`).
+- Optional one-off: seed catalog `products` from existing
+  `inventory_items.barcode` values as `source: user_scan`, `status: unverified`
+  (script in phase 2, gated behind `--apply`; writes to Cloud SQL).
 
 ## Index rationale (see `firestore.indexes.json`)
 
+Catalog lookups (alias, trigram fuzzy match, curation lists, enrichment
+queue, conflict queue) are Postgres indexes in `0001_shared_products.sql`.
+
 | Query | Index |
 |---|---|
-| alias match per chain | `products`: `store_chain_id ASC, receipt_aliases CONTAINS` |
-| fuzzy token match per chain | `products`: `store_chain_id ASC, name_tokens CONTAINS` |
-| curation lists | `products`: `status ASC, confidence_score DESC` |
 | scan correlation window | `scan_events` (collection group): `correlated_receipt_id ASC, scanned_at DESC` |
 | unknown-barcode log | `scan_events`: `outcome ASC, created_at DESC` |
 | receipts list | `receipts`: `status ASC, created_at DESC` |
 | ops: failures by prompt | `llm_parse_jobs`: `status ASC, prompt_version ASC, created_at DESC` |
 | ops: per receipt | `llm_parse_jobs`: `receipt_id ASC, created_at DESC` |
-| enrichment worker | `enrichment_jobs`: `status ASC, created_at ASC` |
-| conflict queue | `product_conflicts`: `status ASC, created_at DESC` |
