@@ -162,8 +162,10 @@ struct InventoryListView: View {
     private func row(_ item: InventoryItem) -> some View {
         NavigationLink(value: item.id) {
             HStack(spacing: 14) {
-                ProductThumbnail(urlString: item.imageURL, size: 56, cornerRadius: 16)
-                    .accessibilityIdentifier(TestIdentifiers.itemThumbnail)
+                EditableProductThumbnail(urlString: item.imageURL, size: 56, cornerRadius: 16, itemName: item.name) { image in
+                    await session.replaceInventoryItemImage(itemID: item.id, image: image)
+                }
+                .accessibilityIdentifier(TestIdentifiers.itemThumbnail)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.name)
                         .font(.system(size: 16, weight: .bold, design: .rounded))

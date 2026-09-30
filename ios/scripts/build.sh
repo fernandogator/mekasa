@@ -45,7 +45,7 @@ ELAPSED=$(( $(date +%s) - START ))
 
 # De-duplicate (xcodebuild repeats diagnostics) and strip the repo prefix to keep lines short.
 grep -E ': (error|fatal error):' "$LOG" | sed "s|${ROOT}/||" | sort -u | head -30 || true
-WARNINGS=$(grep -E ': warning:' "$LOG" | sort -u | wc -l | tr -d ' ')
+WARNINGS=$( (grep -E ': warning:' "$LOG" || true) | sort -u | wc -l | tr -d ' ')
 
 if [[ $STATUS -eq 0 ]]; then
   echo "✅ BUILD SUCCEEDED in ${ELAPSED}s (${WARNINGS} warnings)"

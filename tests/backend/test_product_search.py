@@ -286,7 +286,7 @@ def test_map_category_soda_not_produce() -> None:
 
 
 def test_receipt_strong_match_coke_nickname() -> None:
-    from app.receipt_ocr import _is_strong_match
+    from app.receipt_ocr import is_strong_match
 
-    assert _is_strong_match("Coke", "Coca-Cola Original Taste")
-    assert _is_strong_match("coca-cola", "Diet Coke")
+    assert is_strong_match("Coke", "Coca-Cola Original Taste")
+    assert is_strong_match("coca-cola", "Diet Coke")

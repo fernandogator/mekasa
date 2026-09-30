@@ -23,7 +23,9 @@ struct ItemDetailView: View {
                 if let item {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 24) {
-                            ProductHeroImage(urlString: item.imageURL, title: item.name)
+                            ProductHeroImage(urlString: item.imageURL, title: item.name) { image in
+                                await session.replaceInventoryItemImage(itemID: item.id, image: image)
+                            }
 
                             Text(item.name)
                                 .font(.system(size: 28, weight: .black, design: .rounded))
