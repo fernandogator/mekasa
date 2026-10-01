@@ -1,7 +1,7 @@
 # Shared product catalog — Cloud SQL for PostgreSQL
 
 Spec version: 1.0 · Satisfies: REQ-RCP-007, REQ-RCP-009 … REQ-RCP-011,
-REQ-RCP-013, REQ-RCP-014 · Decision: `docs/architecture.md` ADR-008 · Design:
+REQ-RCP-013, REQ-RCP-014, REQ-RCP-019 … REQ-RCP-021 · Decision: `docs/architecture.md` ADR-008 · Design:
 `docs/design/gemini-receipt-parser.md` §4
 
 Data **shared across all accounts** lives here: `store_chains`, `products`
@@ -22,6 +22,8 @@ Status: **design + DDL (phase 1)**. No runtime code reads this database yet.
 |---|---|
 | `migrations/0001_shared_products.sql` | Idempotent DDL (`IF NOT EXISTS` / `OR REPLACE`): tables, `CHECK`s, foreign keys, partial unique index on `upc`, `pg_trgm` GIN indexes, `updated_at` triggers, `catalog_normalize_name()` |
 | `migrations/0001_shared_products.down.sql` | Rollback (drops every catalog object) |
+| `migrations/0002_product_corrections.sql` | User corrections / in-store capture / product photos (design §3.11): `products.image_source` + pairing `CHECK`, partial index on user-photo images, `product_conflicts.field` gains `image_url`, `enrichment_jobs.trigger` gains `user_capture` and `image_removed` |
+| `migrations/0002_product_corrections.down.sql` | Rollback of 0002 (deletes rows only 0002 made legal, restores 0001 `CHECK`s) |
 | `seed/store_chains.sql` | Idempotent seed for `store_chains` |
 
 Migrations are plain SQL applied with `psql`; later changes are new numbered

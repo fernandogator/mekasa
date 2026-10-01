@@ -134,8 +134,11 @@ Places) or, failing that, the household's.
 | `resolution_status` | enum | | `auto_matched` \| `needs_confirmation` \| `unmatched` \| `confirmed` \| `rejected` \| `skipped` |
 | `candidate_product_ids` | string[] | | ≤ 5, ordered by confidence |
 | `conflict_id` | string? | | catalog `product_conflicts.conflict_id` (UUID) when REQ-RCP-014 fired |
-| `image_url` | string | | catalog image or category placeholder (REQ-005 AC4) |
-| `barcode` | string? | | UPC exposed to legacy clients (= product `upc`) |
+| `image_url` | string | | household photo (`/v1/product-photos/{photo_id}`) if attached, else catalog image, else category placeholder (REQ-005 AC4, REQ-RCP-019 AC4) |
+| `image_source` | string? | | `user_photo` \| `store_api` \| `openfoodfacts` \| `gs1_registry` \| `placeholder` |
+| `photo_id` | string? | | this household's photo for the line (`product_photos/{photo_id}`), REQ-RCP-019 AC4 |
+| `user_edited_fields` | string[] | | fields overridden via `PATCH …/line-items/{lid}` (REQ-RCP-019 AC1); `confirm` writes the overrides |
+| `barcode` | string? | | UPC exposed to legacy clients (= product `upc`); `null` → client offers "Scan product" (REQ-RCP-020 AC1) |
 | `inventory_item_id`, `purchase_event_id` | string? | | stamped on confirm |
 | `resolved_by_uid`, `resolved_at` | string?, timestamp? | | |
 | `created_at`, `updated_at` | timestamp | | |
@@ -151,8 +154,8 @@ Supersedes the in-memory `unknown_barcode_log`.
 | `upc` | string | as scanned (raw), 6–14 digits |
 | `scanned_by_uid` | string | |
 | `scanned_at` | timestamp | |
-| `context` | enum | `add_items` \| `trash_station` \| `manual_entry` |
-| `outcome` | enum | `found` \| `unknown` \| `consumed` |
+| `context` | enum | `add_items` \| `trash_station` \| `manual_entry` \| `receipt_capture` \| `inventory_capture` (REQ-RCP-020 AC4) |
+| `outcome` | enum | `found` \| `unknown` \| `consumed` \| `created` (capture created a new `user_scan` product) |
 | `lookup_source` | string? | `openfoodfacts` \| `products` \| `none` |
 | `product_name_at_scan` | string? | for correlation similarity |
 | `product_id` | string? | catalog `products.product_id` |
@@ -189,6 +192,23 @@ Supersedes the in-memory `unknown_barcode_log`.
 | `households/{hid}/inventory_items` | `product_id: string?` | link to shared product |
 | `households/{hid}/inventory_items` | `receipt_line_item_id: string?` | provenance |
 | `households/{hid}/purchases` | `receipt_id`, `receipt_line_item_id`, `product_id` (string?) | REQ-RCP-015 / REQ-015 AC3 |
+| `households/{hid}/inventory_items` | `photo_id: string?`, `image_source: string?` | user photo attached via `PATCH …/inventory/{item_id}` or `…/capture` (REQ-RCP-019 AC6, REQ-RCP-020 AC6) |
+
+### `households/{household_id}/product_photos/{photo_id}` (REQ-RCP-021)
+
+Ownership record for a user product photo. The bytes live in bucket
+`mekasa-product-photos-<env>` at `product-photos/{photo_id}.jpg` — the object
+name and the public URL `/v1/product-photos/{photo_id}` carry no household or
+user id, so the photo can back a shared `products.image_url` (NFR-002 AC1).
+
+| Field | Type | Notes |
+|---|---|---|
+| `uploaded_by_uid` | string | |
+| `content_type_in` | enum | `image/jpeg` \| `image/png` \| `image/heic` as uploaded; stored object is always JPEG, EXIF/GPS stripped, long edge ≤ 1600 px |
+| `width`, `height`, `bytes` | int | after re-encoding |
+| `referenced_by` | string[] | `line:{rid}/{lid}`, `inventory:{item_id}`, `product:{product_id}`; maintained by the PATCH/capture/corrections handlers |
+| `expires_at` | timestamp? | `created_at + 24 h` while `referenced_by` is empty; cleared on first reference (daily purge, REQ-RCP-021 AC4) |
+| `created_at`, `deleted_at` | timestamp, timestamp? | `deleted_at` set by `DELETE …/product-photos/{photo_id}`; catalog fallback is queued as `enrichment_jobs(trigger=image_removed)` |
 
 ## Backfill
 

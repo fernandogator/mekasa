@@ -509,6 +509,18 @@ Rules embedded in the decision:
 - `verified` entries are immutable to the parser and to individual
   users (REQ-RCP-014); disagreements are written to
   `product_conflicts` for curation.
+- Users are the correction path of last resort, not bystanders: any
+  attribute (name, brand, category, size, qty, price) and the image can
+  be corrected per line / inventory item without touching the catalog,
+  and proposed for the shared product through
+  `POST /v1/products/{id}/corrections` — applied on `unverified`
+  rows, filed as `product_conflicts` on `verified` rows (REQ-RCP-019).
+  When no UPC is discovered the user scans the barcode and optionally
+  photographs the product; the capture creates or re-keys the shared
+  row in one transaction (REQ-RCP-020). User photos are stored under a
+  random id (`/v1/product-photos/{uuid}`, EXIF stripped, auth-gated
+  redirect to a signed URL) so they can back a shared `image_url`
+  without leaking a household id (REQ-RCP-021; design §3.11).
 - Enrichment order: official store API → Open Food Facts → UPCitemdb
   (discovery, stop at first UPC) → GS1 verification of any known UPC →
   crowdsourced pending (REQ-RCP-010), reusing the ADR-006 waterfall.

@@ -60,6 +60,14 @@
     },
     "conflict_id": { "type": ["string", "null"], "format": "uuid", "description": "catalog product_conflicts.conflict_id (Cloud SQL)" },
     "image_url": { "type": "string", "minLength": 1, "maxLength": 2048 },
+    "image_source": { "type": ["string", "null"], "enum": ["user_photo", "store_api", "openfoodfacts", "gs1_registry", "placeholder", null], "description": "Provenance of image_url (REQ-RCP-019 AC4)" },
+    "photo_id": { "type": ["string", "null"], "format": "uuid", "description": "households/{hid}/product_photos/{photo_id} attached by this household (REQ-RCP-019 AC4); image_url is then /v1/product-photos/{photo_id}" },
+    "user_edited_fields": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "enum": ["name", "brand", "category", "unit_size", "qty", "unit", "quantity", "price_paid", "unit_price", "photo_id"] },
+      "description": "Fields overridden via PATCH …/line-items/{lid} (REQ-RCP-019 AC1); confirm writes these values"
+    },
     "barcode": { "anyOf": [{ "$ref": "_common.schema.json#/$defs/upc" }, { "type": "null" }] },
     "inventory_item_id": { "type": ["string", "null"] },
     "purchase_event_id": { "type": ["string", "null"] },
