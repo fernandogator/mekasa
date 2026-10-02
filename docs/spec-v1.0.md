@@ -7,7 +7,7 @@ Priority: P0
 Description: First adult creates a household account.
 Design Artifact: N/A (backend)
 Acceptance Criteria:
-- AC1: User can sign up via Sign in with Apple
+- AC1: User can sign up via Sign in with Apple — **Deferred** (2026-10-02): removed from the iOS build for now because free Personal Teams cannot provision the Sign in with Apple capability; re-enable once a paid Apple Developer team is in place (entitlement, Welcome button, Firebase `apple.com` provider)
 - AC2: User can sign up via Sign in with Google
 - AC3: User can sign up via email and password with strength validation
 

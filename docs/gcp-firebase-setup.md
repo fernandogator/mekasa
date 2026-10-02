@@ -9,14 +9,14 @@
 | Firestore database ID | `mekasa-db` |
 | Firestore location | **`nam5` (United States multi-region)** |
 | Firestore edition / rules | Standard · Restrictive |
-| Auth for v1 onboarding | **Google + Email/Password + Apple** (iOS Sign in with Apple wired) |
+| Auth for v1 onboarding | **Google + Email/Password** (Sign in with Apple deferred — REQ-001 AC1; §2b kept for when a paid team exists) |
 | Cloud Run service | `https://mekasa-api-934775015882.us-central1.run.app` |
 | Service account | `mekasa-api@hackathon2025-472017.iam.gserviceaccount.com` |
 
 ## Status (2026-09-22)
 
 - [x] GCP project + APIs
-- [x] Firebase Auth (Google + Email; enable Apple for iOS SiwA)
+- [x] Firebase Auth (Google + Email; Apple provider deferred with REQ-001 AC1)
 - [x] Firestore `mekasa-db` @ `nam5` (Standard, Restrictive)
 - [x] Service account + local JSON key
 - [x] Cloud Run deploy + onboarding smoke
@@ -43,13 +43,16 @@ gcloud services enable run.googleapis.com cloudbuild.googleapis.com \
 2. Authentication → Sign-in method → enable:
    - **Email/Password**
    - **Google**
-   - **Apple** (required for iOS “Continue with Apple”; see §2b)
+   - **Apple** — *deferred*; not needed until Sign in with Apple returns (see §2b)
 3. Firestore → Create database → region near `us-central1` (e.g. `nam5`)
 
-### 2b. Enable Sign in with Apple (Firebase + Apple Developer)
+### 2b. Enable Sign in with Apple (Firebase + Apple Developer) — deferred
+
+> Not required right now: the iOS app no longer requests the Sign in with Apple
+> capability (REQ-001 AC1 deferred, free Personal Team). Keep for later.
 
 1. [Apple Developer](https://developer.apple.com/account) → Identifiers → App ID `com.fernandogator.mekasa` → enable **Sign In with Apple**
-2. Xcode / XcodeGen already ships `Mekasa/Mekasa.entitlements` with `com.apple.developer.applesignin`
+2. When re-enabling, add `com.apple.developer.applesignin` back to `Mekasa/Mekasa.entitlements`
 3. Firebase Console → Authentication → Sign-in method → **Apple** → Enable
 4. For Apple’s Services ID / key (if Firebase asks): create a Services ID + key in the Apple Developer portal and paste Team ID, Key ID, and private key into Firebase
 5. Rebuild the iOS app after `cd ios && xcodegen generate` so the entitlement is on the signed binary
