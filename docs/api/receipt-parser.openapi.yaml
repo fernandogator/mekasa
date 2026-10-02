@@ -223,7 +223,7 @@ paths:
         Edits are stored on the line as overrides (`user_edited_fields`) and are
         what `confirm` writes to inventory and purchases. The link to
         `matched_product_id` is kept; fixing the shared product is a separate,
-        explicit `POST /v1/products/{id}/corrections`. `photo_id` must come from
+        explicit `POST /v1/catalog/products/{id}/corrections`. `photo_id` must come from
         `POST …/product-photos`; it sets `image_url` to `/v1/product-photos/{photo_id}`.
       requestBody:
         required: true
@@ -462,7 +462,10 @@ paths:
               schema: { $ref: '#/components/schemas/ScanEventListResponse' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
-  /v1/products/{product_id}:
+  # Shared catalog lives under /v1/catalog: the pre-existing /v1/products/search
+  # is the Open Food Facts name search for manual/voice entry (REQ-006, REQ-007)
+  # and keeps its path and response shape.
+  /v1/catalog/products/{product_id}:
     parameters:
       - name: product_id
         in: path
@@ -479,7 +482,7 @@ paths:
           content: { application/json: { schema: { $ref: '#/components/schemas/Product' } } }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /v1/products/search:
+  /v1/catalog/products/search:
     get:
       tags: [products]
       operationId: searchProducts
@@ -512,7 +515,7 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/Product' }
 
-  /v1/products/{product_id}/corrections:
+  /v1/catalog/products/{product_id}/corrections:
     parameters:
       - name: product_id
         in: path

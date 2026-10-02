@@ -46,6 +46,16 @@ cd backend
 PYTHONPATH=. ALLOW_TEST_AUTH=true pytest ../tests/backend -q
 ```
 
+The shared-catalog tests also run against a real Postgres when
+`TEST_DATABASE_URL` points at a scratch database (CI does this with a
+`postgres:16` service); they apply `backend/postgres` migrations first and
+`TRUNCATE` between tests, so never point it at a real instance:
+
+```bash
+TEST_DATABASE_URL=postgresql://postgres@localhost:5432/mekasa_test \
+  PYTHONPATH=. pytest ../tests/backend/test_catalog_repository.py -q
+```
+
 ## Endpoints
 
 | Method | Path | Auth | Purpose |
@@ -100,6 +110,9 @@ PYTHONPATH=. ALLOW_TEST_AUTH=true pytest ../tests/backend -q
 | `FIREBASE_PROJECT_ID` | prod | Usually same as GCP project |
 | `GOOGLE_APPLICATION_CREDENTIALS` | local+Firebase | Path to service-account JSON (never commit) |
 | `GOOGLE_PLACES_API_KEY` | later | When leaving stub store search |
+| `DATABASE_URL` | prod | Shared product catalog (Cloud SQL Postgres, ADR-008). Secret Manager `mekasa-database-url`; unset → in-memory catalog |
+| `DATABASE_POOL_SIZE` | no | Catalog connection pool size (default 5) |
+| `CATALOG_HOUSEHOLD_SALT` | prod | Salt for `household_hash` in the catalog (NFR-002 AC1); stable per environment, from Secret Manager |
 
 Production secrets belong in **GCP Secret Manager**, not in git.
 
@@ -114,6 +127,7 @@ See [`docs/gcp-firebase-setup.md`](../docs/gcp-firebase-setup.md).
 | `HOUSEHOLD_PERSISTENCE=memory` | Local/unit tests |
 | `HOUSEHOLD_PERSISTENCE=firestore` | Cloud Run prod (writes to DB `mekasa-db`) |
 | `HOUSEHOLD_PERSISTENCE=auto` | `prod` → firestore, otherwise memory |
+| `DATABASE_URL` set | Shared product catalog on Cloud SQL Postgres (`app/catalog_repository.py`); unset → in-memory catalog |
 
 Deploy script sets firestore mode and runs Cloud Run as `mekasa-api@…`.
 

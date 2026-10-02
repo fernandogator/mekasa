@@ -14,7 +14,7 @@ Firestore. The two stores reference each other only by plain string ids
 raw household or user id (NFR-002 AC1) — households appear only as
 `household_hash = SHA-256(household_id + server salt)`.
 
-Status: **design + DDL (phase 1)**. No runtime code reads this database yet.
+Status: **DDL + runtime repository (phase 2, in progress)**. `backend/app/catalog_repository.py` reads and writes these tables when `DATABASE_URL` is set (in-memory twin otherwise); `tests/backend/test_catalog_repository.py` runs the same assertions against both backends (Postgres via `TEST_DATABASE_URL`, CI `postgres:16` service).
 
 ## Layout
 
