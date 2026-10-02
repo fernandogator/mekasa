@@ -629,9 +629,9 @@ Full contract: `docs/api/receipt-parser.openapi.yaml`. All routes under
 | DELETE | `/product-photos/{photo_id}` | Remove a household's photo; catalog falls back — REQ-RCP-021 AC5 |
 | POST | `/receipts/{rid}/confirm` | Write inventory + purchase events |
 | GET | `/scan-events` | Recent scan events (debug/trash-station log) |
-| GET | `/v1/products/{product_id}` | Shared product read (any signed-in user) |
-| GET | `/v1/products/search?q=&store_chain_id=` | Shared product search for pickers |
-| POST | `/v1/products/{product_id}/corrections` | Propose a correction (fields or image); applied on unverified, conflict on verified — REQ-RCP-019 AC3 |
+| GET | `/v1/catalog/products/{product_id}` | Shared product read (any signed-in user) |
+| GET | `/v1/catalog/products/search?q=&store_chain_id=` | Shared product search for pickers |
+| POST | `/v1/catalog/products/{product_id}/corrections` | Propose a correction (fields or image); applied on unverified, conflict on verified — REQ-RCP-019 AC3 |
 | GET | `/v1/product-photos/{photo_id}` | Stable photo URL (any signed-in user) → 302 to signed URL — REQ-RCP-021 AC3 |
 | POST | `/v1/internal/parse-jobs/{job_id}/run` | Cloud Tasks target (OIDC, not for clients) |
 | POST | `/receipts/scan` | **Deprecated** alias → `wait_seconds=45`, legacy response |
@@ -672,7 +672,8 @@ validation, no secret-like tokens.
 | `test_product_corrections.py` — line PATCH stores overrides + `user_edited_fields`, confirm writes them; corrections on unverified apply + reset status, on verified write `product_conflicts` (incl. `image_url`); no household id in catalog | REQ-RCP-019 |
 | `test_line_item_capture.py` — capture with known UPC links + counts; unknown UPC creates `user_scan` product + enrichment job + scan event; `llm:` line re-keyed; inventory twin sets barcode/product_id/image_url | REQ-RCP-020 |
 | `test_product_photos.py` — upload re-encodes, strips EXIF, caps 1600 px, object name has no household id; GET redirects with ≤ 15 min signed URL; 413/415; unreferenced purge; delete falls back product image | REQ-RCP-021 |
-| `test_products_repository_postgres.py` — skipped unless `TEST_DATABASE_URL` points at a scratch database (CI `services: postgres:16`): applies `0001_shared_products.sql` twice + seed, unique `upc`, alias PK, once-per-household confirmation, verified-evidence `CHECK`, one live enrichment job per product, trigram fuzzy search, §4.1 re-key transaction, `.down.sql` | REQ-RCP-007/009/011/013/014 |
+| `test_catalog_repository.py` (implemented) — parametrised over the in-memory and Postgres backends; the Postgres variant is skipped unless `TEST_DATABASE_URL` is set and otherwise applies `0001` + seed + `0002` first. Covers normalisation, status/confidence rules, §4.1 receipt save + alias never re-pointing, once-per-household confirmation, re-key merge, capture link/create/re-key + photo outcomes, corrections on unverified vs verified, fuzzy search. `test_products_api.py` (implemented) — `/v1/catalog/products` read, search, corrections (auth, hashing, error mapping) | REQ-RCP-007/009/010/011/013/014/019/020 |
+| `test_products_repository_postgres.py` — superseded by `test_catalog_repository.py` above; remaining DDL-only checks (apply twice, `.down.sql`) — skipped unless `TEST_DATABASE_URL` points at a scratch database (CI `services: postgres:16`): applies `0001_shared_products.sql` twice + seed, unique `upc`, alias PK, once-per-household confirmation, verified-evidence `CHECK`, one live enrichment job per product, trigram fuzzy search, §4.1 re-key transaction, `.down.sql` | REQ-RCP-007/009/011/013/014 |
 
 Gemini is behind a `ReceiptLLMClient` protocol; tests use
 `FakeReceiptLLMClient` scripted from `tests/backend/fixtures/gemini/*.json`.
