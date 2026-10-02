@@ -28,7 +28,7 @@ final class AuthErrorFormatterTests: XCTestCase {
         let text = wrapped.localizedDescription
         XCTAssertTrue(text.contains("code=17004"))
         XCTAssertTrue(text.contains("ERROR_INVALID_CREDENTIAL"))
-        XCTAssertTrue(text.contains("Google/Apple"), "should point at provider sign-in: \(text)")
+        XCTAssertTrue(text.contains("signs in with Google"), "should point at provider sign-in: \(text)")
         XCTAssertTrue(text.contains("Forgot password?"), "should point at the reset action: \(text)")
     }
 
