@@ -458,7 +458,7 @@ Acceptance Criteria:
 
 ---
 
-## Receipt Intelligence (Gemini parser) — REQ-RCP-001 … REQ-RCP-018
+## Receipt Intelligence (Gemini parser) — REQ-RCP-001 … REQ-RCP-021
 
 Status: **Draft — phase 1 review** (design: `docs/design/gemini-receipt-parser.md`;
 data model: `backend/firestore/migrations/0001_receipt_parser.md`; API:
@@ -698,3 +698,54 @@ Acceptance Criteria:
 - AC2: Raw output is retained for the audit window (180 days, TTL on `expires_at`; value under review)
 - AC3: Raw output is only readable by household Owners via `GET …/parse-job?include_raw=true`
 - AC4: Raw output never appears in application logs
+
+### REQ-RCP-019: User Corrections to Product Details and Image
+Priority: P0
+Description: **When** a user views a receipt line, an inventory item, or the
+product behind either, the system **shall** let them correct every
+user-facing attribute — name, brand, category, unit size, quantity, price —
+and replace the product image with a photo they take or pick, so that
+mis-parsed or mis-matched products never have to be accepted as-is.
+Design Artifact: design/mockups/AddItems.jsx (confirm haul), design/mockups/ItemDetail.jsx
+Test File: tests/backend/test_product_corrections.py
+Acceptance Criteria:
+- AC1: `PATCH …/line-items/{lid}` accepts `name`, `brand`, `category`, `unit_size`, `qty`, `unit`, `quantity`, `price_paid`, `unit_price`, and `photo_id`; the edit is stored on the line (`user_edited_fields` lists the fields) and is what `confirm` writes to inventory and purchases
+- AC2: A correction of `category` (or any attribute) on a line that is `auto_matched`/`confirmed` keeps the link to the product; the line stores the override and `POST /v1/catalog/products/{id}/corrections` is offered as a separate, explicit step ("also fix it for everyone")
+- AC3: `POST /v1/catalog/products/{id}/corrections` on an `unverified` or `pending` product applies the correction directly, appends `user_scan` to `sources_seen`, resets `confirmation_count` to 0 and `status` to `unverified` when `name`, `brand`, `upc`, or `category` changed; on a `verified` product the row is left untouched and a `product_conflicts` record (`field` ∈ name, brand, unit_size, category, upc, image_url) is written and returned
+- AC4: The product image can be replaced on a line, an inventory item, and a shared product by referencing a `photo_id` from REQ-RCP-021; `image_url` then resolves to `/v1/product-photos/{photo_id}` and `image_source=user_photo`
+- AC5: Corrections are attributed only by `household_hash`; no user id or household id is written to the shared catalog (NFR-002 AC1)
+- AC6: Inventory corrections keep working through the existing `PATCH …/inventory/{item_id}` (`name`, `category`, `quantity`, `price_paid`, `barcode`, `image_url`), which now also accepts `photo_id`
+
+### REQ-RCP-020: Scan and Photograph a Product When the UPC Is Not Discovered
+Priority: P0
+Description: **If** a receipt line has no discovered UPC after parsing,
+alias lookup, scan-event correlation, and enrichment (`matched_product_id`
+is `null` or an `llm:`/`plu:` key), **then** the system **shall** offer the
+user an in-app capture flow: scan the product's barcode with the camera and
+take a picture of the product, and **shall** create or link the shared
+product from that capture.
+Design Artifact: design/mockups/AddItems.jsx (confirm haul, "Scan this product" affordance)
+Test File: tests/backend/test_line_item_capture.py
+Acceptance Criteria:
+- AC1: Every line whose `barcode` is `null` exposes `capture_available=true`; the confirm-haul screen shows a "Scan product" action on such lines (and on `needs_review`/`unresolved` lines regardless of barcode)
+- AC2: `POST …/line-items/{lid}/capture` takes `upc` (required, 8–14 digits) plus optional `photo_id`, `name`, `brand`, `category`, `unit_size`; when a product with that UPC exists the line is linked to it (`match_method=user`, `resolution_status=confirmed`) and REQ-RCP-013 counting applies; when none exists a new `products` row keyed by the UPC is created with `source=user_scan`, `confidence_score=0.9`, attributes from the request falling back to the line's description and category, and `image_url` from `photo_id` when given
+- AC3: When the line previously pointed at an `llm:` product, the capture re-keys it under the REQ-RCP-010 AC2 rules in the same transaction (`superseded_by`, alias repoint, `receipt_line_items` repoint)
+- AC4: The capture records a `scan_events` entry (`context=receipt_capture`, `outcome=found|created`) correlated with the receipt and line, and an `enrichment_jobs` row for the new UPC so store/registry adapters can fill in missing attributes later
+- AC5: Barcode scanning uses the existing camera scanner; the photo step is optional and may be skipped — a capture with `upc` alone is valid
+- AC6: The same capture works from inventory: `POST …/inventory/{item_id}/capture` with the same body links or creates the product and sets `inventory_items.barcode`, `product_id`, `image_url`
+
+### REQ-RCP-021: Product Photo Upload and Storage
+Priority: P0
+Description: The system **shall** accept product photos taken by users,
+store them without personal metadata, and serve them to any signed-in user
+through a stable URL that carries no household or user identifier, so that
+user photos can safely back shared catalog images.
+Design Artifact: —
+Test File: tests/backend/test_product_photos.py
+Acceptance Criteria:
+- AC1: `POST …/households/{hid}/product-photos` accepts a JPEG/PNG/HEIC ≤ 8 MB (base64 JSON or multipart), re-encodes it as JPEG with EXIF/GPS stripped, limits the long edge to 1600 px, and returns `photo_id` (UUID v4) and `image_url=/v1/product-photos/{photo_id}`
+- AC2: Objects are stored in bucket `mekasa-product-photos-<env>` at `product-photos/{photo_id}.jpg` (no household or user id in the object name); the uploading household and uid are recorded only in Firestore `households/{hid}/product_photos/{photo_id}`
+- AC3: `GET /v1/product-photos/{photo_id}` requires a bearer token (any household) and 302-redirects to a signed URL valid ≤ 15 minutes; it never exposes the bucket path or the uploading household
+- AC4: A photo not referenced by any line item, inventory item, or product within 24 h is deleted by the daily cleanup job; referenced photos are retained while referenced
+- AC5: A photo referenced by a shared product (`image_source=user_photo`) stays available even if the uploading household deletes its inventory item; the household can request removal via `DELETE …/product-photos/{photo_id}`, which replaces the catalog image with the next-best source or a category placeholder
+- AC6: Photo bytes never appear in logs; uploads are rejected (`415 unsupported_media_type`, `413 payload_too_large`) rather than truncated

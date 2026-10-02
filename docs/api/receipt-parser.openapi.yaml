@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
   title: Mekasa API — Receipt Intelligence (Gemini parser)
-  version: 0.7.0-draft
+  version: 0.8.0-draft
   summary: Receipt upload, Gemini parse jobs, line-item resolution and confirmation.
   description: |
-    Contract for the receipt-parser feature (spec REQ-RCP-001 … REQ-RCP-018;
+    Contract for the receipt-parser feature (spec REQ-RCP-001 … REQ-RCP-021;
     design `docs/design/gemini-receipt-parser.md`). Draft for review — the
     FastAPI implementation in phase 2 must generate an `/openapi.json` whose
     paths and schemas match this file (a phase-2 CI check diffs them).
@@ -27,6 +27,8 @@ tags:
   - name: line-items
   - name: parse-jobs
   - name: products
+  - name: product-photos
+  - name: inventory
   - name: scan-events
   - name: internal
   - name: deprecated
@@ -141,7 +143,7 @@ paths:
       operationId: deleteReceipt
       summary: Delete an unconfirmed receipt (owner or uploader)
       responses:
-        '204': { description: Deleted (image object removed, job docs retained for audit). }
+        '204': { description: 'Deleted (image object removed, job docs retained for audit).' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
@@ -214,8 +216,15 @@ paths:
     patch:
       tags: [line-items]
       operationId: updateLineItem
-      summary: Edit quantity, price, category, or description before confirm
-      description: 'Satisfies: REQ-005 AC2, REQ-RCP-006 · Spec version: 1.0'
+      summary: Correct any attribute of the line (name, brand, category, size, qty, price, image) before confirm
+      description: |
+        Satisfies: REQ-005 AC2, REQ-RCP-006, REQ-RCP-019 AC1/AC2/AC4 · Spec version: 1.0
+
+        Edits are stored on the line as overrides (`user_edited_fields`) and are
+        what `confirm` writes to inventory and purchases. The link to
+        `matched_product_id` is kept; fixing the shared product is a separate,
+        explicit `POST /v1/catalog/products/{id}/corrections`. `photo_id` must come from
+        `POST …/product-photos`; it sets `image_url` to `/v1/product-photos/{photo_id}`.
       requestBody:
         required: true
         content:
@@ -224,6 +233,66 @@ paths:
       responses:
         '200':
           content: { application/json: { schema: { $ref: '#/components/schemas/LineItem' } } }
+        '400':
+          description: '`unknown_photo_id` (photo not uploaded by this household)'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: '`receipt_confirmed`'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /v1/households/{household_id}/receipts/{receipt_id}/line-items/{line_item_id}/capture:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+      - $ref: '#/components/parameters/ReceiptId'
+      - $ref: '#/components/parameters/LineItemId'
+    post:
+      tags: [line-items]
+      operationId: captureLineItemProduct
+      summary: Scan the product's barcode (and optionally photograph it) when no UPC was discovered
+      description: |
+        Satisfies: REQ-RCP-020 AC2–AC5, REQ-RCP-013 · Spec version: 1.0
+
+        The in-store / at-home fallback for lines with `barcode: null`
+        (`capture_available: true`). The client scans the package barcode with
+        the existing camera scanner and may upload a photo first
+        (`POST …/product-photos`).
+
+        - UPC already in `products` → the line is linked (`match_method: user`,
+          `resolution_status: confirmed`), confirmation counted once per
+          household; a `photo_id` becomes the product image only when the
+          product has none (otherwise it is offered as a correction).
+        - UPC unknown → a new `products` row keyed by the UPC is created with
+          `source: user_scan`, `confidence_score: 0.9`, attributes from the
+          request falling back to the line's `name`/`category`, `image_url`
+          from `photo_id`; an `enrichment_jobs` row is queued.
+        - Line previously on an `llm:` product → re-keyed in the same
+          transaction (REQ-RCP-010 AC2: `superseded_by`, alias repoint).
+
+        Always writes a `scan_events` entry (`context: receipt_capture`,
+        `outcome: found | created`) correlated with this receipt and line.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductCaptureRequest' }
+            examples:
+              scanOnly: { value: { upc: "041220576037" } }
+              scanAndPhoto:
+                value:
+                  upc: "041220576037"
+                  photo_id: "6f1c2d4e-8a3b-4c5d-9e7f-0a1b2c3d4e5f"
+                  name: "H-E-B Organics Cauliflower"
+                  category: Produce
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductCaptureResponse' }
+        '400':
+          description: '`invalid_upc`, `unknown_photo_id`'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
@@ -393,7 +462,10 @@ paths:
               schema: { $ref: '#/components/schemas/ScanEventListResponse' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
-  /v1/products/{product_id}:
+  # Shared catalog lives under /v1/catalog: the pre-existing /v1/products/search
+  # is the Open Food Facts name search for manual/voice entry (REQ-006, REQ-007)
+  # and keeps its path and response shape.
+  /v1/catalog/products/{product_id}:
     parameters:
       - name: product_id
         in: path
@@ -410,7 +482,7 @@ paths:
           content: { application/json: { schema: { $ref: '#/components/schemas/Product' } } }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /v1/products/search:
+  /v1/catalog/products/search:
     get:
       tags: [products]
       operationId: searchProducts
@@ -442,6 +514,182 @@ paths:
                   results:
                     type: array
                     items: { $ref: '#/components/schemas/Product' }
+
+  /v1/catalog/products/{product_id}/corrections:
+    parameters:
+      - name: product_id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [products]
+      operationId: correctProduct
+      summary: Propose a correction to a shared product (name, brand, category, size, UPC, image)
+      description: |
+        Satisfies: REQ-RCP-019 AC3–AC5, REQ-RCP-014 · Spec version: 1.0
+
+        Any signed-in household member; `household_id` in the body is only
+        hashed (`household_hash`) before anything touches the catalog.
+
+        - `unverified` / `pending` product → applied directly, `user_scan`
+          appended to `sources_seen`; if `name`, `brand`, `category` or `upc`
+          changed, `confirmation_count` resets to 0 and `status` to
+          `unverified` (`applied: true`).
+        - `verified` product → row untouched; one `product_conflicts` record
+          per changed field (`field` ∈ name, brand, unit_size, category, upc,
+          image_url) is written and returned (`applied: false`).
+        - `upc` on an `llm:`/`plu:` product → re-key per REQ-RCP-010 AC2.
+        - `photo_id` → `image_url = /v1/product-photos/{photo_id}`,
+          `image_source = user_photo` (direct on unverified; conflict on verified).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductCorrectionRequest' }
+            examples:
+              fixCategory:
+                value: { household_id: "hh_123", category: "Produce" }
+              replaceImage:
+                value: { household_id: "hh_123", photo_id: "6f1c2d4e-8a3b-4c5d-9e7f-0a1b2c3d4e5f" }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductCorrectionResponse' }
+        '400':
+          description: '`no_changes`, `invalid_upc`, `unknown_photo_id`'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: '`upc_taken` (another product already owns that UPC — use `superseded_by` flow)'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /v1/households/{household_id}/inventory/{item_id}/capture:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+      - name: item_id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [inventory]
+      operationId: captureInventoryItemProduct
+      summary: Scan + photograph an inventory item that has no product/barcode
+      description: |
+        Satisfies: REQ-RCP-020 AC6 · Spec version: 1.0
+
+        Same body and catalog semantics as the line-item `capture`; additionally
+        sets `inventory_items.barcode`, `product_id`, `image_url`. Writes a
+        `scan_events` entry with `context: inventory_capture`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductCaptureRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductCaptureResponse' }
+        '400':
+          description: '`invalid_upc`, `unknown_photo_id`'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/households/{household_id}/product-photos:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+    post:
+      tags: [product-photos]
+      operationId: uploadProductPhoto
+      summary: Upload a product photo taken by the user
+      description: |
+        Satisfies: REQ-RCP-021 AC1/AC2/AC6 · Spec version: 1.0
+
+        Accepts JPEG/PNG/HEIC ≤ 8 MB as base64 JSON or multipart. The server
+        re-encodes to JPEG, strips EXIF/GPS, limits the long edge to 1600 px and
+        stores `product-photos/{photo_id}.jpg` in `mekasa-product-photos-<env>`.
+        The object name carries no household or user id; ownership is recorded
+        only in Firestore `households/{hid}/product_photos/{photo_id}`.
+        Unreferenced photos are deleted after 24 h (AC4).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [image_base64]
+              additionalProperties: false
+              properties:
+                image_base64: { type: string, contentEncoding: base64 }
+                content_type:
+                  type: string
+                  enum: [image/jpeg, image/png, image/heic]
+                  default: image/jpeg
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductPhoto' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413':
+          description: '`payload_too_large` (> 8 MB)'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '415':
+          description: '`unsupported_media_type`'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /v1/households/{household_id}/product-photos/{photo_id}:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+      - $ref: '#/components/parameters/PhotoId'
+    delete:
+      tags: [product-photos]
+      operationId: deleteProductPhoto
+      summary: Remove a photo this household uploaded
+      description: |
+        Satisfies: REQ-RCP-021 AC5 · Spec version: 1.0
+
+        Deletes the object and the ownership record. Lines and inventory items
+        of this household that referenced it fall back to the product image;
+        a shared product whose `image_source` was this photo gets the
+        next-best source (store API / Open Food Facts) or a category
+        placeholder.
+      responses:
+        '204': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/product-photos/{photo_id}:
+    parameters:
+      - $ref: '#/components/parameters/PhotoId'
+    get:
+      tags: [product-photos]
+      operationId: getProductPhoto
+      summary: Resolve a product photo (any signed-in user)
+      description: |
+        Satisfies: REQ-RCP-021 AC3 · Spec version: 1.0
+
+        The stable URL stored in `products.image_url`, `line_items.image_url`
+        and `inventory_items.image_url` for user photos. Requires a bearer
+        token (any household) and redirects to a signed URL valid ≤ 15 min.
+        Never reveals the bucket path or the uploading household.
+      responses:
+        '302':
+          description: Redirect to a short-lived signed URL
+          headers:
+            Location: { schema: { type: string, format: uri } }
+            Cache-Control: { schema: { type: string }, description: '`private, max-age=600`' }
+        '401': { description: Missing/invalid bearer token }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /v1/internal/parse-jobs/{job_id}/run:
     parameters:
@@ -529,6 +777,11 @@ components:
       in: path
       required: true
       schema: { type: string }
+    PhotoId:
+      name: photo_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
 
   responses:
     Forbidden:
@@ -676,7 +929,30 @@ components:
         barcode:
           type: [string, 'null']
           description: UPC of the matched product, when known.
-        image_url: { type: string }
+        brand: { type: [string, 'null'] }
+        unit_size: { type: [string, 'null'] }
+        image_url:
+          type: string
+          description: |
+            User photo (`/v1/product-photos/{photo_id}`) when the line has one,
+            else the product image, else a category placeholder.
+        image_source: { $ref: '#/components/schemas/ImageSource' }
+        photo_id:
+          type: [string, 'null']
+          format: uuid
+          description: Set when the household attached its own photo to this line (REQ-RCP-019 AC4).
+        capture_available:
+          type: boolean
+          description: |
+            True when `barcode` is null or `resolution_status` is
+            `needs_review`/`unresolved`: the client offers "Scan product"
+            (REQ-RCP-020 AC1).
+        user_edited_fields:
+          type: array
+          items:
+            type: string
+            enum: [name, brand, category, unit_size, qty, unit, quantity, price_paid, unit_price, photo_id]
+          description: Fields the household overrode via PATCH (REQ-RCP-019 AC1).
         identified:
           type: boolean
           description: '`resolution_status` in {auto_matched, confirmed}.'
@@ -699,11 +975,132 @@ components:
       type: object
       additionalProperties: false
       minProperties: 1
+      description: |
+        Any attribute of the line can be corrected (REQ-RCP-019 AC1). `photo_id`
+        references an upload from `POST …/product-photos`; `null` removes the
+        household's photo and falls back to the product image.
       properties:
         name: { type: string, minLength: 1, maxLength: 120 }
+        brand: { type: [string, 'null'], maxLength: 80 }
         category: { type: string, minLength: 1, maxLength: 60 }
+        unit_size: { type: [string, 'null'], maxLength: 40 }
+        qty: { type: number, exclusiveMinimum: 0, maximum: 9999 }
+        unit: { type: [string, 'null'], maxLength: 16 }
         quantity: { type: integer, minimum: 1, maximum: 9999 }
         price_paid: { type: number, minimum: 0 }
+        unit_price: { type: [number, 'null'], minimum: 0 }
+        photo_id: { type: [string, 'null'], format: uuid }
+
+    ProductCaptureRequest:
+      type: object
+      additionalProperties: false
+      required: [upc]
+      description: |
+        In-store capture (REQ-RCP-020 AC2): the scanned barcode plus an
+        optional photo and attribute overrides. Missing attributes fall back
+        to the line / inventory item (`name`, `category`) when a product has to
+        be created.
+      properties:
+        upc: { type: string, pattern: '^[0-9]{8,14}$' }
+        photo_id: { type: [string, 'null'], format: uuid }
+        name: { type: [string, 'null'], minLength: 1, maxLength: 120 }
+        brand: { type: [string, 'null'], maxLength: 80 }
+        category: { type: [string, 'null'], minLength: 1, maxLength: 60 }
+        unit_size: { type: [string, 'null'], maxLength: 40 }
+
+    ProductCaptureResponse:
+      type: object
+      required: [outcome, product, scan_event_id, confirmation_counted]
+      properties:
+        outcome:
+          type: string
+          enum: [linked, created, rekeyed]
+          description: '`linked` = UPC already known; `created` = new `user_scan` product; `rekeyed` = previous `llm:` product superseded.'
+        product: { $ref: '#/components/schemas/Product' }
+        line_item:
+          oneOf: [{ $ref: '#/components/schemas/LineItem' }, { type: 'null' }]
+          description: Present for the line-item variant.
+        inventory_item_id:
+          type: [string, 'null']
+          description: Present for the inventory variant.
+        scan_event_id: { type: string }
+        confirmation_counted: { type: boolean }
+        enrichment_job_id:
+          type: [string, 'null']
+          description: Queued for `created`/`rekeyed` so store/registry adapters can fill gaps (REQ-RCP-020 AC4).
+        photo_applied_as:
+          type: string
+          enum: [product_image, line_image, correction_proposed, none]
+          description: |
+            Where the submitted `photo_id` ended up: the product had no image
+            (`product_image`), only this household's line (`line_image`), or a
+            `product_conflicts` record because the product is verified
+            (`correction_proposed`).
+        conflict:
+          oneOf: [{ $ref: '#/components/schemas/ProductConflict' }, { type: 'null' }]
+
+    ProductCorrectionRequest:
+      type: object
+      additionalProperties: false
+      required: [household_id]
+      minProperties: 2
+      description: |
+        REQ-RCP-019 AC3. At least one correctable field besides `household_id`.
+        `household_id` is hashed server-side (`household_hash`); it is never
+        stored in the catalog. `source_line_item` lets the server stamp
+        `receipt_id`/`line_item_id` on a resulting `product_conflicts` row.
+      properties:
+        household_id: { type: string }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        brand: { type: [string, 'null'], maxLength: 80 }
+        category: { type: string, minLength: 1, maxLength: 60 }
+        unit_size: { type: [string, 'null'], maxLength: 40 }
+        upc: { type: string, pattern: '^[0-9]{8,14}$' }
+        photo_id: { type: string, format: uuid }
+        source_line_item:
+          type: [object, 'null']
+          additionalProperties: false
+          required: [receipt_id, line_item_id]
+          properties:
+            receipt_id: { type: string }
+            line_item_id: { type: string }
+
+    ProductCorrectionResponse:
+      type: object
+      required: [applied, product, conflicts]
+      properties:
+        applied:
+          type: boolean
+          description: True when the product row was changed; false when the product is `verified` and conflicts were recorded instead.
+        product: { $ref: '#/components/schemas/Product' }
+        conflicts:
+          type: array
+          items: { $ref: '#/components/schemas/ProductConflict' }
+        status_reset:
+          type: boolean
+          description: True when `confirmation_count` was reset to 0 / `status` to `unverified` because an identity field changed.
+
+    ProductPhoto:
+      type: object
+      required: [photo_id, image_url, width, height, bytes, created_at]
+      properties:
+        photo_id: { type: string, format: uuid }
+        image_url:
+          type: string
+          description: Stable URL `/v1/product-photos/{photo_id}` (REQ-RCP-021 AC1).
+        width: { type: integer }
+        height: { type: integer }
+        bytes: { type: integer, description: Size after re-encoding. }
+        created_at: { type: string, format: date-time }
+        expires_at:
+          type: [string, 'null']
+          format: date-time
+          description: Set until the photo is referenced (24 h cleanup, AC4); null once referenced.
+
+    ImageSource:
+      type: string
+      enum: [user_photo, store_api, openfoodfacts, gs1_registry, placeholder]
+      description: Provenance of `image_url`; `user_photo` means a `/v1/product-photos/{photo_id}` URL.
 
     LineItemResolveRequest:
       type: object
@@ -868,6 +1265,8 @@ components:
         category: { type: string }
         unit_size: { type: [string, 'null'] }
         image_url: { type: [string, 'null'] }
+        image_source:
+          oneOf: [{ $ref: '#/components/schemas/ImageSource' }, { type: 'null' }]
         source: { $ref: '#/components/schemas/ProductSource' }
         confidence_score: { type: number, minimum: 0, maximum: 1 }
         confirmation_count: { type: integer, minimum: 0 }
@@ -880,7 +1279,7 @@ components:
       properties:
         id: { type: string }
         product_id: { type: string }
-        field: { type: string, enum: [name, brand, unit_size, category, upc] }
+        field: { type: string, enum: [name, brand, unit_size, category, upc, image_url] }
         verified_value: { type: string }
         observed_value: { type: string }
         status: { type: string, enum: [open, dismissed, accepted] }
@@ -893,8 +1292,8 @@ components:
         upc: { type: string }
         scanned_by_uid: { type: string }
         scanned_at: { type: string, format: date-time }
-        context: { type: string, enum: [add_items, trash_station, manual_entry] }
-        outcome: { type: string, enum: [found, unknown, consumed] }
+        context: { type: string, enum: [add_items, trash_station, manual_entry, receipt_capture, inventory_capture] }
+        outcome: { type: string, enum: [found, unknown, consumed, created] }
         product_name_at_scan: { type: [string, 'null'] }
         product_id: { type: [string, 'null'] }
         correlated_receipt_id: { type: [string, 'null'] }
