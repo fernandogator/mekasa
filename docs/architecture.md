@@ -513,7 +513,7 @@ Rules embedded in the decision:
   attribute (name, brand, category, size, qty, price) and the image can
   be corrected per line / inventory item without touching the catalog,
   and proposed for the shared product through
-  `POST /v1/products/{id}/corrections` — applied on `unverified`
+  `POST /v1/catalog/products/{id}/corrections` — applied on `unverified`
   rows, filed as `product_conflicts` on `verified` rows (REQ-RCP-019).
   When no UPC is discovered the user scans the barcode and optionally
   photographs the product; the capture creates or re-keys the shared

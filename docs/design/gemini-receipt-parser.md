@@ -406,7 +406,7 @@ a picture themselves. Three building blocks:
 |---|---|---|---|
 | Line override | `line_items.{name,brand,category,unit_size,qty,unit,quantity,price_paid,unit_price,photo_id}` + `user_edited_fields[]` (Firestore) | this household; `confirm` writes these values to inventory/purchases | `PATCH …/line-items/{lid}` |
 | Inventory edit | `inventory_items` (Firestore) — existing `PATCH`, now also `photo_id` | this household | `PATCH …/inventory/{item_id}` |
-| Shared product correction | `products` (Postgres) | everyone | `POST /v1/products/{id}/corrections` |
+| Shared product correction | `products` (Postgres) | everyone | `POST /v1/catalog/products/{id}/corrections` |
 
 A line edit keeps `matched_product_id` — correcting "Dairy → Produce" on
 *my* receipt should not silently rewrite the shared catalog. The client offers
