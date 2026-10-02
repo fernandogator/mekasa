@@ -28,11 +28,14 @@ class Settings(BaseSettings):
     gemini_receipt_model: str = "gemini-3.1-pro-preview"
     gemini_location: str = "global"
     gemini_timeout_seconds: float = 45.0
-    # Postgres (Cloud SQL) for data shared across all accounts: per-store item
-    # / UPC tables. Unset → in-memory (local + tests).
-    # Cloud Run: postgresql://USER:PASS@/DB?host=/cloudsql/PROJECT:REGION:INSTANCE
+    # Shared product catalog (ADR-008). Cloud Run:
+    # postgresql://mekasa_api:PASS@/mekasa?host=/cloudsql/PROJECT:REGION:mekasa-pg
+    # Injected from Secret Manager `mekasa-database-url`; unset → in-memory catalog.
     database_url: str | None = None
     database_pool_size: int = 5
+    # Server salt for household_hash = SHA-256(household_id + salt) (NFR-002 AC1).
+    # Must be stable per environment; from Secret Manager in prod.
+    catalog_household_salt: str = "mekasa-local-salt"
 
 
 @lru_cache

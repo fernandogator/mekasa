@@ -18,6 +18,7 @@ Phase 1 deliverables are in this PR. Nothing under `backend/app/` changes yet.
 |---|-------------|-------|
 | 1a | Household data model + migration `0001_receipt_parser` (Firestore) | `backend/firestore/migrations/0001_receipt_parser.md`, `backend/firestore/schema/*.schema.json`, `backend/firestore/firestore.indexes.json` |
 | 1b | Shared catalog data model + migration `0001_shared_products` (Cloud SQL Postgres) | `backend/postgres/migrations/0001_shared_products.sql` (+ `.down.sql`), `backend/postgres/seed/store_chains.sql`, `backend/postgres/README.md` |
+| 1c | User corrections, in-store capture, product photos (REQ-RCP-019 … 021) | §3.11, migration `backend/postgres/migrations/0002_product_corrections.sql` (+ `.down.sql`), Firestore `product_photos` + line-item override fields |
 | 3 | API contract (OpenAPI 3.1) | `docs/api/receipt-parser.openapi.yaml` |
 | — | Gemini prompt + response schema contract (v1) | `backend/prompts/receipt_parse/v1/` |
 | — | Spec entries REQ-RCP-001 … 018, ADR-007, ADR-008, traceability rows | `docs/spec-v1.0.md`, `docs/architecture.md`, `traceability/matrix.*` |
@@ -391,6 +392,104 @@ trash_station`, `outcome: consumed|unknown`). The existing
   `UPCITEMDB_API_KEY` and the Kroger client credentials stay in Secret Manager
   (ADR-006, §3.6).
 
+### 3.11 User corrections and in-store capture (REQ-RCP-019 … REQ-RCP-021)
+
+The H-E-B fixture shows why this exists: of 40 lines, 11 resolve to the right
+UPC automatically, ~12 land on the right brand/wrong variant or a wrong
+product, and 17 get nothing (chain prints no codes; produce has no UPC). The
+user must be able to (a) fix anything we got wrong and (b) supply the UPC and
+a picture themselves. Three building blocks:
+
+**1. Corrections are layered, never destructive.**
+
+| Layer | Where | Who sees it | Endpoint |
+|---|---|---|---|
+| Line override | `line_items.{name,brand,category,unit_size,qty,unit,quantity,price_paid,unit_price,photo_id}` + `user_edited_fields[]` (Firestore) | this household; `confirm` writes these values to inventory/purchases | `PATCH …/line-items/{lid}` |
+| Inventory edit | `inventory_items` (Firestore) — existing `PATCH`, now also `photo_id` | this household | `PATCH …/inventory/{item_id}` |
+| Shared product correction | `products` (Postgres) | everyone | `POST /v1/catalog/products/{id}/corrections` |
+
+A line edit keeps `matched_product_id` — correcting "Dairy → Produce" on
+*my* receipt should not silently rewrite the shared catalog. The client offers
+"Also fix it for everyone" which calls the corrections endpoint. That endpoint
+follows REQ-RCP-014's trust model: `unverified`/`pending` rows are updated in
+place (`sources_seen += user_scan`; if `name`/`brand`/`category`/`upc`
+changed, `confirmation_count = 0`, `status = unverified` so previous
+confirmations don't vouch for new facts); `verified` rows are never touched —
+each changed field becomes a `product_conflicts` row (`field` now includes
+`image_url`), attributed only by `household_hash`.
+
+**2. Capture = scan + optional photo, one transaction.**
+
+`POST …/line-items/{lid}/capture { upc, photo_id?, name?, brand?, category?, unit_size? }`
+(and the inventory twin `POST …/inventory/{item_id}/capture`):
+
+```
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext($store_chain_id));
+-- (a) UPC known → link
+SELECT product_id, image_url, status FROM products WHERE upc = $upc;
+--   found: outcome = linked; confirmation per REQ-RCP-013; if image_url IS NULL
+--   and $photo_id given → UPDATE products SET image_url = '/v1/product-photos/'||$photo_id,
+--   image_source = 'user_photo'; if verified and image present → product_conflicts(image_url)
+-- (b) UPC unknown → create
+INSERT INTO products (product_id, code_kind, upc, store_chain_id, name, normalized_name, brand,
+                      category, unit_size, image_url, image_source, source, sources_seen,
+                      confidence_score, confirmation_count, status)
+VALUES ($upc, 'upc', $upc, $chain, coalesce($name, $line.name), catalog_normalize_name(...),
+        $brand, coalesce($category, $line.category), $unit_size,
+        CASE WHEN $photo_id IS NULL THEN NULL ELSE '/v1/product-photos/'||$photo_id END,
+        CASE WHEN $photo_id IS NULL THEN NULL ELSE 'user_photo' END,
+        'user_scan', '{user_scan}', 0.9, 1, 'unverified');
+INSERT INTO product_confirmations (product_id, household_hash) VALUES ($upc, $hh) ON CONFLICT DO NOTHING;
+INSERT INTO product_aliases (store_chain_id, alias, product_id) VALUES ($chain, $line.normalized, $upc)
+  ON CONFLICT (store_chain_id, alias) DO NOTHING;
+INSERT INTO enrichment_jobs (product_id, trigger, chain)   -- UPC is known: verify + fill gaps
+VALUES ($upc, 'user_capture', ARRAY['store_api', 'openfoodfacts', 'gs1_verify'])
+  ON CONFLICT DO NOTHING;              -- adapters fill brand/unit_size/better image later
+-- (c) line was on an llm: product → re-key (REQ-RCP-010 AC2, same statements as §4.1)
+UPDATE products SET superseded_by = $upc, status_changed_at = now() WHERE product_id = $llm_id;
+UPDATE product_aliases SET product_id = $upc WHERE product_id = $llm_id;
+COMMIT;
+```
+
+Then Firestore (outside the SQL transaction, idempotent on retry): line
+`matched_product_id = $upc`, `barcode = $upc`, `match_method = user`,
+`resolution_status = confirmed`, `photo_id` when given; a `scan_events` doc
+(`context: receipt_capture | inventory_capture`, `outcome: found | created`,
+`correlated_receipt_id/line_item_id`). The client gets
+`outcome ∈ {linked, created, rekeyed}` and `photo_applied_as` so it can tell
+the user whether their photo became the catalog image, stayed on their line
+only, or was filed as a correction against a verified product.
+
+`capture_available` is computed on read (`barcode IS NULL OR
+resolution_status IN (needs_review, unresolved)`) so the confirm-haul screen
+can render the "Scan product" affordance without a second call. The scanner
+is the existing barcode camera (Add Items / trash station); the photo step
+reuses the receipt camera with a square guide.
+
+**3. Photos are first-class, household-owned, catalog-safe.**
+
+`POST …/households/{hid}/product-photos` → server re-encodes to JPEG (EXIF/GPS
+stripped, long edge ≤ 1600 px), writes `product-photos/{photo_id}.jpg` to
+bucket `mekasa-product-photos-<env>` (uniform access, no public read), and
+records ownership in Firestore `households/{hid}/product_photos/{photo_id}`
+(`uploaded_by_uid`, `created_at`, `expires_at` = +24 h until referenced,
+`referenced_by[]`). The URL stored everywhere — line, inventory item, shared
+product — is `/v1/product-photos/{photo_id}`: stable, auth-gated (any
+signed-in user), redirecting to a ≤ 15 min signed URL. The object name and
+URL carry no household or user id, so a user photo can back a shared
+`products.image_url` without breaking NFR-002 AC1. `DELETE …/product-photos/{photo_id}`
+removes the object; a shared product that used it falls back to the next
+source (`enrichment_jobs` re-queued with trigger `image_removed`) or a
+category placeholder. Unreferenced photos are purged by the same daily
+cleanup job that expires `enrichment_jobs`.
+
+Why not public-read objects (as Open Food Facts images are)? A user's kitchen
+counter or hand is routinely in frame. The redirect costs one extra request
+per image and lets us revoke, resize and log access centrally. Why not store
+photos per household in Firestore/`mekasa-receipts-<env>`? Those paths embed
+`households/{hid}` and would leak a household id into the catalog.
+
 ---
 
 ## 4. Data model — summary (Firestore for household data, Cloud SQL for the shared catalog)
@@ -409,11 +508,12 @@ documentation).
 | Kickoff table | Location | Notes |
 |---|---|---|
 | `stores` | existing `households.store_ids` (Places ids, Firestore) **+ new** table `store_chains` (Postgres) | Chain is what the prompt, matching, and `store_api` adapter selection need; Places store keeps the physical location for REQ-015 AC3. Seed: `backend/postgres/seed/store_chains.sql` |
-| `products` | **new** table `products` (Postgres) | `product_id` = UPC when known, else `plu:<code>` / `llm:<sha1>` — enforced by a `CHECK`; `UNIQUE (upc)`; kickoff fields + `brand`, `unit_size`, `image_url`, `dispute_count`, provenance, `superseded_by` |
+| `products` | **new** table `products` (Postgres) | `product_id` = UPC when known, else `plu:<code>` / `llm:<sha1>` — enforced by a `CHECK`; `UNIQUE (upc)`; kickoff fields + `brand`, `unit_size`, `image_url`, `image_source` (migration `0002`), `dispute_count`, provenance, `superseded_by` |
 | — | **new** table `product_aliases` (Postgres) | `(store_chain_id, alias) → product_id`; alias must equal `catalog_normalize_name(alias)`; trigram index |
 | — | **new** table `product_confirmations` (Postgres) | `(product_id, household_hash)` primary key = once per household |
 | `receipts` | **new** `households/{hid}/receipts/{rid}` (Firestore) | household-scoped |
-| `receipt_line_items` | **new** `households/{hid}/receipts/{rid}/line_items/{lid}` (Firestore) | `raw_text`, `price`, `qty`, `matched_product_id` (nullable key into `products`) + resolution fields |
+| `receipt_line_items` | **new** `households/{hid}/receipts/{rid}/line_items/{lid}` (Firestore) | `raw_text`, `price`, `qty`, `matched_product_id` (nullable key into `products`) + resolution fields + user overrides (`brand`, `unit_size`, `photo_id`, `user_edited_fields[]`, §3.11) |
+| — | **new** `households/{hid}/product_photos/{photo_id}` (Firestore) | ownership record for user product photos (`uploaded_by_uid`, `expires_at`, `referenced_by[]`); the object itself is `product-photos/{photo_id}.jpg` in `mekasa-product-photos-<env>` (§3.11) |
 | `scan_events` | **new** `households/{hid}/scan_events/{id}` (Firestore) | supersedes in-memory unknown-barcode log |
 | `llm_parse_jobs` | **new** `llm_parse_jobs/{job_id}` (Firestore, top-level) | ops need cross-household queries by status/prompt_version; raw Gemini output lives here / in GCS |
 | — | **new** tables `enrichment_jobs`, `enrichment_steps`, `product_conflicts` (Postgres) | dispatcher state and REQ-RCP-014 records; both hang off `products` with foreign keys |
@@ -522,11 +622,17 @@ Full contract: `docs/api/receipt-parser.openapi.yaml`. All routes under
 | GET | `/receipts/{rid}/line-items/{lid}/candidates` | Product candidates for the picker (`q` override) |
 | POST | `/receipts/{rid}/line-items/{lid}/resolve` | Link to product / UPC / candidate / manual entry → `confirmed` |
 | POST | `/receipts/{rid}/line-items/{lid}/reject` | Not a product / skip |
-| PATCH | `/receipts/{rid}/line-items/{lid}` | Edit qty, price, category, description before confirm |
+| PATCH | `/receipts/{rid}/line-items/{lid}` | Correct any attribute (name, brand, category, size, qty, price, photo) before confirm — REQ-RCP-019 |
+| POST | `/receipts/{rid}/line-items/{lid}/capture` | Scan barcode (+ optional photo) when no UPC was discovered → link / create / re-key product — REQ-RCP-020 |
+| POST | `/inventory/{item_id}/capture` | Same capture from an inventory item — REQ-RCP-020 AC6 |
+| POST | `/product-photos` | Upload a user product photo (EXIF stripped, 24 h unless referenced) — REQ-RCP-021 |
+| DELETE | `/product-photos/{photo_id}` | Remove a household's photo; catalog falls back — REQ-RCP-021 AC5 |
 | POST | `/receipts/{rid}/confirm` | Write inventory + purchase events |
 | GET | `/scan-events` | Recent scan events (debug/trash-station log) |
-| GET | `/v1/products/{product_id}` | Shared product read (any signed-in user) |
-| GET | `/v1/products/search?q=&store_chain_id=` | Shared product search for pickers |
+| GET | `/v1/catalog/products/{product_id}` | Shared product read (any signed-in user) |
+| GET | `/v1/catalog/products/search?q=&store_chain_id=` | Shared product search for pickers |
+| POST | `/v1/catalog/products/{product_id}/corrections` | Propose a correction (fields or image); applied on unverified, conflict on verified — REQ-RCP-019 AC3 |
+| GET | `/v1/product-photos/{photo_id}` | Stable photo URL (any signed-in user) → 302 to signed URL — REQ-RCP-021 AC3 |
 | POST | `/v1/internal/parse-jobs/{job_id}/run` | Cloud Tasks target (OIDC, not for clients) |
 | POST | `/receipts/scan` | **Deprecated** alias → `wait_seconds=45`, legacy response |
 
@@ -563,7 +669,11 @@ validation, no secret-like tokens.
 | `test_receipt_confirm_writes_inventory.py` | REQ-RCP-015, REQ-005 AC3, REQ-015 |
 | `test_enrichment_dispatcher.py` — adapter order + stop-at-first-authoritative | REQ-RCP-010 |
 | `test_prompt_contract.py` — schema meta-valid, fixtures validate, placeholder whitelist | REQ-RCP-003/017 |
-| `test_products_repository_postgres.py` — skipped unless `TEST_DATABASE_URL` points at a scratch database (CI `services: postgres:16`): applies `0001_shared_products.sql` twice + seed, unique `upc`, alias PK, once-per-household confirmation, verified-evidence `CHECK`, one live enrichment job per product, trigram fuzzy search, §4.1 re-key transaction, `.down.sql` | REQ-RCP-007/009/011/013/014 |
+| `test_product_corrections.py` — line PATCH stores overrides + `user_edited_fields`, confirm writes them; corrections on unverified apply + reset status, on verified write `product_conflicts` (incl. `image_url`); no household id in catalog | REQ-RCP-019 |
+| `test_line_item_capture.py` — capture with known UPC links + counts; unknown UPC creates `user_scan` product + enrichment job + scan event; `llm:` line re-keyed; inventory twin sets barcode/product_id/image_url | REQ-RCP-020 |
+| `test_product_photos.py` — upload re-encodes, strips EXIF, caps 1600 px, object name has no household id; GET redirects with ≤ 15 min signed URL; 413/415; unreferenced purge; delete falls back product image | REQ-RCP-021 |
+| `test_catalog_repository.py` (implemented) — parametrised over the in-memory and Postgres backends; the Postgres variant is skipped unless `TEST_DATABASE_URL` is set and otherwise applies `0001` + seed + `0002` first. Covers normalisation, status/confidence rules, §4.1 receipt save + alias never re-pointing, once-per-household confirmation, re-key merge, capture link/create/re-key + photo outcomes, corrections on unverified vs verified, fuzzy search. `test_products_api.py` (implemented) — `/v1/catalog/products` read, search, corrections (auth, hashing, error mapping) | REQ-RCP-007/009/010/011/013/014/019/020 |
+| `test_products_repository_postgres.py` — superseded by `test_catalog_repository.py` above; remaining DDL-only checks (apply twice, `.down.sql`) — skipped unless `TEST_DATABASE_URL` points at a scratch database (CI `services: postgres:16`): applies `0001_shared_products.sql` twice + seed, unique `upc`, alias PK, once-per-household confirmation, verified-evidence `CHECK`, one live enrichment job per product, trigram fuzzy search, §4.1 re-key transaction, `.down.sql` | REQ-RCP-007/009/011/013/014 |
 
 Gemini is behind a `ReceiptLLMClient` protocol; tests use
 `FakeReceiptLLMClient` scripted from `tests/backend/fixtures/gemini/*.json`.

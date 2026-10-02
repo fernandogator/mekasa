@@ -678,3 +678,83 @@ class SpendingReportResponse(BaseModel):
     by_category: list[SpendingCategoryTotal]
     events: list[PurchaseEventResponse]
 
+
+
+# ---------------------------------------------------------------------------
+# Shared product catalog (docs/api/receipt-parser.openapi.yaml `products` tag, /v1/catalog)
+# ---------------------------------------------------------------------------
+
+CatalogProductStatus = Literal["unverified", "pending", "verified"]
+CatalogProductSource = Literal["user_scan", "store_api", "gs1_registry", "llm_ocr"]
+CatalogImageSource = Literal["user_photo", "store_api", "openfoodfacts", "gs1_registry", "placeholder"]
+
+
+class CatalogProductResponse(BaseModel):
+    """
+    Satisfies: REQ-RCP-011
+    Spec version: 1.0
+
+    OpenAPI `Product` (served under `/v1/catalog/products`). Any signed-in user may read it; it carries no household data.
+    """
+
+    id: str
+    upc: str | None = None
+    store_chain_id: str
+    name: str
+    brand: str | None = None
+    category: str
+    unit_size: str | None = None
+    image_url: str | None = None
+    image_source: CatalogImageSource | None = None
+    source: CatalogProductSource
+    confidence_score: float = Field(ge=0, le=1)
+    confirmation_count: int = Field(ge=0)
+    status: CatalogProductStatus
+    superseded_by: str | None = None
+
+
+class CatalogSearchResponse(BaseModel):
+    query: str
+    results: list[CatalogProductResponse]
+
+
+class ProductConflictResponse(BaseModel):
+    """OpenAPI `ProductConflict` (REQ-RCP-014, REQ-RCP-019 AC3)."""
+
+    id: str
+    product_id: str
+    field: Literal["name", "brand", "unit_size", "category", "upc", "image_url"]
+    verified_value: str
+    observed_value: str
+    status: Literal["open", "dismissed", "accepted"]
+
+
+class ProductCorrectionSourceLine(BaseModel):
+    receipt_id: str
+    line_item_id: str
+
+
+class ProductCorrectionRequest(BaseModel):
+    """
+    Satisfies: REQ-RCP-019 AC3–AC5
+    Spec version: 1.0
+
+    `household_id` is hashed server-side before anything touches the catalog.
+    """
+
+    household_id: str = Field(min_length=1)
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    brand: str | None = Field(default=None, max_length=80)
+    category: str | None = Field(default=None, min_length=1, max_length=60)
+    unit_size: str | None = Field(default=None, max_length=40)
+    upc: str | None = Field(default=None, pattern=r"^[0-9]{8,14}$")
+    source_line_item: ProductCorrectionSourceLine | None = None
+
+
+class ProductCorrectionResponse(BaseModel):
+    """OpenAPI `ProductCorrectionResponse`."""
+
+    applied: bool
+    product: CatalogProductResponse
+    conflicts: list[ProductConflictResponse] = Field(default_factory=list)
+    status_reset: bool = False
