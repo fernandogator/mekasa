@@ -27,6 +27,7 @@ tags:
   - name: line-items
   - name: parse-jobs
   - name: products
+  - name: item-photos
   - name: product-photos
   - name: inventory
   - name: scan-events

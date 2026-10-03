@@ -8,7 +8,10 @@ import FirebaseAuth
 /// Spec version: 1.0
 @MainActor
 final class AppSession: ObservableObject {
-    @Published var idToken: String?
+    @Published var idToken: String? {
+        // REQ-INV-019 AC8: private item photos are fetched with this token.
+        didSet { PrivateImageAuth.shared.token = idToken }
+    }
     @Published var displayName: String?
     @Published var email: String?
     /// Firebase Auth uid for the signed-in user (nil in pure preview until set).

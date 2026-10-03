@@ -10,10 +10,13 @@ struct LocalItemCaptureResult: Equatable {
 }
 
 /// User item photos: replace any item picture and in-store captures (REQ-004 / REQ-005).
+/// Satisfies: REQ-INV-019 (Replace an Item Picture With a Private Photo)
+/// Acceptance criteria: AC1, AC4, AC8
 /// Spec version: 1.0
 extension AppSession {
-    /// Upload the user's own picture and return its URL for `imageURL`.
-    /// Preview / UI-test sessions return a local data URL (never synced).
+    /// Upload the user's own picture to the household's private photo store and
+    /// return its URL for `imageURL`. The URL is only readable by household
+    /// members (REQ-INV-019). Preview / UI-test sessions return a local data URL.
     func uploadItemPhoto(_ image: UIImage) async -> String? {
         guard let jpeg = ItemPhotoEncoding.jpegData(from: image) else {
             lastError = "Couldn’t encode that photo."
