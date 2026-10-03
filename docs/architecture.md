@@ -502,7 +502,8 @@ Rules embedded in the decision:
   `product_confirmations` and `product_conflicts`; a `CHECK` enforces
   the hash shape.
 - Enumerations are `TEXT` + named `CHECK` constraints (not
-  `CREATE TYPE`) so values can be added in one transaction.
+  `CREATE TYPE`) so values can be added in one transaction; revisited
+  in [ADR-009](adr/ADR-009-enum-strategy.md).
 - Provenance weights: `gs1_registry 0.9 > store_api 0.8 > user_scan
   0.7 > llm_ocr 0.4`; only GS1-verified and official-store-API hits
   are authoritative for status transitions.
