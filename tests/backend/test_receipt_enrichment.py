@@ -15,6 +15,7 @@ os.environ["HOUSEHOLD_PERSISTENCE"] = "memory"
 def client(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("ALLOW_TEST_AUTH", "true")
     monkeypatch.setenv("HOUSEHOLD_PERSISTENCE", "memory")
+    monkeypatch.setenv("RECEIPT_LLM_ENABLED", "false")
     from app.config import get_settings
     from app.repository import reset_household_repository
 

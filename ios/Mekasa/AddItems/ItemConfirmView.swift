@@ -216,10 +216,14 @@ struct ItemConfirmView: View {
     var title: String = "Confirm items"
     /// REQ-021 warnings returned by the barcode lookup, keyed by draft id.
     @State var serverWarnings: [String: [MemberWarning]] = [:]
+    /// Store the receipt came from; nil for barcode / manual / voice confirms.
+    var storeContext: ReceiptStoreContext?
     var onFinished: (() -> Void)?
 
     @State private var saved = false
     @State private var matchRoute: CatalogMatchRoute?
+    @State private var captureRoute: CatalogMatchRoute?
+    @State private var capturedDraftIDs: Set<String> = []
 
     private var unidentifiedCount: Int {
         drafts.filter { !$0.isIdentified }.count
@@ -279,6 +283,18 @@ struct ItemConfirmView: View {
             }
             .environmentObject(session)
         }
+        .sheet(item: $captureRoute) { route in
+            NavigationStack {
+                LocalItemCaptureView(
+                    itemName: drafts.first(where: { $0.id == route.id })?.name ?? "",
+                    store: storeContext,
+                    storeItemID: storeContext?.storeItemIDs[route.id]
+                ) { result in
+                    applyCapture(result, to: route.id)
+                }
+            }
+            .environmentObject(session)
+        }
         .alert("Saved", isPresented: $saved) {
             Button("Done") {
                 onFinished?()
@@ -297,11 +313,7 @@ struct ItemConfirmView: View {
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(MekasaTheme.brand)
             if unidentifiedCount > 0 {
-                Text(
-                    session.canSyncInventory
-                        ? "Tap Find in catalog on unmatched lines to pick the right product."
-                        : "Unidentified lines keep the receipt name and a category image — edit before saving."
-                )
+                Text("Scan unmatched items and take a picture, or find them in the catalog.")
                 .font(MekasaTheme.bodyFont)
                 .foregroundStyle(MekasaTheme.textMuted)
             }
@@ -316,8 +328,15 @@ struct ItemConfirmView: View {
     private func draftCard(_ draft: Binding<InventoryItem>) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 14) {
-                ProductThumbnail(urlString: draft.wrappedValue.imageURL, size: 64, cornerRadius: 16)
-                    .accessibilityIdentifier(TestIdentifiers.itemImage)
+                EditableProductThumbnail(
+                    urlString: draft.wrappedValue.imageURL,
+                    size: 64,
+                    cornerRadius: 16,
+                    itemName: draft.wrappedValue.name
+                ) { image in
+                    await replaceDraftImage(image, draftID: draft.wrappedValue.id)
+                }
+                .accessibilityIdentifier(TestIdentifiers.itemImage)
                 VStack(alignment: .leading, spacing: 6) {
                     if !draft.wrappedValue.isIdentified {
                         Text("Not identified")
@@ -326,6 +345,12 @@ struct ItemConfirmView: View {
                             .textCase(.uppercase)
                             .foregroundStyle(MekasaTheme.accent)
                             .accessibilityIdentifier(TestIdentifiers.scanPromptLabel)
+                    } else if capturedDraftIDs.contains(draft.wrappedValue.id) {
+                        Text("Scanned in store")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .tracking(0.6)
+                            .textCase(.uppercase)
+                            .foregroundStyle(MekasaTheme.brand)
                     }
                     TextField("Name", text: draft.name)
                         .font(.system(size: 18, weight: .heavy, design: .rounded))
@@ -378,20 +403,41 @@ struct ItemConfirmView: View {
                 MemberWarningBanner(warnings: warnings(for: draft.wrappedValue, health: health))
             }
 
-            if !draft.wrappedValue.isIdentified, session.canSyncInventory {
+            if !draft.wrappedValue.isIdentified {
+                Text(CaptureGuidance.message(itemName: draft.wrappedValue.name, storeName: storeContext?.storeName))
+                    .font(MekasaTheme.bodyFont)
+                    .foregroundStyle(MekasaTheme.textMuted)
+                    .accessibilityIdentifier(TestIdentifiers.captureGuidanceLabel)
+
                 Button {
-                    matchRoute = CatalogMatchRoute(id: draft.wrappedValue.id)
+                    captureRoute = CatalogMatchRoute(id: draft.wrappedValue.id)
                 } label: {
-                    Text("Find in catalog")
+                    Label("Scan item & take picture", systemImage: "barcode.viewfinder")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                        .background(MekasaTheme.brand)
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier(TestIdentifiers.scanButton)
+                .accessibilityIdentifier(TestIdentifiers.captureItemButton)
+
+                if session.canSyncInventory {
+                    Button {
+                        matchRoute = CatalogMatchRoute(id: draft.wrappedValue.id)
+                    } label: {
+                        Text("Find in catalog instead")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundStyle(MekasaTheme.brand)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier(TestIdentifiers.scanButton)
+                }
             } else if draft.wrappedValue.isIdentified, session.canSyncInventory {
                 Button {
                     matchRoute = CatalogMatchRoute(id: draft.wrappedValue.id)
@@ -497,5 +543,32 @@ struct ItemConfirmView: View {
         drafts[idx].isIdentified = true
         serverWarnings[draftID] = nil
         matchRoute = nil
+    }
+
+    private func replaceDraftImage(_ image: UIImage, draftID: String) async {
+        guard let url = await session.uploadItemPhoto(image),
+              let idx = drafts.firstIndex(where: { $0.id == draftID })
+        else { return }
+        drafts[idx].imageURL = url
+    }
+
+    /// In-store scan result: the user's photo wins; a barcode catalog hit fills the rest.
+    private func applyCapture(_ result: LocalItemCaptureResult, to draftID: String) {
+        guard let idx = drafts.firstIndex(where: { $0.id == draftID }) else { return }
+        if let code = result.barcode {
+            drafts[idx].barcode = code
+        }
+        if let hit = result.lookup {
+            if let name = hit.name, !name.isEmpty { drafts[idx].name = name }
+            if let category = hit.category, !category.isEmpty { drafts[idx].category = category }
+            drafts[idx].health = hit.health
+            serverWarnings[draftID] = hit.warnings
+        }
+        if let url = result.photoURL ?? result.lookup?.imageUrl {
+            drafts[idx].imageURL = url
+        }
+        drafts[idx].isIdentified = true
+        capturedDraftIDs.insert(draftID)
+        captureRoute = nil
     }
 }

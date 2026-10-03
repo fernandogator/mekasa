@@ -14,6 +14,7 @@ struct ReceiptScanView: View {
     @State private var showConfirm = false
     @State private var drafts: [InventoryItem] = []
     @State private var engineLabel: String?
+    @State private var storeContext: ReceiptStoreContext?
 
     var body: some View {
         MekasaScreen {
@@ -77,7 +78,7 @@ struct ReceiptScanView: View {
         .accessibilityIdentifier(TestIdentifiers.receiptScanView)
         .navigationBarHidden(true)
         .navigationDestination(isPresented: $showConfirm) {
-            ItemConfirmView(drafts: drafts, title: "Confirm haul")
+            ItemConfirmView(drafts: drafts, title: "Confirm haul", storeContext: storeContext)
         }
     }
 
@@ -181,6 +182,7 @@ struct ReceiptScanView: View {
                 )
             }
             engineLabel = "demo"
+            storeContext = nil
             let unidentified = drafts.filter { !$0.isIdentified }.count
             statusMessage = unidentified == 0
                 ? "Review the demo haul, then save."
@@ -199,6 +201,13 @@ struct ReceiptScanView: View {
             )
             drafts = response.items.map { $0.toLocal() }
             engineLabel = response.engine
+            storeContext = response.storeId.map { storeID in
+                var ids: [String: String] = [:]
+                for (draft, line) in zip(drafts, response.items) {
+                    if let rowID = line.storeItemId { ids[draft.id] = rowID }
+                }
+                return ReceiptStoreContext(storeID: storeID, storeName: response.storeName, storeItemIDs: ids)
+            }
             let unidentified = drafts.filter { !$0.isIdentified }.count
             if drafts.isEmpty {
                 statusMessage = "No line items found — try another photo or demo haul."

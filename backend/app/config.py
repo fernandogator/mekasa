@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     store_search_radius_miles: float = 15.0
     # memory | firestore | auto (prod → firestore, else memory)
     household_persistence: str = "auto"
+    # Receipt scanning with Gemini on Vertex AI (needs gcp_project_id + ADC).
+    # Gemini 3.x Pro previews are served only from the "global" location.
+    receipt_llm_enabled: bool = True
+    gemini_receipt_model: str = "gemini-3.1-pro-preview"
+    gemini_location: str = "global"
+    gemini_timeout_seconds: float = 45.0
     # Shared product catalog (ADR-008). Cloud Run:
     # postgresql://mekasa_api:PASS@/mekasa?host=/cloudsql/PROJECT:REGION:mekasa-pg
     # Injected from Secret Manager `mekasa-database-url`; unset → in-memory catalog.

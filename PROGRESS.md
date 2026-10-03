@@ -96,6 +96,13 @@
 
 ## Running Log
 
+### 2026-09-28 — Gemini receipt scanning + shared per-store UPC table
+- Receipt scan now calls Gemini (`gemini-3.1-pro-preview`, Vertex AI `global`) on the photo or pasted text: expanded product names, qty, price, category, printed item codes, store name/address. Vision OCR + regex stays as fallback (`engine` = `gemini` / `vision` / `text` / `stub`).
+- New shared per-store tables in **Postgres (Cloud SQL `mekasa-pg`)**, schema `backend/app/store_catalog.sql`: every receipt line with printed + Open Food Facts UPCs; confirmed barcode adds are compared with the household's latest receipt (code match → `confirmed`, differing code → `conflict`, unmatched → own `manual_only` row).
+- `GET /v1/store-catalogs`, `GET /v1/store-catalogs/{store_id}/items`. Unit: `test_receipt_llm`, `test_store_catalog`.
+- Writes per store run in one transaction under a Postgres advisory lock; in memory when `DATABASE_URL` is unset.
+- **Run `backend/scripts/provision-cloud-sql.sh`, then redeploy Cloud Run** (deploy script now enables Vertex AI + Cloud SQL, grants `roles/aiplatform.user`, attaches the DB secret).
+
 ### 2026-09-22 — Dashboard home photo hero + HomePhotoView
 - Dashboard top **150px** home photo hero (design system) with gradient + greeting
 - Tap hero → `HomePhotoView`: **Take photo** (camera) or **Choose from Photos**, then Save

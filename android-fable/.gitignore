@@ -18,3 +18,6 @@ captures/
 # Keep a real config out of git by dropping it in as google-services.real.json and copying
 # it over the stub locally (see README).
 app/google-services.real.json
+# The stub above stays tracked for CI; this line only matters if it is ever untracked.
+# Local real configs over the stub are hidden with: git update-index --skip-worktree app/google-services.json
+app/google-services.json

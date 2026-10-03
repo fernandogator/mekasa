@@ -1,0 +1,186 @@
+{
+  "project_info": {
+    "project_number": "934775015882",
+    "project_id": "hackathon2025-472017",
+    "storage_bucket": "hackathon2025-472017.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:934775015882:android:6dbc7bee1dbb9f758d6733",
+        "android_client_info": {
+          "package_name": "com.fernandogator.mekasa"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "934775015882-734spjpjvbjg0hqqa3i9cb433qifr3ik.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fernandogator.mekasa",
+            "certificate_hash": "b8b86b903f00795a6beda6766668cc813f988d84"
+          }
+        },
+        {
+          "client_id": "934775015882-l5i0nhslihnk3bpm2v0fkeepfem9q8tc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_-ed9XKayyJouZgFD7w4UbbXT273tdRo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "934775015882-l5i0nhslihnk3bpm2v0fkeepfem9q8tc.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "934775015882-tkn8jri65ijtbadhlkpskdo3j2nh0m0t.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.fernandogator.mekasa"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:934775015882:android:b6f20b425b5bf5e48d6733",
+        "android_client_info": {
+          "package_name": "com.fernandogator.mekasa.debug"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "934775015882-gpf992i2fcnedug9uh6g345ao76oq43i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fernandogator.mekasa.debug",
+            "certificate_hash": "b8b86b903f00795a6beda6766668cc813f988d84"
+          }
+        },
+        {
+          "client_id": "934775015882-l5i0nhslihnk3bpm2v0fkeepfem9q8tc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_-ed9XKayyJouZgFD7w4UbbXT273tdRo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "934775015882-l5i0nhslihnk3bpm2v0fkeepfem9q8tc.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "934775015882-tkn8jri65ijtbadhlkpskdo3j2nh0m0t.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.fernandogator.mekasa"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:934775015882:android:8ac3aec4bdc109b58d6733",
+        "android_client_info": {
+          "package_name": "com.fernandogator.mekasa.fable"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "934775015882-6n3g41i0hno5c45sv4mfujsver5geqrk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fernandogator.mekasa.fable",
+            "certificate_hash": "b8b86b903f00795a6beda6766668cc813f988d84"
+          }
+        },
+        {
+          "client_id": "934775015882-l5i0nhslihnk3bpm2v0fkeepfem9q8tc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_-ed9XKayyJouZgFD7w4UbbXT273tdRo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "934775015882-l5i0nhslihnk3bpm2v0fkeepfem9q8tc.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "934775015882-tkn8jri65ijtbadhlkpskdo3j2nh0m0t.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.fernandogator.mekasa"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:934775015882:android:fb0b86a304879b018d6733",
+        "android_client_info": {
+          "package_name": "com.fernandogator.mekasa.fable.debug"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "934775015882-94kab42mnl6kvj8r2bd171e7s239fu0q.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fernandogator.mekasa.fable.debug",
+            "certificate_hash": "b8b86b903f00795a6beda6766668cc813f988d84"
+          }
+        },
+        {
+          "client_id": "934775015882-l5i0nhslihnk3bpm2v0fkeepfem9q8tc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_-ed9XKayyJouZgFD7w4UbbXT273tdRo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "934775015882-l5i0nhslihnk3bpm2v0fkeepfem9q8tc.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "934775015882-tkn8jri65ijtbadhlkpskdo3j2nh0m0t.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.fernandogator.mekasa"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -20,6 +20,14 @@ enum TestIdentifiers {
     static let receiptPasteField = "ReceiptPasteField"
     static let receiptPasteLineCount = "ReceiptPasteLineCount"
     static let receiptPasteButton = "ReceiptPasteButton"
+    // In-store capture for receipt lines the catalog could not identify.
+    static let captureItemButton = "CaptureItemButton"
+    static let captureGuidanceLabel = "CaptureGuidanceLabel"
+    static let captureCodeField = "CaptureCodeField"
+    static let captureCodeLabel = "CaptureCodeLabel"
+    static let capturePhotoPreview = "CapturePhotoPreview"
+    static let captureLibraryButton = "CaptureLibraryButton"
+    static let captureSaveButton = "CaptureSaveButton"
 
     // MARK: - Inventory list / swipe (UI-006 · REQ-INV-014–018)
     static let inventoryListView = "InventoryListView"

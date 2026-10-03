@@ -44,16 +44,23 @@ struct ProductThumbnail: View {
     }
 }
 
-/// Large product hero; tap to present a full-screen lightbox.
+/// Large product hero; tap to present a full-screen lightbox. With `onReplace`,
+/// tap offers View full size / Take photo / Choose from library instead.
 struct ProductHeroImage: View {
     let urlString: String?
     let title: String
+    var onReplace: ((UIImage) async -> Void)?
     @State private var showLightbox = false
+    @State private var showPhotoOptions = false
+    @State private var isUploading = false
 
     var body: some View {
         Button {
-            guard urlString != nil else { return }
-            showLightbox = true
+            if onReplace != nil {
+                showPhotoOptions = true
+            } else if urlString != nil {
+                showLightbox = true
+            }
         } label: {
             Group {
                 if let urlString, let url = URL(string: urlString) {
@@ -80,14 +87,51 @@ struct ProductHeroImage: View {
             .frame(height: 280)
             .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
             .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+            .overlay {
+                if isUploading {
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .fill(.black.opacity(0.35))
+                        .overlay { ProgressView().tint(.white) }
+                }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if onReplace != nil {
+                    Label("Change photo", systemImage: "camera.fill")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(MekasaTheme.brand.opacity(0.85))
+                        .clipShape(Capsule())
+                        .padding(14)
+                }
+            }
         }
         .buttonStyle(.plain)
-        .disabled(urlString == nil)
-        .accessibilityLabel(urlString == nil ? "No product image" : "Product image for \(title), double tap to enlarge")
+        .disabled(urlString == nil && onReplace == nil)
+        .accessibilityLabel(accessibilityText)
         .accessibilityIdentifier(TestIdentifiers.itemImage)
         .fullScreenCover(isPresented: $showLightbox) {
             ProductImageLightbox(urlString: urlString, title: title)
         }
+        .itemPhotoReplacement(
+            isPresented: $showPhotoOptions,
+            onViewFullSize: urlString == nil ? nil : { showLightbox = true }
+        ) { image in
+            guard let onReplace else { return }
+            Task {
+                isUploading = true
+                await onReplace(image)
+                isUploading = false
+            }
+        }
+    }
+
+    private var accessibilityText: String {
+        if onReplace != nil {
+            return "Product image for \(title), double tap to view or replace"
+        }
+        return urlString == nil ? "No product image" : "Product image for \(title), double tap to enlarge"
     }
 
     private var heroPlaceholder: some View {
