@@ -7,7 +7,7 @@ actor MekasaAPIClient {
     static let shared = MekasaAPIClient()
 
     /// Production Cloud Run service.
-    var baseURL = URL(string: "https://mekasa-api-934775015882.us-central1.run.app")!
+    nonisolated let baseURL = URL(string: "https://mekasa-api-934775015882.us-central1.run.app")!
 
     private let decoder: JSONDecoder = {
         let d = JSONDecoder()
