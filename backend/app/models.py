@@ -487,6 +487,19 @@ class StoreCatalogItemsResponse(BaseModel):
     items: list[StoreCatalogItem]
 
 
+class ItemPhotoUploadResponse(BaseModel):
+    """
+    Satisfies: REQ-INV-019 (Replace an Item Picture With a Private Photo)
+    Acceptance criteria: AC1
+    Spec version: 1.0
+
+    `url` is the household-scoped API path; it needs the member's bearer token.
+    """
+
+    photo_id: str
+    url: str
+
+
 class HouseholdPhotoResponse(BaseModel):
     """Photo upload result (REQ-002)."""
 

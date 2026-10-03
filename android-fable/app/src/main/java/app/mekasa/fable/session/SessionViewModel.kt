@@ -14,6 +14,7 @@ import app.mekasa.fable.data.model.ProductHit
 import app.mekasa.fable.data.model.ReceiptScanResponse
 import app.mekasa.fable.data.model.ShoppingItem
 import app.mekasa.fable.data.remote.ApiException
+import app.mekasa.fable.data.remote.ImageAuth
 import app.mekasa.fable.data.remote.MekasaApi
 import app.mekasa.fable.data.remote.RemoteBackend
 import kotlinx.coroutines.CancellationException
@@ -55,6 +56,11 @@ class SessionViewModel(
     val authGateway: AuthGateway get() = auth
 
     private var idToken: String? = null
+        set(value) {
+            field = value
+            // REQ-INV-019 AC8: private item photos load with the current token.
+            ImageAuth.token = value
+        }
     private var backend: HouseholdBackend? = null
     private var authWatcher: Job? = null
     private var purgeJob: Job? = null
@@ -338,6 +344,22 @@ class SessionViewModel(
     fun refreshItemImage(itemId: String) = guarded {
         val updated = require().refreshImage(householdId(), itemId)
         replaceInventory(updated)
+    }
+
+    /**
+     * REQ-INV-019: replace an item's picture with the member's own photo. Any member may
+     * do this; the photo stays private to the household.
+     */
+    fun replaceItemPhoto(itemId: String, jpeg: ByteArray, onDone: (Boolean) -> Unit = {}) {
+        when {
+            jpeg.isEmpty() -> { fail("The photo was empty."); onDone(false); return }
+            jpeg.size > MAX_PHOTO_BYTES -> { fail("Photo is too large (max 5 MB)."); onDone(false); return }
+        }
+        guarded(busy = true, onFailure = { onDone(false) }) {
+            val updated = require().replaceItemPhoto(householdId(), itemId, jpeg)
+            replaceInventory(updated)
+            onDone(true)
+        }
     }
 
     /**

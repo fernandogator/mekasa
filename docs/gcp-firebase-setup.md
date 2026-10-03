@@ -73,6 +73,28 @@ export FIREBASE_PROJECT_ID=hackathon2025-472017
 export ALLOW_TEST_AUTH=false
 ```
 
+### 3b. Private item photos bucket (REQ-INV-019)
+
+Members can replace an item picture with their own photo. Photos are stored
+in a **private** Cloud Storage bucket under `households/{hid}/item-photos/`
+and streamed through the API only to members of that household. The deploy
+script creates the bucket and grants the runtime service account access;
+to do it by hand:
+
+```bash
+gcloud storage buckets create gs://mekasa-item-photos-prod \
+  --project hackathon2025-472017 --location us-central1 \
+  --uniform-bucket-level-access --public-access-prevention
+gcloud storage buckets add-iam-policy-binding gs://mekasa-item-photos-prod \
+  --member serviceAccount:mekasa-api@hackathon2025-472017.iam.gserviceaccount.com \
+  --role roles/storage.objectUser
+```
+
+Cloud Run gets `ITEM_PHOTO_BUCKET=mekasa-item-photos-prod`. Leave it unset
+locally and the API keeps photos in memory. Nothing in this bucket is public,
+and object names never leave the API (clients only see
+`/v1/households/{hid}/item-photos/{photo_id}`).
+
 ### 4. Deploy Cloud Run (from your Mac)
 
 ```bash

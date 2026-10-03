@@ -146,6 +146,12 @@ class DemoBackend(
         ).also { inventoryRows.add(0, it) }
     }
 
+    override suspend fun replaceItemPhoto(householdId: String, itemId: String, jpeg: ByteArray): InventoryItem {
+        require(jpeg.isNotEmpty()) { "Empty photo" }
+        val encoded = java.util.Base64.getEncoder().encodeToString(jpeg)
+        return replaceInventory(itemId) { it.copy(imageUrl = "data:image/jpeg;base64,$encoded") }
+    }
+
     override suspend fun updateInventory(
         householdId: String,
         itemId: String,

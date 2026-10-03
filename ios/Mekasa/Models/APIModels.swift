@@ -555,10 +555,16 @@ struct ReceiptScanResponseDTO: Codable, Equatable {
     }
 }
 
-/// A stored user photo (`POST /v1/households/{id}/photos`).
-struct PhotoUploadDTO: Codable, Equatable {
-    let id: String
+/// A household-private item photo (`POST /v1/households/{id}/item-photos`).
+/// The `url` only loads with the member's bearer token (REQ-INV-019 AC1/AC3).
+struct ItemPhotoUploadDTO: Codable, Equatable {
+    let photoId: String
     let url: String
+
+    enum CodingKeys: String, CodingKey {
+        case url
+        case photoId = "photo_id"
+    }
 }
 
 /// Store table row returned by an in-store capture (only the fields the app uses).

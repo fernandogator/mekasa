@@ -114,6 +114,13 @@ data class InventoryItemCreateRequest(
     val source: String = "manual",
 )
 
+/** `POST /v1/households/{id}/item-photos` result (REQ-INV-019 AC1). */
+@Serializable
+data class ItemPhotoUpload(
+    @SerialName("photo_id") val photoId: String,
+    val url: String,
+)
+
 @Serializable
 data class InventoryItemPatch(
     val name: String? = null,

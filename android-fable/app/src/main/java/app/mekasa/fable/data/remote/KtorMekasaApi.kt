@@ -16,6 +16,7 @@ import app.mekasa.fable.data.model.HouseholdNameUpdateRequest
 import app.mekasa.fable.data.model.InventoryItem
 import app.mekasa.fable.data.model.InventoryItemCreateRequest
 import app.mekasa.fable.data.model.InventoryItemPatch
+import app.mekasa.fable.data.model.ItemPhotoUpload
 import app.mekasa.fable.data.model.InventoryListResponse
 import app.mekasa.fable.data.model.InviteAcceptRequest
 import app.mekasa.fable.data.model.InviteCreateRequest
@@ -161,6 +162,34 @@ class KtorMekasaApi(
         itemId: String,
         patch: InventoryItemPatch,
     ): InventoryItem = call(HttpMethod.Patch, "/v1/households/$householdId/inventory/$itemId", token, patch)
+
+    override suspend fun uploadItemPhoto(
+        token: String,
+        householdId: String,
+        bytes: ByteArray,
+        mimeType: String,
+        filename: String,
+    ): ItemPhotoUpload {
+        val response = client.request("$root/v1/households/$householdId/item-photos") {
+            method = HttpMethod.Post
+            bearerAuth(token)
+            setBody(
+                MultiPartFormDataContent(
+                    formData {
+                        append(
+                            key = "file",
+                            value = bytes,
+                            headers = Headers.build {
+                                append(HttpHeaders.ContentType, mimeType)
+                                append(HttpHeaders.ContentDisposition, "filename=\"$filename\"")
+                            },
+                        )
+                    },
+                ),
+            )
+        }
+        return unwrap(response)
+    }
 
     override suspend fun refreshInventoryImage(token: String, householdId: String, itemId: String): InventoryItem =
         call(HttpMethod.Post, "/v1/households/$householdId/inventory/$itemId/refresh-image", token)

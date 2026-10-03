@@ -16,21 +16,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.mekasa.fable.data.remote.ImageAuth
+import app.mekasa.fable.data.remote.PrivateItemPhoto
 import app.mekasa.fable.ui.theme.MekasaTheme
 import app.mekasa.fable.ui.theme.Shapes
 import app.mekasa.fable.ui.theme.Type
 import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 
 /**
  * Converts an API `photo_url`/`image_url` into something Coil can load: https URLs pass
- * through, `data:<mime>;base64,<payload>` becomes decoded bytes. Returns null when the
- * value is unusable so callers can show a placeholder.
+ * through, `data:<mime>;base64,<payload>` becomes decoded bytes, and household-private
+ * item photos (REQ-INV-019) become a request carrying the bearer token. Returns null
+ * when the value is unusable so callers can show a placeholder.
  */
-fun imageModelFor(url: String?): Any? {
+fun imageModelFor(url: String?): Any? = imageModelFor(url, ImageAuth.apiBaseUrl, ImageAuth.token)
+
+internal fun imageModelFor(url: String?, apiBaseUrl: String?, token: String?): Any? {
     val value = url?.trim().orEmpty()
     if (value.isEmpty()) return null
+    if (PrivateItemPhoto.isPrivate(value, apiBaseUrl)) {
+        val headers = PrivateItemPhoto.headers(token)
+        if (headers.isEmpty()) return null
+        return PrivateImageModel(value, headers)
+    }
     if (!value.startsWith("data:", ignoreCase = true)) return value
     val comma = value.indexOf(',')
     if (comma <= 5) return null
@@ -39,6 +51,22 @@ fun imageModelFor(url: String?): Any? {
     return runCatching { Base64.decode(value.substring(comma + 1), Base64.DEFAULT) }
         .getOrNull()
         ?.takeIf { it.isNotEmpty() }
+}
+
+/** A private photo URL plus the headers Coil must send for it (REQ-INV-019 AC8). */
+data class PrivateImageModel(val url: String, val headers: Map<String, String>)
+
+/** Turns [imageModelFor] output into what `SubcomposeAsyncImage` accepts. */
+@Composable
+private fun coilModel(model: Any?): Any? {
+    if (model !is PrivateImageModel) return model
+    val context = LocalContext.current
+    return remember(model) {
+        ImageRequest.Builder(context)
+            .data(model.url)
+            .apply { model.headers.forEach { (name, value) -> addHeader(name, value) } }
+            .build()
+    }
 }
 
 /** Square product thumbnail with a monogram fallback (UI-006 AC1 / REQ-004 AC5). */
@@ -51,7 +79,7 @@ fun ProductThumbnail(
     shape: Shape = Shapes.well,
 ) {
     val palette = MekasaTheme.palette
-    val model = remember(imageUrl) { imageModelFor(imageUrl) }
+    val model = coilModel(remember(imageUrl) { imageModelFor(imageUrl) })
     Box(
         modifier = modifier.size(size).clip(shape).background(palette.overlay),
         contentAlignment = Alignment.Center,
@@ -82,7 +110,7 @@ fun HomePhoto(
     contentScale: ContentScale = ContentScale.Crop,
 ) {
     val palette = MekasaTheme.palette
-    val model = remember(photoUrl) { imageModelFor(photoUrl) }
+    val model = coilModel(remember(photoUrl) { imageModelFor(photoUrl) })
     Box(modifier = modifier.background(palette.brandMuted.copy(alpha = 0.35f)), contentAlignment = Alignment.Center) {
         if (model == null) {
             Icon(Icons.Outlined.Home, contentDescription = "No home photo yet", tint = palette.text.copy(alpha = 0.5f), modifier = Modifier.size(48.dp))
