@@ -1,16 +1,32 @@
 """HTTP routers for health, onboarding, and inventory."""
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+import logging
+from datetime import datetime, timezone
+from uuid import UUID, uuid4
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
 
 from app.auth import AuthUser, verify_bearer_token
-from app.barcode_lookup import lookup_barcode, search_products
+from app.barcode_lookup import ProductLookupUnavailableError, lookup_barcode, search_products
 from app.config import Settings, get_settings
 from app.devices_repository import DevicesRepository, get_devices_repository
 from app.household_access import assert_household_member, assert_household_owner
-from app.inventory_image import refresh_item_image
+from app.inventory_image import refresh_item_health, refresh_item_image
 from app.inventory_repository import InventoryRepository, get_inventory_repository
 from app.models import (
     AddressUpdateRequest,
+    AvoidancesResponse,
     BarcodeLookupResponse,
     DeviceRegistrationRequest,
     DeviceRegistrationResponse,
@@ -33,6 +49,7 @@ from app.models import (
     InventoryItemResponse,
     InventoryItemUpdateRequest,
     InventoryListResponse,
+    MemberAvoidUpdateRequest,
     ProductSearchResponse,
     PurchaseEventCreateRequest,
     PurchaseEventResponse,
@@ -46,6 +63,10 @@ from app.models import (
     ShoppingListSyncResponse,
     SpendingPeriod,
     SpendingReportResponse,
+    PhotoUploadResponse,
+    StoreCatalogItem,
+    StoreCatalogItemsResponse,
+    StoreCatalogListResponse,
     StoreSearchResponse,
     StoreSelectionRequest,
     UnknownBarcodeEvent,
@@ -53,7 +74,9 @@ from app.models import (
 )
 from app.members_repository import MembersRepository, get_members_repository
 from app.places_lookup import fetch_nearby_stores
+from app.product_health import AVOIDANCES, member_warnings
 from app.push_notify import notify_invite_accepted, notify_invite_created
+from app.receipt_llm import parse_receipt_llm
 from app.receipt_ocr import enrich_receipt_items, parse_receipt_image
 from app.repository import (
     HouseholdRepository,
@@ -61,11 +84,22 @@ from app.repository import (
     stub_nearby_stores,
 )
 from app.spending_repository import SpendingRepository, get_spending_repository
+from app.store_catalog import (
+    Photo,
+    StoreCatalogRepository,
+    get_store_catalog_repository,
+    record_capture,
+    record_manual_scan,
+    record_receipt,
+    store_item_id_for,
+)
 from app.unknown_barcode_log import list_unknown_barcodes, log_unknown_barcode
 from app.shopping_list_repository import (
     ShoppingListRepository,
     get_shopping_list_repository,
 )
+
+logger = logging.getLogger(__name__)
 
 health_router = APIRouter(tags=["health"])
 api_router = APIRouter(prefix="/v1", tags=["onboarding"])
@@ -73,6 +107,7 @@ inventory_router = APIRouter(prefix="/v1", tags=["inventory"])
 shopping_list_router = APIRouter(prefix="/v1", tags=["shopping-list"])
 spending_router = APIRouter(prefix="/v1", tags=["spending"])
 barcode_router = APIRouter(prefix="/v1", tags=["barcode"])
+store_catalog_router = APIRouter(prefix="/v1", tags=["store-catalog"])
 
 
 @health_router.get("/health", response_model=HealthResponse)
@@ -256,6 +291,20 @@ def _map_inventory_errors(exc: Exception) -> HTTPException:
     raise exc
 
 
+def _household_members_for_warnings(household_id: str, actor_uid: str) -> list:
+    """Members list for REQ-021 warnings; never fails the inventory call."""
+    try:
+        return get_members_repository().list_members(household_id, actor_uid)
+    except (KeyError, PermissionError):
+        return []
+
+
+def _with_warnings(item: InventoryItemResponse, members: list) -> InventoryItemResponse:
+    if item.health is None or not members:
+        return item
+    return item.model_copy(update={"warnings": member_warnings(members, item.health)})
+
+
 @inventory_router.get(
     "/households/{household_id}/inventory",
     response_model=InventoryListResponse,
@@ -273,6 +322,9 @@ def list_inventory(
         items = repo.list_items(household_id, user.uid)
     except (KeyError, PermissionError) as exc:
         raise _map_inventory_errors(exc) from exc
+    if any(item.health is not None for item in items):
+        members = _household_members_for_warnings(household_id, user.uid)
+        items = [_with_warnings(item, members) for item in items]
     return InventoryListResponse(household_id=household_id, items=items)
 
 
@@ -287,6 +339,7 @@ def create_inventory_item(
     user: AuthUser = Depends(verify_bearer_token),
     repo: InventoryRepository = Depends(get_inventory_repository),
     spending: SpendingRepository = Depends(get_spending_repository),
+    catalog: StoreCatalogRepository = Depends(get_store_catalog_repository),
 ) -> InventoryItemResponse:
     """
     Satisfies: REQ-004, REQ-005, REQ-006, REQ-007, REQ-015
@@ -296,6 +349,18 @@ def create_inventory_item(
         item = repo.create(household_id, user.uid, payload)
     except (KeyError, PermissionError) as exc:
         raise _map_inventory_errors(exc) from exc
+    if payload.source == "barcode" and payload.barcode:
+        try:
+            record_manual_scan(
+                catalog,
+                household_id,
+                barcode=payload.barcode,
+                name=item.name,
+                category=item.category,
+            )
+        except Exception:
+            # The store table is additive; inventory create must still succeed.
+            logger.warning("Store catalog manual scan record failed", exc_info=True)
     if payload.price_paid is not None and payload.price_paid >= 0:
         purchase_source = "receipt" if payload.source == "receipt" else "inventory"
         try:
@@ -314,7 +379,7 @@ def create_inventory_item(
         except Exception:
             # Spending is additive; inventory create must still succeed.
             pass
-    return item
+    return _with_warnings(item, _household_members_for_warnings(household_id, user.uid))
 
 
 @inventory_router.get(
@@ -337,7 +402,7 @@ def get_inventory_item(
         raise _map_inventory_errors(exc) from exc
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
-    return item
+    return _with_warnings(item, _household_members_for_warnings(household_id, user.uid))
 
 
 @inventory_router.patch(
@@ -393,6 +458,41 @@ async def refresh_inventory_item_image(
         return await refresh_item_image(item, update=_update)
     except (KeyError, PermissionError) as exc:
         raise _map_inventory_errors(exc) from exc
+
+
+@inventory_router.post(
+    "/households/{household_id}/inventory/{item_id}/refresh-health",
+    response_model=InventoryItemResponse,
+)
+async def refresh_inventory_item_health(
+    household_id: str,
+    item_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: InventoryRepository = Depends(get_inventory_repository),
+) -> InventoryItemResponse:
+    """
+    Satisfies: REQ-021 AC4
+    Spec version: 1.0
+
+    Backfill health grade data for a barcoded item that has none (rows created
+    before grading, or via manual entry with a UPC). Returns the row with
+    member warnings applied.
+    """
+    try:
+        item = repo.get(household_id, item_id, user.uid)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    def _update(payload: InventoryItemUpdateRequest) -> InventoryItemResponse:
+        return repo.update(household_id, item_id, user.uid, payload)
+
+    try:
+        refreshed = await refresh_item_health(item, update=_update)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+    return _with_warnings(refreshed, _household_members_for_warnings(household_id, user.uid))
 
 
 @inventory_router.delete(
@@ -692,18 +792,45 @@ def sync_shopping_list_from_inventory(
 @barcode_router.get("/barcode/{code}", response_model=BarcodeLookupResponse)
 async def lookup_barcode_endpoint(
     code: str,
+    household_id: str | None = Query(default=None),
     user: AuthUser = Depends(verify_bearer_token),
 ) -> BarcodeLookupResponse:
     """
-    Satisfies: REQ-004
+    Satisfies: REQ-004, REQ-021 AC2
     Acceptance criteria: AC1, AC2
     Spec version: 1.0
 
-    Looks up a UPC/EAN via Open Food Facts. Unknown codes return found=false
-    so the client can fall back to manual entry.
+    Looks up a UPC/EAN via the Open Food Facts family (UPC-E expanded, sister
+    databases consulted). Unknown codes return found=false so the client can
+    fall back to manual entry; when the databases themselves are unreachable
+    the endpoint answers 503 so the client offers a retry instead of "unknown".
+    With `household_id` the response also lists members whose avoid list
+    matches the product.
+    """
+    try:
+        result = await lookup_barcode(code, raise_when_unavailable=True)
+    except ProductLookupUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Product database is temporarily unavailable. Try again in a moment.",
+        ) from exc
+    if household_id and result.health is not None:
+        members = _household_members_for_warnings(household_id, user.uid)
+        if members:
+            result = result.model_copy(update={"warnings": member_warnings(members, result.health)})
+    return result
+
+
+@barcode_router.get("/health/avoidances", response_model=AvoidancesResponse)
+def list_avoidances(user: AuthUser = Depends(verify_bearer_token)) -> AvoidancesResponse:
+    """
+    Satisfies: REQ-021 AC1
+    Spec version: 1.0
+
+    Catalog of common allergens / additives a member can mark as "I avoid this".
     """
     _ = user
-    return await lookup_barcode(code)
+    return AvoidancesResponse(options=AVOIDANCES)
 
 
 @barcode_router.get("/products/search", response_model=ProductSearchResponse)
@@ -720,7 +847,13 @@ async def search_products_endpoint(
     variants for the user to pick during manual or voice entry.
     """
     _ = user
-    return await search_products(q, limit=limit)
+    try:
+        return await search_products(q, limit=limit)
+    except ProductLookupUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Product search is temporarily unavailable. Try again in a moment.",
+        ) from exc
 
 
 @api_router.post(
@@ -732,15 +865,18 @@ async def scan_receipt(
     payload: ReceiptScanRequest,
     user: AuthUser = Depends(verify_bearer_token),
     repo: HouseholdRepository = Depends(get_household_repository),
+    settings: Settings = Depends(get_settings),
+    catalog: StoreCatalogRepository = Depends(get_store_catalog_repository),
 ) -> ReceiptScanResponse:
     """
     Satisfies: REQ-005
     Acceptance criteria: AC1, AC2
     Spec version: 1.0
 
-    OCR parses line items, then each line is matched against Open Food Facts
-    for a product image / barcode. Unmatched lines keep the OCR name and a
-    category placeholder image with identified=false.
+    Gemini extracts line items (falling back to Vision OCR + regex), then each
+    line is matched against Open Food Facts for a product image / barcode.
+    Unmatched lines keep the parsed name and a category placeholder image
+    with identified=false.
     """
     household = repo.get(household_id)
     if household is None:
@@ -751,16 +887,200 @@ async def scan_receipt(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
     if not payload.image_base64 and not payload.raw_text:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="image_or_text_required")
-    result = parse_receipt_image(
+    result = await parse_receipt_llm(
+        settings,
+        image_base64=payload.image_base64,
+        raw_text=payload.raw_text,
+    ) or parse_receipt_image(
         image_base64=payload.image_base64,
         raw_text=payload.raw_text,
         allow_stub=True,
     )
     items = await enrich_receipt_items(result.items)
+    store_id: str | None = None
+    if result.engine != "stub":
+        try:
+            store_id = record_receipt(
+                catalog,
+                household_id,
+                store_name=result.store_name,
+                store_address=result.store_address,
+                items=items,
+            )
+        except Exception:
+            logger.warning("Store catalog receipt record failed", exc_info=True)
+            store_id = None
+    if store_id:
+        items = [
+            item.model_copy(update={"store_item_id": store_item_id_for(item) or None})
+            for item in items
+        ]
     return ReceiptScanResponse(
         household_id=household_id,
         engine=result.engine,
         items=items,
+        store_id=store_id,
+        store_name=result.store_name,
+    )
+
+
+@store_catalog_router.get("/store-catalogs", response_model=StoreCatalogListResponse)
+def list_store_catalogs(
+    user: AuthUser = Depends(verify_bearer_token),
+    catalog: StoreCatalogRepository = Depends(get_store_catalog_repository),
+) -> StoreCatalogListResponse:
+    """Stores with a shared item table (any signed-in user)."""
+    stores = sorted(catalog.list_stores(), key=lambda store: store.name.casefold())
+    return StoreCatalogListResponse(stores=stores)
+
+
+@store_catalog_router.get(
+    "/store-catalogs/{store_id}/items",
+    response_model=StoreCatalogItemsResponse,
+)
+def list_store_catalog_items(
+    store_id: str,
+    request: Request,
+    user: AuthUser = Depends(verify_bearer_token),
+    catalog: StoreCatalogRepository = Depends(get_store_catalog_repository),
+) -> StoreCatalogItemsResponse:
+    """
+    One store's table: receipt lines and manual scans with every discovered
+    UPC / store code, its sources, and the receipt-vs-scan comparison status.
+    """
+    store = catalog.get_store(store_id)
+    if store is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    items = sorted(catalog.list_items(store_id), key=lambda item: item.name.casefold())
+    return StoreCatalogItemsResponse(
+        store=store, items=[_with_photo_url(item, request) for item in items]
+    )
+
+
+_MAX_CAPTURE_PHOTO_BYTES = 5_000_000
+
+
+def _photo_url(photo_id: str, request: Request) -> str:
+    # Cloud Run terminates TLS; honor the forwarded scheme so iOS ATS accepts it.
+    scheme = request.headers.get("x-forwarded-proto", request.url.scheme)
+    host = request.headers.get("host", request.url.netloc)
+    return f"{scheme}://{host}/v1/photos/{photo_id}"
+
+
+def _with_photo_url(item: StoreCatalogItem, request: Request) -> StoreCatalogItem:
+    if not item.photo_id:
+        return item
+    return item.model_copy(update={"photo_url": _photo_url(item.photo_id, request)})
+
+
+async def _read_photo(upload: UploadFile) -> tuple[str, bytes] | None:
+    content = await upload.read()
+    content_type = upload.content_type or "image/jpeg"
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="image_required")
+    if len(content) > _MAX_CAPTURE_PHOTO_BYTES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="file_too_large")
+    return (content_type, content) if content else None
+
+
+@store_catalog_router.post(
+    "/households/{household_id}/photos",
+    response_model=PhotoUploadResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_photo(
+    household_id: str,
+    request: Request,
+    file: UploadFile = File(...),
+    user: AuthUser = Depends(verify_bearer_token),
+    catalog: StoreCatalogRepository = Depends(get_store_catalog_repository),
+) -> PhotoUploadResponse:
+    """
+    Upload a user's own item picture (camera / library). The returned URL is
+    set as an inventory item's or draft's image_url.
+    """
+    try:
+        assert_household_member(household_id, user.uid)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
+    payload = await _read_photo(file)
+    if payload is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="empty_file")
+    photo_id = str(uuid4())
+    catalog.save_photo(
+        Photo(
+            id=photo_id,
+            household_id=household_id,
+            content_type=payload[0],
+            data=payload[1],
+            created_at=datetime.now(timezone.utc),
+        )
+    )
+    return PhotoUploadResponse(id=photo_id, url=_photo_url(photo_id, request))
+
+
+@store_catalog_router.post(
+    "/households/{household_id}/store-catalogs/{store_id}/items/{item_id}/capture",
+    response_model=StoreCatalogItem,
+)
+async def capture_store_item(
+    household_id: str,
+    store_id: str,
+    item_id: str,
+    request: Request,
+    barcode: str | None = Form(default=None, max_length=64),
+    photo: UploadFile | None = File(default=None),
+    user: AuthUser = Depends(verify_bearer_token),
+    catalog: StoreCatalogRepository = Depends(get_store_catalog_repository),
+) -> StoreCatalogItem:
+    """
+    Satisfies: REQ-004, REQ-005
+    Spec version: 1.0
+
+    In-store capture for a receipt line Open Food Facts could not identify:
+    the scanned barcode / PLU and a photo are added to the store's shared row.
+    """
+    try:
+        assert_household_member(household_id, user.uid)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
+    code = (barcode or "").strip() or None
+    photo_payload = await _read_photo(photo) if photo is not None else None
+    if code is None and photo_payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="barcode_or_photo_required"
+        )
+    try:
+        item = record_capture(
+            catalog,
+            household_id,
+            store_id=store_id,
+            item_id=item_id,
+            barcode=code,
+            photo=photo_payload,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
+    return _with_photo_url(item, request)
+
+
+@store_catalog_router.get("/photos/{photo_id}")
+def get_photo(
+    photo_id: str,
+    catalog: StoreCatalogRepository = Depends(get_store_catalog_repository),
+) -> Response:
+    """Public by unguessable id so image views can load it without a bearer token."""
+    try:
+        UUID(photo_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
+    photo = catalog.get_photo(photo_id)
+    if photo is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return Response(
+        content=photo.data,
+        media_type=photo.content_type,
+        headers={"Cache-Control": "public, max-age=86400, immutable"},
     )
 
 
@@ -977,6 +1297,32 @@ def update_household_member_role(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@api_router.put(
+    "/households/{household_id}/members/{member_uid}/avoid",
+    response_model=HouseholdMemberResponse,
+)
+def update_household_member_avoid(
+    household_id: str,
+    member_uid: str,
+    payload: MemberAvoidUpdateRequest,
+    user: AuthUser = Depends(verify_bearer_token),
+    members: MembersRepository = Depends(get_members_repository),
+) -> HouseholdMemberResponse:
+    """
+    Satisfies: REQ-021 AC1
+    Spec version: 1.0
+
+    Replace the "I'm allergic to / I avoid" list. Members edit their own row;
+    owners may edit any member.
+    """
+    try:
+        return members.update_avoid(household_id, member_uid, user.uid, payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
 
 
 @spending_router.post(

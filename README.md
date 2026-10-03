@@ -12,6 +12,7 @@ iOS (SwiftUI) clients backed by a GCP Cloud Run REST API.
 | `docs/spec-v1.0.md` | Requirements |
 | `ios/README.md` | iOS XcodeGen + Firebase setup |
 | `android/README.md` | Android Gradle + Compose setup |
+| `android-fable/README.md` | Independent Android rebuild by Claude Fable 5.1 (for comparison with `android/`) |
 | `backend/README.md` | Thin onboarding API |
 | `design/` | User flows, design system, Superdesign mockups |
 | `traceability/` | Requirement ↔ test matrix |

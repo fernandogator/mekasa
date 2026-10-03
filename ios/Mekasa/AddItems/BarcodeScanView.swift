@@ -8,6 +8,8 @@ struct BarcodeScanView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var confirmItems: [InventoryItem] = []
+    /// REQ-021 member warnings from the household-scoped lookup, keyed by draft id.
+    @State private var confirmWarnings: [String: [MemberWarning]] = [:]
     @State private var showConfirm = false
     @State private var showManual = false
     @State private var unknownPrompt = false
@@ -82,13 +84,14 @@ struct BarcodeScanView: View {
         }
         .navigationBarHidden(true)
         .task {
+            ScanFeedback.prepare()
             cameraAuthorized = await BarcodeCameraPermission.requestIfNeeded()
             if !cameraAuthorized {
                 cameraError = "Camera access is off. Enable it in Settings, or enter a code below."
             }
         }
         .navigationDestination(isPresented: $showConfirm) {
-            ItemConfirmView(drafts: confirmItems, title: "Confirm item")
+            ItemConfirmView(drafts: confirmItems, title: "Confirm item", serverWarnings: confirmWarnings)
         }
         .navigationDestination(isPresented: $showManual) {
             ManualEntryView()
@@ -178,29 +181,45 @@ struct BarcodeScanView: View {
         // Prefer live API when signed in; fall back to local demo catalog.
         if session.canSyncInventory, let token = session.idToken {
             do {
-                let result = try await MekasaAPIClient.shared.lookupBarcode(code: code, token: token)
+                let result = try await MekasaAPIClient.shared.lookupBarcode(
+                    code: code,
+                    householdID: session.household?.id,
+                    token: token
+                )
                 if result.found, let name = result.name {
-                    confirmItems = [
-                        InventoryItem(
-                            name: name,
-                            category: result.category ?? InventoryCategory.other.rawValue,
-                            quantity: result.quantity,
-                            barcode: result.barcode,
-                            source: .barcode,
-                            imageURL: result.imageUrl
-                        )
-                    ]
-                    statusMessage = "Found — confirm to add"
+                    let draft = InventoryItem(
+                        name: name,
+                        category: result.category ?? InventoryCategory.other.rawValue,
+                        quantity: result.quantity,
+                        barcode: result.barcode,
+                        source: .barcode,
+                        imageURL: result.imageUrl,
+                        health: result.health
+                    )
+                    confirmItems = [draft]
+                    confirmWarnings = result.warnings.isEmpty ? [:] : [draft.id: result.warnings]
+                    statusMessage = result.warnings.isEmpty
+                        ? "Found — confirm to add"
+                        : "Found — \(result.warnings.map(\.memberName).joined(separator: ", ")) should avoid this"
+                    ScanFeedback.accepted()
                     showConfirm = true
                     return
                 }
+                ScanFeedback.unknown()
                 unknownCode = code
                 unknownPrompt = true
                 statusMessage = "No product for that code"
                 return
             } catch {
-                session.lastError = error.localizedDescription
-                statusMessage = "Lookup failed — try again or enter manually"
+                ScanFeedback.unknown()
+                if let apiError = error as? APIError,
+                   case let .server(status, _) = apiError,
+                   status == 503 {
+                    statusMessage = "Product database is busy — scan again in a moment"
+                } else {
+                    session.lastError = error.localizedDescription
+                    statusMessage = "Lookup failed — try again or enter manually"
+                }
                 return
             }
         }
@@ -208,8 +227,10 @@ struct BarcodeScanView: View {
         if let item = InventoryDemoCatalog.lookup(barcode: code) {
             confirmItems = [item]
             statusMessage = "Found (demo catalog)"
+            ScanFeedback.accepted()
             showConfirm = true
         } else {
+            ScanFeedback.unknown()
             unknownCode = code
             unknownPrompt = true
             statusMessage = "Sign in for live UPC lookup, or enter manually"

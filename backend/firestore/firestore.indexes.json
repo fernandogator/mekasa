@@ -1,0 +1,47 @@
+{
+  "$comment": "Composite indexes for migration 0001_receipt_parser (docs: backend/firestore/migrations/0001_receipt_parser.md). Household-scoped receipt data only; the shared product catalog lives in Cloud SQL (backend/catalog/, ADR-008). Deploy with `gcloud firestore indexes composite create --database=mekasa-db --file=<this>` or `firebase deploy --only firestore:indexes`.",
+  "indexes": [
+    {
+      "collectionGroup": "scan_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "correlated_receipt_id", "order": "ASCENDING" },
+        { "fieldPath": "scanned_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "scan_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "outcome", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "receipts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "llm_parse_jobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "prompt_version", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "llm_parse_jobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "receipt_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

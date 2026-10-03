@@ -14,6 +14,21 @@ enum TestIdentifiers {
     static let itemSubtitle = "ItemSubtitle"
     static let emptyStateView = "EmptyStateView"
 
+    // MARK: - Receipt scan (REQ-005 AC7)
+    static let receiptScanView = "ReceiptScanView"
+    static let receiptScanEntry = "ReceiptScanEntry"
+    static let receiptPasteField = "ReceiptPasteField"
+    static let receiptPasteLineCount = "ReceiptPasteLineCount"
+    static let receiptPasteButton = "ReceiptPasteButton"
+    // In-store capture for receipt lines the catalog could not identify.
+    static let captureItemButton = "CaptureItemButton"
+    static let captureGuidanceLabel = "CaptureGuidanceLabel"
+    static let captureCodeField = "CaptureCodeField"
+    static let captureCodeLabel = "CaptureCodeLabel"
+    static let capturePhotoPreview = "CapturePhotoPreview"
+    static let captureLibraryButton = "CaptureLibraryButton"
+    static let captureSaveButton = "CaptureSaveButton"
+
     // MARK: - Inventory list / swipe (UI-006 · REQ-INV-014–018)
     static let inventoryListView = "InventoryListView"
     static let inventoryUseOneAction = "InventoryUseOneAction"
@@ -22,6 +37,15 @@ enum TestIdentifiers {
     static let inventoryUndoButton = "InventoryUndoButton"
     static let allInventoryButton = "AllInventoryButton"
     static let lowStockStatButton = "LowStockStatButton"
+
+    // MARK: - Inventory search / grouping / Add (UI-006 AC6–AC7)
+    static let inventorySummary = "InventorySummary"
+    static let inventoryAddButton = "InventoryAddButton"
+    static let inventoryEmptyAddButton = "InventoryEmptyAddButton"
+    static let inventorySearchField = "InventorySearch"
+    static let inventorySearchClear = "InventorySearchClear"
+    static let inventorySectionHeader = "InventorySectionHeader"
+    static let inventoryNoMatches = "InventoryNoMatches"
 
     // MARK: - Item Detail
     static let itemDetailView = "ItemDetailView"
@@ -54,13 +78,24 @@ enum TestIdentifiers {
     static let scanPromptLabel = "ScanPromptLabel"
     static let lastScannedItem = "LastScannedItem"
     static let trashEventList = "TrashEventList"
+    static let scanCooldownOverlay = "ScanCooldownOverlay"
+    static let trashManualBarcodeField = "TrashManualBarcodeField"
+    static let trashManualBarcodeButton = "TrashManualBarcodeButton"
 
     // MARK: - Shell / onboarding / dashboard (UI-002–UI-004)
     static let rootView = "RootView"
     static let welcomeView = "WelcomeView"
     static let mainShellView = "MainShellView"
     static let dashboardView = "DashboardView"
+    static let dashboardShoppingTeaser = "DashboardShoppingTeaser"
+    static let dashboardShoppingHeadline = "DashboardShoppingHeadline"
+    static let dashboardOpenListButton = "DashboardOpenListButton"
     static let shoppingListView = "ShoppingListView"
+    static let shoppingToBuySummary = "ShoppingToBuySummary"
+    static let shoppingSectionHeader = "ShoppingSectionHeader"
+    static let shoppingRemoveButton = "ShoppingRemoveButton"
+    static let shoppingAutoChip = "ShoppingAutoChip"
+    static let purchaseLockNotice = "PurchaseLockNotice"
     static let addItemsHub = "AddItemsHub"
     static let bottomNavBar = "BottomNavBar"
     static let homeTab = "HomeTab"
@@ -74,4 +109,27 @@ enum TestIdentifiers {
     static let homePhotoLibraryButton = "HomePhotoLibraryButton"
     static let homePhotoNameField = "HomePhotoNameField"
     static let homePhotoSaveBottomButton = "HomePhotoSaveBottomButton"
+
+    // MARK: - Health grade + avoidances (REQ-021)
+    static let healthGradeBadge = "HealthGradeBadge"
+    static let healthSummaryCard = "HealthSummaryCard"
+    static let memberWarningBanner = "MemberWarningBanner"
+    static let avoidEditorView = "AvoidEditorView"
+    static let avoidCustomField = "AvoidCustomField"
+    static let avoidSaveButton = "AvoidSaveButton"
+    static let memberAvoidLabel = "MemberAvoidLabel"
+    static let memberAvoidEditButton = "MemberAvoidEditButton"
+    static let affectedMembersChip = "AffectedMembersChip"
+    static let affectedMembersCaption = "AffectedMembersCaption"
+
+    // MARK: - Item detail "Use 1" (REQ-009) + Family cards (REQ-019)
+    static let itemDetailUseOneButton = "ItemDetailUseOneButton"
+    static let itemDetailUseOneStatus = "ItemDetailUseOneStatus"
+    static let familyAccountTitle = "FamilyAccountTitle"
+    static let familyOfflineNotice = "FamilyOfflineNotice"
+    static let familyHouseholdTitle = "FamilyHouseholdTitle"
+    static let familyHouseholdAddress = "FamilyHouseholdAddress"
+    static let familyMemberSubtitle = "FamilyMemberSubtitle"
+    static let familyRefreshButton = "FamilyRefreshButton"
+    static let scanSoundsToggle = "ScanSoundsToggle"
 }

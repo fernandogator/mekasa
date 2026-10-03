@@ -200,6 +200,19 @@ actor MekasaAPIClient {
         )
     }
 
+    /// REQ-021 AC4: backfill health grade data for a barcoded row that has none.
+    func refreshInventoryItemHealth(
+        householdID: String,
+        itemID: String,
+        token: String
+    ) async throws -> InventoryItemDTO {
+        try await request(
+            path: "/v1/households/\(householdID)/inventory/\(itemID)/refresh-health",
+            method: "POST",
+            token: token
+        )
+    }
+
     func deleteInventoryItem(householdID: String, itemID: String, token: String) async throws {
         _ = try await rawRequest(
             path: "/v1/households/\(householdID)/inventory/\(itemID)",
@@ -298,18 +311,80 @@ actor MekasaAPIClient {
         mimeType: String = "image/jpeg",
         token: String
     ) async throws -> Household {
+        try await multipartRequest(
+            path: "/v1/households/\(householdID)/photo",
+            fields: [:],
+            file: MultipartFile(field: "file", filename: "home.jpg", mimeType: mimeType, data: imageData),
+            token: token
+        )
+    }
+
+    /// Store the user's own item picture; the returned URL goes into `image_url`.
+    func uploadItemPhoto(householdID: String, imageData: Data, token: String) async throws -> PhotoUploadDTO {
+        try await multipartRequest(
+            path: "/v1/households/\(householdID)/photos",
+            fields: [:],
+            file: MultipartFile(field: "file", filename: "item.jpg", mimeType: "image/jpeg", data: imageData),
+            token: token
+        )
+    }
+
+    /// In-store capture (barcode / PLU and/or photo) for a receipt line the catalog missed.
+    func captureStoreItem(
+        householdID: String,
+        storeID: String,
+        storeItemID: String,
+        barcode: String?,
+        imageData: Data?,
+        token: String
+    ) async throws -> StoreCatalogItemDTO {
+        let store = storeID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? storeID
+        let item = storeItemID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? storeItemID
+        var fields: [String: String] = [:]
+        if let barcode, !barcode.isEmpty { fields["barcode"] = barcode }
+        return try await multipartRequest(
+            path: "/v1/households/\(householdID)/store-catalogs/\(store)/items/\(item)/capture",
+            fields: fields,
+            file: imageData.map {
+                MultipartFile(field: "photo", filename: "item.jpg", mimeType: "image/jpeg", data: $0)
+            },
+            token: token
+        )
+    }
+
+    struct MultipartFile {
+        let field: String
+        let filename: String
+        let mimeType: String
+        let data: Data
+    }
+
+    private func multipartRequest<T: Decodable>(
+        path: String,
+        fields: [String: String],
+        file: MultipartFile?,
+        token: String
+    ) async throws -> T {
         let boundary = "Boundary-\(UUID().uuidString)"
         var body = Data()
-        let filename = "home.jpg"
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append(
-            "Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!
-        )
-        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
-        body.append(imageData)
-        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        for (name, value) in fields.sorted(by: { $0.key < $1.key }) {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(value)\r\n".data(using: .utf8)!)
+        }
+        if let file {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append(
+                "Content-Disposition: form-data; name=\"\(file.field)\"; filename=\"\(file.filename)\"\r\n"
+                    .data(using: .utf8)!
+            )
+            body.append("Content-Type: \(file.mimeType)\r\n\r\n".data(using: .utf8)!)
+            body.append(file.data)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
 
-        guard let url = URL(string: "/v1/households/\(householdID)/photo", relativeTo: baseURL)?.absoluteURL else {
+        guard let url = URL(string: path, relativeTo: baseURL)?.absoluteURL else {
             throw APIError.invalidResponse
         }
         var request = URLRequest(url: url)
@@ -330,7 +405,7 @@ actor MekasaAPIClient {
             }
             throw error
         }
-        return try decoder.decode(Household.self, from: data)
+        return try decoder.decode(T.self, from: data)
     }
 
     func listHouseholdMembers(householdID: String, token: String) async throws -> HouseholdMembersResponseDTO {
@@ -510,11 +585,34 @@ actor MekasaAPIClient {
 
     // MARK: - Barcode lookup (REQ-004)
 
-    func lookupBarcode(code: String, token: String) async throws -> BarcodeLookupDTO {
-        try await request(
-            path: "/v1/barcode/\(code)",
-            method: "GET",
-            token: token
+    /// Pass `householdID` to get REQ-021 member warnings alongside the product.
+    func lookupBarcode(code: String, householdID: String? = nil, token: String) async throws -> BarcodeLookupDTO {
+        var path = "/v1/barcode/\(code)"
+        if let householdID, !householdID.isEmpty {
+            let encoded = householdID.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? householdID
+            path += "?household_id=\(encoded)"
+        }
+        return try await request(path: path, method: "GET", token: token)
+    }
+
+    // MARK: - Health grade + avoidances (REQ-021)
+
+    func listAvoidances(token: String) async throws -> AvoidancesResponseDTO {
+        try await request(path: "/v1/health/avoidances", method: "GET", token: token)
+    }
+
+    func updateHouseholdMemberAvoid(
+        householdID: String,
+        memberUID: String,
+        avoid: [String],
+        token: String
+    ) async throws -> HouseholdMemberDTO {
+        struct Body: Encodable { let avoid: [String] }
+        return try await request(
+            path: "/v1/households/\(householdID)/members/\(memberUID)/avoid",
+            method: "PUT",
+            token: token,
+            body: Body(avoid: avoid)
         )
     }
 

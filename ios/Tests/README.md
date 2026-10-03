@@ -11,6 +11,8 @@ Shared identifiers + fixtures: `Tests/TestSupport/` (compiled into the app targe
 
 **UI-006 inventory swipe (REQ-INV-014–018):** Layer 1 `UI006StructureTests` (list + empty runnable; swipe/Undo XCTSkip stubs), Layer 2 `UI006SnapshotTests` (skips until baselines recorded), Layer 3 cases in `ui_vision_cases.json` (`inventory_swipe_use_one`, `inventory_swipe_remove`, `inventory_undo_toast`).
 
+**Scan sounds (REQ-004 AC8 · REQ-008 AC4–AC5 · REQ-019 AC5 · UI-005 AC5):** Layer 0 `ScanFeedbackTests` + `ScanCooldownTests`; Layer 1 Family toggle in `UI004StructureTests.testFamily_scanSoundsToggleExists`, trash typed-UPC in `UI005StructureTests`. Feedback is forced off under `--uitesting`.
+
 ```bash
 cd ios && xcodegen generate
 

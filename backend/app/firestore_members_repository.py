@@ -14,7 +14,9 @@ from app.models import (
     HouseholdInviteResponse,
     HouseholdMemberResponse,
     HouseholdMemberRoleUpdateRequest,
+    MemberAvoidUpdateRequest,
 )
+from app.members_repository import normalize_avoid_list
 from app.repository import get_household_repository
 
 HOUSEHOLDS = "households"
@@ -31,6 +33,8 @@ def _utcnow() -> datetime:
 def _member_from(household_id: str, uid: str, data: dict[str, Any]) -> HouseholdMemberResponse:
     raw_perms = data.get("permissions") or []
     permissions = [str(p) for p in raw_perms] if isinstance(raw_perms, list) else []
+    raw_avoid = data.get("avoid") or []
+    avoid = [str(a) for a in raw_avoid] if isinstance(raw_avoid, list) else []
     return HouseholdMemberResponse(
         uid=uid,
         household_id=household_id,
@@ -40,6 +44,7 @@ def _member_from(household_id: str, uid: str, data: dict[str, Any]) -> Household
         role=data.get("role") or "member",
         status=data.get("status") or "active",
         permissions=permissions,
+        avoid=avoid,
         created_at=data["created_at"],
         updated_at=data["updated_at"],
     )
@@ -263,6 +268,27 @@ class FirestoreMembersRepository:
             merge=True,
         )
         batch.commit()
+        return _member_from(household_id, member_uid, data)
+
+    def update_avoid(
+        self,
+        household_id: str,
+        member_uid: str,
+        actor_uid: str,
+        payload: MemberAvoidUpdateRequest,
+    ) -> HouseholdMemberResponse:
+        if member_uid == actor_uid:
+            self._require_member_or_owner(household_id, actor_uid)
+        else:
+            self._require_owner(household_id, actor_uid)
+        ref = self._members_col(household_id).document(member_uid)
+        snap = ref.get()
+        if not snap.exists:
+            raise KeyError(member_uid)
+        data = dict(snap.to_dict() or {})
+        updates = {"avoid": normalize_avoid_list(payload.avoid), "updated_at": _utcnow()}
+        data.update(updates)
+        ref.update(updates)
         return _member_from(household_id, member_uid, data)
 
     def is_active_participant(self, household_id: str, actor_uid: str) -> bool:

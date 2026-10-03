@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(GoogleSignIn)
+import GoogleSignIn
+#endif
 
 @main
 struct MekasaApp: App {
@@ -46,6 +49,11 @@ struct MekasaApp: App {
                     Task { await session.acceptPendingInviteIfNeeded() }
                 }
                 .onOpenURL { url in
+                    #if canImport(GoogleSignIn)
+                    if GIDSignIn.sharedInstance.handle(url) {
+                        return
+                    }
+                    #endif
                     session.handleDeepLink(url)
                     Task { await session.acceptPendingInviteIfNeeded() }
                 }

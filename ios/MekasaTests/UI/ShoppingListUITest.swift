@@ -34,7 +34,7 @@ final class ShoppingListUITest: XCTestCase {
         XCTAssertNotNil(session.shoppingList)
     }
 
-@MainActor
+    @MainActor
     func testOwnerPurchaseGate_hiddenForMembers() throws {
         let session = AppSession()
         session.startUITesting()
@@ -47,9 +47,32 @@ final class ShoppingListUITest: XCTestCase {
         session.household = TestFixtures.previewHousehold
         XCTAssertFalse(session.isHouseholdOwner)
         XCTAssertFalse(session.canMarkShoppingPurchased)
+
+        let target = session.shoppingList.first { !$0.needsApproval && !$0.isChecked }
+        XCTAssertNotNil(target)
+        session.toggleShoppingItemChecked(id: target!.id)
+        XCTAssertEqual(session.shoppingList.first { $0.id == target!.id }?.isChecked, false, "Members cannot mark purchased")
+        XCTAssertEqual(session.lastError, "Only household owners can mark items purchased.")
     }
 
-    func testVisual_semanticStructureMatchesBaseline() throws {
-        throw XCTSkip("Stub — implement when baseline exists")
+    @MainActor
+    func testInteraction_ownerTogglesPurchasedAndApproves() throws {
+        let session = AppSession()
+        session.startUITesting()
+        XCTAssertTrue(session.canMarkShoppingPurchased)
+
+        let open = session.shoppingList.first { !$0.needsApproval && !$0.isChecked }!
+        session.toggleShoppingItemChecked(id: open.id)
+        XCTAssertEqual(session.shoppingList.first { $0.id == open.id }?.isChecked, true)
+        XCTAssertEqual(session.activity.first?.title, "Purchased \(open.name)")
+
+        // Rows awaiting approval cannot be checked off until approved.
+        let pending = session.shoppingList.first { $0.needsApproval }!
+        session.toggleShoppingItemChecked(id: pending.id)
+        XCTAssertEqual(session.shoppingList.first { $0.id == pending.id }?.isChecked, false)
+        session.approveShoppingRequest(id: pending.id)
+        XCTAssertEqual(session.shoppingList.first { $0.id == pending.id }?.needsApproval, false)
+        session.toggleShoppingItemChecked(id: pending.id)
+        XCTAssertEqual(session.shoppingList.first { $0.id == pending.id }?.isChecked, true)
     }
 }

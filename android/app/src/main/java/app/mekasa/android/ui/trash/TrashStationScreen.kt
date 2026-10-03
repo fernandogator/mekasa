@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
@@ -31,11 +32,14 @@ import app.mekasa.android.ui.components.BarcodeCameraOrPermission
 import app.mekasa.android.ui.components.MekasaScreen
 import app.mekasa.android.ui.components.MekasaTextField
 import app.mekasa.android.ui.components.PrimaryButton
+import app.mekasa.android.ui.components.ScanFeedback
 import app.mekasa.android.ui.components.SecondaryButton
 import app.mekasa.android.ui.components.SoftCard
+import app.mekasa.android.ui.components.rememberScanFeedbackContext
 import app.mekasa.android.ui.theme.MekasaColor
 import app.mekasa.android.ui.theme.MekasaType
 import app.mekasa.android.ui.theme.Spacing
+import kotlinx.coroutines.delay
 
 @Composable
 fun TrashStationScreen(
@@ -45,16 +49,38 @@ fun TrashStationScreen(
     onExit: () -> Unit,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
+    val feedbackContext = rememberScanFeedbackContext()
     var scanKey by remember { mutableIntStateOf(0) }
     var manualCode by remember { mutableStateOf("") }
     var toast by remember { mutableStateOf<String?>(null) }
+    // Bumped per accepted scan; drives the 5 s disarm window below.
+    var cooldownGeneration by remember { mutableIntStateOf(0) }
+    var cooldownSecondsLeft by remember { mutableStateOf<Int?>(null) }
+    val coolingDown = cooldownSecondsLeft != null
     val inStock = state.inventory.filter { it.quantity > 0 }
 
     LaunchedEffect(Unit) {
+        ScanFeedback.prepare(feedbackContext)
         session.refreshUnknownTrashScans()
     }
 
+    // REQ-008: one accepted scan per window. The scanner stays disarmed (no scanKey
+    // bump) and manual entry is disabled until the countdown ends, so a single toss
+    // cannot be consumed twice by the same beep.
+    LaunchedEffect(cooldownGeneration) {
+        if (cooldownGeneration == 0) return@LaunchedEffect
+        var left = ScanFeedback.COOLDOWN_SECONDS
+        while (left > 0) {
+            cooldownSecondsLeft = left
+            delay(1_000)
+            left -= 1
+        }
+        cooldownSecondsLeft = null
+        scanKey += 1
+    }
+
     fun handleCode(code: String) {
+        if (coolingDown) return
         session.consumeInventoryByBarcode(code) { result ->
             toast = when (result) {
                 is ConsumeResult.Decremented -> "Used ${result.item.name}"
@@ -62,8 +88,14 @@ fun TrashStationScreen(
                 is ConsumeResult.Unknown -> "Unknown barcode ${result.barcode}"
                 is ConsumeResult.Failed -> result.message
             }
-            scanKey += 1
+            when (result) {
+                is ConsumeResult.Decremented, is ConsumeResult.Depleted ->
+                    ScanFeedback.accepted(feedbackContext)
+                is ConsumeResult.Unknown, is ConsumeResult.Failed ->
+                    ScanFeedback.unknown(feedbackContext)
+            }
             manualCode = ""
+            cooldownGeneration += 1
         }
     }
 
@@ -105,6 +137,29 @@ fun TrashStationScreen(
                 }
             }
 
+            if (coolingDown) {
+                item {
+                    SoftCard(modifier = Modifier.testTag("TrashScanCooldown")) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                        ) {
+                            Text(
+                                text = "${cooldownSecondsLeft ?: ScanFeedback.COOLDOWN_SECONDS}",
+                                style = MekasaType.title,
+                                color = MekasaColor.accent,
+                            )
+                            Text(
+                                text = "Next scan in a moment",
+                                style = MekasaType.subhead,
+                                color = MekasaColor.accent,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+            }
+
             item {
                 Text(
                     text = "Scan barcode to use 1",
@@ -132,7 +187,7 @@ fun TrashStationScreen(
                 Box(modifier = Modifier.height(Spacing.sm))
                 PrimaryButton(
                     title = "Use barcode",
-                    enabled = manualCode.length >= 6,
+                    enabled = manualCode.length >= 6 && !coolingDown,
                     onClick = { handleCode(manualCode) },
                 )
             }

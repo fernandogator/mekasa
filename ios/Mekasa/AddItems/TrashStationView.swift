@@ -10,6 +10,11 @@ struct TrashStationView: View {
     @State private var toast: String?
     @State private var isBusy = false
     @State private var cameraError: String?
+    @State private var manualCode = ""
+    @State private var cooldown = ScanCooldown()
+    /// Whole seconds left before the next scan is accepted; nil when ready.
+    @State private var cooldownSecondsLeft: Int?
+    @State private var cooldownTicker: Task<Void, Never>?
 
     private var cameraAvailable: Bool { BarcodeCameraView.isSupported }
 
@@ -54,6 +59,8 @@ struct TrashStationView: View {
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                                 .foregroundStyle(MekasaTheme.accent)
                         }
+
+                        manualEntry
 
                         if session.inventory.isEmpty {
                             emptyState
@@ -138,9 +145,11 @@ struct TrashStationView: View {
         .accessibilityIdentifier(TestIdentifiers.trashStationView)
         .navigationBarHidden(true)
         .task {
+            ScanFeedback.prepare()
             guard !session.isUITesting else { return }
             await session.refreshUnknownTrashScans()
         }
+        .onDisappear { cooldownTicker?.cancel() }
     }
 
     @ViewBuilder
@@ -175,7 +184,66 @@ struct TrashStationView: View {
             if isBusy {
                 ProgressView()
                     .tint(.white)
+            } else if let cooldownSecondsLeft {
+                VStack(spacing: 6) {
+                    Text("\(cooldownSecondsLeft)")
+                        .font(.system(size: 44, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                        .monospacedDigit()
+                    Text("Next scan in a moment")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
+                .background(Color.black.opacity(0.55))
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier(TestIdentifiers.scanCooldownOverlay)
             }
+        }
+    }
+
+    /// Start the 5 s window after an accepted scan and drive the on-screen countdown.
+    private func beginCooldown() {
+        cooldownTicker?.cancel()
+        cooldownSecondsLeft = Int(cooldown.window.rounded(.up))
+        cooldownTicker = Task { @MainActor in
+            while !Task.isCancelled {
+                let remaining = cooldown.remaining()
+                if remaining <= 0 {
+                    cooldownSecondsLeft = nil
+                    return
+                }
+                cooldownSecondsLeft = Int(remaining.rounded(.up))
+                try? await Task.sleep(nanoseconds: 250_000_000)
+            }
+        }
+    }
+
+    /// Typed-UPC fallback when the camera can't read a label (or isn't available).
+    private var manualEntry: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            MekasaTextField(
+                label: "Or type UPC",
+                placeholder: ManualBarcodeEntry.placeholder,
+                text: Binding(
+                    get: { manualCode },
+                    set: { manualCode = ManualBarcodeEntry.sanitize($0) }
+                ),
+                keyboard: .numberPad,
+                autocapitalization: .never,
+                submitLabel: .go,
+                onSubmit: submitManualCode,
+                fieldIdentifier: TestIdentifiers.trashManualBarcodeField
+            )
+            PrimaryButton(
+                title: "Use barcode",
+                disabled: isBusy || !ManualBarcodeEntry.isSubmittable(manualCode)
+            ) {
+                submitManualCode()
+            }
+            .accessibilityIdentifier(TestIdentifiers.trashManualBarcodeButton)
         }
     }
 
@@ -221,12 +289,28 @@ struct TrashStationView: View {
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 
-    private func handleBarcode(_ code: String) async {
+    private func handleBarcode(_ code: String, fromCamera: Bool = true) async {
         guard !isBusy else { return }
+        // One accepted camera scan per 5 s window; later reads of the same toss are dropped
+        // silently (the countdown on the camera pane explains why). A typed code is a
+        // deliberate single action, so it bypasses the window.
+        if fromCamera {
+            guard cooldown.tryAccept() else { return }
+            beginCooldown()
+        }
         isBusy = true
         defer { isBusy = false }
         let result = await session.consumeInventoryByBarcode(code)
         apply(result, barcode: code)
+    }
+
+    private func submitManualCode() {
+        let code = ManualBarcodeEntry.sanitize(manualCode)
+        guard ManualBarcodeEntry.isSubmittable(code) else { return }
+        Task {
+            await handleBarcode(code, fromCamera: false)
+            manualCode = ""
+        }
     }
 
     private func consume(itemID: String, fallbackName: String) async {
@@ -249,6 +333,12 @@ struct TrashStationView: View {
     }
 
     private func apply(_ result: AppSession.ConsumeResult, barcode: String) {
+        switch result {
+        case .decremented, .depleted:
+            ScanFeedback.accepted()
+        case .unknown:
+            ScanFeedback.unknown()
+        }
         switch result {
         case let .decremented(name, qty):
             session.trashEvents.insert(

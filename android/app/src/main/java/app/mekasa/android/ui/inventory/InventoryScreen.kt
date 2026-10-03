@@ -1,6 +1,7 @@
 package app.mekasa.android.ui.inventory
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,6 +34,7 @@ import coil.compose.AsyncImage
 fun InventoryScreen(
     items: List<InventoryItemDto>,
     onConsume: (String) -> Unit,
+    onOpenItem: (InventoryItemDto) -> Unit = {},
     onBack: (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
@@ -78,7 +80,11 @@ fun InventoryScreen(
             }
         }
         items(items, key = { it.id }) { item ->
-            InventoryRow(item = item, onConsume = { onConsume(item.id) })
+            InventoryRow(
+                item = item,
+                onClick = { onOpenItem(item) },
+                onConsume = { onConsume(item.id) },
+            )
         }
     }
 }
@@ -86,9 +92,12 @@ fun InventoryScreen(
 @Composable
 fun InventoryRow(
     item: InventoryItemDto,
+    onClick: (() -> Unit)? = null,
     onConsume: (() -> Unit)? = null,
 ) {
-    SoftCard {
+    SoftCard(
+        modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Spacing.md),

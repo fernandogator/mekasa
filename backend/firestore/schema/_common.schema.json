@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mekasa.app/schema/firestore/_common.schema.json",
+  "title": "Mekasa shared definitions",
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Firestore Timestamp; serialised as RFC 3339 in the API"
+    },
+    "nullableTimestamp": {
+      "anyOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }]
+    },
+    "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "docId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "upc": {
+      "type": "string",
+      "pattern": "^[0-9]{8,14}$",
+      "description": "GTIN-8/12/13/14 digits, no spaces"
+    },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "money": { "type": "number", "minimum": 0 },
+    "category": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60,
+      "description": "Mekasa category vocabulary (Produce, Dairy, Pantry, Meat, Frozen, Beverages, Household, Other, ...)"
+    },
+    "storeChainId": {
+      "type": "string",
+      "pattern": "^[a-z0-9_-]{1,40}$",
+      "description": "References catalog table store_chains.chain_id (Cloud SQL, ADR-008); same shape as its CHECK constraint"
+    },
+    "productId": {
+      "type": "string",
+      "pattern": "^([0-9]{8,14}|plu:[0-9]{4,5}|llm:[0-9a-f]{40})$",
+      "description": "Opaque key into catalog table products.product_id (Cloud SQL, ADR-008). Product enums (source, status) are CHECK constraints in backend/catalog/migrations/0001_catalog.sql"
+    },
+    "promptVersion": {
+      "type": "string",
+      "pattern": "^receipt_parse/v[0-9]+$"
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

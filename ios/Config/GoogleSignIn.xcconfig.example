@@ -1,0 +1,3 @@
+// Auto-generated locally by scripts/sync_google_signin_config.sh (gitignored).
+// Placeholder so XcodeGen / builds succeed before a real plist is present.
+GOOGLE_REVERSED_CLIENT_ID =

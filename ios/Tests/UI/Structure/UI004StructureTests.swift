@@ -46,6 +46,29 @@ final class UI004StructureTests: XCTestCase {
         )
     }
 
+    /// UI-004 AC4: shopping teaser summarises open rows and jumps to the List tab.
+    /// Fixtures: 4 unchecked rows (1 pending + 3 to buy).
+    func testDashboard_shoppingTeaserOpensList() {
+        let teaser = UITestLaunch.element(app, TestIdentifiers.dashboardShoppingTeaser)
+        if !teaser.waitForExistence(timeout: 5) {
+            app.swipeUp()
+        }
+        XCTAssertTrue(teaser.waitForExistence(timeout: UITestLaunch.elementTimeout), "Shopping teaser missing")
+        XCTAssertTrue(
+            teaser.label.contains("4 items to pick up"),
+            "Teaser should count unchecked rows; got \(teaser.label)"
+        )
+        if !teaser.isHittable {
+            app.swipeUp()
+        }
+        teaser.tap()
+        XCTAssertTrue(
+            UITestLaunch.element(app, TestIdentifiers.shoppingListView)
+                .waitForExistence(timeout: UITestLaunch.elementTimeout),
+            "Tapping the teaser should switch to the List tab"
+        )
+    }
+
     func testDashboard_addOpensHubThenScanPath() {
         UITestLaunch.addItemButton(app).tap()
         XCTAssertTrue(
@@ -61,13 +84,102 @@ final class UI004StructureTests: XCTestCase {
         )
     }
 
-    func testShoppingList_itemListStructure() {
+    /// REQ-019 parity: Family tab shows who's signed in, which house, and role · status per member.
+    func testFamily_accountHouseholdAndMemberCards() {
+        let familyTab = app.buttons["Family"]
+        XCTAssertTrue(familyTab.waitForExistence(timeout: UITestLaunch.elementTimeout))
+        familyTab.tap()
+
+        let account = UITestLaunch.element(app, TestIdentifiers.familyAccountTitle)
+        XCTAssertTrue(account.waitForExistence(timeout: UITestLaunch.elementTimeout), "Account card missing")
+        XCTAssertEqual(account.label, "UI Test")
+        XCTAssertTrue(
+            UITestLaunch.element(app, TestIdentifiers.familyOfflineNotice).exists,
+            "--uitesting runs in preview mode, so the offline notice should show"
+        )
+
+        let house = UITestLaunch.element(app, TestIdentifiers.familyHouseholdTitle)
+        XCTAssertTrue(house.exists)
+        XCTAssertEqual(house.label, "The Test House")
+        XCTAssertEqual(UITestLaunch.element(app, TestIdentifiers.familyHouseholdAddress).label, "100 Test St")
+
+        let subtitles = app.staticTexts.matching(identifier: TestIdentifiers.familyMemberSubtitle)
+        XCTAssertTrue(subtitles.firstMatch.waitForExistence(timeout: UITestLaunch.elementTimeout))
+        XCTAssertTrue(
+            subtitles.firstMatch.label.contains("·"),
+            "Member subtitle should read 'Role · status'; got \(subtitles.firstMatch.label)"
+        )
+    }
+
+    /// REQ-019 AC5: Family → Scanner → Scan sounds toggle is present and on by default.
+    func testFamily_scanSoundsToggleExists() {
+        let familyTab = app.buttons["Family"]
+        XCTAssertTrue(familyTab.waitForExistence(timeout: UITestLaunch.elementTimeout))
+        familyTab.tap()
+
+        let toggle = app.switches[TestIdentifiers.scanSoundsToggle]
+        if !toggle.waitForExistence(timeout: 5) {
+            app.swipeUp()
+        }
+        XCTAssertTrue(
+            toggle.waitForExistence(timeout: UITestLaunch.elementTimeout),
+            "Scan sounds toggle missing on Family tab"
+        )
+        // XCUISwitch value is "1" when on.
+        XCTAssertEqual(toggle.value as? String, "1", "Scan sounds should default to on")
+        toggle.tap()
+        XCTAssertEqual(toggle.value as? String, "0", "Toggle should turn Scan sounds off")
+        toggle.tap()
+        XCTAssertEqual(toggle.value as? String, "1", "Toggle should turn Scan sounds back on")
+    }
+
+    /// REQ-005 AC7: pasted receipt text goes through the same parse + confirm path as a photo.
+    func testAddHub_receiptPasteTextReachesConfirm() {
+        UITestLaunch.addItemButton(app).tap()
+        let entry = UITestLaunch.element(app, TestIdentifiers.receiptScanEntry)
+        if entry.waitForExistence(timeout: UITestLaunch.elementTimeout) {
+            entry.tap()
+        } else {
+            app.staticTexts["Scan receipt"].tap()
+        }
+
+        let field = app.textViews[TestIdentifiers.receiptPasteField]
+        XCTAssertTrue(field.waitForExistence(timeout: UITestLaunch.elementTimeout), "Paste field missing")
+        let parse = UITestLaunch.element(app, TestIdentifiers.receiptPasteButton)
+        XCTAssertTrue(parse.exists)
+        XCTAssertFalse(parse.isEnabled, "Parse should be disabled until text is pasted")
+
+        field.tap()
+        field.typeText("BANANAS 1.29\nWHOLE MILK 3.49")
+        XCTAssertTrue(
+            UITestLaunch.element(app, TestIdentifiers.receiptPasteLineCount)
+                .waitForExistence(timeout: UITestLaunch.elementTimeout)
+        )
+        XCTAssertTrue(parse.isEnabled)
+        if !parse.isHittable {
+            app.scrollViews.firstMatch.swipeUp()
+        }
+        parse.tap()
+
+        XCTAssertTrue(
+            app.staticTexts["Confirm haul"].waitForExistence(timeout: UITestLaunch.elementTimeout)
+                || UITestLaunch.element(app, TestIdentifiers.itemDetailView)
+                    .waitForExistence(timeout: 5),
+            "Parsing pasted text should land on the confirm screen"
+        )
+    }
+
+    private func openListTab() {
         let listTab = UITestLaunch.element(app, TestIdentifiers.listTab)
         if listTab.waitForExistence(timeout: UITestLaunch.elementTimeout) {
             listTab.tap()
         } else if app.buttons["List"].waitForExistence(timeout: 5) {
             app.buttons["List"].tap()
         }
+    }
+
+    func testShoppingList_itemListStructure() {
+        openListTab()
         let list = UITestLaunch.element(app, TestIdentifiers.itemList)
         let empty = UITestLaunch.element(app, TestIdentifiers.emptyStateView)
         let shopping = UITestLaunch.element(app, TestIdentifiers.shoppingListView)
@@ -88,5 +200,62 @@ final class UI004StructureTests: XCTestCase {
                 "Expected a shopping row (item or pending request)"
             )
         }
+    }
+
+    /// REQ-011 AC4: rows grouped into Needs approval / To buy / Purchased with a
+    /// "N to buy" header summary. Fixtures: 1 pending, 3 to buy, 1 purchased.
+    func testShoppingList_groupsIntoSectionsWithSummary() {
+        openListTab()
+        let headers = app.staticTexts.matching(identifier: TestIdentifiers.shoppingSectionHeader)
+        XCTAssertTrue(
+            headers.firstMatch.waitForExistence(timeout: UITestLaunch.elementTimeout),
+            "Expected section headers on the shopping list"
+        )
+        XCTAssertGreaterThanOrEqual(headers.count, 2, "Fixtures should produce at least two sections")
+
+        let summary = UITestLaunch.element(app, TestIdentifiers.shoppingToBuySummary)
+        XCTAssertTrue(summary.waitForExistence(timeout: UITestLaunch.elementTimeout))
+        XCTAssertTrue(
+            summary.label.localizedCaseInsensitiveContains("3 to buy"),
+            "Summary should count approved, unchecked rows; got \(summary.label)"
+        )
+    }
+
+    /// REQ-011 AC4: auto-added rows carry an "Auto" chip.
+    func testShoppingList_autoRowsShowAutoChip() {
+        openListTab()
+        // The chip text may be folded into the row button's accessibility label, so
+        // accept either the chip element or an "auto-added" row label.
+        let chips = app.staticTexts.matching(identifier: TestIdentifiers.shoppingAutoChip)
+        let autoRows = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "auto-added"))
+        XCTAssertTrue(
+            chips.firstMatch.waitForExistence(timeout: UITestLaunch.elementTimeout)
+                || autoRows.firstMatch.waitForExistence(timeout: 5),
+            "Expected an Auto chip on the Eggs / 2% milk rows"
+        )
+    }
+
+    /// REQ-012 AC4: the trash control removes a row from the list.
+    func testShoppingList_removeButtonRemovesRow() {
+        openListTab()
+        // The row's toggle button carries "Avocados, not purchased"; the remove control
+        // is a sibling button labelled "Remove Avocados".
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Avocados")).firstMatch
+        let remove = app.buttons.matching(NSPredicate(format: "label == %@", "Remove Avocados")).firstMatch
+        XCTAssertTrue(remove.waitForExistence(timeout: UITestLaunch.elementTimeout))
+        XCTAssertTrue(row.exists)
+        if !remove.isHittable {
+            app.swipeUp()
+        }
+        remove.tap()
+
+        let gone = NSPredicate(format: "exists == false")
+        let expectation = XCTNSPredicateExpectation(predicate: gone, object: remove)
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [expectation], timeout: UITestLaunch.elementTimeout),
+            .completed,
+            "Remove control for Avocados should disappear once the row is removed"
+        )
+        XCTAssertFalse(row.exists, "Avocados row should be gone after removal")
     }
 }

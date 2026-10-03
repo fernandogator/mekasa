@@ -3,12 +3,13 @@
 SwiftUI client for Mekasa v1.0.
 
 **Shipped so far**
-- Onboarding: Welcome (Google + **Apple** + email) → Household → Address → Stores → scan/invite stubs
+- Onboarding: Welcome (Google + email; Sign in with Apple deferred, REQ-001 AC1) → Household → Address → Stores → scan/invite stubs
 - Home: **Dashboard** (UI-004) with **home photo hero**, bottom nav + Add FAB
 - Tap hero → **Home photo** screen (camera or Photos library)
 - **Add items** hub (FAB): Type it in / confirm sync to Cloud Run; **Scan barcode** uses live camera + Open Food Facts UPC lookup
 - **Shopping list** (List tab): check off, approve/deny, add custom — syncs to Cloud Run when signed in; low-stock auto-adds via API
 - **Spending** (Spend tab): week/month/year report from purchase events; Dashboard card shows weekly total
+- **Scan sounds**: accepted barcodes play `Mekasa/Sounds/scanner-beep.mp3` + success haptic; unknown/fail uses a nack tone + warning haptic. Trash station also uses a 5 s cooldown. Mute via Family → **Scan sounds** (default on). Quiet under `--uitesting`.
 
 Talks to Cloud Run for auth/household/**inventory**/**shopping list**/**spending**/**barcode lookup**.
 
@@ -40,7 +41,76 @@ cd ios
 ./scripts/bump_marketing_version.sh major   # 1.1.0 → 2.0.0
 ```
 
-## Fix Firebase “default app has not yet been configured”
+### Google Sign-In URL scheme crash
+
+If Xcode stops in `GIDSignIn.m` with:
+
+`Your app is missing support for the following URL schemes: com.googleusercontent.apps.…`
+
+the **running app’s** Info.plist does not contain that scheme. Fix:
+
+```bash
+cd ios
+git pull
+./scripts/sync_google_signin_config.sh   # writes literal scheme into Info.plist
+xcodegen generate
+```
+
+Then in Xcode: **Product → Clean Build Folder**, delete the app from the simulator, **Run**.
+
+Launch logs should include:
+
+```
+[Mekasa] CFBundleURLSchemes at launch: [mekasa, com.googleusercontent.apps.…]
+[Mekasa] Google URL scheme present=true
+```
+
+Or in Xcode: target **Mekasa** → **Info** → **URL Types** → add:
+
+| URL Types | Value |
+|-----------|--------|
+| Identifier | `GoogleSignIn` |
+| URL Schemes | value of `REVERSED_CLIENT_ID` from your plist (starts with `com.googleusercontent.apps.`) |
+
+```bash
+/usr/libexec/PlistBuddy -c 'Print :REVERSED_CLIENT_ID' Mekasa/GoogleService-Info.plist
+```
+
+### Google Sign-In (Continue with Google)
+
+The app already has Google Sign-In wired. You need a real plist **with** `CLIENT_ID` + `REVERSED_CLIENT_ID`:
+
+1. [Firebase Console](https://console.firebase.google.com/project/hackathon2025-472017/authentication/providers) → **Sign-in method** → enable **Google** → Save  
+2. Project settings → iOS app `com.fernandogator.mekasa` → download **`GoogleService-Info.plist`**  
+3. Save it at `ios/Mekasa/GoogleService-Info.plist` (gitignored)  
+4. Confirm the file contains:
+
+```xml
+<key>CLIENT_ID</key>
+<string>….apps.googleusercontent.com</string>
+<key>REVERSED_CLIENT_ID</key>
+<string>com.googleusercontent.apps.…</string>
+```
+
+If those keys are missing: [Google Cloud Credentials](https://console.cloud.google.com/apis/credentials?project=hackathon2025-472017) → create **OAuth client ID → iOS** for bundle `com.fernandogator.mekasa` → re-download the Firebase plist (or add the keys manually).
+
+5. Sync URL scheme + regenerate Xcode project:
+
+```bash
+cd ios
+chmod +x scripts/sync_google_signin_config.sh
+./scripts/sync_google_signin_config.sh
+xcodegen generate
+open Mekasa.xcodeproj
+```
+
+6. Clean + Run. Tap **Continue with Google**.
+
+The build runs `sync_google_signin_config.sh` automatically so `Info.plist` gets `$(GOOGLE_REVERSED_CLIENT_ID)` from your local plist.
+
+Email/password works without the URL scheme; **Google Sign-In needs it**.
+
+### Fix Firebase “default app has not yet been configured”
 
 That log means **`GoogleService-Info.plist` is not inside the built `.app`**.
 
@@ -69,7 +139,7 @@ If you see `[Mekasa] GoogleService-Info.plist in bundle: false`, the plist is st
 1. [Firebase Console](https://console.firebase.google.com/project/hackathon2025-472017/settings/general/) → **Add app** → iOS  
 2. Bundle ID: `com.fernandogator.mekasa`  
 3. Download **`GoogleService-Info.plist`** → `ios/Mekasa/GoogleService-Info.plist`  
-4. Auth: **Google** + **Email/Password** + **Apple** enabled (see `docs/gcp-firebase-setup.md` §2b)  
+4. Auth: **Google** + **Email/Password** enabled (Apple provider deferred; `docs/gcp-firebase-setup.md` §2b)  
 
 ### Google Sign-In URL scheme
 
@@ -122,16 +192,46 @@ Then **Product → Clean Build Folder** and resolve SPM packages if prompted.
 
 Signing → your Team → Run on **iPhone 17 Pro** simulator (not “Any iOS Device”).
 
+### Signing with a free Personal Team
+
+Works out of the box: `Mekasa/Mekasa.entitlements` carries no capabilities, so
+Xcode-managed signing succeeds on a Personal Team for Debug and Release alike.
+
+**Sign in with Apple is deferred (REQ-001 AC1).** Personal Teams cannot create
+provisioning profiles that include that capability (Xcode: "Personal development
+teams … do not support the Sign In with Apple capability"), so the entitlement,
+the Welcome-screen button and the `AuthService.signInWithApple()` path were
+removed in October 2026. To bring it back on a paid team: add
+`com.apple.developer.applesignin` to `Mekasa.entitlements`, enable the Apple
+provider in Firebase (`docs/gcp-firebase-setup.md` §2b), and restore the Welcome
+button + `AuthService` code from git history (`git log -S signInWithApple`).
+
 ### DEBUG: offline UI walkthrough
 
 **Browse UI offline** walks onboarding with local fixtures (no Firebase/network).
+
+### Scanner beep
+
+Accepted barcode reads play `Mekasa/Sounds/scanner-beep.mp3` (synced from `design/scanner-beep.mp3`) plus a success haptic; unknown/fail uses a system nack tone + warning haptic. Implemented in `AddItems/ScanFeedback.swift` and called from **Scan barcode** and **Trash station**.
+
+Replace the asset and refresh the app copy:
+
+```bash
+cp /path/to/your/scanner-beep.mp3 design/scanner-beep.mp3
+./design/scripts/sync_scanner_beep.sh
+cd ios && xcodegen generate
+```
+
+Mute on-device via Family → **Scan sounds**. Unit coverage: `MekasaTests/ScanFeedbackTests.swift`. Structural: Family toggle in `UI004StructureTests`; trash typed-UPC in `UI005StructureTests`.
 
 ## Spec mapping
 
 - UI-003 Onboarding · REQ-001 Auth · REQ-002 Household · REQ-003 Address/Stores  
 - UI-004 Dashboard + Add items hub · REQ-004–REQ-008 (inventory sync to API when signed in)  
+- UI-005 Trash station · REQ-008 (typed UPC, scan beep + haptic, 5 s cooldown, Scan sounds toggle)  
 - Shopping list · REQ-011–REQ-014 (client staging; low-stock auto-add)  
+- Family · REQ-019 (account/household cards, Scan sounds toggle)  
 - Voice add · REQ-007 (speech or sample phrase → catalog match → confirm)  
 - Realtime sync · REQ-020 (Firestore listeners when signed in; REST mutations)  
 - Push · PRD §8 (device register + invite FCM hooks; APNs key required in prod)  
-- Design: `design/mockups/OnboardingHouseholdSetup.jsx`, `OnboardingStoreSelection.jsx`, `Dashboard.jsx`, `AddItems.jsx`, `ShoppingList.jsx`
+- Design: `design/mockups/OnboardingHouseholdSetup.jsx`, `OnboardingStoreSelection.jsx`, `Dashboard.jsx`, `AddItems.jsx`, `ShoppingList.jsx`, `TrashStationMode.jsx`, `FamilyMembers.jsx`

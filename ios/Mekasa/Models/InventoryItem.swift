@@ -13,6 +13,8 @@ struct InventoryItem: Identifiable, Equatable, Hashable {
     var barcode: String?
     var source: InventorySource
     var imageURL: String?
+    /// REQ-021: health grade + allergen data from the barcode lookup (nil for manual items).
+    var health: ProductHealth?
     /// Catalog match from receipt / name search (UI only; not always persisted).
     var isIdentified: Bool
     var updatedAt: Date
@@ -29,6 +31,7 @@ struct InventoryItem: Identifiable, Equatable, Hashable {
         barcode: String? = nil,
         source: InventorySource,
         imageURL: String? = nil,
+        health: ProductHealth? = nil,
         isIdentified: Bool = true,
         updatedAt: Date = Date()
     ) {
@@ -41,6 +44,7 @@ struct InventoryItem: Identifiable, Equatable, Hashable {
         self.barcode = barcode
         self.source = source
         self.imageURL = imageURL
+        self.health = health
         self.isIdentified = isIdentified
         self.updatedAt = updatedAt
     }

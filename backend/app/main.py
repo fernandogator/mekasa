@@ -2,6 +2,8 @@
 
 from fastapi import FastAPI
 
+from app.barcode_lookup import clear_lookup_cache
+from app.catalog_routes import products_router
 from app.config import get_settings
 from app.routers import (
     api_router,
@@ -10,19 +12,21 @@ from app.routers import (
     inventory_router,
     shopping_list_router,
     spending_router,
+    store_catalog_router,
 )
 
 
 def create_app() -> FastAPI:
     """Build the FastAPI application."""
     settings = get_settings()
+    clear_lookup_cache()
     application = FastAPI(
         title="Mekasa API",
         version="0.6.0",
         description=(
             "Mekasa API: Firebase Auth, household onboarding, inventory CRUD, "
             "shopping list sync, spending/purchase events, Places/OCR/invites, "
-            "and Open Food Facts barcode lookup."
+            "and Open Food Facts family barcode lookup."
         ),
     )
     application.include_router(health_router)
@@ -31,6 +35,8 @@ def create_app() -> FastAPI:
     application.include_router(shopping_list_router)
     application.include_router(spending_router)
     application.include_router(barcode_router)
+    application.include_router(store_catalog_router)
+    application.include_router(products_router)
     application.state.settings = settings  # type: ignore[attr-defined]
     return application
 

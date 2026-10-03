@@ -19,6 +19,7 @@ enum FirestoreDocumentMapper {
             barcode: string(data["barcode"]),
             source: InventorySource(rawValue: string(data["source"]) ?? "") ?? .manual,
             imageURL: string(data["image_url"]),
+            health: ProductHealth(firestore: data["health"]),
             updatedAt: date(data["updated_at"]) ?? Date()
         )
     }

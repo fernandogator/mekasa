@@ -24,6 +24,24 @@ jobs:
   test-backend:
     name: test-backend
     runs-on: ubuntu-latest
+    # Scratch Postgres so the shared-catalog repository and the DDL in
+    # backend/postgres are exercised on every PR (design §7). Tests that
+    # need it read TEST_DATABASE_URL and skip when it is unset.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: mekasa
+          POSTGRES_PASSWORD: mekasa
+          POSTGRES_DB: mekasa_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U mekasa -d mekasa_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://mekasa:mekasa@localhost:5432/mekasa_test
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -85,6 +103,18 @@ jobs:
             xcrun simctl bootstatus "$UDID" -b
             echo "udid=$UDID" >> "$GITHUB_OUTPUT"
           fi
+      - name: Run unit tests (Layer 0)
+        run: |
+          set -euo pipefail
+          mkdir -p TestResults
+          rm -rf TestResults/unit.xcresult
+          xcodebuild test \
+            -scheme Mekasa \
+            -destination "${{ steps.sim.outputs.destination }}" \
+            -testPlan UnitTests \
+            -parallel-testing-enabled NO \
+            -maximum-parallel-testing-workers 1 \
+            -resultBundlePath TestResults/unit.xcresult
       - name: Run structural UI tests
         run: |
           set -euo pipefail
@@ -92,12 +122,17 @@ jobs:
           rm -rf TestResults/structural.xcresult
           # Disable parallel test clones — macos-15 runners flake hard when
           # XCUITest spins "Clone N of iPhone 16" destinations.
+          # Retry once: the first XCUIApplication launches after the unit plan
+          # reinstalls the host app can fail with FBSOpenApplicationErrorDomain
+          # ("Simulator device failed to launch") while the sim settles.
           xcodebuild test \
             -scheme Mekasa \
             -destination "${{ steps.sim.outputs.destination }}" \
             -testPlan StructuralTests \
             -parallel-testing-enabled NO \
             -maximum-parallel-testing-workers 1 \
+            -retry-tests-on-failure \
+            -test-iterations 2 \
             -resultBundlePath TestResults/structural.xcresult
       - name: Run snapshot tests
         run: |
@@ -112,6 +147,42 @@ jobs:
             -maximum-parallel-testing-workers 1 \
             -resultBundlePath TestResults/snapshots.xcresult
 
+  android-fable:
+    name: android-fable
+    # Layer 1 (Robolectric structural) + Layer 2 (Roborazzi snapshots) run on the JVM,
+    # no emulator. The committed app/google-services.json is a CI stub that keeps the
+    # google-services plugin satisfied; FirebaseGate skips init for it.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android-fable
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platforms;android-35 build-tools;34.0.0 build-tools;35.0.0 platform-tools
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: Unit + structural UI tests and snapshot verification
+        run: ./gradlew :app:testDebugUnitTest :app:verifyRoborazziDebug --no-daemon --stacktrace
+      - name: Upload test reports and snapshot diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-fable-test-output
+          if-no-files-found: ignore
+          path: |
+            android-fable/app/build/reports
+            android-fable/app/build/outputs/roborazzi
+
   build:
     name: build
     needs: [test-backend]
@@ -125,14 +196,14 @@ jobs:
 
   visual-verify:
     name: visual-verify
-    needs: [build, ios-ui]
+    needs: [build, ios-ui, android-fable]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Semantic UI verification note
         run: |
-          echo "Layer 3 vision gate is manual: Scripts/verify_ui_vision.py"
-          echo "Layer 1+2 run on the ios-ui macOS job."
+          echo "Layer 3 vision gate is manual: Scripts/verify_ui_vision.py (--platform ios|android)"
+          echo "Layer 1+2 run on the ios-ui macOS job and the android-fable JVM job."
 
   deploy-dev:
     name: deploy-dev

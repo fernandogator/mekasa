@@ -34,7 +34,16 @@ final class ScannerUITest: XCTestCase {
         XCTAssertEqual(session.inventory[0].source, .barcode)
     }
 
-    func testVisual_semanticStructureMatchesBaseline() throws {
-        throw XCTSkip("Stub — implement when baseline exists")
+    @MainActor
+    func testFlow_duplicateScanMergesIntoExistingRow() throws {
+        let session = AppSession()
+        session.startUITesting(emptyInventory: true)
+        guard let draft = InventoryDemoCatalog.lookup(barcode: "041220576037") else {
+            return XCTFail("expected demo barcode")
+        }
+        session.addInventoryItem(draft)
+        session.addInventoryItem(draft)
+        XCTAssertEqual(session.inventory.count, 1, "Same name + category merges instead of duplicating")
+        XCTAssertEqual(session.inventory[0].quantity, draft.quantity * 2)
     }
 }

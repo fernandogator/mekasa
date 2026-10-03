@@ -17,6 +17,10 @@ final class AppSession: ObservableObject {
     @Published var myMemberRole: String?
     /// Extra capabilities from members API (REQ-014 AC3, e.g. `buyer`).
     @Published var myPermissions: [String] = []
+    /// Household members (REQ-019) — kept for REQ-021 avoid-list warnings on synced items.
+    @Published var householdMembers: [HouseholdMemberDTO] = []
+    /// Avoidance catalog from `GET /v1/health/avoidances`; falls back to the built-in list.
+    @Published var avoidanceOptions: [AvoidanceOption] = AvoidanceMatcher.fallbackOptions
     /// Last successful sign-in email/username. Survives sign-out so Welcome can prefill it.
     @Published private(set) var lastSignedInEmail: String?
     @Published var household: Household?
@@ -52,6 +56,7 @@ final class AppSession: ObservableObject {
     private var unauthorizedObserver: NSObjectProtocol?
     private var authStateHandle: AuthStateDidChangeListenerHandle?
     private var isHandlingSessionExpiry = false
+    private var didLoadAvoidanceOptions = false
     private var deepLinkObserver: NSObjectProtocol?
     /// True while Firestore inventory/shopping listeners are attached (REQ-020).
     @Published private(set) var isRealtimeSyncActive = false
@@ -117,6 +122,7 @@ final class AppSession: ObservableObject {
         userUID = "preview-owner"
         myMemberRole = "owner"
         myPermissions = []
+        householdMembers = []
         household = nil
         onboardingStep = .household
         lastError = nil
@@ -145,6 +151,7 @@ final class AppSession: ObservableObject {
         userUID = "uitesting-owner"
         myMemberRole = "owner"
         myPermissions = []
+        householdMembers = TestFixtures.standardMemberDTOs
         household = TestFixtures.previewHousehold
         onboardingStep = .done
         lastError = nil
@@ -187,6 +194,7 @@ final class AppSession: ObservableObject {
         userUID = nil
         myMemberRole = nil
         myPermissions = []
+        householdMembers = []
         household = nil
         onboardingStep = .welcome
         lastError = expiredSessionMessage
@@ -483,6 +491,7 @@ final class AppSession: ObservableObject {
                 householdID: householdID,
                 token: token
             )
+            householdMembers = response.members
             if let me = response.members.first(where: { $0.uid == uid }) {
                 myMemberRole = me.role
                 myPermissions = me.permissions
@@ -490,6 +499,67 @@ final class AppSession: ObservableObject {
         } catch {
             // Non-fatal — ownerUID comparison still works for document owners.
         }
+        await refreshAvoidanceOptions()
+    }
+
+    // MARK: - Health grade + avoidances (REQ-021)
+
+    /// Load the allergen / additive catalog once per session (fallback list until then).
+    func refreshAvoidanceOptions() async {
+        guard canSyncInventory, let token = idToken, !didLoadAvoidanceOptions else { return }
+        do {
+            let response = try await MekasaAPIClient.shared.listAvoidances(token: token)
+            if !response.options.isEmpty {
+                avoidanceOptions = response.options
+                didLoadAvoidanceOptions = true
+            }
+        } catch {
+            // Fallback catalog stays in place; nothing user-facing to report.
+        }
+    }
+
+    /// The signed-in user's own avoid list (empty until members load).
+    var myAvoidList: [String] {
+        guard let uid = userUID else { return [] }
+        return householdMembers.first(where: { $0.uid == uid })?.avoid ?? []
+    }
+
+    /// Members whose avoid list this product triggers — computed locally so items that
+    /// arrive via Firestore sync (no `warnings` field) still warn (REQ-021 AC2, AC4).
+    func memberWarnings(for health: ProductHealth?) -> [MemberWarning] {
+        AvoidanceMatcher.warnings(members: householdMembers, health: health, options: avoidanceOptions)
+    }
+
+    /// Replace a member's avoid list on the server and in the local cache.
+    func updateMemberAvoid(memberUID: String, avoid: [String]) async throws {
+        guard let token = idToken, let householdID = household?.id else { return }
+        if isUIPreview || isUITesting {
+            replaceMember(uid: memberUID, avoid: avoid)
+            return
+        }
+        let updated = try await MekasaAPIClient.shared.updateHouseholdMemberAvoid(
+            householdID: householdID,
+            memberUID: memberUID,
+            avoid: avoid,
+            token: token
+        )
+        replaceMember(uid: updated.uid, avoid: updated.avoid)
+    }
+
+    private func replaceMember(uid: String, avoid: [String]) {
+        guard let idx = householdMembers.firstIndex(where: { $0.uid == uid }) else { return }
+        let old = householdMembers[idx]
+        householdMembers[idx] = HouseholdMemberDTO(
+            uid: old.uid,
+            householdId: old.householdId,
+            name: old.name,
+            email: old.email,
+            phone: old.phone,
+            role: old.role,
+            status: old.status,
+            permissions: old.permissions,
+            avoid: avoid
+        )
     }
 
     /// Pull spending report from Cloud Run (rolling week/month/year of purchase events).
@@ -793,6 +863,17 @@ final class AppSession: ObservableObject {
         Task { await persistShoppingReject(itemID: id) }
     }
 
+    /// Remove a row from the list (any member; REQ-012). Pending requests should go
+    /// through approve/reject when the caller is an owner.
+    func removeShoppingItem(id: String) {
+        guard let idx = shoppingList.firstIndex(where: { $0.id == id }) else { return }
+        let name = shoppingList[idx].name
+        shoppingList.remove(at: idx)
+        logActivity("Removed \(name) from list", kind: .warning)
+        guard canSyncShoppingList else { return }
+        Task { await persistShoppingDelete(itemID: id) }
+    }
+
     // MARK: - Local inventory mutators
 
     private func applyLocalAdd(_ item: InventoryItem) {
@@ -1059,6 +1140,24 @@ final class AppSession: ObservableObject {
                 return
             }
             lastError = "Couldn’t sync approval: \(error.localizedDescription)"
+        }
+    }
+
+    private func persistShoppingDelete(itemID: String) async {
+        guard let token = idToken, let householdID = household?.id else { return }
+        do {
+            try await MekasaAPIClient.shared.deleteShoppingListItem(
+                householdID: householdID,
+                itemID: itemID,
+                token: token
+            )
+        } catch {
+            if SessionExpiry.isUnauthorized(error) {
+                handleAPIFailure(error)
+                return
+            }
+            lastError = "Couldn’t remove that item: \(error.localizedDescription)"
+            await refreshShoppingList()
         }
     }
 

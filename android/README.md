@@ -50,6 +50,18 @@ Debug APK: `app/build/outputs/apk/debug/app-debug.apk`
    - **Continue with email** — Firebase when configured; otherwise falls back to Cloud Run `test:` bearer (only if `ALLOW_TEST_AUTH=true`)
    - **Continue with Google** — when Firebase is configured with a Web client ID
 3. From MainShell, tap **+** to scan/enter a barcode, search products, and confirm into inventory.
+4. Family & settings → **Scan sounds** toggles barcode beep + vibrate (default on).
+
+### Scanner beep
+
+Accepted barcode reads play `app/src/main/res/raw/scanner_beep.mp3` (synced from `design/scanner-beep.mp3`) plus a short vibration; unknown/fail uses a `ToneGenerator` nack + longer vibrate. Shared helper: `ui/components/ScanFeedback.kt` (add-barcode + trash station). Trash station also applies a 5 s cooldown after an accepted scan.
+
+```bash
+# From repo root — refresh both app copies after replacing the design asset:
+./design/scripts/sync_scanner_beep.sh
+```
+
+Unit coverage: `app/src/test/.../ScanFeedbackTest.kt`.
 
 ## Package layout
 
@@ -58,6 +70,9 @@ Debug APK: `app/build/outputs/apk/debug/app-debug.apk`
 | `auth/` | FirebaseBootstrap + AuthService |
 | `ui/onboarding/` | Welcome → household → address → stores |
 | `ui/additems/` | Barcode (CameraX + ML Kit) / search / confirm |
+| `ui/components/ScanFeedback` | Custom beep + vibrate; Scan sounds preference |
+| `ui/trash/` | Trash station (cooldown + consume by barcode) |
+| `ui/family/` | Members, invites, Scan sounds toggle, trash kiosk |
 | `ui/shell/` | Bottom nav + Add FAB |
 | `data/` | Ktor API client + DTOs |
 | `session/AppSession` | Auth, onboarding, dashboard, inventory add |

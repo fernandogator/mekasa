@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mekasa.app/schema/firestore/receipts.schema.json",
+  "title": "households/{household_id}/receipts/{receipt_id}",
+  "description": "One uploaded receipt. Satisfies: REQ-RCP-001, REQ-RCP-005, REQ-RCP-015.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "household_id",
+    "store_chain_id",
+    "status",
+    "currency",
+    "line_item_count",
+    "unresolved_count",
+    "created_by_uid",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "household_id": { "$ref": "_common.schema.json#/$defs/docId" },
+    "store_id": { "type": ["string", "null"], "maxLength": 120 },
+    "store_chain_id": { "$ref": "_common.schema.json#/$defs/storeChainId" },
+    "store_chain_detected": { "type": ["string", "null"], "maxLength": 80 },
+    "image_gcs_uri": { "type": ["string", "null"], "pattern": "^gs://[a-z0-9._-]+/.+$" },
+    "image_sha256": { "anyOf": [{ "$ref": "_common.schema.json#/$defs/sha256" }, { "type": "null" }] },
+    "raw_text": { "type": ["string", "null"], "maxLength": 20000 },
+    "status": {
+      "type": "string",
+      "enum": ["uploaded", "parsing", "parsed", "needs_review", "confirmed", "failed"]
+    },
+    "extraction_engine": {
+      "type": ["string", "null"],
+      "enum": ["gemini", "vision_regex", "text_regex", "stub", null]
+    },
+    "parse_job_id": { "type": ["string", "null"] },
+    "purchased_at": { "$ref": "_common.schema.json#/$defs/nullableTimestamp" },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+    "subtotal": { "anyOf": [{ "$ref": "_common.schema.json#/$defs/money" }, { "type": "null" }] },
+    "tax": { "anyOf": [{ "$ref": "_common.schema.json#/$defs/money" }, { "type": "null" }] },
+    "total": { "anyOf": [{ "$ref": "_common.schema.json#/$defs/money" }, { "type": "null" }] },
+    "line_item_count": { "type": "integer", "minimum": 0 },
+    "unresolved_count": { "type": "integer", "minimum": 0 },
+    "created_by_uid": { "$ref": "_common.schema.json#/$defs/uid" },
+    "confirmed_by_uid": { "anyOf": [{ "$ref": "_common.schema.json#/$defs/uid" }, { "type": "null" }] },
+    "confirmed_at": { "$ref": "_common.schema.json#/$defs/nullableTimestamp" },
+    "created_at": { "$ref": "_common.schema.json#/$defs/timestamp" },
+    "updated_at": { "$ref": "_common.schema.json#/$defs/timestamp" }
+  },
+  "anyOf": [
+    { "required": ["image_gcs_uri"], "properties": { "image_gcs_uri": { "type": "string" } } },
+    { "required": ["raw_text"], "properties": { "raw_text": { "type": "string", "minLength": 1 } } }
+  ]
+}

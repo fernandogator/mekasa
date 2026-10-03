@@ -1,42 +1,34 @@
-// Verifies: pending UI requirement (settings / members)
-// AC1, AC2, AC3
-// Design: pending — add design/mockups/Settings.jsx when specified
+// Verifies: REQ-019 AC5 (Family / settings — Scan sounds)
+// Design: design/mockups/FamilyMembers.jsx
 
 package app.mekasa.android.ui
 
-import org.junit.Ignore
+import app.mekasa.android.ui.components.ScanFeedback
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Compose UI test stubs for Settings / Members.
- * Layout + interaction + flow + semantic visual verification.
- * Visual verification is structural (not pixel-exact).
+ * Settings / Family scan-feedback coverage.
+ * Layout/interaction Compose UI tests remain stubs until an instrumented suite lands;
+ * preference keys and defaults are asserted here so CI guards the contract.
  */
 class SettingsUITest {
 
     @Test
-    @Ignore("Stub — implement when Settings composable exists")
-    fun layout_keyComposablesVisible() {
-        // Layout test: verify key composables exist and are visible
+    fun scanSounds_preferenceKeysMatchFamilyToggle() {
+        assertEquals("mekasa_settings", ScanFeedback.PREFS_NAME)
+        assertEquals("scan_sounds_enabled", ScanFeedback.PREF_SOUNDS_ENABLED)
     }
 
     @Test
-    @Ignore("Stub — implement when Settings composable exists")
-    fun interaction_tapsInputsAndNavigationTriggers() {
-        // Interaction test: verify taps, inputs, and navigation triggers
+    fun scanSounds_defaultEnabledWithoutContext() {
+        assertTrue(ScanFeedback.soundsEnabled(null))
     }
 
     @Test
-    @Ignore("Stub — implement when Settings composable exists")
-    fun flow_navigatesToNextScreen() {
-        // Flow test: verify navigation to next screen completes correctly
-    }
-
-    @Test
-    @Ignore("Stub — implement when baseline exists")
-    fun visual_semanticStructureMatchesBaseline() {
-        // Visual verification: capture screenshot; compare semantic structure
-        // to design/baselines/android/Settings_baseline.png
-        // Tolerance: 15% color/content; fail only on structural divergence
+    fun scanFeedback_cooldownMatchesTrashStationSpec() {
+        // REQ-008 AC4: 5 s disarm after an accepted trash-station scan.
+        assertEquals(5, ScanFeedback.COOLDOWN_SECONDS)
     }
 }

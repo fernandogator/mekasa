@@ -1,18 +1,62 @@
-"""Third-party barcode / UPC / name product lookup (Open Food Facts)."""
+"""Third-party barcode / UPC / name product lookup (Open Food Facts family)."""
 
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
+import time
 
 import httpx
 
+from app.barcode_codes import candidates as barcode_candidates
+from app.barcode_codes import digits_only
 from app.category_icons import category_placeholder_url
 from app.models import BarcodeLookupResponse, ProductSearchHit, ProductSearchResponse
+from app.product_health import health_from_off_product
+
+logger = logging.getLogger(__name__)
 
 OFF_PRODUCT_URL = "https://world.openfoodfacts.org/api/v2/product/{code}"
 OFF_SEARCH_URL = "https://world.openfoodfacts.org/cgi/search.pl"
 USER_AGENT = "Mekasa/0.4 (https://github.com/fernandogator/mekasa)"
+
+# Sister databases share the OFF API shape; queried when OFF has no record so
+# household / beauty / pet products stop coming back as "unknown".
+PRODUCT_SOURCES: tuple[tuple[str, str], ...] = (
+    ("openfoodfacts", OFF_PRODUCT_URL),
+    ("openproductsfacts", "https://world.openproductsfacts.org/api/v2/product/{code}"),
+    ("openbeautyfacts", "https://world.openbeautyfacts.org/api/v2/product/{code}"),
+    ("openpetfoodfacts", "https://world.openpetfoodfacts.org/api/v2/product/{code}"),
+)
+
+LOOKUP_TIMEOUT_SECONDS = 5.0
+LOOKUP_ATTEMPTS = 2
+# Positive hits are stable; misses are retried sooner because contributors add
+# products daily and a miss may also have been a partial outage.
+CACHE_TTL_FOUND_SECONDS = 6 * 60 * 60
+CACHE_TTL_MISS_SECONDS = 15 * 60
+CACHE_MAX_ENTRIES = 2000
+
+# REQ-021: health grade + allergen inputs requested alongside the catalog fields.
+OFF_HEALTH_FIELDS = (
+    "nutriscore_grade,nutrition_grades,nova_group,additives_tags,allergens_tags,"
+    "traces_tags,ingredients_text,ingredients_text_en,ingredients_analysis_tags"
+)
+# OFF has no wildcard for localised names, so the common ones are listed explicitly.
+_LOCALISED_NAME_FIELDS = ",".join(
+    f"product_name_{lang}" for lang in ("es", "fr", "de", "it", "pt", "nl", "pl", "ja", "zh", "ko", "ar", "ru")
+)
+OFF_PRODUCT_FIELDS = (
+    "code,product_name,product_name_en,abbreviated_product_name,generic_name,"
+    f"generic_name_en,{_LOCALISED_NAME_FIELDS},brands,categories,categories_tags,"
+    "image_front_url,image_url,image_front_small_url,"
+    + OFF_HEALTH_FIELDS
+)
+
+
+class ProductLookupUnavailableError(RuntimeError):
+    """Every product-database call failed (timeout / 429 / 5xx); the code may still exist."""
 
 # Brand nicknames → OFF-friendly search terms (voice / manual / receipt).
 _SEARCH_ALIASES: dict[str, tuple[str, ...]] = {
@@ -32,7 +76,7 @@ _TOKEN_SYNONYMS: dict[str, frozenset[str]] = {
 
 # Prefer beverages before produce so "jus de fruit" does not steal soda hits.
 _CATEGORY_MAP = (
-    (("milk", "dairy", "cheese", "yogurt", "cream"), "Dairy"),
+    (("milk", "dairy", "dairies", "cheese", "yogurt", "yoghurt", "cream"), "Dairy"),
     (("meat", "poultry", "fish", "seafood", "beef", "chicken"), "Meat"),
     (("frozen",), "Frozen"),
     (
@@ -56,7 +100,11 @@ _CATEGORY_MAP = (
     ),
     (("household", "cleaning", "detergent", "soap", "paper"), "Household"),
     (
-        ("cereal", "pasta", "rice", "bread", "snack", "sauce", "oil", "pantry", "cookie", "biscuit"),
+        (
+            "cereal", "pasta", "rice", "bread", "snack", "sauce", "oil", "pantry",
+            "cookie", "biscuit", "spread", "chocolate", "candy", "sweet", "cracker",
+            "can", "canned", "soup", "flour", "sugar", "spice", "condiment",
+        ),
         "Pantry",
     ),
     # Word-ish produce needles (avoid matching "fruit" inside "jus de fruit" for sodas
@@ -70,13 +118,22 @@ def _humanize_tag(tag: str) -> str:
     return value[:1].upper() + value[1:] if value else "Other"
 
 
+def _word_in(needle: str, haystack: str) -> bool:
+    """
+    Whole-word match with optional plural, so "cola" no longer hits "chocolate" and
+    "tea" no longer hits "steak" (both used to classify as Beverages).
+    """
+    pattern = rf"(?<![a-z]){re.escape(needle)}(?:s|es)?(?![a-z])"
+    return re.search(pattern, haystack) is not None
+
+
 def _map_category(tags: list[str] | None, categories: str | None) -> str:
     haystack = " ".join(tags or [])
     if categories:
         haystack = f"{haystack} {categories}"
     lowered = haystack.casefold()
     for needles, label in _CATEGORY_MAP:
-        if any(needle in lowered for needle in needles):
+        if any(_word_in(needle, lowered) for needle in needles):
             return label
     # Produce "fruit" only as a standalone tag token, not substring of "jus de fruit".
     if re.search(r"(?:^|[\s,:])fruit(?:s)?(?:$|[\s,:])", lowered):
@@ -111,8 +168,34 @@ def _brand(product: dict) -> str | None:
     return best or None
 
 
+_NAME_KEYS = (
+    "product_name",
+    "product_name_en",
+    "abbreviated_product_name",
+    "generic_name",
+    "generic_name_en",
+)
+
+
+def _product_name(product: dict) -> str:
+    """
+    First usable name: English keys, then any localised `product_name_xx`.
+
+    OFF records added from a non-English locale often carry only `product_name_es`
+    (etc.); previously those were reported as "not found" despite a full record.
+    """
+    for key in _NAME_KEYS:
+        value = product.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    for key in sorted(product):
+        if key.startswith("product_name_") and isinstance(product[key], str) and product[key].strip():
+            return product[key].strip()
+    return ""
+
+
 def _display_name(product: dict) -> str | None:
-    name = (product.get("product_name") or product.get("product_name_en") or "").strip()
+    name = _product_name(product)
     brand = _brand(product)
     if name and brand and brand.casefold() not in name.casefold():
         return f"{brand} {name}"
@@ -160,6 +243,7 @@ def _hit_from_product(product: dict) -> ProductSearchHit | None:
         category=category,
         image_url=_product_image_url(product, category),
         source="openfoodfacts",
+        health=health_from_off_product(product),
     )
 
 
@@ -213,23 +297,34 @@ async def _get_json_with_retry(
     params: dict[str, str],
     retries: int = 3,
 ) -> dict:
-    """GET JSON with short backoff on 5xx / transport errors."""
+    """
+    GET JSON with short backoff on 429 / 5xx / transport errors.
+
+    Raises httpx.HTTPError after the last attempt so callers can tell an upstream
+    outage from a genuine "not found" (a 404 is returned as `{}` with no raise).
+    """
     last_error: Exception | None = None
     for attempt in range(retries):
         try:
             response = await http.get(url, params=params)
-            if response.status_code >= 500:
+            if response.status_code == 404:
+                return {}
+            if response.status_code == 429 or response.status_code >= 500:
                 last_error = httpx.HTTPStatusError(
-                    f"OFF {response.status_code}",
+                    f"upstream {response.status_code}",
                     request=response.request,
                     response=response,
                 )
                 if attempt + 1 < retries:
-                    await asyncio.sleep(0.35 * (attempt + 1))
+                    await asyncio.sleep(_retry_delay(response, attempt))
                     continue
                 response.raise_for_status()
             response.raise_for_status()
-            payload = response.json()
+            try:
+                payload = response.json()
+            except ValueError:
+                # OFF's maintenance page is HTML with a 200 on some edges.
+                payload = {}
             return payload if isinstance(payload, dict) else {}
         except httpx.HTTPError as exc:
             last_error = exc
@@ -239,6 +334,91 @@ async def _get_json_with_retry(
             raise
     assert last_error is not None
     raise last_error
+
+
+def _retry_delay(response: httpx.Response, attempt: int) -> float:
+    headers = getattr(response, "headers", None)
+    retry_after = headers.get("Retry-After") if isinstance(headers, httpx.Headers) else None
+    if isinstance(retry_after, str) and retry_after.strip().isdigit():
+        return min(float(retry_after), 2.0)
+    return 0.35 * (attempt + 1)
+
+
+def _off_key(code: str) -> str:
+    """How the OFF family stores a code: EAN-8 shapes stay 8 digits, everything else pads to 13."""
+    if len(code) <= 8:
+        return code.zfill(8)
+    if len(code) < 13:
+        return code.zfill(13)
+    return code
+
+
+def lookup_keys(code: str) -> list[str]:
+    """Distinct codes to query for a scanned value (UPC-E expanded, UPC-A padded)."""
+    keys: list[str] = []
+    for candidate in barcode_candidates(code):
+        key = _off_key(candidate)
+        if key not in keys:
+            keys.append(key)
+    return keys
+
+
+_CACHE: dict[str, tuple[float, BarcodeLookupResponse]] = {}
+
+
+def clear_lookup_cache() -> None:
+    _CACHE.clear()
+
+
+def _cache_get(keys: list[str]) -> BarcodeLookupResponse | None:
+    now = time.monotonic()
+    for key in keys:
+        entry = _CACHE.get(key)
+        if entry is None:
+            continue
+        expires_at, cached = entry
+        if expires_at <= now:
+            _CACHE.pop(key, None)
+            continue
+        return cached
+    return None
+
+
+def _cache_put(keys: list[str], result: BarcodeLookupResponse) -> None:
+    ttl = CACHE_TTL_FOUND_SECONDS if result.found else CACHE_TTL_MISS_SECONDS
+    expires_at = time.monotonic() + ttl
+    if len(_CACHE) >= CACHE_MAX_ENTRIES:
+        for stale in sorted(_CACHE, key=lambda k: _CACHE[k][0])[: CACHE_MAX_ENTRIES // 10]:
+            _CACHE.pop(stale, None)
+    for key in keys:
+        _CACHE[key] = (expires_at, result)
+
+
+async def _fetch_product(
+    http: httpx.AsyncClient,
+    source: str,
+    url_template: str,
+    code: str,
+) -> tuple[dict | None, bool]:
+    """
+    Return (product, upstream_failed).
+
+    product is the OFF-style dict when the database knows the code, None otherwise.
+    upstream_failed is True when the call itself failed (timeout / 429 / 5xx).
+    """
+    try:
+        payload = await _get_json_with_retry(
+            http,
+            url_template.format(code=code),
+            params={"fields": OFF_PRODUCT_FIELDS},
+            retries=LOOKUP_ATTEMPTS,
+        )
+    except httpx.HTTPError as exc:
+        logger.warning("barcode lookup %s %s failed: %s", source, code, exc)
+        return None, True
+    if payload.get("status") != 1 or not isinstance(payload.get("product"), dict):
+        return None, False
+    return payload["product"], False
 
 
 def _collect_hits(
@@ -268,75 +448,107 @@ def _collect_hits(
         results.append(hit)
 
 
-async def lookup_barcode(code: str, *, client: httpx.AsyncClient | None = None) -> BarcodeLookupResponse:
+async def lookup_barcode(
+    code: str,
+    *,
+    client: httpx.AsyncClient | None = None,
+    raise_when_unavailable: bool = False,
+) -> BarcodeLookupResponse:
     """
-    Satisfies: REQ-004, ADR-006 (OFF image primary)
+    Satisfies: REQ-004 (AC1, AC2, AC6, AC7), ADR-006 (OFF image primary)
     Spec version: 1.0
 
-    Query Open Food Facts for a UPC/EAN. Unknown codes return found=False.
+    Resolve a scanned UPC/EAN against the Open Food Facts family of databases.
+
+    * Every equivalent code shape is tried (UPC-E expanded to UPC-A, 12 → 13 digits),
+      because contributors save the same product under different shapes.
+    * Open Food Facts is asked first; Open Products / Beauty / Pet Food Facts are
+      queried in parallel when OFF has no record.
+    * Results (hits and misses) are cached in-process to stay inside OFF rate limits.
+    * Unknown codes return found=False. When *every* database call failed and
+      `raise_when_unavailable` is set, ProductLookupUnavailableError is raised so the
+      API can answer 503 instead of pretending the product does not exist.
     """
-    cleaned = re.sub(r"\D", "", code or "")
+    cleaned = digits_only(code)
     if len(cleaned) < 6:
         return BarcodeLookupResponse(barcode=cleaned or code, found=False, source="none")
 
+    keys = lookup_keys(cleaned)
+    cached = _cache_get(keys)
+    if cached is not None:
+        return cached.model_copy(update={"barcode": cleaned})
+
     owns_client = client is None
-    http = client or httpx.AsyncClient(timeout=8.0, headers={"User-Agent": USER_AGENT})
+    http = client or httpx.AsyncClient(
+        timeout=LOOKUP_TIMEOUT_SECONDS, headers={"User-Agent": USER_AGENT}
+    )
     try:
-        last_status: int | None = None
-        payload: dict = {}
-        for attempt in range(3):
-            try:
-                response = await http.get(
-                    OFF_PRODUCT_URL.format(code=cleaned),
-                    params={
-                        "fields": (
-                            "product_name,product_name_en,brands,categories,categories_tags,"
-                            "image_front_url,image_url,image_front_small_url"
-                        )
-                    },
-                )
-                last_status = response.status_code
-                if response.status_code == 404:
-                    return BarcodeLookupResponse(barcode=cleaned, found=False, source="none")
-                if response.status_code >= 500:
-                    if attempt + 1 < 3:
-                        await asyncio.sleep(0.35 * (attempt + 1))
-                        continue
-                    response.raise_for_status()
-                response.raise_for_status()
-                raw = response.json()
-                payload = raw if isinstance(raw, dict) else {}
-                break
-            except httpx.HTTPError:
-                if attempt + 1 < 3:
-                    await asyncio.sleep(0.35 * (attempt + 1))
-                    continue
-                return BarcodeLookupResponse(barcode=cleaned, found=False, source="none")
-        else:
+        primary_source, primary_url = PRODUCT_SOURCES[0]
+        primary = await asyncio.gather(
+            *(_fetch_product(http, primary_source, primary_url, key) for key in keys)
+        )
+        upstream_failed = any(failed for _, failed in primary)
+        for key, (product, _) in zip(keys, primary):
+            hit = _response_from_product(product, cleaned, key, primary_source)
+            if hit is not None:
+                _cache_put(keys, hit)
+                return hit
+
+        secondary = [
+            (source, url, key)
+            for source, url in PRODUCT_SOURCES[1:]
+            for key in keys
+        ]
+        results = await asyncio.gather(
+            *(_fetch_product(http, source, url, key) for source, url, key in secondary)
+        )
+        for (source, _, key), (product, failed) in zip(secondary, results):
+            upstream_failed = upstream_failed or failed
+            hit = _response_from_product(product, cleaned, key, source)
+            if hit is not None:
+                _cache_put(keys, hit)
+                return hit
+
+        if upstream_failed:
+            logger.warning("barcode %s: product databases unavailable", cleaned)
+            if raise_when_unavailable:
+                raise ProductLookupUnavailableError(cleaned)
+            # Do not cache: the code may exist and the outage is transient.
             return BarcodeLookupResponse(barcode=cleaned, found=False, source="none")
 
-        if last_status == 404:
-            return BarcodeLookupResponse(barcode=cleaned, found=False, source="none")
-        if payload.get("status") != 1 or not isinstance(payload.get("product"), dict):
-            return BarcodeLookupResponse(barcode=cleaned, found=False, source="none")
-        product = payload["product"]
-        name = _display_name(product)
-        if not name:
-            return BarcodeLookupResponse(barcode=cleaned, found=False, source="none")
-        category = _map_category(product.get("categories_tags"), product.get("categories"))
-        return BarcodeLookupResponse(
-            barcode=cleaned,
-            found=True,
-            name=name,
-            brand=_brand(product),
-            category=category,
-            quantity=1,
-            image_url=_product_image_url(product, category),
-            source="openfoodfacts",
-        )
+        logger.info("barcode %s: not in any product database (tried %s)", cleaned, keys)
+        miss = BarcodeLookupResponse(barcode=cleaned, found=False, source="none")
+        _cache_put(keys, miss)
+        return miss
     finally:
         if owns_client:
             await http.aclose()
+
+
+def _response_from_product(
+    product: dict | None,
+    scanned: str,
+    key: str,
+    source: str,
+) -> BarcodeLookupResponse | None:
+    if product is None:
+        return None
+    name = _display_name(product)
+    if not name:
+        logger.info("barcode %s: %s record %s has no name yet", scanned, source, key)
+        return None
+    category = _map_category(product.get("categories_tags"), product.get("categories"))
+    return BarcodeLookupResponse(
+        barcode=scanned,
+        found=True,
+        name=name,
+        brand=_brand(product),
+        category=category,
+        quantity=1,
+        image_url=_product_image_url(product, category),
+        source=source,  # type: ignore[arg-type]
+        health=health_from_off_product(product),
+    )
 
 
 async def search_products(
@@ -365,9 +577,12 @@ async def search_products(
         seen_barcodes: set[str] = set()
         seen_names: set[str] = set()
 
+        attempted = 0
+        failed = 0
         for terms in expand_search_queries(cleaned):
             if len(results) >= limit:
                 break
+            attempted += 1
             try:
                 payload = await _get_json_with_retry(
                     http,
@@ -381,7 +596,9 @@ async def search_products(
                         "sort_by": "unique_scans_n",
                     },
                 )
-            except httpx.HTTPError:
+            except httpx.HTTPError as exc:
+                failed += 1
+                logger.warning("product search %r failed: %s", terms, exc)
                 continue
             products = payload.get("products")
             if not isinstance(products, list):
@@ -394,6 +611,10 @@ async def search_products(
                 results=results,
             )
 
+        if not results and attempted and failed == attempted:
+            # OFF search is rate limited to ~10 req/min per IP and returns 503 during
+            # maintenance; surface that instead of an empty result list.
+            raise ProductLookupUnavailableError(cleaned)
         return ProductSearchResponse(query=cleaned, results=results)
     finally:
         if owns_client:

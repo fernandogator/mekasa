@@ -12,8 +12,22 @@ from app.models import (
     HouseholdInviteResponse,
     HouseholdMemberResponse,
     HouseholdMemberRoleUpdateRequest,
+    MemberAvoidUpdateRequest,
 )
+from app.product_health import normalize_avoidance
 from app.repository import get_household_repository
+
+
+def normalize_avoid_list(values: list[str]) -> list[str]:
+    """Catalog keys / trimmed free text, de-duplicated, empty entries dropped."""
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for value in values:
+        term = normalize_avoidance(value)
+        if term and term not in seen:
+            seen.add(term)
+            ordered.append(term)
+    return ordered
 
 
 def _utcnow() -> datetime:
@@ -199,6 +213,27 @@ class InMemoryMembersRepository:
                 raise ValueError("cannot_demote_self")
             updated = member.model_copy(
                 update={"role": payload.role, "updated_at": _utcnow()}
+            )
+            self._members[household_id][member_uid] = updated
+            return updated
+
+    def update_avoid(
+        self,
+        household_id: str,
+        member_uid: str,
+        actor_uid: str,
+        payload: MemberAvoidUpdateRequest,
+    ) -> HouseholdMemberResponse:
+        if member_uid == actor_uid:
+            self._require_member_or_owner(household_id, actor_uid)
+        else:
+            self._require_owner(household_id, actor_uid)
+        with self._lock:
+            member = self._members.get(household_id, {}).get(member_uid)
+            if member is None:
+                raise KeyError(member_uid)
+            updated = member.model_copy(
+                update={"avoid": normalize_avoid_list(payload.avoid), "updated_at": _utcnow()}
             )
             self._members[household_id][member_uid] = updated
             return updated

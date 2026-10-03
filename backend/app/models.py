@@ -107,6 +107,68 @@ class StoreSelectionRequest(BaseModel):
 
 InventorySource = Literal["manual", "barcode", "receipt", "voice"]
 
+HealthGrade = Literal["A", "B", "C", "D", "E"]
+AdditiveConcern = Literal["none", "low", "moderate", "high", "unknown"]
+
+
+class AdditiveInfo(BaseModel):
+    """One food additive found on a product (REQ-021)."""
+
+    code: str = Field(max_length=8)
+    name: str = Field(max_length=80)
+    concern: AdditiveConcern = "unknown"
+
+
+class ProductHealth(BaseModel):
+    """
+    Satisfies: REQ-021 (health grade + allergen data)
+    Spec version: 1.0
+
+    Derived from Open Food Facts; see app.product_health for the grade formula.
+    """
+
+    grade: HealthGrade | None = None
+    score: int | None = Field(default=None, ge=0, le=100)
+    nutriscore: Literal["A", "B", "C", "D", "E"] | None = None
+    nova_group: int | None = Field(default=None, ge=1, le=4)
+    additives: list[AdditiveInfo] = Field(default_factory=list)
+    allergens: list[str] = Field(default_factory=list)
+    traces: list[str] = Field(default_factory=list)
+    ingredients_text: str | None = Field(default=None, max_length=2000)
+    # e.g. "Palm oil" from OFF ingredient analysis
+    flags: list[str] = Field(default_factory=list)
+
+
+class MemberWarning(BaseModel):
+    """A household member who avoids something this product contains (REQ-021 AC2)."""
+
+    member_uid: str
+    member_name: str
+    matched: list[str]
+
+
+class AvoidanceOption(BaseModel):
+    """Catalog entry a member can pick from ("I'm allergic to…")."""
+
+    key: str
+    label: str
+    terms: list[str] = Field(default_factory=list)
+
+
+class AvoidancesResponse(BaseModel):
+    options: list[AvoidanceOption]
+
+
+class MemberAvoidUpdateRequest(BaseModel):
+    """
+    Satisfies: REQ-021 AC1
+    Spec version: 1.0
+
+    Replace the member's avoid list. Entries are catalog keys/labels or free text.
+    """
+
+    avoid: list[str] = Field(default_factory=list, max_length=40)
+
 
 class InventoryItemCreateRequest(BaseModel):
     """
@@ -123,6 +185,7 @@ class InventoryItemCreateRequest(BaseModel):
     barcode: str | None = Field(default=None, max_length=64)
     image_url: str | None = Field(default=None, max_length=2048)
     source: InventorySource = "manual"
+    health: ProductHealth | None = None
 
 
 class InventoryItemUpdateRequest(BaseModel):
@@ -138,6 +201,7 @@ class InventoryItemUpdateRequest(BaseModel):
     price_paid: float | None = Field(default=None, ge=0)
     barcode: str | None = Field(default=None, max_length=64)
     image_url: str | None = Field(default=None, max_length=2048)
+    health: ProductHealth | None = None
 
 
 class InventoryItemResponse(BaseModel):
@@ -160,6 +224,9 @@ class InventoryItemResponse(BaseModel):
     # REQ-INV-016 soft-delete (absent/false = visible)
     deleted: bool = False
     deleted_at: datetime | None = None
+    # REQ-021: health grade data (barcode items) + members who avoid an ingredient
+    health: ProductHealth | None = None
+    warnings: list[MemberWarning] = Field(default_factory=list)
 
     @property
     def is_low_stock(self) -> bool:
@@ -277,7 +344,12 @@ class BarcodeLookupResponse(BaseModel):
     category: str | None = None
     quantity: int = 1
     image_url: str | None = None
-    source: Literal["openfoodfacts", "none"] = "none"
+    source: Literal[
+        "openfoodfacts", "openproductsfacts", "openbeautyfacts", "openpetfoodfacts", "none"
+    ] = "none"
+    health: ProductHealth | None = None
+    # Filled when the lookup is scoped to a household (?household_id=…)
+    warnings: list[MemberWarning] = Field(default_factory=list)
 
 
 class ProductSearchHit(BaseModel):
@@ -289,6 +361,7 @@ class ProductSearchHit(BaseModel):
     category: str
     image_url: str | None = None
     source: Literal["openfoodfacts"] = "openfoodfacts"
+    health: ProductHealth | None = None
 
 
 class ProductSearchResponse(BaseModel):
@@ -316,6 +389,13 @@ class ReceiptLineItem(BaseModel):
     barcode: str | None = Field(default=None, max_length=64)
     image_url: str | None = Field(default=None, max_length=2048)
     identified: bool = False
+    # Line text as printed (before abbreviation expansion) and any item code
+    # printed on the line; both feed the per-store catalog.
+    receipt_text: str | None = Field(default=None, max_length=200)
+    receipt_code: str | None = Field(default=None, max_length=64)
+    # Row in the store's shared table; clients send it back with an in-store
+    # capture (barcode + photo) when the catalog could not identify the line.
+    store_item_id: str | None = Field(default=None, max_length=120)
 
 
 class ReceiptScanRequest(BaseModel):
@@ -337,6 +417,74 @@ class ReceiptScanResponse(BaseModel):
     household_id: str
     engine: str
     items: list[ReceiptLineItem]
+    store_id: str | None = None
+    store_name: str | None = None
+
+
+StoreCodeSource = Literal["receipt", "catalog", "manual_scan"]
+StoreItemStatus = Literal["confirmed", "conflict", "receipt_only", "manual_only"]
+
+
+class StoreItemCode(BaseModel):
+    """One UPC / store SKU discovered for a store item, with where it came from."""
+
+    code: str
+    kind: Literal["upc", "sku"]
+    sources: list[StoreCodeSource]
+    seen_count: int = 1
+    first_seen: datetime
+    last_seen: datetime
+
+
+class StoreCatalogItem(BaseModel):
+    """
+    One row of a store's shared item table: a receipt line and/or a manual scan
+    (receipt_text is None when the item was only ever scanned).
+
+    status compares manually scanned codes with receipt / catalog codes:
+    confirmed = a manual scan matches a receipt or catalog code,
+    conflict = both exist but none match,
+    receipt_only / manual_only = only one side has a code (or none yet).
+    """
+
+    id: str
+    store_id: str
+    receipt_text: str | None = None
+    name: str
+    category: str = "Other"
+    last_price: float | None = None
+    codes: list[StoreItemCode] = Field(default_factory=list)
+    status: StoreItemStatus = "receipt_only"
+    # Latest in-store photo; photo_url is filled by the API when served.
+    photo_id: str | None = None
+    photo_url: str | None = None
+    updated_at: datetime
+
+
+class StoreCatalogSummary(BaseModel):
+    """A store that has a shared item table."""
+
+    id: str
+    name: str
+    address: str | None = None
+    item_count: int = 0
+    updated_at: datetime
+
+
+class PhotoUploadResponse(BaseModel):
+    """A stored user photo; url is public by unguessable id."""
+
+    id: str
+    url: str
+
+
+class StoreCatalogListResponse(BaseModel):
+    stores: list[StoreCatalogSummary]
+
+
+class StoreCatalogItemsResponse(BaseModel):
+    store: StoreCatalogSummary
+    items: list[StoreCatalogItem]
 
 
 class HouseholdPhotoResponse(BaseModel):
@@ -394,6 +542,8 @@ class HouseholdMemberResponse(BaseModel):
     status: Literal["active", "invited", "removed"] = "active"
     # REQ-014 AC3: future "buyer" (and similar) without a schema migration.
     permissions: list[str] = Field(default_factory=list)
+    # REQ-021 AC1: ingredients / allergens this member avoids (catalog keys or free text)
+    avoid: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 
@@ -528,3 +678,83 @@ class SpendingReportResponse(BaseModel):
     by_category: list[SpendingCategoryTotal]
     events: list[PurchaseEventResponse]
 
+
+
+# ---------------------------------------------------------------------------
+# Shared product catalog (docs/api/receipt-parser.openapi.yaml `products` tag, /v1/catalog)
+# ---------------------------------------------------------------------------
+
+CatalogProductStatus = Literal["unverified", "pending", "verified"]
+CatalogProductSource = Literal["user_scan", "store_api", "gs1_registry", "llm_ocr"]
+CatalogImageSource = Literal["user_photo", "store_api", "openfoodfacts", "gs1_registry", "placeholder"]
+
+
+class CatalogProductResponse(BaseModel):
+    """
+    Satisfies: REQ-RCP-011
+    Spec version: 1.0
+
+    OpenAPI `Product` (served under `/v1/catalog/products`). Any signed-in user may read it; it carries no household data.
+    """
+
+    id: str
+    upc: str | None = None
+    store_chain_id: str
+    name: str
+    brand: str | None = None
+    category: str
+    unit_size: str | None = None
+    image_url: str | None = None
+    image_source: CatalogImageSource | None = None
+    source: CatalogProductSource
+    confidence_score: float = Field(ge=0, le=1)
+    confirmation_count: int = Field(ge=0)
+    status: CatalogProductStatus
+    superseded_by: str | None = None
+
+
+class CatalogSearchResponse(BaseModel):
+    query: str
+    results: list[CatalogProductResponse]
+
+
+class ProductConflictResponse(BaseModel):
+    """OpenAPI `ProductConflict` (REQ-RCP-014, REQ-RCP-019 AC3)."""
+
+    id: str
+    product_id: str
+    field: Literal["name", "brand", "unit_size", "category", "upc", "image_url"]
+    verified_value: str
+    observed_value: str
+    status: Literal["open", "dismissed", "accepted"]
+
+
+class ProductCorrectionSourceLine(BaseModel):
+    receipt_id: str
+    line_item_id: str
+
+
+class ProductCorrectionRequest(BaseModel):
+    """
+    Satisfies: REQ-RCP-019 AC3–AC5
+    Spec version: 1.0
+
+    `household_id` is hashed server-side before anything touches the catalog.
+    """
+
+    household_id: str = Field(min_length=1)
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    brand: str | None = Field(default=None, max_length=80)
+    category: str | None = Field(default=None, min_length=1, max_length=60)
+    unit_size: str | None = Field(default=None, max_length=40)
+    upc: str | None = Field(default=None, pattern=r"^[0-9]{8,14}$")
+    source_line_item: ProductCorrectionSourceLine | None = None
+
+
+class ProductCorrectionResponse(BaseModel):
+    """OpenAPI `ProductCorrectionResponse`."""
+
+    applied: bool
+    product: CatalogProductResponse
+    conflicts: list[ProductConflictResponse] = Field(default_factory=list)
+    status_reset: bool = False

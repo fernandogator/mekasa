@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "000000000000",
+    "project_id": "mekasa-ci-stub",
+    "storage_bucket": "mekasa-ci-stub.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:fable00000000000000000",
+        "android_client_info": {
+          "package_name": "com.fernandogator.mekasa.fable"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "ci-stub-api-key"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:fabledebug000000000000",
+        "android_client_info": {
+          "package_name": "com.fernandogator.mekasa.fable.debug"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "ci-stub-api-key"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

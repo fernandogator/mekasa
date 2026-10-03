@@ -7,7 +7,6 @@ import app.mekasa.android.auth.AuthResult
 import app.mekasa.android.auth.AuthService
 import app.mekasa.android.data.BarcodeLookupResponse
 import app.mekasa.android.data.Household
-import app.mekasa.android.data.ConsumeByBarcodeResultDto
 import app.mekasa.android.data.HouseholdInviteAcceptRequest
 import app.mekasa.android.data.HouseholdInviteCreateRequest
 import app.mekasa.android.data.HouseholdInviteDto
@@ -17,6 +16,8 @@ import app.mekasa.android.data.InventoryItemDto
 import app.mekasa.android.data.MekasaApiClient
 import app.mekasa.android.data.MekasaApiException
 import app.mekasa.android.data.ProductSearchHit
+import app.mekasa.android.data.ReceiptLineItemDto
+import app.mekasa.android.data.ReceiptScanResponse
 import app.mekasa.android.data.ShoppingListItemCreateRequest
 import app.mekasa.android.data.ShoppingListItemDto
 import app.mekasa.android.data.ShoppingListItemUpdateRequest
@@ -24,6 +25,7 @@ import app.mekasa.android.data.SpendingCategoryDto
 import app.mekasa.android.data.SpendingReportDto
 import app.mekasa.android.data.Store
 import app.mekasa.android.data.UnknownBarcodeEventDto
+import app.mekasa.android.data.InventoryItemUpdateRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -274,6 +276,139 @@ class AppSession(
         }
     }
 
+    val isHouseholdOwner: Boolean
+        get() {
+            val hh = _state.value.household ?: return false
+            val uid = _state.value.userUid
+                ?: auth.currentUserUid
+                ?: return false
+            if (hh.ownerUid == uid) return true
+            return _state.value.members.any { it.uid == uid && it.role == "owner" }
+        }
+
+    /** Owners (or members with buyer permission) may mark shopping purchased (REQ-014). */
+    val canMarkShoppingPurchased: Boolean
+        get() {
+            if (_state.value.isOfflinePreview) return true
+            if (!isHouseholdOwner) {
+                val uid = _state.value.userUid ?: auth.currentUserUid
+                val me = _state.value.members.firstOrNull { it.uid == uid }
+                if (me?.permissions?.contains("buyer") == true) return true
+                return false
+            }
+            return true
+        }
+
+    /**
+     * Persist house name and/or home hero JPEG (REQ-002 / UI-004).
+     * [imageJpeg] is multipart-uploaded when [imageChanged] is true.
+     */
+    fun saveHomePhotoEdits(
+        name: String?,
+        imageJpeg: ByteArray?,
+        nameChanged: Boolean,
+        imageChanged: Boolean,
+        onDone: (Boolean) -> Unit = {},
+    ) {
+        if (!nameChanged && !imageChanged) {
+            onDone(true)
+            return
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(isBusy = true, lastError = null) }
+            try {
+                if (_state.value.isOfflinePreview) {
+                    val trimmed = name?.trim()?.takeIf { it.isNotEmpty() }
+                    val current = _state.value.household
+                    val photoUrl = if (imageChanged && imageJpeg != null) {
+                        val b64 = java.util.Base64.getEncoder().encodeToString(imageJpeg)
+                        "data:image/jpeg;base64,$b64"
+                    } else {
+                        current?.photoUrl
+                    }
+                    val updated = (current ?: Household(
+                        id = "preview-home",
+                        name = trimmed,
+                        ownerUid = _state.value.userUid ?: "preview-user",
+                    )).copy(
+                        name = if (nameChanged) trimmed else current?.name,
+                        photoUrl = photoUrl,
+                    )
+                    _state.update { it.copy(isBusy = false, household = updated) }
+                    onDone(true)
+                    return@launch
+                }
+                // Prefer live Firebase uid if session uid drifted.
+                val effectiveUid = _state.value.userUid ?: auth.currentUserUid
+                if (effectiveUid != null && _state.value.userUid != effectiveUid) {
+                    _state.update { it.copy(userUid = effectiveUid) }
+                }
+                if (!isHouseholdOwner) {
+                    _state.update {
+                        it.copy(
+                            isBusy = false,
+                            lastError = "Only household owners can update the home photo. " +
+                                "Sign in with the account that created this house.",
+                        )
+                    }
+                    onDone(false)
+                    return@launch
+                }
+                val token = _state.value.idToken
+                    ?: run {
+                        _state.update { it.copy(isBusy = false, lastError = "Not signed in.") }
+                        onDone(false)
+                        return@launch
+                    }
+                val householdId = _state.value.household?.id
+                    ?: run {
+                        _state.update { it.copy(isBusy = false, lastError = "No household.") }
+                        onDone(false)
+                        return@launch
+                    }
+                var household = _state.value.household
+                if (nameChanged) {
+                    val trimmed = name?.trim()?.takeIf { it.isNotEmpty() }
+                    household = api.updateHouseholdName(householdId, trimmed, token)
+                }
+                if (imageChanged) {
+                    val bytes = imageJpeg
+                        ?: run {
+                            _state.update {
+                                it.copy(isBusy = false, lastError = "Couldn’t encode that photo.")
+                            }
+                            onDone(false)
+                            return@launch
+                        }
+                    if (bytes.isEmpty() || bytes.size > 5_000_000) {
+                        _state.update {
+                            it.copy(
+                                isBusy = false,
+                                lastError = if (bytes.isEmpty()) {
+                                    "Empty photo"
+                                } else {
+                                    "Photo is too large (max 5 MB)."
+                                },
+                            )
+                        }
+                        onDone(false)
+                        return@launch
+                    }
+                    household = api.uploadHouseholdPhoto(
+                        householdId = householdId,
+                        imageBytes = bytes,
+                        token = token,
+                    )
+                }
+                _state.update { it.copy(isBusy = false, household = household) }
+                onDone(true)
+            } catch (e: Exception) {
+                handleFailure(e)
+                onDone(false)
+            }
+        }
+    }
+
     fun saveAddress(address: String) {
         val token = _state.value.idToken ?: return
         val householdId = _state.value.household?.id ?: return
@@ -400,13 +535,15 @@ class AppSession(
 
     fun handleInviteDeepLink(uriString: String?) {
         if (uriString.isNullOrBlank()) return
-        val uri = android.net.Uri.parse(uriString)
-        if (uri.scheme != "mekasa") return
-        val host = uri.host.orEmpty()
-        if (host != "invite" && !uri.path.orEmpty().contains("invite")) return
-        val token = uri.getQueryParameter("token")
-            ?: uri.pathSegments.firstOrNull { it.isNotBlank() && it != "invite" }
-        setPendingInviteToken(token)
+        runCatching {
+            val uri = android.net.Uri.parse(uriString)
+            if (uri.scheme != "mekasa") return@runCatching
+            val host = uri.host.orEmpty()
+            if (host != "invite" && !uri.path.orEmpty().contains("invite")) return@runCatching
+            val token = uri.getQueryParameter("token")
+                ?: uri.pathSegments.firstOrNull { it.isNotBlank() && it != "invite" }
+            setPendingInviteToken(token)
+        }
     }
 
     fun createInvite(name: String, email: String?, role: String = "member") {
@@ -570,6 +707,169 @@ class AppSession(
         }
     }
 
+    fun addInventoryItems(drafts: List<PendingInventoryDraft>, onDone: () -> Unit = {}) {
+        if (drafts.isEmpty()) {
+            onDone()
+            return
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(isBusy = true, lastError = null) }
+            try {
+                var remaining = drafts
+                while (remaining.isNotEmpty()) {
+                    val head = remaining.first()
+                    remaining = remaining.drop(1)
+                    val doneLast = remaining.isEmpty()
+                    if (_state.value.isOfflinePreview) {
+                        val householdId = _state.value.household?.id ?: "preview-home"
+                        val item = InventoryItemDto(
+                            id = "local-${System.currentTimeMillis()}-${head.name.hashCode()}",
+                            householdId = householdId,
+                            name = head.name,
+                            category = head.category,
+                            quantity = head.quantity,
+                            barcode = head.barcode,
+                            imageUrl = head.imageUrl,
+                            source = head.source,
+                            pricePaid = head.pricePaid,
+                        )
+                        _state.update {
+                            it.copy(
+                                isBusy = !doneLast,
+                                inventory = listOf(item) + it.inventory,
+                            )
+                        }
+                    } else {
+                        val token = _state.value.idToken ?: return@launch
+                        val householdId = _state.value.household?.id ?: return@launch
+                        val created = api.createInventoryItem(
+                            householdId,
+                            InventoryItemCreateRequest(
+                                name = head.name,
+                                category = head.category,
+                                quantity = head.quantity,
+                                barcode = head.barcode,
+                                imageUrl = head.imageUrl,
+                                source = head.source,
+                                pricePaid = head.pricePaid,
+                            ),
+                            token,
+                        )
+                        _state.update {
+                            it.copy(
+                                isBusy = !doneLast,
+                                inventory = listOf(created) + it.inventory.filterNot { row -> row.id == created.id },
+                            )
+                        }
+                    }
+                }
+                _state.update { it.copy(isBusy = false) }
+                onDone()
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
+    fun updateInventoryItem(
+        itemId: String,
+        quantity: Int? = null,
+        lowStockThreshold: Int? = null,
+        onDone: (Boolean) -> Unit = {},
+    ) {
+        viewModelScope.launch {
+            try {
+                if (_state.value.isOfflinePreview) {
+                    _state.update { state ->
+                        state.copy(
+                            inventory = state.inventory.map { item ->
+                                if (item.id != itemId) item
+                                else item.copy(
+                                    quantity = quantity ?: item.quantity,
+                                    lowStockThreshold = lowStockThreshold ?: item.lowStockThreshold,
+                                )
+                            },
+                        )
+                    }
+                    onDone(true)
+                    return@launch
+                }
+                val token = _state.value.idToken ?: return@launch
+                val householdId = _state.value.household?.id ?: return@launch
+                val updated = api.updateInventoryItem(
+                    householdId,
+                    itemId,
+                    InventoryItemUpdateRequest(
+                        quantity = quantity,
+                        lowStockThreshold = lowStockThreshold,
+                    ),
+                    token,
+                )
+                _state.update { state ->
+                    state.copy(
+                        inventory = state.inventory.map { if (it.id == updated.id) updated else it },
+                    )
+                }
+                onDone(true)
+            } catch (e: Exception) {
+                handleFailure(e)
+                onDone(false)
+            }
+        }
+    }
+
+    fun refreshInventoryItemImage(itemId: String) {
+        if (_state.value.isOfflinePreview) return
+        viewModelScope.launch {
+            try {
+                val token = _state.value.idToken ?: return@launch
+                val householdId = _state.value.household?.id ?: return@launch
+                val updated = api.refreshInventoryItemImage(householdId, itemId, token)
+                _state.update { state ->
+                    state.copy(
+                        inventory = state.inventory.map { if (it.id == updated.id) updated else it },
+                    )
+                }
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
+    fun scanReceipt(
+        rawText: String? = null,
+        imageBase64: String? = null,
+        onResult: (ReceiptScanResponse) -> Unit,
+    ) {
+        viewModelScope.launch {
+            _state.update { it.copy(isBusy = true, lastError = null) }
+            try {
+                if (_state.value.isOfflinePreview || _state.value.idToken == null) {
+                    val demo = ReceiptScanResponse(
+                        householdId = _state.value.household?.id,
+                        engine = "demo",
+                        items = DEMO_RECEIPT_LINES,
+                    )
+                    _state.update { it.copy(isBusy = false) }
+                    onResult(demo)
+                    return@launch
+                }
+                val token = _state.value.idToken ?: return@launch
+                val householdId = _state.value.household?.id ?: return@launch
+                val response = api.scanReceipt(
+                    householdId = householdId,
+                    rawText = rawText,
+                    imageBase64 = imageBase64,
+                    token = token,
+                )
+                _state.update { it.copy(isBusy = false) }
+                onResult(response)
+            } catch (e: Exception) {
+                handleFailure(e)
+            }
+        }
+    }
+
     fun consumeInventoryItem(itemId: String, amount: Int = 1) {
         viewModelScope.launch {
             try {
@@ -710,6 +1010,10 @@ class AppSession(
     fun toggleShoppingChecked(itemId: String) {
         val current = _state.value.shoppingList.firstOrNull { it.id == itemId } ?: return
         val nextChecked = !current.isChecked
+        if (nextChecked && !canMarkShoppingPurchased) {
+            reportError("Only household owners can mark items as purchased.")
+            return
+        }
         viewModelScope.launch {
             try {
                 if (_state.value.isOfflinePreview) {
@@ -864,30 +1168,53 @@ class AppSession(
 
     private fun handleFailure(error: Throwable) {
         viewModelScope.launch {
-            if (error is MekasaApiException && error.isUnauthorized) {
-                val refreshed = auth.refreshIdToken(force = true)
-                if (refreshed != null && refreshed != _state.value.idToken) {
-                    _state.update { it.copy(idToken = refreshed, isBusy = false) }
+            try {
+                if (error is MekasaApiException && error.isUnauthorized) {
+                    val refreshed = runCatching { auth.refreshIdToken(force = true) }.getOrNull()
+                    if (refreshed != null && refreshed != _state.value.idToken) {
+                        _state.update { it.copy(idToken = refreshed, isBusy = false) }
+                        return@launch
+                    }
+                    signOut()
+                    _state.update {
+                        it.copy(lastError = null)
+                    }
                     return@launch
                 }
+                val message = when (error) {
+                    is AuthException.Cancelled -> null
+                    else -> error.message ?: "Something went wrong"
+                }
+                _state.update {
+                    it.copy(isBusy = false, lastError = message)
+                }
+            } catch (e: Throwable) {
                 signOut()
                 _state.update {
-                    it.copy(lastError = null)
+                    it.copy(isBusy = false, lastError = e.message ?: "Session expired")
                 }
-                return@launch
-            }
-            val message = when (error) {
-                is AuthException.Cancelled -> null
-                else -> error.message ?: "Something went wrong"
-            }
-            _state.update {
-                it.copy(isBusy = false, lastError = message)
             }
         }
     }
 
     override fun onCleared() {
-        api.close()
+        runCatching { api.close() }
         super.onCleared()
+    }
+
+    companion object {
+        val DEMO_RECEIPT_TEXT = """
+            BANANAS 1.29
+            WHOLE MILK 3.49
+            SOURDOUGH LOAF 4.99
+            SUBTOTAL 9.77
+            TOTAL 9.77
+        """.trimIndent()
+
+        val DEMO_RECEIPT_LINES = listOf(
+            ReceiptLineItemDto("Bananas", "Produce", 1, 1.29, identified = true),
+            ReceiptLineItemDto("Whole Milk", "Dairy", 1, 3.49, identified = true),
+            ReceiptLineItemDto("Sourdough Loaf", "Bakery", 1, 4.99, identified = false),
+        )
     }
 }

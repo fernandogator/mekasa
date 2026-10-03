@@ -9,6 +9,7 @@ struct ItemDetailView: View {
     let itemID: String
     @State private var threshold: Int = 1
     @State private var quantity: Int = 1
+    @State private var useOneMessage: String?
 
     private var item: InventoryItem? {
         session.inventory.first(where: { $0.id == itemID })
@@ -22,7 +23,9 @@ struct ItemDetailView: View {
                 if let item {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 24) {
-                            ProductHeroImage(urlString: item.imageURL, title: item.name)
+                            ProductHeroImage(urlString: item.imageURL, title: item.name) { image in
+                                await session.replaceInventoryItemImage(itemID: item.id, image: image)
+                            }
 
                             Text(item.name)
                                 .font(.system(size: 28, weight: .black, design: .rounded))
@@ -38,6 +41,12 @@ struct ItemDetailView: View {
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .foregroundStyle(MekasaTheme.textMuted)
                                     .accessibilityIdentifier(TestIdentifiers.itemBarcodeLabel)
+                            }
+
+                            // REQ-021: who in the house should steer clear, then the grade breakdown.
+                            if let health = item.health {
+                                MemberWarningBanner(warnings: session.memberWarnings(for: health))
+                                HealthSummaryCard(health: health)
                             }
 
                             stepperCard(title: "Quantity", value: $quantity) {
@@ -59,6 +68,19 @@ struct ItemDetailView: View {
                             )
                             .font(MekasaTheme.bodyFont)
                             .foregroundStyle(MekasaTheme.textMuted)
+
+                            // Parity with the Android row action: dispose one without leaving the screen.
+                            SecondaryButton(title: "Use 1", disabled: quantity == 0) {
+                                useOne(item)
+                            }
+                            .accessibilityIdentifier(TestIdentifiers.itemDetailUseOneButton)
+
+                            if let useOneMessage {
+                                Text(useOneMessage)
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .foregroundStyle(MekasaTheme.brand)
+                                    .accessibilityIdentifier(TestIdentifiers.itemDetailUseOneStatus)
+                            }
                         }
                         .padding(.horizontal, 24)
                         .padding(.top, 12)
@@ -82,6 +104,26 @@ struct ItemDetailView: View {
         }
         .task(id: itemID) {
             await refetchMissingImageIfNeeded()
+            await backfillHealthIfNeeded()
+        }
+    }
+
+    /// Same consume path as the inventory swipe and the trash station.
+    private func useOne(_ item: InventoryItem) {
+        let result = session.consumeInventoryItem(id: item.id)
+        quantity = session.inventory.first(where: { $0.id == item.id })?.quantity ?? quantity
+        useOneMessage = Self.useOneMessage(for: result)
+    }
+
+    /// "Used 1 — 2 left" / "Marked gone" / nil when the row vanished underneath us.
+    static func useOneMessage(for result: AppSession.ConsumeResult) -> String? {
+        switch result {
+        case let .decremented(_, remaining):
+            return "Used 1 — \(remaining) left"
+        case .depleted:
+            return "Marked gone — now on the shopping list if it’s tracked"
+        case .unknown:
+            return nil
         }
     }
 
@@ -149,6 +191,33 @@ struct ItemDetailView: View {
             await session.refreshShoppingList(syncLowStock: true)
         } catch {
             session.handleAPIFailure(error)
+        }
+    }
+
+    /// REQ-021 AC4: barcoded rows saved before grading get their health data on first open.
+    private func backfillHealthIfNeeded() async {
+        guard let item,
+              item.health == nil,
+              let barcode = item.barcode, !barcode.isEmpty,
+              session.canSyncInventory,
+              let token = session.idToken,
+              let householdID = session.household?.id
+        else { return }
+
+        do {
+            let remote = try await MekasaAPIClient.shared.refreshInventoryItemHealth(
+                householdID: householdID,
+                itemID: item.id,
+                token: token
+            )
+            guard remote.health != nil else { return }
+            if let idx = session.inventory.firstIndex(where: { $0.id == remote.id }) {
+                session.inventory[idx] = remote.toLocal()
+            }
+        } catch {
+            if SessionExpiry.isUnauthorized(error) {
+                session.handleAPIFailure(error)
+            }
         }
     }
 

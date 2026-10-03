@@ -15,6 +15,7 @@ from app.models import (
     InventoryItemCreateRequest,
     InventoryItemResponse,
     InventoryItemUpdateRequest,
+    ProductHealth,
 )
 from app.repository import HouseholdRepository
 
@@ -48,7 +49,17 @@ def _to_item(household_id: str, doc_id: str, data: dict[str, Any]) -> InventoryI
         updated_at=data["updated_at"],
         deleted=bool(data.get("deleted") or False),
         deleted_at=data.get("deleted_at"),
+        health=_health_from(data.get("health")),
     )
+
+
+def _health_from(raw: Any) -> ProductHealth | None:
+    if not isinstance(raw, dict):
+        return None
+    try:
+        return ProductHealth.model_validate(raw)
+    except Exception:
+        return None
 
 
 def _is_active(data: dict[str, Any]) -> bool:
@@ -124,8 +135,13 @@ class FirestoreInventoryRepository:
                 updates["barcode"] = payload.barcode
             if payload.image_url:
                 updates["image_url"] = payload.image_url
+            if payload.health is not None:
+                updates["health"] = payload.health.model_dump(mode="json")
             self._col(household_id).document(existing.id).update(updates)
-            return existing.model_copy(update=updates)
+            merged = existing.model_copy(update=updates)
+            if payload.health is not None:
+                merged = merged.model_copy(update={"health": payload.health})
+            return merged
 
         item_id = str(uuid4())
         now = _utcnow()
@@ -138,6 +154,7 @@ class FirestoreInventoryRepository:
             "barcode": payload.barcode,
             "image_url": payload.image_url,
             "source": payload.source,
+            "health": payload.health.model_dump(mode="json") if payload.health else None,
             "created_by_uid": owner_uid,
             "updated_by_uid": owner_uid,
             "created_at": now,
@@ -157,7 +174,7 @@ class FirestoreInventoryRepository:
         item = self.get(household_id, item_id, owner_uid)
         if item is None:
             raise KeyError(item_id)
-        data = payload.model_dump(exclude_unset=True)
+        data = payload.model_dump(exclude_unset=True, mode="json")
         if "name" in data and data["name"] is not None:
             data["name"] = data["name"].strip()
         if "category" in data and data["category"] is not None:
@@ -165,6 +182,8 @@ class FirestoreInventoryRepository:
         data["updated_by_uid"] = owner_uid
         data["updated_at"] = _utcnow()
         self._col(household_id).document(item_id).update(data)
+        if "health" in data:
+            data["health"] = payload.health
         return item.model_copy(update=data)
 
     def delete(self, household_id: str, item_id: str, owner_uid: str) -> None:

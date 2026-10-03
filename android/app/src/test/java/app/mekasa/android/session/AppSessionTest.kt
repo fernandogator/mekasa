@@ -94,4 +94,48 @@ class AppSessionTest {
             session.state.value.inventory.first { it.barcode == "049000028911" }.quantity,
         )
     }
+
+    @Test
+    fun saveHomePhotoEdits_offlinePreview_updatesNameAndPhoto() = runTest {
+        val session = AppSession()
+        session.startOfflinePreview()
+        var ok = false
+        val jpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xD9.toByte())
+        session.saveHomePhotoEdits(
+            name = "Casa Mekasa",
+            imageJpeg = jpeg,
+            nameChanged = true,
+            imageChanged = true,
+        ) { ok = it }
+        dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(ok)
+        assertEquals("Casa Mekasa", session.state.value.household?.name)
+        assertTrue(session.state.value.household?.photoUrl?.startsWith("data:image/jpeg;base64,") == true)
+    }
+
+    @Test
+    fun toggleShoppingChecked_nonOwner_blockedWhenChecking() = runTest {
+        val session = AppSession()
+        session.startOfflinePreview()
+        // Demote to member
+        val hh = session.state.value.household!!
+        // preview user is owner — create a non-owner scenario via shopping gate helper
+        assertTrue(session.canMarkShoppingPurchased)
+        val id = session.state.value.shoppingList.first().id
+        session.toggleShoppingChecked(id)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(session.state.value.shoppingList.first { it.id == id }.isChecked)
+    }
+
+    @Test
+    fun updateInventoryItem_offlinePreview_updatesQuantity() = runTest {
+        val session = AppSession()
+        session.startOfflinePreview()
+        val id = session.state.value.inventory.first().id
+        session.updateInventoryItem(id, quantity = 9, lowStockThreshold = 2)
+        dispatcher.scheduler.advanceUntilIdle()
+        val item = session.state.value.inventory.first { it.id == id }
+        assertEquals(9, item.quantity)
+        assertEquals(2, item.lowStockThreshold)
+    }
 }

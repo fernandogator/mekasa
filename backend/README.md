@@ -14,7 +14,8 @@ Python FastAPI service for Cloud Run. Covers:
 - Household **shopping list** CRUD + low-stock sync (`REQ-011`–`REQ-014`)
 - **Purchase events + spending reports** (`REQ-015`, `REQ-017`, `REQ-018`)
 - Durable **members/invites** (Firestore when prod) + member ACL on inventory/shopping
-- **Barcode / UPC lookup** via Open Food Facts (`REQ-004`)
+- **Barcode / UPC lookup** via the Open Food Facts family (`REQ-004`): UPC-E is expanded to UPC-A, UPC-A/EAN-13 shapes are unified, Open Products / Beauty / Pet Food Facts are consulted when OFF has no record, hits and misses are cached in-process, and an upstream outage answers `503` instead of `found: false`
+- **Health grade + member avoidances** — Nutri-Score / NOVA / additives → A–E grade; per-member allergen list with scan-time warnings (`REQ-021`, `app/product_health.py`)
 - **Device tokens + invite push hooks** (FCM best-effort; PRD §8 scaffold)
 
 ## Local run
@@ -43,6 +44,16 @@ curl -s -H 'Authorization: Bearer test:demo' http://localhost:8080/v1/me
 ```bash
 cd backend
 PYTHONPATH=. ALLOW_TEST_AUTH=true pytest ../tests/backend -q
+```
+
+The shared-catalog tests also run against a real Postgres when
+`TEST_DATABASE_URL` points at a scratch database (CI does this with a
+`postgres:16` service); they apply `backend/postgres` migrations first and
+`TRUNCATE` between tests, so never point it at a real instance:
+
+```bash
+TEST_DATABASE_URL=postgresql://postgres@localhost:5432/mekasa_test \
+  PYTHONPATH=. pytest ../tests/backend/test_catalog_repository.py -q
 ```
 
 ## Endpoints
@@ -81,7 +92,10 @@ PYTHONPATH=. ALLOW_TEST_AUTH=true pytest ../tests/backend -q
 | POST | `/v1/households/{id}/photo` | yes | Household photo (data-URL thin path) |
 | GET/POST | `/v1/households/{id}/members` / invites | yes | Family members + invites (REQ-019) |
 | POST | `/v1/invites/accept` | yes | Accept invite token |
-| GET | `/v1/barcode/{code}` | yes | Open Food Facts UPC lookup (`found` false if unknown) |
+| GET | `/v1/barcode/{code}?household_id=` | yes | Open Food Facts family UPC lookup (`found` false if unknown; `503` when the databases are unreachable so the client can retry); `source` names the database that answered; includes `health` grade data and, when scoped to a household, member `warnings` (REQ-021) |
+| POST | `/v1/households/{id}/inventory/{item_id}/refresh-health` | yes | Backfill `health` for a barcoded row that has none (REQ-021 AC4) |
+| GET | `/v1/health/avoidances` | yes | Catalog of allergens / additives a member can avoid (REQ-021) |
+| PUT | `/v1/households/{id}/members/{uid}/avoid` | yes | Replace a member's "I avoid" list — self or Owner (REQ-021) |
 | GET | `/v1/products/search?q=&limit=` | yes | Name search → product variants (manual / voice pick list) |
 | POST | `/v1/devices` | yes | Register FCM token (PRD §8) |
 | DELETE | `/v1/devices?fcm_token=` | yes | Unregister FCM token |
@@ -96,6 +110,9 @@ PYTHONPATH=. ALLOW_TEST_AUTH=true pytest ../tests/backend -q
 | `FIREBASE_PROJECT_ID` | prod | Usually same as GCP project |
 | `GOOGLE_APPLICATION_CREDENTIALS` | local+Firebase | Path to service-account JSON (never commit) |
 | `GOOGLE_PLACES_API_KEY` | later | When leaving stub store search |
+| `DATABASE_URL` | prod | Shared product catalog (Cloud SQL Postgres, ADR-008). Secret Manager `mekasa-database-url`; unset → in-memory catalog |
+| `DATABASE_POOL_SIZE` | no | Catalog connection pool size (default 5) |
+| `CATALOG_HOUSEHOLD_SALT` | prod | Salt for `household_hash` in the catalog (NFR-002 AC1); stable per environment, from Secret Manager |
 
 Production secrets belong in **GCP Secret Manager**, not in git.
 
@@ -110,6 +127,7 @@ See [`docs/gcp-firebase-setup.md`](../docs/gcp-firebase-setup.md).
 | `HOUSEHOLD_PERSISTENCE=memory` | Local/unit tests |
 | `HOUSEHOLD_PERSISTENCE=firestore` | Cloud Run prod (writes to DB `mekasa-db`) |
 | `HOUSEHOLD_PERSISTENCE=auto` | `prod` → firestore, otherwise memory |
+| `DATABASE_URL` set | Shared product catalog on Cloud SQL Postgres (`app/catalog_repository.py`); unset → in-memory catalog |
 
 Deploy script sets firestore mode and runs Cloud Run as `mekasa-api@…`.
 
@@ -118,6 +136,25 @@ Inventory documents live at `households/{id}/inventory_items/{item_id}`. Create 
 Shopping list documents live at `households/{id}/shopping_list_items/{item_id}`. Open rows merge by name; `sync-from-inventory` auto-adds low-stock inventory (REQ-011).
 
 Purchase events live at `households/{id}/purchase_events/{event_id}` (REQ-015–018). Members + invites live under `households/{id}/members|invites` with `invite_tokens/{token}` and `user_memberships/{uid}/households/{id}` for durable join (REQ-019). Active members can read/write inventory and shopping list; invite create/role changes stay owner-only.
+
+### Receipt parser (Gemini) — phase 1, design only
+
+Data model and contracts for REQ-RCP-001…018:
+
+- Household data (receipts, line items, scan events, parse jobs) — Firestore:
+  `firestore/` (`migrations/0001_receipt_parser.md`, `schema/*.schema.json`,
+  `firestore.indexes.json`).
+- Shared product catalog (all accounts) — Cloud SQL for PostgreSQL, ADR-008:
+  `postgres/` (`migrations/0001_shared_products.sql` idempotent DDL + `.down.sql`,
+  `seed/store_chains.sql`, `README.md` with local/Cloud SQL commands). Runtime reads
+  `DATABASE_URL` (Secret Manager `mekasa-database-url`, `/cloudsql` socket); unset →
+  in-memory repository.
+- Gemini prompt/schema contract: `prompts/receipt_parse/v1/`.
+- API contract: `docs/api/receipt-parser.openapi.yaml`; design:
+  `docs/design/gemini-receipt-parser.md`.
+
+No runtime code yet — see the design doc's review checklist. Local catalog check:
+`psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f postgres/migrations/0001_shared_products.sql` (twice — idempotent).
 
 ## Deploy
 
@@ -129,6 +166,10 @@ chmod +x scripts/deploy-cloud-run.sh
 ```
 
 After deploy, `/health` should include `"persistence":"firestore","firestore_database":"mekasa-db"`.
+
+Cold starts add ~6 s to the first request after idle (noticeable on barcode scans).
+`CLOUD_RUN_MIN_INSTANCES=1 ./scripts/deploy-cloud-run.sh` keeps one instance warm
+(billed while idle); the default stays 0.
 
 Clients send Firebase ID tokens; the API verifies them. Keep `ALLOW_TEST_AUTH=false` in prod.
 Full checklist: [`docs/gcp-firebase-setup.md`](../docs/gcp-firebase-setup.md).

@@ -16,22 +16,6 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
-	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Mekasa uses the camera to scan barcodes and receipts, and to take a home photo for your dashboard.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Mekasa uses your location to suggest your home address and nearby stores.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Mekasa uses the microphone so you can add items by voice.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Mekasa uses speech recognition to turn what you say into grocery items.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Mekasa uses your photo library so you can add a household photo.</string>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -42,12 +26,36 @@
 				<string>mekasa</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>GoogleSignIn</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.934775015882-tkn8jri65ijtbadhlkpskdo3j2nh0m0t</string>
+			</array>
+		</dict>
 	</array>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Mekasa uses the camera to scan barcodes and receipts, and to take a home photo for your dashboard.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Mekasa uses your location to suggest your home address and nearby stores.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Mekasa uses the microphone so you can add items by voice.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Mekasa uses your photo library so you can add a household photo.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Mekasa uses speech recognition to turn what you say into grocery items.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 	</dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 </dict>

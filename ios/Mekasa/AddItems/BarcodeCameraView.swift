@@ -14,8 +14,10 @@ struct BarcodeCameraView: UIViewControllerRepresentable {
     }
 
     func makeUIViewController(context: Context) -> DataScannerViewController {
+        // Retail symbologies only: a QR / Code 128 printed on the pack would
+        // otherwise be reported first and sent to the lookup as a bogus "UPC".
         let scanner = DataScannerViewController(
-            recognizedDataTypes: [.barcode()],
+            recognizedDataTypes: [.barcode(symbologies: [.ean13, .ean8, .upce])],
             qualityLevel: .balanced,
             recognizesMultipleItems: false,
             isHighFrameRateTrackingEnabled: false,

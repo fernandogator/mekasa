@@ -224,6 +224,41 @@ data class InventoryItemCreateRequest(
 )
 
 @Serializable
+data class InventoryItemUpdateRequest(
+    val name: String? = null,
+    val category: String? = null,
+    val quantity: Int? = null,
+    @SerialName("low_stock_threshold") val lowStockThreshold: Int? = null,
+    @SerialName("price_paid") val pricePaid: Double? = null,
+    val barcode: String? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+)
+
+@Serializable
+data class ReceiptLineItemDto(
+    val name: String,
+    val category: String = "Other",
+    val quantity: Int = 1,
+    @SerialName("price_paid") val pricePaid: Double? = null,
+    val barcode: String? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    val identified: Boolean = false,
+)
+
+@Serializable
+data class ReceiptScanRequest(
+    @SerialName("image_base64") val imageBase64: String? = null,
+    @SerialName("raw_text") val rawText: String? = null,
+)
+
+@Serializable
+data class ReceiptScanResponse(
+    @SerialName("household_id") val householdId: String? = null,
+    val engine: String = "demo",
+    val items: List<ReceiptLineItemDto> = emptyList(),
+)
+
+@Serializable
 data class InventoryConsumeRequest(
     val amount: Int = 1,
 )

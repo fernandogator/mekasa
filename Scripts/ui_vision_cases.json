@@ -1,9 +1,10 @@
 {
-  "description": "Layer 3 vision verification case stubs (manual pre-release). Feed --spec/--actual into Scripts/verify_ui_vision.py.",
+  "description": "Layer 3 vision verification cases (manual pre-release). Feed --spec/--actual into Scripts/verify_ui_vision.py; filter with --platform ios|android. Android specs are the Roborazzi baselines recorded by android-fable's ScreenSnapshotTest (./gradlew :app:recordRoborazziDebug).",
   "cases": [
     {
       "screen": "UI-006",
       "name": "inventory_list_default",
+      "platform": "ios",
       "status": "stub",
       "spec": "design/baselines/ios/InventoryList_baseline.png",
       "notes": "List title, rows with thumbnail/placeholder, name + Qty subtitle; accent low-stock badge when applicable."
@@ -11,6 +12,7 @@
     {
       "screen": "UI-006",
       "name": "inventory_swipe_use_one",
+      "platform": "ios",
       "status": "stub",
       "reqs": ["REQ-INV-014"],
       "spec": "design/baselines/ios/InventorySwipeUseOne_baseline.png",
@@ -19,6 +21,7 @@
     {
       "screen": "UI-006",
       "name": "inventory_swipe_remove",
+      "platform": "ios",
       "status": "stub",
       "reqs": ["REQ-INV-015"],
       "spec": "design/baselines/ios/InventorySwipeRemove_baseline.png",
@@ -27,6 +30,7 @@
     {
       "screen": "UI-006",
       "name": "inventory_undo_toast",
+      "platform": "ios",
       "status": "stub",
       "reqs": ["REQ-INV-016", "REQ-INV-017"],
       "spec": "design/baselines/ios/InventoryUndoToast_baseline.png",
@@ -35,9 +39,152 @@
     {
       "screen": "UI-006",
       "name": "item_detail_default",
+      "platform": "ios",
       "status": "stub",
       "spec": "design/baselines/ios/ItemDetail_baseline.png",
       "notes": "Hero product image, name, category, UPC when known, quantity metadata."
+    },
+    {
+      "screen": "UI-001",
+      "name": "welcome_default",
+      "platform": "android",
+      "status": "recorded",
+      "reqs": ["REQ-001"],
+      "spec": "design/baselines/android/Welcome_baseline.png",
+      "notes": "MEKASA eyebrow, two-line hero title, subtitle; sticky footer with primary sign-in CTA above outlined Browse UI offline. No Google button when Firebase is not configured."
+    },
+    {
+      "screen": "UI-003",
+      "name": "onboarding_household_name",
+      "platform": "android",
+      "status": "recorded",
+      "reqs": ["REQ-002"],
+      "spec": "design/baselines/android/HouseholdName_baseline.png",
+      "notes": "Centred STEP 1 OF 3 eyebrow + Mekasa wordmark, title, subtitle, single labelled field; footer progress bar, Continue CTA and Skip for now link."
+    },
+    {
+      "screen": "UI-003",
+      "name": "onboarding_address",
+      "platform": "android",
+      "status": "recorded",
+      "reqs": ["REQ-002"],
+      "spec": "design/baselines/android/Address_baseline.png",
+      "notes": "STEP 2 OF 3; address field with helper caption; Find nearby stores CTA disabled until typed."
+    },
+    {
+      "screen": "UI-003",
+      "name": "onboarding_store_selection",
+      "platform": "android",
+      "status": "recorded",
+      "reqs": ["REQ-003"],
+      "spec": "design/baselines/android/StoreSelection_baseline.png",
+      "notes": "STEP 3 OF 3; stacked store cards with check icon, name, address · distance; first two preselected with accent border; Finish setup CTA."
+    },
+    {
+      "screen": "UI-004",
+      "name": "dashboard_default",
+      "platform": "android",
+      "status": "recorded",
+      "spec": "design/baselines/android/Dashboard_baseline.png",
+      "notes": "Home photo hero band with name/address scrim and camera edit button; two stat cards (Low stock accent, Spend green); Needs approval, Low stock and Shopping list sections; charcoal pill nav with centred red FAB."
+    },
+    {
+      "screen": "UI-006",
+      "name": "inventory_list_default",
+      "platform": "android",
+      "status": "recorded",
+      "spec": "design/baselines/android/InventoryList_baseline.png",
+      "notes": "Back arrow + Inventory title with N ITEMS · N LOW eyebrow, Add link; search field; category headers in uppercase; rows with thumbnail, name, category · qty, Low chip and Use 1 link."
+    },
+    {
+      "screen": "UI-006",
+      "name": "inventory_swipe_use_one",
+      "platform": "android",
+      "status": "recorded",
+      "reqs": ["REQ-INV-014"],
+      "spec": "design/baselines/android/InventorySwipeUseOne_baseline.png",
+      "notes": "Qty>1 row dragged left reveals accent red (#ca0013) pane with minus icon + Use 1; no confirm dialog."
+    },
+    {
+      "screen": "UI-006",
+      "name": "inventory_swipe_remove",
+      "platform": "android",
+      "status": "recorded",
+      "reqs": ["REQ-INV-015"],
+      "spec": "design/baselines/android/InventorySwipeRemove_baseline.png",
+      "notes": "Qty=1 row dragged left reveals accent red (#ca0013) pane with trash icon + Remove."
+    },
+    {
+      "screen": "UI-006",
+      "name": "inventory_undo_toast",
+      "platform": "android",
+      "status": "recorded",
+      "reqs": ["REQ-INV-016", "REQ-INV-017"],
+      "spec": "design/baselines/android/InventoryUndoToast_baseline.png",
+      "notes": "Row removed from list, eyebrow count drops; bottom charcoal pill toast Item removed + Undo; header hierarchy untouched."
+    },
+    {
+      "screen": "UI-006",
+      "name": "item_detail_default",
+      "platform": "android",
+      "status": "recorded",
+      "reqs": ["REQ-009"],
+      "spec": "design/baselines/android/ItemDetail_baseline.png",
+      "notes": "Back + Item title with category eyebrow; large image card; name; category / Low stock / source chips; UPC mono; Quantity and Low-stock threshold stepper cards; explanatory caption."
+    },
+    {
+      "screen": "UI-006",
+      "name": "shopping_list_default",
+      "platform": "android",
+      "status": "recorded",
+      "reqs": ["REQ-013", "REQ-014"],
+      "spec": "design/baselines/android/ShoppingList_baseline.png",
+      "notes": "Shopping list title with N TO BUY eyebrow and Sync low stock link; Add an item outlined button; Needs approval card (warning tint) with Approve/Reject; To buy rows with circle toggle, Auto chip and trash icon."
+    },
+    {
+      "screen": "UI-004",
+      "name": "spending_default",
+      "platform": "android",
+      "status": "recorded",
+      "reqs": ["REQ-017"],
+      "spec": "design/baselines/android/Spending_baseline.png",
+      "notes": "Spending title; Week/Month/Year pill toggle with charcoal active segment; hero total card; three category bar cards with amount and % of total."
+    },
+    {
+      "screen": "UI-004",
+      "name": "family_default",
+      "platform": "android",
+      "status": "recorded",
+      "reqs": ["REQ-019"],
+      "spec": "design/baselines/android/Family_baseline.png",
+      "notes": "Family title with household eyebrow; account card with Owner chip and Offline preview badge; Members cards with role chips; Invite someone form."
+    },
+    {
+      "screen": "UI-005",
+      "name": "trash_station_dispose",
+      "platform": "android",
+      "status": "recorded",
+      "reqs": ["REQ-010"],
+      "spec": "design/baselines/android/TrashStation_baseline.png",
+      "notes": "Dispose title with USE ONE BY BARCODE eyebrow; charcoal scanner well (camera permission fallback on JVM); UPC field + Use 1 by barcode CTA; In stock rows with Use 1 links."
+    },
+    {
+      "screen": "UI-004",
+      "name": "add_items_hub",
+      "platform": "android",
+      "status": "recorded",
+      "reqs": ["REQ-004", "REQ-005", "REQ-006", "REQ-007"],
+      "spec": "design/baselines/android/AddItems_baseline.png",
+      "notes": "Bottom sheet over dimmed dashboard: Add items title + Close; four option cards (Scan barcode, Search products, Voice, Receipt) with tinted icon wells; trash-station shortcut row."
+    },
+    {
+      "screen": "UI-004",
+      "name": "add_items_scanner",
+      "platform": "android",
+      "status": "recorded",
+      "reqs": ["REQ-004", "REQ-006"],
+      "spec": "design/baselines/android/Scanner_baseline.png",
+      "notes": "Sheet step Scan a barcode with back arrow; charcoal scanner well with Allow camera fallback; preview-mode hint; Or type the number field; Look up CTA disabled until 6+ digits."
     }
   ]
 }

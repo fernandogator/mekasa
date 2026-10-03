@@ -43,12 +43,12 @@
 | Module | Status | Test Coverage | Last Error | Next Step |
 |--------|--------|---------------|------------|-----------|
 | onboarding | ready (Welcome → household → address → stores; Firebase Auth + offline / test-token fallback) | stubs + AppSessionTest | — | Drop in real google-services.json for prod sign-in |
-| dashboard | ready (summary + low stock + spend card + shell nav) | stubs | — | Home photo upload; expand DashboardUITest |
-| inventory-screen | ready (list + consume Use 1 + images) | stubs + AppSessionTest | — | Detail edit; expand InventoryScreenUITest |
-| scanner | ready (CameraX + ML Kit barcode + UPC entry + product search + confirm → POST inventory) | stubs + AppSessionTest offline add | — | Receipt / voice parity with iOS |
-| shopping-list-screen | ready (check / approve / reject / add custom / sync low-stock) | stubs + AppSessionTest | — | Owner purchase gate parity |
+| dashboard | ready (hero tap → home photo editor + upload) | AppSessionTest home photo | — | Crop canvas parity with iOS |
+| inventory-screen | ready (list + detail qty/threshold + consume + images) | stubs + AppSessionTest | — | Soft-delete / undo parity |
+| scanner | ready (barcode + product search + voice phrase + receipt demo + confirm) | VoicePhraseParserTest + AppSessionTest | — | Live mic SpeechRecognizer optional |
+| shopping-list-screen | ready (check / approve / reject / add / sync + owner purchase gate) | stubs + AppSessionTest | — | Expand ShoppingList UI tests |
 | spending-screen | ready (week/month/year toggle + by_category totals) | stubs + AppSessionTest | — | Charts / event list |
-| settings | ready (members, invites, share link, accept deep link, sign out) | stubs + AppSessionTest | — | Role UX polish / trash kiosk entry |
+| settings | ready (members, invites, share link, accept deep link, sign out) | stubs + AppSessionTest | — | Role UX polish |
 | trash-station-mode | ready (kiosk + Add hub entry; consume-by-barcode; unknown scans) | stubs + AppSessionTest | — | Home-screen shortcut polish |
 
 ## Phase 3: iOS App
@@ -95,6 +95,13 @@
 ---
 
 ## Running Log
+
+### 2026-09-28 — Gemini receipt scanning + shared per-store UPC table
+- Receipt scan now calls Gemini (`gemini-3.1-pro-preview`, Vertex AI `global`) on the photo or pasted text: expanded product names, qty, price, category, printed item codes, store name/address. Vision OCR + regex stays as fallback (`engine` = `gemini` / `vision` / `text` / `stub`).
+- New shared per-store tables in **Postgres (Cloud SQL `mekasa-pg`)**, schema `backend/app/store_catalog.sql`: every receipt line with printed + Open Food Facts UPCs; confirmed barcode adds are compared with the household's latest receipt (code match → `confirmed`, differing code → `conflict`, unmatched → own `manual_only` row).
+- `GET /v1/store-catalogs`, `GET /v1/store-catalogs/{store_id}/items`. Unit: `test_receipt_llm`, `test_store_catalog`.
+- Writes per store run in one transaction under a Postgres advisory lock; in memory when `DATABASE_URL` is unset.
+- **Run `backend/scripts/provision-cloud-sql.sh`, then redeploy Cloud Run** (deploy script now enables Vertex AI + Cloud SQL, grants `roles/aiplatform.user`, attaches the DB secret).
 
 ### 2026-09-22 — Dashboard home photo hero + HomePhotoView
 - Dashboard top **150px** home photo hero (design system) with gradient + greeting

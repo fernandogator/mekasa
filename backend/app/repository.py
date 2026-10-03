@@ -225,11 +225,13 @@ def reset_household_repository() -> None:
     global _repo, _repo_mode
     _repo = InMemoryHouseholdRepository()
     _repo_mode = "memory"
+    from app.catalog_repository import reset_catalog_repository
     from app.inventory_repository import reset_inventory_repository
     from app.shopping_list_repository import reset_shopping_list_repository
 
     reset_inventory_repository()
     reset_shopping_list_repository()
+    reset_catalog_repository()
     from app.members_repository import reset_members_repository
     from app.unknown_barcode_log import reset_unknown_barcode_events
 

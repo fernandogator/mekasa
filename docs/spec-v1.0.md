@@ -7,7 +7,7 @@ Priority: P0
 Description: First adult creates a household account.
 Design Artifact: N/A (backend)
 Acceptance Criteria:
-- AC1: User can sign up via Sign in with Apple
+- AC1: User can sign up via Sign in with Apple — **Deferred** (2026-10-02): removed from the iOS build for now because free Personal Teams cannot provision the Sign in with Apple capability; re-enable once a paid Apple Developer team is in place (entitlement, Welcome button, Firebase `apple.com` provider)
 - AC2: User can sign up via Sign in with Google
 - AC3: User can sign up via email and password with strength validation
 
@@ -54,6 +54,18 @@ Acceptance Criteria:
   inventory item for list thumbnails and item detail (UI-006)
 - AC5: Missing image does not fail the lookup; client shows a category
   placeholder instead
+- AC6: Equivalent code shapes resolve to the same product: UPC-E is
+  expanded to UPC-A, and UPC-A / zero-padded EAN-13 are treated as one
+  code, so the same can scans identically on iOS and Android
+- AC7: A provider outage (timeout, rate limit, 5xx) is reported as a
+  retryable error, never as "unknown product"; sister databases
+  (Open Products / Beauty / Pet Food Facts) are consulted before a code
+  is declared unknown
+- AC8: A successful barcode read plays the bundled scanner beep
+  (`design/scanner-beep.mp3`) plus a success haptic (iOS) or short
+  vibration (Android); unknown / failed lookups use a distinct nack
+  tone plus warning haptic / longer vibration. Feedback is muted when
+  Family → Scan sounds is off and during UI tests
 
 ### REQ-005: Receipt Scanning and Bulk Entry
 Priority: P0
@@ -71,6 +83,8 @@ Acceptance Criteria:
 - AC6: From the confirm haul screen, the user can search the product
   catalog for an unidentified line and apply a match (name, image, UPC)
   before saving
+- AC7: Receipt text (e.g. from an emailed receipt) can be pasted and sent
+  as `raw_text` through the same parse + confirm flow as a photo
 
 ### REQ-006: Manual Item Entry
 Priority: P1
@@ -104,6 +118,11 @@ Acceptance Criteria:
   the household account
 - AC2: Scanning a known item barcode decrements quantity by 1 immediately
 - AC3: Unknown item scans are logged but do not create negative quantities
+- AC4: Accepted scans play the scanner beep + haptic/vibrate (same as
+  REQ-004 AC8); unknown scans play the nack feedback. A 5-second cooldown
+  disarms the camera after each accepted scan so one toss is not
+  double-counted
+- AC5: Scan sounds honour the Family → Scan sounds toggle (default on)
 
 ### REQ-009: Low Stock Threshold — Manual
 Priority: P0
@@ -113,6 +132,9 @@ Acceptance Criteria:
 - AC1: Threshold is settable from the item detail screen
 - AC2: Default threshold is 1 if not set
 - AC3: Changes apply immediately to low-stock calculations
+- AC4: The item detail screen offers a "Use 1" action that consumes one
+  unit through the same path as swipe / trash-station and reports the
+  remaining quantity
 
 ### REQ-INV-014: Swipe Use One
 Priority: P0
@@ -170,6 +192,9 @@ Acceptance Criteria:
 - AC1: Item appears on shopping list within 5 seconds of crossing threshold
 - AC2: No approval step required for auto-additions
 - AC3: Item is removed from shopping list once marked purchased
+- AC4: Auto-added rows carry an "Auto" chip so a shopper can tell them
+  from manual additions; the list is grouped into Needs approval /
+  To buy / Purchased sections with a "N to buy" header summary
 
 ### REQ-012: Child Shopping Request Submission
 Priority: P1
@@ -180,6 +205,8 @@ Acceptance Criteria:
   member's name
 - AC2: Request appears in pending state visible to all Owners
 - AC3: Request does not appear as confirmed until approved
+- AC4: Any household member can remove a row from the list (their own
+  request or a plain item); removal is synced to the household
 
 ### REQ-013: Request Approval Workflow
 Priority: P1
@@ -197,7 +224,8 @@ Description: Only Owners can mark shopping list items as purchased in v1.0.
 Design Artifact: design/mockups/ShoppingList.jsx
 Acceptance Criteria:
 - AC1: Purchase action is only available to Owner-role users
-- AC2: Member-role users can view but not mark items purchased
+- AC2: Member-role users can view but not mark items purchased; the
+  list shows a "Only household owners can mark items purchased." notice
 - AC3: Data model supports a future "buyer" permission without schema migration
 
 ### REQ-015: Price Capture from Receipt
@@ -248,6 +276,11 @@ Acceptance Criteria:
 - AC1: Invite requires name plus email or phone number
 - AC2: Invited user receives a notification or link to download and join
 - AC3: Role is set at invitation and changeable by any Owner later
+- AC4: Family screen shows the signed-in account, the household name and
+  address, and each member's role and status, with a "Refresh data"
+  action that re-pulls household data
+- AC5: Family → Scanner shows a "Scan sounds" toggle (default on) that
+  enables or mutes barcode beep + haptic/vibrate on this device
 
 ### REQ-020: Real-Time Multi-Device Sync
 Priority: P0
@@ -259,6 +292,27 @@ Acceptance Criteria:
   normal network conditions
 - AC2: Sync conflicts resolve without data loss
 - AC3: Offline changes queue and sync once connectivity is restored
+
+### REQ-021: Product Health Grade and Member Avoidances
+Priority: P1
+Description: Barcoded products carry a health grade (A–E) derived from
+Open Food Facts data (Nutri-Score, NOVA group, additives) plus their
+additive, allergen and trace lists. Each household member keeps an
+"I'm allergic to / I avoid" list (e.g. MSG, gluten, peanuts); products
+containing any listed item warn which members are affected.
+Design Artifact: design/pages/item-detail.html, design/mockups/FamilyMembers.jsx
+Test File: tests/backend/test_product_health.py, ios/MekasaTests/ProductHealthTests.swift
+Acceptance Criteria:
+- AC1: A member can edit their own avoid list from a catalog of common
+  allergens/additives plus free text; Owners can edit any member's list
+- AC2: Scanning or viewing a product whose additives, allergens, traces or
+  ingredients match a member's list shows "<member> avoids <item>" for
+  every affected member, at scan-confirm time and on the item detail
+- AC3: The grade formula is deterministic and documented
+  (`backend/app/product_health.py`); products without Nutri-Score or NOVA
+  data show "No grade" rather than a guess
+- AC4: Health data is stored with the inventory item so the grade and
+  warnings are available offline / via real-time sync without re-lookup
 
 ---
 
@@ -304,16 +358,25 @@ Acceptance Criteria:
 - AC1: Displays low-stock items prominently
 - AC2: Displays pending child requests for Owner users
 - AC3: Displays home photo as top hero band if set (tap to change via camera/Photos)
+- AC4: Displays a shopping list teaser ("N items to pick up" / "List is
+  clear" with a preview of open rows) that opens the List tab
 
 ### UI-005: Trash Station Mode
 Priority: P0
 Design Artifact: design/mockups/TrashStationMode.jsx
 User Flow: design/user-flows.md
-Test File: android/src/test/ui/TrashStationUITest.kt, ios/MekasaTests/UI/TrashStationUITest.swift
+Test File: ios/Tests/UI/Structure/UI005StructureTests.swift,
+  android/app/src/test/java/app/mekasa/android/ui/TrashStationModeUITest.kt,
+  ios/MekasaTests/ScanFeedbackTests.swift, ios/MekasaTests/ScanCooldownTests.swift
 Acceptance Criteria:
 - AC1: Simplified single-purpose UI for scanning only
 - AC2: No navigation or non-scanning elements visible
 - AC3: Scan confirmation is displayed briefly then resets
+- AC4: A typed-UPC fallback ("Or type UPC", 6–14 digits) consumes the
+  matching item through the same path as a camera scan
+- AC5: Accepted / unknown scans fire audible + haptic feedback per
+  REQ-008 AC4–AC5 (scanner beep asset, nack tone, Scan sounds toggle,
+  5 s cooldown after an accepted scan)
 
 ### UI-006: Inventory List Thumbnails and Item Detail
 Priority: P0
@@ -335,6 +398,12 @@ Acceptance Criteria:
 - AC5: When item detail opens for a row with no stored `image_url`, the
   client calls `POST .../inventory/{id}/refresh-image`; the API looks up
   Open Food Facts (or a category placeholder) and persists `image_url`
+- AC6: The list is grouped under category headers (sorted by category,
+  then item name), the header summarises "N items · M low" for the whole
+  inventory, and a search field filters rows by name or category
+  (case-insensitive) with a "No items match" state
+- AC7: The list offers an Add entry point (header button, and an
+  "Add items" CTA in the empty state) that opens the Add Items hub
 
 ---
 
@@ -386,3 +455,297 @@ Acceptance Criteria:
   also returns the user to Welcome / Sign in
 - AC5: After sign-out (including session expiry), the last signed-in
   username/email is remembered and prefilled on the Welcome sign-in form
+
+---
+
+## Receipt Intelligence (Gemini parser) — REQ-RCP-001 … REQ-RCP-021
+
+Status: **Draft — phase 1 review** (design: `docs/design/gemini-receipt-parser.md`;
+data model: `backend/firestore/migrations/0001_receipt_parser.md`; API:
+`docs/api/receipt-parser.openapi.yaml`; prompt contract:
+`backend/prompts/receipt_parse/v1/`).
+
+These requirements extend REQ-005 (receipt scanning) and REQ-015 (price
+capture). They were authored in the kickoff as REQ-1 … REQ-18; that numbering
+collides with the permanent REQ-001 … series, so they are keyed
+`REQ-RCP-0NN` in the same order (REQ-1 → REQ-RCP-001). Wording below follows
+EARS patterns (ubiquitous / event-driven / state-driven / unwanted behaviour).
+Design Artifact for all REQ-RCP entries: design/mockups/AddItems.jsx (confirm
+haul) unless noted. Test File column is the phase-2 stub listed per entry.
+
+### REQ-RCP-001: Receipt Upload Creates Receipt and Parse Job
+Priority: P0
+Description: **When** a household member uploads a receipt image (or pasted
+text), the system **shall** create a `receipts` record and an `llm_parse_jobs`
+record and return their identifiers.
+Test File: tests/backend/test_receipt_parser_happy_path.py
+Acceptance Criteria:
+- AC1: `POST /v1/households/{id}/receipts` accepts `image_base64` (JPEG/PNG/HEIC ≤ 10 MB) or `raw_text`, plus optional `store_id`
+- AC2: Response includes `receipt_id`, `status`, and `parse_job.id`; `202` when parsing continues asynchronously, `200` when finished within `wait_seconds` (≤ 45)
+- AC3: The original image is stored in a private Cloud Storage object; the API never returns a public URL
+- AC4: Non-members receive `403`; unknown household `404`
+
+### REQ-RCP-002: Gemini Invocation via Vertex AI
+Priority: P0
+Description: **When** a parse job starts, the system **shall** invoke Gemini
+through the Vertex AI SDK with the whole receipt in a single request, using
+the versioned system prompt with the store chain name injected.
+Test File: tests/backend/test_receipt_parser_happy_path.py
+Acceptance Criteria:
+- AC1: Exactly one `generate_content` call per attempt covers all receipt lines (no per-line calls)
+- AC2: Vertex AI is authenticated with the runtime service account (ADC); no API key exists in code, config, or Secret Manager for this feature
+- AC3: The rendered prompt substitutes `{{store_chain_name}}` from the receipt's resolved chain (`Unknown` when unresolved) and contains no other placeholder
+- AC4: `response_mime_type` is `application/json` and the response schema passed to the model is `backend/prompts/receipt_parse/vN/response.schema.json`
+
+### REQ-RCP-003: Response Schema Validation Before Persistence
+Priority: P0
+Description: **When** Gemini returns a response, the system **shall** validate
+it against the version's JSON Schema and semantic rules before persisting any
+line item.
+Test File: tests/backend/test_prompt_contract.py
+Acceptance Criteria:
+- AC1: Validation uses JSON Schema Draft 2020-12 against `response.schema.json`; any error prevents writes to `line_items`
+- AC2: Semantic checks reject `price < 0`, `qty ≤ 0`, `confidence ∉ [0,1]`, and any `raw_text` containing ≥ 13 consecutive digits
+- AC3: Validation errors are recorded verbatim (truncated to 500 chars each) on the attempt
+
+### REQ-RCP-004: Corrective Retry on Invalid Response
+Priority: P0
+Description: **If** validation fails, **then** the system **shall** re-invoke
+Gemini with a corrective prompt containing the validation errors, up to two
+retries (three attempts total).
+Test File: tests/backend/test_receipt_parser_retry_and_failure.py
+Acceptance Criteria:
+- AC1: Retry uses the same system prompt version plus `corrective.md` rendered with `{{attempt}}` and `{{validation_errors}}`
+- AC2: `llm_parse_jobs.attempts` holds one entry per attempt with `corrective_prompt_applied=true` on retries
+- AC3: No more than 3 attempts are ever made for one job
+- AC4: A valid response on a retry completes the job as `succeeded`
+
+### REQ-RCP-005: Exhausted Retries Fail Safely
+Priority: P0
+Description: **If** all attempts fail (schema invalid, model error, timeout,
+safety block), **then** the system **shall** mark the job `failed`, mark the
+receipt `needs_review`, and provide fallback line items from the legacy OCR
+path so the user can still review a haul.
+Test File: tests/backend/test_receipt_parser_retry_and_failure.py
+Acceptance Criteria:
+- AC1: Job `status=failed` with `error_code ∈ {schema_invalid, model_error, timeout, safety_blocked, pii_detected}`
+- AC2: Receipt `status=needs_review`, `extraction_engine ∈ {vision_regex, text_regex, stub}`
+- AC3: `GET /receipts/{id}` returns the fallback lines with `resolution_status=unmatched` and `extraction_confidence=0`
+- AC4: Failure is logged with job id and error code only (no receipt text)
+
+### REQ-RCP-006: Persist Validated Line Items
+Priority: P0
+Description: **When** a response is valid, the system **shall** persist one
+`line_items` document per extracted product line.
+Test File: tests/backend/test_receipt_parser_happy_path.py
+Acceptance Criteria:
+- AC1: Each document stores `line_no`, `raw_text`, `description`, `price`, `qty`, `unit`, `discount`, `printed_code`, `category`, `extraction_confidence`
+- AC2: Receipt header fields `store_chain_detected`, `purchased_at`, `subtotal`, `tax`, `total`, `currency` are written from the response
+- AC3: Legacy fields `name`, `quantity`, `price_paid`, `image_url`, `identified` are derived so existing clients render the haul unchanged
+- AC4: Receipt `line_item_count` and `unresolved_count` are maintained
+
+### REQ-RCP-007: Match Lines Against the Product Database
+Priority: P0
+Description: The system **shall** attempt to match every line item to a
+`products` entry scoped to the receipt's store chain, in the order exact UPC
+→ scan correlation → alias → fuzzy name.
+Test File: tests/backend/test_receipt_low_confidence_confirmation.py
+Acceptance Criteria:
+- AC1: Every matched line stores `matched_product_id`, `match_method`, `match_confidence`
+- AC2: Alias and fuzzy lookups only consider products with the same `store_chain_id` (or `unknown`)
+- AC3: `match_confidence ≥ 0.85` → `resolution_status=auto_matched`; otherwise see REQ-RCP-012
+- AC4: A successful match upserts the normalized `raw_text` into `product_aliases (store_chain_id, alias) → product_id` (one product per alias per chain; an alias already mapped to a different product is never overwritten — handling is design open question §9.11)
+
+### REQ-RCP-008: Correlate Receipt Lines with Recent Scan Events
+Priority: P1
+Description: **While** a receipt is being resolved, the system **shall**
+correlate unmatched line items with the household's uncorrelated barcode
+`scan_events` from the 72 h before purchase (backward pass); **when** a new
+scan event arrives, the system **shall** correlate it with the household's
+still-unmatched line items from the previous 30 days (forward pass), so UPCs
+are recovered for chains that print none.
+Test File: tests/backend/test_receipt_scan_correlation.py
+Acceptance Criteria:
+- AC1: Backward pass considers only events with `context=add_items`, `correlated_receipt_id=null`, and `scanned_at ∈ [purchased_at − 72 h, receipt.created_at + 1 h]`
+- AC2: Assignment is one-to-one by name similarity ≥ 0.6; the line gets `match_method=scan_correlation` and the event's UPC
+- AC3: The scan event is stamped with `correlated_receipt_id` and `correlated_line_item_id` and is never reused
+- AC4: Correlation never lowers a confidence already obtained by exact UPC match
+- AC5: Forward pass runs on every new scan event in any context (`add_items`, `trash_station`, `manual_entry`) against the household's `unmatched`/`needs_confirmation` lines with `created_at ≥ now − 30 d`; the scanned UPC is named via `products` or Open Food Facts before similarity is computed
+- AC6: A forward-pass hit on a line already confirmed to an `llm:` product re-keys that product to the UPC (REQ-RCP-010 AC2) instead of altering the confirmed line
+
+### REQ-RCP-009: Unmatched Lines Create Unverified Products and Enrichment Jobs
+Priority: P0
+Description: **When** a line item has no product match, the system **shall**
+create an `llm_ocr` product entry with `status=unverified` and dispatch an
+enrichment job.
+Test File: tests/backend/test_receipt_parser_happy_path.py
+Acceptance Criteria:
+- AC1: Product id is `llm:<sha1(store_chain_id|normalized_name)>`; repeated sightings update the same row (`last_seen_at`, aliases) instead of duplicating
+- AC2: `source=llm_ocr`, `confidence_score = extraction_confidence × 0.6`, `origin_parse_job_id`, `origin_prompt_version` set
+- AC3: Exactly one `enrichment_jobs` row is created per new product (none for repeat sightings within 7 days); the catalog enforces at most one `queued`/`running` job per product
+- AC4: Catalog rows contain no household or user identifiers; households appear only as salted SHA-256 hashes in `product_confirmations` / `product_conflicts`
+
+### REQ-RCP-010: Enrichment Source Order
+Priority: P1
+Description: The enrichment dispatcher **shall** attempt discovery sources in
+the order official store API → Open Food Facts → UPCitemdb, stopping at the
+first that returns a UPC; **shall** then verify any known UPC against the GS1
+registry; and **shall** mark the product crowdsourced-pending when no UPC is
+found. The dispatcher **shall not** scrape retailer websites.
+Test File: tests/backend/test_enrichment_dispatcher.py
+Acceptance Criteria:
+- AC1: Each step is recorded as an `enrichment_steps` row (`job_id`, `step_no`, `adapter`) with `hit|miss|error|not_implemented|skipped`
+- AC2: A discovery hit re-keys an `llm:` product to a `products` row with `product_id = <upc>` and sets `superseded_by` on the old row
+- AC3: `store_api` hits set `source=store_api`; a GS1-verified UPC sets `source=gs1_registry`; both count as authoritative for REQ-RCP-011 transitions. UPCitemdb/OFF hits are recorded as `user_scan` grade
+- AC4: External calls honour the 10 s timeout / 3-retry standard and provider quotas (UPCitemdb free tier, Kroger daily limit) via the `enrichment` queue
+- AC5: With no discovery hit, the product stays `unverified` and is flagged `crowdsourced_pending` in the job result
+- AC6: `store_api` adapters use only official, documented retailer APIs with credentials in Secret Manager (first adapter: Kroger Products API; Walmart.io behind a flag pending approval). Chains without an official API (H-E-B, Publix, Costco, Target) return `not_implemented`; no adapter may fetch retailer web pages, bypass bot protection, ignore `robots.txt`, or call undocumented app endpoints
+- AC7: `gs1_verify` runs only when a UPC is already known (discovery hit, scan correlation, or printed code); it never runs as a name search
+- AC8: Name search is brand-gated: lines with `brand=null` skip it; queries filter by brand and US market; a hit auto-links only when brand matches, `unit_size` is compatible or unknown, and name similarity ≥ 0.6 — otherwise the top 3 hits are stored as `candidate_product_ids` and the line stays `needs_confirmation`
+- AC9: Bulk produce resolves to `products.product_id = 'plu:<IFPS code>'` (shared across chains) rather than a UPC
+
+### REQ-RCP-011: Product Provenance, Confidence, and Status
+Priority: P0
+Description: Every `products` entry **shall** carry `source`,
+`confidence_score`, `confirmation_count`, and `status ∈ {unverified, pending,
+verified}`, with status transitions driven by confirmations and authoritative
+sources.
+Test File: tests/backend/test_receipt_low_confidence_confirmation.py
+Acceptance Criteria:
+- AC1: `unverified → pending` when a second distinct household confirms or an authoritative source matches
+- AC2: `pending → verified` when ≥ 3 distinct households have confirmed, or an authoritative source matched and ≥ 1 household confirmed
+- AC3: `verified` is never downgraded automatically
+- AC4: `confidence_score` is recomputed on every transition per the design formula and stays within [0, 1]
+- AC5: Distinct households are counted via salted hashes only
+
+### REQ-RCP-012: Low-Confidence Matches Require User Confirmation
+Priority: P0
+Description: **While** a line's best `match_confidence` is below the auto-accept
+threshold, the system **shall** require an explicit user confirmation before
+linking the line to a product.
+Test File: tests/backend/test_receipt_low_confidence_confirmation.py
+Acceptance Criteria:
+- AC1: `0.5 ≤ match_confidence < 0.85` → `resolution_status=needs_confirmation` with up to 5 `candidate_product_ids`
+- AC2: `< 0.5` or no candidate → `resolution_status=unmatched`
+- AC3: `GET …/candidates` returns stored candidates plus live product / Open Food Facts search results
+- AC4: `POST …/resolve` with exactly one of `product_id | upc | candidate_index | manual` sets `resolution_status=confirmed`, `match_method=user`
+- AC5: `POST …/reject` marks the line `rejected` or `skipped` and excludes it from confirm
+
+### REQ-RCP-013: User Confirmation Strengthens the Product
+Priority: P0
+Description: **When** a user confirms a match (via resolve, or via receipt
+confirm for auto-matched lines), the system **shall** increment the product's
+`confirmation_count` once per household and re-evaluate its status.
+Test File: tests/backend/test_receipt_low_confidence_confirmation.py
+Acceptance Criteria:
+- AC1: `confirmation_count` increases by 1 the first time a household confirms a product; later confirmations from the same household do not increment (`confirmation_counted=false`)
+- AC2: `product_aliases` gains the line's normalized `raw_text` for the receipt's chain (or its `seen_count` increments)
+- AC3: Status transition rules of REQ-RCP-011 run immediately and `status_changed_at` is updated on change
+
+### REQ-RCP-014: Verified Entries Are Never Mutated by the Parser
+Priority: P0
+Description: **If** a resolution conflicts with a `verified` product entry,
+**then** the system **shall not** modify the verified entry, **shall** record
+the conflict, and **shall** require user confirmation for the line.
+Test File: tests/backend/test_receipt_verified_conflict.py
+Acceptance Criteria:
+- AC1: A conflict is any of: name/brand similarity < 0.5, differing `unit_size`, differing `category`, or a different UPC submitted for a verified name
+- AC2: The verified row's `name`, `brand`, `category`, `unit_size`, `upc`, and `status` are byte-identical before and after the parse and after any user resolve
+- AC3: A `product_conflicts` row is written with `field`, `verified_value`, `observed_value`, `status=open`
+- AC4: The line becomes `needs_confirmation` with the verified product as sole candidate and `conflict_id` set; a user confirmation increments `dispute_count`, not `confirmation_count`
+
+### REQ-RCP-015: Receipt Confirm Writes Inventory and Purchase Events
+Priority: P0
+Description: **When** a user confirms a receipt, the system **shall** write
+inventory items and purchase events for every non-rejected line, carrying
+price paid and store.
+Test File: tests/backend/test_receipt_confirm_writes_inventory.py
+Acceptance Criteria:
+- AC1: Inventory upsert matches by barcode first, then case-insensitive name; `source=receipt`, `price_paid`, `image_url`, `product_id`, `receipt_line_item_id` set
+- AC2: One purchase event per line with `source=receipt`, `store_id`, `receipt_id`, `receipt_line_item_id`, `product_id`
+- AC3: Receipt `status=confirmed`, `confirmed_by_uid`, `confirmed_at` set; the operation is idempotent
+- AC4: `rejected`/`skipped` lines are ignored; `unmatched` lines are saved as plain items only when `include_unmatched=true` (default)
+
+### REQ-RCP-016: Persist Scan Events
+Priority: P1
+Description: The system **shall** persist every barcode scan as a
+`scan_events` document with UPC, household, timestamp, context, and outcome.
+Test File: tests/backend/test_receipt_scan_correlation.py
+Acceptance Criteria:
+- AC1: Barcode lookups from Add Items write `context=add_items` with `outcome ∈ {found, unknown}` and `product_name_at_scan`
+- AC2: Trash-station consume writes `context=trash_station` with `outcome ∈ {consumed, unknown}`; the existing unknown-barcode log is served from this collection (REQ-008 AC3 preserved)
+- AC3: `GET /v1/households/{id}/scan-events` lists events newest first with `outcome`/`since` filters
+- AC4: Household members only; no cross-household reads
+
+### REQ-RCP-017: Record Prompt and Model Provenance
+Priority: P0
+Description: Every parse job **shall** record the prompt version, prompt
+hash, response-schema version, model id, and Vertex location used.
+Test File: tests/backend/test_prompt_contract.py
+Acceptance Criteria:
+- AC1: `prompt_version` matches `receipt_parse/vN`; `prompt_sha256` equals the SHA-256 of that version's `system.md`
+- AC2: `schema_version` embeds the first 12 hex chars of the SHA-256 of `response.schema.json`
+- AC3: `model` and `vertex_location` reflect the values actually sent to Vertex AI
+- AC4: Prompt version directories are immutable once referenced; CI lint fails on modification of a referenced version
+
+### REQ-RCP-018: Retain Raw Gemini Output for Audit
+Priority: P0
+Description: The system **shall** retain the raw JSON returned by Gemini for
+every attempt of every parse job.
+Test File: tests/backend/test_receipt_parser_retry_and_failure.py
+Acceptance Criteria:
+- AC1: Each attempt stores `raw_response` inline when ≤ 200 KB, otherwise `raw_response_gcs_uri`
+- AC2: Raw output is retained for the audit window (180 days, TTL on `expires_at`; value under review)
+- AC3: Raw output is only readable by household Owners via `GET …/parse-job?include_raw=true`
+- AC4: Raw output never appears in application logs
+
+### REQ-RCP-019: User Corrections to Product Details and Image
+Priority: P0
+Description: **When** a user views a receipt line, an inventory item, or the
+product behind either, the system **shall** let them correct every
+user-facing attribute — name, brand, category, unit size, quantity, price —
+and replace the product image with a photo they take or pick, so that
+mis-parsed or mis-matched products never have to be accepted as-is.
+Design Artifact: design/mockups/AddItems.jsx (confirm haul), design/mockups/ItemDetail.jsx
+Test File: tests/backend/test_product_corrections.py
+Acceptance Criteria:
+- AC1: `PATCH …/line-items/{lid}` accepts `name`, `brand`, `category`, `unit_size`, `qty`, `unit`, `quantity`, `price_paid`, `unit_price`, and `photo_id`; the edit is stored on the line (`user_edited_fields` lists the fields) and is what `confirm` writes to inventory and purchases
+- AC2: A correction of `category` (or any attribute) on a line that is `auto_matched`/`confirmed` keeps the link to the product; the line stores the override and `POST /v1/catalog/products/{id}/corrections` is offered as a separate, explicit step ("also fix it for everyone")
+- AC3: `POST /v1/catalog/products/{id}/corrections` on an `unverified` or `pending` product applies the correction directly, appends `user_scan` to `sources_seen`, resets `confirmation_count` to 0 and `status` to `unverified` when `name`, `brand`, `upc`, or `category` changed; on a `verified` product the row is left untouched and a `product_conflicts` record (`field` ∈ name, brand, unit_size, category, upc, image_url) is written and returned
+- AC4: The product image can be replaced on a line, an inventory item, and a shared product by referencing a `photo_id` from REQ-RCP-021; `image_url` then resolves to `/v1/product-photos/{photo_id}` and `image_source=user_photo`
+- AC5: Corrections are attributed only by `household_hash`; no user id or household id is written to the shared catalog (NFR-002 AC1)
+- AC6: Inventory corrections keep working through the existing `PATCH …/inventory/{item_id}` (`name`, `category`, `quantity`, `price_paid`, `barcode`, `image_url`), which now also accepts `photo_id`
+
+### REQ-RCP-020: Scan and Photograph a Product When the UPC Is Not Discovered
+Priority: P0
+Description: **If** a receipt line has no discovered UPC after parsing,
+alias lookup, scan-event correlation, and enrichment (`matched_product_id`
+is `null` or an `llm:`/`plu:` key), **then** the system **shall** offer the
+user an in-app capture flow: scan the product's barcode with the camera and
+take a picture of the product, and **shall** create or link the shared
+product from that capture.
+Design Artifact: design/mockups/AddItems.jsx (confirm haul, "Scan this product" affordance)
+Test File: tests/backend/test_line_item_capture.py
+Acceptance Criteria:
+- AC1: Every line whose `barcode` is `null` exposes `capture_available=true`; the confirm-haul screen shows a "Scan product" action on such lines (and on `needs_review`/`unresolved` lines regardless of barcode)
+- AC2: `POST …/line-items/{lid}/capture` takes `upc` (required, 8–14 digits) plus optional `photo_id`, `name`, `brand`, `category`, `unit_size`; when a product with that UPC exists the line is linked to it (`match_method=user`, `resolution_status=confirmed`) and REQ-RCP-013 counting applies; when none exists a new `products` row keyed by the UPC is created with `source=user_scan`, `confidence_score=0.9`, attributes from the request falling back to the line's description and category, and `image_url` from `photo_id` when given
+- AC3: When the line previously pointed at an `llm:` product, the capture re-keys it under the REQ-RCP-010 AC2 rules in the same transaction (`superseded_by`, alias repoint, `receipt_line_items` repoint)
+- AC4: The capture records a `scan_events` entry (`context=receipt_capture`, `outcome=found|created`) correlated with the receipt and line, and an `enrichment_jobs` row for the new UPC so store/registry adapters can fill in missing attributes later
+- AC5: Barcode scanning uses the existing camera scanner; the photo step is optional and may be skipped — a capture with `upc` alone is valid
+- AC6: The same capture works from inventory: `POST …/inventory/{item_id}/capture` with the same body links or creates the product and sets `inventory_items.barcode`, `product_id`, `image_url`
+
+### REQ-RCP-021: Product Photo Upload and Storage
+Priority: P0
+Description: The system **shall** accept product photos taken by users,
+store them without personal metadata, and serve them to any signed-in user
+through a stable URL that carries no household or user identifier, so that
+user photos can safely back shared catalog images.
+Design Artifact: —
+Test File: tests/backend/test_product_photos.py
+Acceptance Criteria:
+- AC1: `POST …/households/{hid}/product-photos` accepts a JPEG/PNG/HEIC ≤ 8 MB (base64 JSON or multipart), re-encodes it as JPEG with EXIF/GPS stripped, limits the long edge to 1600 px, and returns `photo_id` (UUID v4) and `image_url=/v1/product-photos/{photo_id}`
+- AC2: Objects are stored in bucket `mekasa-product-photos-<env>` at `product-photos/{photo_id}.jpg` (no household or user id in the object name); the uploading household and uid are recorded only in Firestore `households/{hid}/product_photos/{photo_id}`
+- AC3: `GET /v1/product-photos/{photo_id}` requires a bearer token (any household) and 302-redirects to a signed URL valid ≤ 15 minutes; it never exposes the bucket path or the uploading household
+- AC4: A photo not referenced by any line item, inventory item, or product within 24 h is deleted by the daily cleanup job; referenced photos are retained while referenced
+- AC5: A photo referenced by a shared product (`image_source=user_photo`) stays available even if the uploading household deletes its inventory item; the household can request removal via `DELETE …/product-photos/{photo_id}`, which replaces the catalog image with the next-best source or a category placeholder
+- AC6: Photo bytes never appear in logs; uploads are rejected (`415 unsupported_media_type`, `413 payload_too_large`) rather than truncated

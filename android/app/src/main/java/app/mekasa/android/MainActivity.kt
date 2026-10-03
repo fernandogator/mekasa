@@ -42,6 +42,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleInviteIntent(intent: Intent?) {
-        session.handleInviteDeepLink(intent?.data?.toString())
+        runCatching {
+            session.handleInviteDeepLink(intent?.data?.toString())
+        }
     }
 }

@@ -5,8 +5,16 @@ Usage:
   export ANTHROPIC_API_KEY=...
   python3 Scripts/verify_ui_vision.py \\
     --screen UI-004 \\
+    --platform ios \\
     --spec path/to/mockup.png \\
     --actual path/to/simulator.png
+
+  # Android: compare a device/emulator capture against the recorded Roborazzi baseline
+  python3 Scripts/verify_ui_vision.py --screen UI-004 --platform android \\
+    --spec design/baselines/android/Dashboard_baseline.png --actual path/to/emulator.png
+
+  # Case registry (optionally filtered by platform)
+  python3 Scripts/verify_ui_vision.py --list-cases [--platform android|ios]
 """
 
 from __future__ import annotations
@@ -19,9 +27,11 @@ import os
 import sys
 from pathlib import Path
 
+PLATFORMS = ("ios", "android")
+
 SYSTEM_PROMPT = """You are a UI verifier for a mobile app called Mekasa.
 You will receive two images: a design spec mockup and
-an actual iOS simulator screenshot of the same screen.
+an actual PLATFORM_SCREENSHOT screenshot of the same screen.
 Your job is to compare them structurally — not
 pixel-exactly. Ignore differences in text content,
 item names, quantities, prices, and dates. Judge only:
@@ -40,7 +50,7 @@ Return ONLY a JSON object with no preamble:
 CASES_PATH = Path(__file__).resolve().parent / "ui_vision_cases.json"
 
 
-def _load_cases() -> list[dict]:
+def _load_cases(platform: str | None = None) -> list[dict]:
     if not CASES_PATH.is_file():
         return []
     try:
@@ -48,7 +58,16 @@ def _load_cases() -> list[dict]:
     except json.JSONDecodeError:
         return []
     cases = payload.get("cases")
-    return cases if isinstance(cases, list) else []
+    if not isinstance(cases, list):
+        return []
+    if platform is None:
+        return cases
+    # Entries without a platform predate the field and were always iOS.
+    return [case for case in cases if case.get("platform", "ios") == platform]
+
+
+def _platform_label(platform: str) -> str:
+    return "Android emulator/device" if platform == "android" else "iOS simulator"
 
 
 def _b64_image(path: Path) -> tuple[str, str]:
@@ -65,6 +84,11 @@ def main() -> int:
     parser.add_argument("--actual", help="Path to simulator screenshot")
     parser.add_argument("--screen", help="Spec entry id, e.g. UI-001 / UI-006")
     parser.add_argument(
+        "--platform",
+        choices=PLATFORMS,
+        help="Which platform the --actual capture comes from; also filters --list-cases (default: ios for verification, all for listing)",
+    )
+    parser.add_argument(
         "--list-cases",
         action="store_true",
         help="Print stub/case registry from Scripts/ui_vision_cases.json and exit",
@@ -72,8 +96,10 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.list_cases:
-        print(json.dumps({"cases": _load_cases()}, indent=2))
+        print(json.dumps({"cases": _load_cases(args.platform)}, indent=2))
         return 0
+
+    platform = args.platform or "ios"
 
     if not args.spec or not args.actual or not args.screen:
         parser.error("--spec, --actual, and --screen are required unless --list-cases")
@@ -132,14 +158,17 @@ def main() -> int:
     message = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=1024,
-        system=SYSTEM_PROMPT,
+        system=SYSTEM_PROMPT.replace("PLATFORM_SCREENSHOT", _platform_label(platform)),
         messages=[
             {
                 "role": "user",
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Screen id: {args.screen}. Image 1 is the design mockup. Image 2 is the simulator screenshot.",
+                        "text": (
+                            f"Screen id: {args.screen}. Platform: {platform}. "
+                            "Image 1 is the design mockup. Image 2 is the actual screenshot."
+                        ),
                     },
                     {
                         "type": "image",
@@ -181,6 +210,7 @@ def main() -> int:
         }
 
     verdict.setdefault("screen", args.screen)
+    verdict.setdefault("platform", platform)
     print(json.dumps(verdict, indent=2))
     return 0 if verdict.get("acceptable") is True else 1
 
