@@ -24,6 +24,24 @@ jobs:
   test-backend:
     name: test-backend
     runs-on: ubuntu-latest
+    # Scratch Postgres so the shared-catalog repository and the DDL in
+    # backend/postgres are exercised on every PR (design §7). Tests that
+    # need it read TEST_DATABASE_URL and skip when it is unset.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: mekasa
+          POSTGRES_PASSWORD: mekasa
+          POSTGRES_DB: mekasa_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U mekasa -d mekasa_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://mekasa:mekasa@localhost:5432/mekasa_test
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python

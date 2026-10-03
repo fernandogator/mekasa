@@ -3,7 +3,7 @@
 SwiftUI client for Mekasa v1.0.
 
 **Shipped so far**
-- Onboarding: Welcome (Google + **Apple** + email) → Household → Address → Stores → scan/invite stubs
+- Onboarding: Welcome (Google + email; Sign in with Apple deferred, REQ-001 AC1) → Household → Address → Stores → scan/invite stubs
 - Home: **Dashboard** (UI-004) with **home photo hero**, bottom nav + Add FAB
 - Tap hero → **Home photo** screen (camera or Photos library)
 - **Add items** hub (FAB): Type it in / confirm sync to Cloud Run; **Scan barcode** uses live camera + Open Food Facts UPC lookup
@@ -139,7 +139,7 @@ If you see `[Mekasa] GoogleService-Info.plist in bundle: false`, the plist is st
 1. [Firebase Console](https://console.firebase.google.com/project/hackathon2025-472017/settings/general/) → **Add app** → iOS  
 2. Bundle ID: `com.fernandogator.mekasa`  
 3. Download **`GoogleService-Info.plist`** → `ios/Mekasa/GoogleService-Info.plist`  
-4. Auth: **Google** + **Email/Password** + **Apple** enabled (see `docs/gcp-firebase-setup.md` §2b)  
+4. Auth: **Google** + **Email/Password** enabled (Apple provider deferred; `docs/gcp-firebase-setup.md` §2b)  
 
 ### Google Sign-In URL scheme
 
@@ -194,17 +194,17 @@ Signing → your Team → Run on **iPhone 17 Pro** simulator (not “Any iOS Dev
 
 ### Signing with a free Personal Team
 
-Personal teams cannot create provisioning profiles that include **Sign in with Apple**, so Xcode would otherwise fail with:
+Works out of the box: `Mekasa/Mekasa.entitlements` carries no capabilities, so
+Xcode-managed signing succeeds on a Personal Team for Debug and Release alike.
 
-> Cannot create a iOS App Development provisioning profile for "com.fernandogator.mekasa". Personal development teams … do not support the Sign In with Apple capability.
-
-To keep device builds working, the **Debug** configuration signs with `Mekasa/Mekasa.debug.entitlements` (no Sign in with Apple), while **Release** keeps `Mekasa/Mekasa.entitlements` (with it). This is wired in `project.yml` under `settings.configs.Debug.CODE_SIGN_ENTITLEMENTS`, so `xcodegen generate` preserves it.
-
-Consequences:
-
-- Debug builds on any team: **Continue with Apple** fails fast with “Sign in with Apple isn’t available in Debug builds…”. Use Google or email while developing.
-- To test Apple sign-in: sign with a paid Apple Developer team and run a **Release** build (Edit Scheme → Run → Build Configuration → Release), after finishing `docs/gcp-firebase-setup.md` §2b.
-- Archives / TestFlight use Release, so production is unaffected.
+**Sign in with Apple is deferred (REQ-001 AC1).** Personal Teams cannot create
+provisioning profiles that include that capability (Xcode: "Personal development
+teams … do not support the Sign In with Apple capability"), so the entitlement,
+the Welcome-screen button and the `AuthService.signInWithApple()` path were
+removed in October 2026. To bring it back on a paid team: add
+`com.apple.developer.applesignin` to `Mekasa.entitlements`, enable the Apple
+provider in Firebase (`docs/gcp-firebase-setup.md` §2b), and restore the Welcome
+button + `AuthService` code from git history (`git log -S signInWithApple`).
 
 ### DEBUG: offline UI walkthrough
 

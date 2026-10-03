@@ -389,6 +389,13 @@ class ReceiptLineItem(BaseModel):
     barcode: str | None = Field(default=None, max_length=64)
     image_url: str | None = Field(default=None, max_length=2048)
     identified: bool = False
+    # Line text as printed (before abbreviation expansion) and any item code
+    # printed on the line; both feed the per-store catalog.
+    receipt_text: str | None = Field(default=None, max_length=200)
+    receipt_code: str | None = Field(default=None, max_length=64)
+    # Row in the store's shared table; clients send it back with an in-store
+    # capture (barcode + photo) when the catalog could not identify the line.
+    store_item_id: str | None = Field(default=None, max_length=120)
 
 
 class ReceiptScanRequest(BaseModel):
@@ -410,6 +417,74 @@ class ReceiptScanResponse(BaseModel):
     household_id: str
     engine: str
     items: list[ReceiptLineItem]
+    store_id: str | None = None
+    store_name: str | None = None
+
+
+StoreCodeSource = Literal["receipt", "catalog", "manual_scan"]
+StoreItemStatus = Literal["confirmed", "conflict", "receipt_only", "manual_only"]
+
+
+class StoreItemCode(BaseModel):
+    """One UPC / store SKU discovered for a store item, with where it came from."""
+
+    code: str
+    kind: Literal["upc", "sku"]
+    sources: list[StoreCodeSource]
+    seen_count: int = 1
+    first_seen: datetime
+    last_seen: datetime
+
+
+class StoreCatalogItem(BaseModel):
+    """
+    One row of a store's shared item table: a receipt line and/or a manual scan
+    (receipt_text is None when the item was only ever scanned).
+
+    status compares manually scanned codes with receipt / catalog codes:
+    confirmed = a manual scan matches a receipt or catalog code,
+    conflict = both exist but none match,
+    receipt_only / manual_only = only one side has a code (or none yet).
+    """
+
+    id: str
+    store_id: str
+    receipt_text: str | None = None
+    name: str
+    category: str = "Other"
+    last_price: float | None = None
+    codes: list[StoreItemCode] = Field(default_factory=list)
+    status: StoreItemStatus = "receipt_only"
+    # Latest in-store photo; photo_url is filled by the API when served.
+    photo_id: str | None = None
+    photo_url: str | None = None
+    updated_at: datetime
+
+
+class StoreCatalogSummary(BaseModel):
+    """A store that has a shared item table."""
+
+    id: str
+    name: str
+    address: str | None = None
+    item_count: int = 0
+    updated_at: datetime
+
+
+class PhotoUploadResponse(BaseModel):
+    """A stored user photo; url is public by unguessable id."""
+
+    id: str
+    url: str
+
+
+class StoreCatalogListResponse(BaseModel):
+    stores: list[StoreCatalogSummary]
+
+
+class StoreCatalogItemsResponse(BaseModel):
+    store: StoreCatalogSummary
+    items: list[StoreCatalogItem]
 
 
 class HouseholdPhotoResponse(BaseModel):
@@ -603,3 +678,83 @@ class SpendingReportResponse(BaseModel):
     by_category: list[SpendingCategoryTotal]
     events: list[PurchaseEventResponse]
 
+
+
+# ---------------------------------------------------------------------------
+# Shared product catalog (docs/api/receipt-parser.openapi.yaml `products` tag, /v1/catalog)
+# ---------------------------------------------------------------------------
+
+CatalogProductStatus = Literal["unverified", "pending", "verified"]
+CatalogProductSource = Literal["user_scan", "store_api", "gs1_registry", "llm_ocr"]
+CatalogImageSource = Literal["user_photo", "store_api", "openfoodfacts", "gs1_registry", "placeholder"]
+
+
+class CatalogProductResponse(BaseModel):
+    """
+    Satisfies: REQ-RCP-011
+    Spec version: 1.0
+
+    OpenAPI `Product` (served under `/v1/catalog/products`). Any signed-in user may read it; it carries no household data.
+    """
+
+    id: str
+    upc: str | None = None
+    store_chain_id: str
+    name: str
+    brand: str | None = None
+    category: str
+    unit_size: str | None = None
+    image_url: str | None = None
+    image_source: CatalogImageSource | None = None
+    source: CatalogProductSource
+    confidence_score: float = Field(ge=0, le=1)
+    confirmation_count: int = Field(ge=0)
+    status: CatalogProductStatus
+    superseded_by: str | None = None
+
+
+class CatalogSearchResponse(BaseModel):
+    query: str
+    results: list[CatalogProductResponse]
+
+
+class ProductConflictResponse(BaseModel):
+    """OpenAPI `ProductConflict` (REQ-RCP-014, REQ-RCP-019 AC3)."""
+
+    id: str
+    product_id: str
+    field: Literal["name", "brand", "unit_size", "category", "upc", "image_url"]
+    verified_value: str
+    observed_value: str
+    status: Literal["open", "dismissed", "accepted"]
+
+
+class ProductCorrectionSourceLine(BaseModel):
+    receipt_id: str
+    line_item_id: str
+
+
+class ProductCorrectionRequest(BaseModel):
+    """
+    Satisfies: REQ-RCP-019 AC3–AC5
+    Spec version: 1.0
+
+    `household_id` is hashed server-side before anything touches the catalog.
+    """
+
+    household_id: str = Field(min_length=1)
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    brand: str | None = Field(default=None, max_length=80)
+    category: str | None = Field(default=None, min_length=1, max_length=60)
+    unit_size: str | None = Field(default=None, max_length=40)
+    upc: str | None = Field(default=None, pattern=r"^[0-9]{8,14}$")
+    source_line_item: ProductCorrectionSourceLine | None = None
+
+
+class ProductCorrectionResponse(BaseModel):
+    """OpenAPI `ProductCorrectionResponse`."""
+
+    applied: bool
+    product: CatalogProductResponse
+    conflicts: list[ProductConflictResponse] = Field(default_factory=list)
+    status_reset: bool = False

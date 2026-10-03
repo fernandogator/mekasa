@@ -1,6 +1,4 @@
 import Foundation
-import AuthenticationServices
-import CryptoKit
 import Security
 import UIKit
 import FirebaseCore
@@ -9,7 +7,7 @@ import FirebaseAuth
 import GoogleSignIn
 #endif
 
-/// Firebase Auth (Email + Google + Apple). Falls back to a clear error if Firebase isn't ready.
+/// Firebase Auth (Email + Google). Falls back to a clear error if Firebase isn't ready.
 /// Satisfies: REQ-001 (Household Account Creation) AC1–AC3
 /// Spec version: 1.0
 @MainActor
@@ -35,7 +33,7 @@ final class AuthService: ObservableObject {
         }
     }
 
-    /// Sends Firebase's password-reset email. Also the way a Google/Apple-only account
+    /// Sends Firebase's password-reset email. Also the way a Google-only account
     /// gets a password attached, so email sign-in starts working for it.
     func sendPasswordReset(email: String) async throws {
         try ensureFirebaseReady()
@@ -113,72 +111,6 @@ final class AuthService: ObservableObject {
         #endif
     }
 
-    /// Sign in with Apple → Firebase `apple.com` OAuth credential (REQ-001 AC1).
-    func signInWithApple() async throws -> (token: String, email: String?, name: String?) {
-        try ensureFirebaseReady()
-        let rawNonce = AppleSignInNonce.random()
-        let request = ASAuthorizationAppleIDProvider().createRequest()
-        request.requestedScopes = [.fullName, .email]
-        request.nonce = AppleSignInNonce.sha256(rawNonce)
-
-        do {
-            let authorization = try await AppleSignInPresenter.shared.authorize(request: request)
-            guard let appleID = authorization.credential as? ASAuthorizationAppleIDCredential else {
-                throw AuthServiceError.missingAppleCredential
-            }
-            guard
-                let tokenData = appleID.identityToken,
-                let idToken = String(data: tokenData, encoding: .utf8)
-            else {
-                throw AuthServiceError.missingAppleToken
-            }
-
-            let credential = OAuthProvider.appleCredential(
-                withIDToken: idToken,
-                rawNonce: rawNonce,
-                fullName: appleID.fullName
-            )
-            let authResult = try await Auth.auth().signIn(with: credential)
-            let token = try await authResult.user.getIDToken()
-            let name = displayName(from: appleID.fullName) ?? authResult.user.displayName
-            let email = appleID.email ?? authResult.user.email
-            return (token, email, name)
-        } catch let error as AuthServiceError {
-            throw error
-        } catch {
-            if let mapped = Self.appleAuthorizationError(from: error) {
-                throw mapped
-            }
-            throw AuthErrorFormatter.wrap(error)
-        }
-    }
-
-    /// Maps AuthenticationServices failures to actionable errors; nil means "not an
-    /// ASAuthorization error, let the Firebase formatter handle it".
-    nonisolated static func appleAuthorizationError(from error: Error) -> AuthServiceError? {
-        let ns = error as NSError
-        guard ns.domain == ASAuthorizationError.errorDomain else { return nil }
-        switch ns.code {
-        case ASAuthorizationError.Code.canceled.rawValue:
-            return .cancelled
-        case ASAuthorizationError.Code.unknown.rawValue,
-             ASAuthorizationError.Code.notInteractive.rawValue:
-            // 1000 is what the system returns when the app lacks the Sign in with Apple
-            // entitlement (Debug builds omit it so personal teams can sign them) or when
-            // no Apple ID is signed in on the device/simulator.
-            return .appleSignInUnavailable
-        default:
-            return nil
-        }
-    }
-
-    private func displayName(from components: PersonNameComponents?) -> String? {
-        guard let components else { return nil }
-        let formatter = PersonNameComponentsFormatter()
-        let formatted = formatter.string(from: components).trimmingCharacters(in: .whitespacesAndNewlines)
-        return formatted.isEmpty ? nil : formatted
-    }
-
     func signOut() throws {
         if FirebaseBootstrap.isConfigured {
             try Auth.auth().signOut()
@@ -237,9 +169,6 @@ enum AuthServiceError: LocalizedError, Equatable {
     case missingGoogleToken
     case missingGoogleClientID
     case missingGoogleURLScheme
-    case missingAppleCredential
-    case missingAppleToken
-    case appleSignInUnavailable
     case cancelled
     case sessionExpired
     case firebaseAuthFailed(String)
@@ -254,16 +183,6 @@ enum AuthServiceError: LocalizedError, Equatable {
             return "GoogleService-Info.plist is missing CLIENT_ID. Enable Google Sign-In in Firebase and recreate the iOS OAuth client, then re-download the plist."
         case .missingGoogleURLScheme:
             return "Info.plist is missing the Google URL scheme (com.googleusercontent.apps.…). Run ios/scripts/sync_google_signin_config.sh, then xcodegen generate, Clean + Run."
-        case .missingAppleCredential:
-            return "Sign in with Apple did not return an Apple ID credential."
-        case .missingAppleToken:
-            return "Sign in with Apple did not return an identity token."
-        case .appleSignInUnavailable:
-            #if DEBUG
-            return "Sign in with Apple isn’t available in Debug builds: they’re signed without the Sign in with Apple entitlement so a personal Apple team can run them. Use Continue with Google or email here, or test Apple sign-in with a Release build on a paid team."
-            #else
-            return "Sign in with Apple isn’t available right now. Make sure an Apple ID is signed in on this device, then try again — or use Continue with Google or email."
-            #endif
         case .cancelled:
             return "Sign-in was cancelled."
         case .sessionExpired:
@@ -298,11 +217,11 @@ enum AuthErrorFormatter {
         switch ns.code {
         case 17004, 17009, 17011: // invalidCredential (enumeration-protected), wrongPassword, userNotFound
             parts.append(
-                "HINT: Wrong password — or this account signs in with Google/Apple and has no password yet. "
+                "HINT: Wrong password — or this account signs in with Google and has no password yet. "
                     + "Use that button, or tap Forgot password? to set one."
             )
         case 17025: // operationNotAllowed
-            parts.append("HINT: Enable Email/Password, Google, and/or Apple in Firebase Authentication → Sign-in method.")
+            parts.append("HINT: Enable Email/Password and Google in Firebase Authentication → Sign-in method.")
         case 17008: // invalidEmail
             parts.append("HINT: Email looks invalid.")
         case 17007: // emailAlreadyInUse
@@ -312,7 +231,7 @@ enum AuthErrorFormatter {
         case 17020: // networkError
             parts.append("HINT: Network/API blocked — check Identity Toolkit API + API key restrictions.")
         case 17999: // internalError
-            parts.append("HINT: Enable Identity Toolkit API; ensure Email/Password (and Apple if used) is ON; loosen API key restrictions or re-download GoogleService-Info.plist.")
+            parts.append("HINT: Enable Identity Toolkit API; ensure Email/Password and Google are ON; loosen API key restrictions or re-download GoogleService-Info.plist.")
         default:
             break
         }
@@ -385,73 +304,5 @@ enum FirebaseAppHelper {
             !clientID.contains("ci-stub")
         else { return nil }
         return clientID
-    }
-}
-
-// MARK: - Sign in with Apple helpers (colocated for local Xcode target membership)
-
-/// Nonce helpers for Sign in with Apple → Firebase (hashed nonce on the request).
-enum AppleSignInNonce {
-    static func random(length: Int = 32) -> String {
-        precondition(length > 0)
-        var bytes = [UInt8](repeating: 0, count: length)
-        let status = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
-        guard status == errSecSuccess else {
-            return UUID().uuidString.replacingOccurrences(of: "-", with: "")
-        }
-        return Data(bytes).map { String(format: "%02x", $0) }.joined()
-    }
-
-    static func sha256(_ input: String) -> String {
-        let digest = SHA256.hash(data: Data(input.utf8))
-        return digest.map { String(format: "%02x", $0) }.joined()
-    }
-}
-
-/// Presents `ASAuthorizationController` and bridges the delegate to async/await.
-@MainActor
-final class AppleSignInPresenter: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
-    static let shared = AppleSignInPresenter()
-
-    private var continuation: CheckedContinuation<ASAuthorization, Error>?
-
-    func authorize(request: ASAuthorizationAppleIDRequest) async throws -> ASAuthorization {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<ASAuthorization, Error>) in
-            self.continuation = continuation
-            let controller = ASAuthorizationController(authorizationRequests: [request])
-            controller.delegate = self
-            controller.presentationContextProvider = self
-            controller.performRequests()
-        }
-    }
-
-    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        if let window = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .flatMap(\.windows)
-            .first(where: \.isKeyWindow) {
-            return window
-        }
-        return ASPresentationAnchor()
-    }
-
-    nonisolated func authorizationController(
-        controller: ASAuthorizationController,
-        didCompleteWithAuthorization authorization: ASAuthorization
-    ) {
-        Task { @MainActor in
-            continuation?.resume(returning: authorization)
-            continuation = nil
-        }
-    }
-
-    nonisolated func authorizationController(
-        controller: ASAuthorizationController,
-        didCompleteWithError error: Error
-    ) {
-        Task { @MainActor in
-            continuation?.resume(throwing: error)
-            continuation = nil
-        }
     }
 }

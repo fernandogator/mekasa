@@ -22,6 +22,8 @@ class ReceiptParseResult:
     items: list[ReceiptLineItem]
     engine: str
     raw_text: str
+    store_name: str | None = None
+    store_address: str | None = None
 
 
 _PRICE_RE = re.compile(
@@ -89,6 +91,7 @@ def parse_receipt_text(text: str) -> list[ReceiptLineItem]:
                 price_paid=price,
                 image_url=category_placeholder_url(category),
                 identified=False,
+                receipt_text=name[:200],
             )
         )
     return items
@@ -124,7 +127,7 @@ def stub_receipt_items() -> list[ReceiptLineItem]:
     ]
 
 
-def _decode_image(image_base64: str) -> bytes:
+def decode_image(image_base64: str) -> bytes:
     cleaned = image_base64.strip()
     if "," in cleaned and cleaned.lower().startswith("data:"):
         cleaned = cleaned.split(",", 1)[1]
@@ -148,7 +151,7 @@ def _tokens(value: str) -> set[str]:
     return {part for part in re.split(r"[^a-z0-9]+", value.casefold()) if len(part) >= 2}
 
 
-def _is_strong_match(ocr_name: str, hit_name: str) -> bool:
+def is_strong_match(ocr_name: str, hit_name: str) -> bool:
     """Require overlapping tokens so weak OFF hits stay unidentified."""
     from app.barcode_lookup import expand_match_tokens
 
@@ -188,7 +191,7 @@ async def enrich_receipt_item(item: ReceiptLineItem) -> ReceiptLineItem:
         )
 
     for hit in search.results:
-        if not _is_strong_match(item.name, hit.name):
+        if not is_strong_match(item.name, hit.name):
             continue
         return item.model_copy(
             update={
@@ -241,7 +244,7 @@ def parse_receipt_image(
 
     if image_base64:
         try:
-            image_bytes = _decode_image(image_base64)
+            image_bytes = decode_image(image_base64)
             text = _vision_annotate(image_bytes)
             items = parse_receipt_text(text)
             if items:
