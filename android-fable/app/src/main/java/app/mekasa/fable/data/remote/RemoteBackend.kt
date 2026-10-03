@@ -87,6 +87,11 @@ class RemoteBackend(
         InventoryItemPatch(quantity = quantity, lowStockThreshold = threshold),
     )
 
+    override suspend fun replaceItemPhoto(householdId: String, itemId: String, jpeg: ByteArray): InventoryItem {
+        val uploaded = api.uploadItemPhoto(token(), householdId, jpeg, "image/jpeg", "item.jpg")
+        return api.patchInventoryItem(token(), householdId, itemId, InventoryItemPatch(imageUrl = uploaded.url))
+    }
+
     override suspend fun consume(householdId: String, itemId: String, amount: Int): InventoryItem =
         api.consumeInventoryItem(token(), householdId, itemId, amount)
 
