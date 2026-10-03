@@ -8,6 +8,9 @@ google-cloud-firestore==2.21.0
 python-multipart==0.0.20
 pytest==8.4.1
 google-cloud-vision==3.10.1
+# Household-private item photos (REQ-INV-019): re-encode uploads, store in GCS.
+pillow==12.3.0
+google-cloud-storage==3.14.1
 # Shared product catalog (Cloud SQL Postgres over the /cloudsql Unix socket, ADR-008).
 # Migrations are plain SQL via psql; the runtime repository (phase 2) uses these.
 psycopg[binary]==3.3.6

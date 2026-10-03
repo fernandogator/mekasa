@@ -24,6 +24,13 @@ from app.devices_repository import DevicesRepository, get_devices_repository
 from app.household_access import assert_household_member, assert_household_owner
 from app.inventory_image import refresh_item_health, refresh_item_image
 from app.inventory_repository import InventoryRepository, get_inventory_repository
+from app.item_photos import (
+    ImageTooLarge,
+    ItemPhotoService,
+    UnsupportedImage,
+    get_item_photo_service,
+    parse_item_photo_url,
+)
 from app.models import (
     AddressUpdateRequest,
     AvoidancesResponse,
@@ -49,6 +56,7 @@ from app.models import (
     InventoryItemResponse,
     InventoryItemUpdateRequest,
     InventoryListResponse,
+    ItemPhotoUploadResponse,
     MemberAvoidUpdateRequest,
     ProductSearchResponse,
     PurchaseEventCreateRequest,
@@ -415,15 +423,27 @@ def update_inventory_item(
     payload: InventoryItemUpdateRequest,
     user: AuthUser = Depends(verify_bearer_token),
     repo: InventoryRepository = Depends(get_inventory_repository),
+    photos: ItemPhotoService = Depends(get_item_photo_service),
 ) -> InventoryItemResponse:
     """
-    Satisfies: REQ-006, REQ-009
+    Satisfies: REQ-006, REQ-009, REQ-INV-019 (AC4)
     Spec version: 1.0
     """
+    previous_image_url: str | None = None
+    if payload.image_url is not None:
+        try:
+            current = repo.get(household_id, item_id, user.uid)
+        except (KeyError, PermissionError) as exc:
+            raise _map_inventory_errors(exc) from exc
+        previous_image_url = current.image_url if current else None
     try:
-        return repo.update(household_id, item_id, user.uid, payload)
+        updated = repo.update(household_id, item_id, user.uid, payload)
     except (KeyError, PermissionError) as exc:
         raise _map_inventory_errors(exc) from exc
+    # REQ-INV-019 AC4: a replaced private photo of this household is removed.
+    if previous_image_url and previous_image_url != updated.image_url:
+        photos.delete_if_owned(household_id, previous_image_url)
+    return updated
 
 
 @inventory_router.post(
@@ -435,14 +455,16 @@ async def refresh_inventory_item_image(
     item_id: str,
     user: AuthUser = Depends(verify_bearer_token),
     repo: InventoryRepository = Depends(get_inventory_repository),
+    photos: ItemPhotoService = Depends(get_item_photo_service),
 ) -> InventoryItemResponse:
     """
-    Satisfies: UI-006, ADR-006
+    Satisfies: UI-006, ADR-006, REQ-INV-019 (AC5)
     Spec version: 1.0
 
     When an inventory row has no image_url, look up a product image (barcode →
     Open Food Facts, else category placeholder) and persist it. Items that
-    already have an image are returned unchanged.
+    already have an image are returned unchanged, except when that image is a
+    private photo that has since been deleted (REQ-INV-019 AC5).
     """
     try:
         item = repo.get(household_id, item_id, user.uid)
@@ -453,6 +475,10 @@ async def refresh_inventory_item_image(
 
     def _update(payload: InventoryItemUpdateRequest) -> InventoryItemResponse:
         return repo.update(household_id, item_id, user.uid, payload)
+
+    ref = parse_item_photo_url(item.image_url)
+    if ref is not None and photos.fetch(ref.household_id, ref.photo_id) is None:
+        item = item.model_copy(update={"image_url": None})
 
     try:
         return await refresh_item_image(item, update=_update)
@@ -1082,6 +1108,106 @@ def get_photo(
         media_type=photo.content_type,
         headers={"Cache-Control": "public, max-age=86400, immutable"},
     )
+
+
+@inventory_router.post(
+    "/households/{household_id}/item-photos",
+    response_model=ItemPhotoUploadResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_item_photo(
+    household_id: str,
+    request: Request,
+    file: UploadFile = File(...),
+    user: AuthUser = Depends(verify_bearer_token),
+    photos: ItemPhotoService = Depends(get_item_photo_service),
+) -> ItemPhotoUploadResponse:
+    """
+    Satisfies: REQ-INV-019 (Replace an Item Picture With a Private Photo)
+    Acceptance criteria: AC1, AC2, AC7
+    Spec version: 1.0
+
+    The photo is re-encoded (metadata stripped) and stored under the
+    household's prefix; the returned URL only works with a member token.
+    """
+    try:
+        assert_household_member(household_id, user.uid)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
+    content_type = file.content_type or ""
+    if not content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="unsupported_media_type"
+        )
+    data = await file.read()
+    try:
+        ref = photos.upload(household_id, data)
+    except ImageTooLarge as exc:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="payload_too_large"
+        ) from exc
+    except UnsupportedImage as exc:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="unsupported_media_type"
+        ) from exc
+    return ItemPhotoUploadResponse(photo_id=ref.photo_id, url=_absolute_url(ref.url_path(), request))
+
+
+@inventory_router.get("/households/{household_id}/item-photos/{photo_id}")
+def get_item_photo(
+    household_id: str,
+    photo_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    photos: ItemPhotoService = Depends(get_item_photo_service),
+) -> Response:
+    """
+    Satisfies: REQ-INV-019 (Replace an Item Picture With a Private Photo)
+    Acceptance criteria: AC3
+    Spec version: 1.0
+    """
+    try:
+        assert_household_member(household_id, user.uid)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
+    jpeg = photos.fetch(household_id, photo_id)
+    if jpeg is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return Response(
+        content=jpeg,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "private, max-age=86400"},
+    )
+
+
+@inventory_router.delete(
+    "/households/{household_id}/item-photos/{photo_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_item_photo(
+    household_id: str,
+    photo_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    photos: ItemPhotoService = Depends(get_item_photo_service),
+) -> Response:
+    """
+    Satisfies: REQ-INV-019 (Replace an Item Picture With a Private Photo)
+    Acceptance criteria: AC5
+    Spec version: 1.0
+    """
+    try:
+        assert_household_member(household_id, user.uid)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
+    if not photos.delete(household_id, photo_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _absolute_url(path: str, request: Request) -> str:
+    # Cloud Run terminates TLS; honor the forwarded scheme so iOS ATS accepts it.
+    scheme = request.headers.get("x-forwarded-proto", request.url.scheme)
+    host = request.headers.get("host", request.url.netloc)
+    return f"{scheme}://{host}{path}"
 
 
 @api_router.post(

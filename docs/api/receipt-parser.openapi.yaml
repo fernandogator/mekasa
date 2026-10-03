@@ -598,15 +598,105 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /v1/households/{household_id}/item-photos:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+    post:
+      tags: [item-photos]
+      operationId: uploadItemPhoto
+      summary: Upload a household-private item photo (implemented)
+      description: |
+        Satisfies: REQ-INV-019 AC1/AC2/AC7 · Spec version: 1.0
+
+        Replace an item picture with the member's own photo. Multipart
+        `file` (JPEG/PNG/WebP ≤ 8 MB). The server re-encodes to JPEG, strips
+        all metadata (EXIF/GPS), caps the long edge at 1600 px and stores
+        `households/{hid}/item-photos/{photo_id}.jpg` in `ITEM_PHOTO_BUCKET`.
+        The returned `url` is the household-scoped GET below and only works
+        with a member's bearer token; it is never shared with other
+        households or copied into the shared catalog (AC6).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [photo_id, url]
+                properties:
+                  photo_id: { type: string, format: uuid }
+                  url:
+                    type: string
+                    format: uri
+                    description: '`https://<host>/v1/households/{hid}/item-photos/{photo_id}`'
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413':
+          description: '`payload_too_large` (> 8 MB)'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '415':
+          description: '`unsupported_media_type`'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /v1/households/{household_id}/item-photos/{photo_id}:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+      - $ref: '#/components/parameters/PhotoId'
+    get:
+      tags: [item-photos]
+      operationId: getItemPhoto
+      summary: Fetch a private item photo (household members only)
+      description: |
+        Satisfies: REQ-INV-019 AC3 · Spec version: 1.0
+
+        Streams the JPEG with `Cache-Control: private, max-age=86400`.
+        Clients must send the bearer token; plain image loaders cannot fetch
+        this URL.
+      responses:
+        '200':
+          description: JPEG bytes
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [item-photos]
+      operationId: deleteItemPhoto
+      summary: Delete a private item photo
+      description: |
+        Satisfies: REQ-INV-019 AC5 · Spec version: 1.0
+
+        Removes the object. An inventory item still pointing at it gets a
+        category placeholder on its next `refresh-image`. Replacing an item's
+        `image_url` with another private photo deletes the previous one
+        automatically (AC4).
+      responses:
+        '204': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /v1/households/{household_id}/product-photos:
     parameters:
       - $ref: '#/components/parameters/HouseholdId'
     post:
       tags: [product-photos]
       operationId: uploadProductPhoto
-      summary: Upload a product photo taken by the user
+      summary: Upload a product photo taken by the user (Deferred — REQ-RCP-021)
       description: |
         Satisfies: REQ-RCP-021 AC1/AC2/AC6 · Spec version: 1.0
+
+        Deferred (2026-10-03): user photos are household-private by decision
+        (REQ-INV-019, `item-photos` above). This endpoint is the contract for
+        a future explicit "share this picture with the catalog" action.
 
         Accepts JPEG/PNG/HEIC ≤ 8 MB as base64 JSON or multipart. The server
         re-encodes to JPEG, strips EXIF/GPS, limits the long edge to 1600 px and
@@ -784,6 +874,9 @@ components:
       schema: { type: string, format: uuid }
 
   responses:
+    Unauthorized:
+      description: Missing or invalid bearer token.
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
     Forbidden:
       description: Caller is not a member of the household (or lacks the Owner role where required).
       content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
