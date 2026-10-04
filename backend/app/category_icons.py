@@ -27,3 +27,7 @@ def category_placeholder_url(category: str | None) -> str:
     if not category:
         return DEFAULT_CATEGORY_ICON_URL
     return CATEGORY_ICON_URLS.get(category.strip(), DEFAULT_CATEGORY_ICON_URL)
+
+
+def is_placeholder_url(url: str | None) -> bool:
+    return bool(url) and url.startswith(_PLACEHOLDER_BASE)

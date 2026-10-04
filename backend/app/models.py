@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class HealthResponse(BaseModel):
@@ -216,6 +216,8 @@ class InventoryItemResponse(BaseModel):
     price_paid: float | None = None
     barcode: str | None = None
     image_url: str | None = None
+    # Shared catalog product linked by a product capture (REQ-RCP-020 AC6): UPC or plu:<code>.
+    product_id: str | None = None
     source: InventorySource
     created_by_uid: str
     updated_by_uid: str
@@ -673,7 +675,9 @@ class CatalogProductResponse(BaseModel):
     """
 
     id: str
+    code_kind: Literal["upc", "plu", "llm"] = "upc"
     upc: str | None = None
+    plu_code: str | None = None
     store_chain_id: str
     name: str
     brand: str | None = None
@@ -733,3 +737,54 @@ class ProductCorrectionResponse(BaseModel):
     product: CatalogProductResponse
     conflicts: list[ProductConflictResponse] = Field(default_factory=list)
     status_reset: bool = False
+
+
+class ProductCaptureRequest(BaseModel):
+    """
+    Satisfies: REQ-RCP-020 AC2, AC6, AC7, AC9
+    Spec version: 1.0
+
+    Exactly one of `upc` (scanned barcode) or `plu_code` (typed from a produce
+    sticker), an optional photo from `POST …/product-photos`, and the
+    new-product card's name/category. Missing attributes fall back to the item.
+    Code shapes are checked by the catalog so the API returns
+    `invalid_upc` / `invalid_plu` instead of a generic validation error.
+    """
+
+    model_config = {"extra": "forbid"}
+
+    upc: str | None = Field(default=None, max_length=32)
+    plu_code: str | None = Field(default=None, max_length=16)
+    photo_id: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    brand: str | None = Field(default=None, max_length=80)
+    category: str | None = Field(default=None, min_length=1, max_length=60)
+    unit_size: str | None = Field(default=None, max_length=40)
+
+    @model_validator(mode="after")
+    def _strip(self) -> "ProductCaptureRequest":
+        for key in ("upc", "plu_code", "name", "brand", "unit_size"):
+            value = getattr(self, key)
+            if isinstance(value, str):
+                setattr(self, key, value.strip() or None)
+        return self
+
+
+class ProductCaptureResponse(BaseModel):
+    """
+    Satisfies: REQ-RCP-020 AC2–AC7
+    Spec version: 1.0
+
+    OpenAPI `ProductCaptureResponse`; the inventory variant also returns the
+    updated item so clients need not refetch it.
+    """
+
+    outcome: Literal["linked", "created", "rekeyed"]
+    product: CatalogProductResponse
+    inventory_item_id: str | None = None
+    inventory_item: InventoryItemResponse | None = None
+    scan_event_id: str
+    confirmation_counted: bool
+    enrichment_job_id: str | None = None
+    photo_applied_as: Literal["product_image", "line_image", "correction_proposed", "none"] = "none"
+    conflict: ProductConflictResponse | None = None
