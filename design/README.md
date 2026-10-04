@@ -30,7 +30,7 @@ All screens are **390×844** (mobile-first, iPhone SE/13 mini) with full navigat
 | REQ-RCP-020 | Haul Summary | Final review before adding to inventory | `pages/scan-haul-summary.html` |
 | REQ-RCP-020 | Scan Flow Components | Chips, error states, photo and sharing sheet | `pages/scan-flow-component-sheet.html` |
 
-Colors follow the Rich & Grounded palette in `design-system.md`. `inventory-list.html` and `item-detail.html` have no Superdesign draft and still use the previous palette.
+Colors follow the Rich & Grounded palette in `design-system.md`. Dark-mode references: `pages/dashboard-dark.html`, `pages/scan-barcode-dark.html`, `pages/scan-new-product-dark.html`, `pages/scan-haul-summary-dark.html`. `inventory-list.html` and `item-detail.html` have no Superdesign draft and still use the previous palette.
 
 ### 🔊 Scanner beep
 

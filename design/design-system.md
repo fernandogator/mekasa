@@ -54,20 +54,44 @@ Contrast (NFR-005 AC2, light appearance):
 
 The palette's original sage `#8fa085` (2.3:1 on surface) and amber `#c48c5a` (2.4:1) fail as text, so the text roles use the darker shades above. White text on amber or sage fills is not allowed.
 
-### Dark
-
-Dark tokens below predate the Rich & Grounded palette and are kept until a matching dark variant is designed; NFR-005 AC5 requires that variant to pass AC2 before the apps adopt the new palette.
+### Dark (Rich & Grounded, 2026-10-04)
 
 | Token | Role | Value |
 |-------|------|-------|
-| `--color-brand` | Elevated dark green-charcoal | `#1f2a24` |
-| `--color-surface` | Page background | `#121612` |
-| `--color-surface-elevated` | Cards / sheets | `#1c241f` |
-| `--color-text` | Primary text | `#eeebe3` |
-| `--color-text-muted` | Secondary | `#9aada8` |
-| `--color-accent` | CTA | `#ff3b4e` |
-| `--color-brand-muted` | Borders / inactive | `#5e706c` |
-| `--color-success` | Positive | `#5dba8a` |
+| `--color-brand` | Nav pill, dark fills, icon wells | `#3a3531` |
+| `--color-brand-muted` | Decorative sage blob (15% opacity; never text) | `#5a6f4f` |
+| `--color-surface` | Page background | `#1c1a18` |
+| `--color-surface-elevated` | Cards / sheets | `#272421` |
+| `--color-text` | Primary text | `#ede8e0` |
+| `--color-text-muted` | Secondary text, labels, codes | `#a9b79f` |
+| `--color-accent` | Primary button and FAB fill (label `#1c1a18`) | `#8fa085` |
+| `--color-accent-text` | Accent text and links | `#a3b598` |
+| `--color-danger` | Destructive actions, errors | `#e39286` |
+| `--color-success` | Positive confirmation | `#a3b598` |
+| `--color-warning` | Warning text | `#e2b07e` |
+| `--color-warning-tint` | Warning chip background | `#3a2e22` |
+| `--color-success-tint` | Match / success chip background | `#2c3628` |
+| `--color-border` | Icons, input borders, chip outlines | `#7f8e76` |
+| `--color-on-brand-muted` | Inactive icons on the nav pill | `#b5c2ab` |
+| `--color-camera-surface` | Camera viewfinder | `#0f0e0d` |
+| `--color-on-camera` | Text and icons on the camera surface | `#faf7f3` |
+
+Contrast (NFR-005 AC2, dark appearance):
+
+| Pair | Ratio | Needs |
+|------|-------|-------|
+| Text `#ede8e0` on surface / elevated / nav pill | 14.2 / 12.7 / 9.9 | 4.5 |
+| Muted text `#a9b79f` on surface / elevated | 8.2 / 7.3 | 4.5 |
+| Accent text `#a3b598` on surface / elevated | 8.0 / 7.1 | 4.5 |
+| `#1c1a18` label on accent `#8fa085` | 6.2 | 4.5 |
+| Danger `#e39286` on surface / elevated | 7.2 / 6.4 | 4.5 |
+| Warning `#e2b07e` on surface / warning tint | 8.9 / 6.7 | 4.5 |
+| Text on success tint `#2c3628` | 10.3 | 4.5 |
+| Border `#7f8e76` on surface / elevated | 5.0 / 4.4 | 3 |
+| `#b5c2ab` icon on nav pill `#3a3531` | 6.5 | 3 |
+| `#faf7f3` on camera `#0f0e0d` | 18.1 | 4.5 |
+
+Design reference: `design/pages/dashboard-dark.html`, `scan-barcode-dark.html`, `scan-new-product-dark.html`, `scan-haul-summary-dark.html`.
 
 Do not introduce purple, indigo, terracotta, cream-serif luxury, or neon palettes.
 Never use pure black; dark fills use `#5d5652` (light) / near-charcoal (dark).
