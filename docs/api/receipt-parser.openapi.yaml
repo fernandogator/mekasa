@@ -1198,6 +1198,12 @@ components:
         inventory_item_id:
           type: [string, 'null']
           description: Present for the inventory variant.
+        inventory_item:
+          type: [object, 'null']
+          description: |
+            Inventory variant only: the updated item (`barcode` is set for UPC
+            captures only, `product_id` is the UPC or `plu:<code>`, `image_url`
+            is the capture photo when one was sent).
         scan_event_id: { type: string }
         confirmation_counted: { type: boolean }
         enrichment_job_id:
@@ -1433,7 +1439,9 @@ components:
       required: [id, upc, store_chain_id, name, category, source, confidence_score, confirmation_count, status]
       properties:
         id: { type: string }
+        code_kind: { type: string, enum: [upc, plu, llm], description: '`plu` rows are keyed `plu:<code>` and filed under store chain `unknown` (shared across chains).' }
         upc: { type: [string, 'null'] }
+        plu_code: { type: [string, 'null'], pattern: '^[0-9]{4,5}$' }
         store_chain_id: { type: string }
         name: { type: string }
         brand: { type: [string, 'null'] }
@@ -1461,10 +1469,11 @@ components:
 
     ScanEvent:
       type: object
-      required: [id, upc, scanned_by_uid, scanned_at, context, outcome]
+      required: [id, scanned_by_uid, scanned_at, context, outcome]
       properties:
         id: { type: string }
-        upc: { type: string }
+        upc: { type: [string, 'null'] }
+        plu_code: { type: [string, 'null'], description: Set instead of `upc` for a PLU capture (REQ-RCP-020 AC7). }
         scanned_by_uid: { type: string }
         scanned_at: { type: string, format: date-time }
         context: { type: string, enum: [add_items, trash_station, manual_entry, receipt_capture, inventory_capture] }
