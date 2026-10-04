@@ -56,6 +56,9 @@ IDENTITY_FIELDS = frozenset({"name", "brand", "category", "upc"})
 CAPTURE_CONFIDENCE = 0.9  # REQ-RCP-020 AC2
 FUZZY_CANDIDATE_THRESHOLD = 0.3
 UPC_RE = re.compile(r"^[0-9]{8,14}$")
+PLU_RE = re.compile(r"^[0-9]{4,5}$")
+# PLU products are shared across chains (REQ-RCP-010 AC9) and filed under the seeded "unknown" chain.
+SHARED_CHAIN_ID = "unknown"
 PHOTO_URL_PREFIX = "/v1/product-photos/"
 
 DEFAULT_DISCOVERY_CHAIN = ["store_api", "openfoodfacts", "upcitemdb", "gs1_verify", "crowdsourced_pending"]
@@ -102,6 +105,10 @@ def next_status(status: str, confirmation_count: int, source: str, has_upc: bool
     ):
         current = "verified"
     return current
+
+
+def plu_product_id(plu_code: str) -> str:
+    return f"plu:{plu_code}"
 
 
 def photo_image_url(photo_id: str) -> str:
@@ -349,21 +356,28 @@ def _save_receipt_lines(session: _Session, store_chain_id: str, lines: list[Rece
 
 
 def _capture(
-    session: _Session, *, store_chain_id: str, upc: str, hh: str,
+    session: _Session, *, store_chain_id: str, upc: str | None, plu_code: str | None, hh: str,
     fallback_name: str, fallback_category: str, alias_text: str | None,
     name: str | None, brand: str | None, category: str | None, unit_size: str | None,
     photo_id: str | None, previous_product_id: str | None,
     receipt_id: str | None, line_item_id: str | None,
 ) -> CaptureResult:
-    """REQ-RCP-020 AC2–AC4 (design §3.11 step 2)."""
-    if not UPC_RE.match(upc):
+    """REQ-RCP-020 AC2–AC4, AC7 (design §3.11 step 2)."""
+    if (upc is None) == (plu_code is None):
+        raise ValueError("exactly_one_code_required")
+    if upc is not None and not UPC_RE.match(upc):
         raise ValueError("invalid_upc")
-    session.lock_chain(store_chain_id)
-    previous = session.get(previous_product_id, for_update=True) if previous_product_id else None
-    if previous is not None and (previous.superseded_by or previous.code_kind == "upc"):
-        previous = None  # already re-keyed, or not an llm:/plu: row — nothing to merge
+    if plu_code is not None and not PLU_RE.match(plu_code):
+        raise ValueError("invalid_plu")
+    session.lock_chain(store_chain_id if upc else SHARED_CHAIN_ID)
+    previous = session.get(previous_product_id, for_update=True) if previous_product_id and upc else None
+    if previous is not None and (previous.superseded_by or previous.code_kind != "llm"):
+        previous = None  # already re-keyed, or a UPC/PLU row — PLU products are never re-keyed (AC7)
 
-    existing = session.get_by_upc(upc, for_update=True)
+    if upc:
+        existing = session.get_by_upc(upc, for_update=True)
+    else:
+        existing = _follow(session, session.get(plu_product_id(plu_code or ""), for_update=True))
     photo_applied: str = "none"
     conflict: CatalogConflict | None = None
     enrichment_job_id: str | None = None
@@ -378,7 +392,8 @@ def _capture(
     else:
         display_name = (name or fallback_name)[:120]
         product = CatalogProduct(
-            id=upc, code_kind="upc", upc=upc, store_chain_id=store_chain_id,
+            id=upc or plu_product_id(plu_code or ""), code_kind="upc" if upc else "plu",
+            upc=upc, plu_code=plu_code, store_chain_id=store_chain_id if upc else SHARED_CHAIN_ID,
             name=display_name, normalized_name=normalize_name(display_name)[:120],
             brand=brand, category=(category or fallback_category)[:60], unit_size=unit_size,
             image_url=photo_image_url(photo_id) if photo_id else None,
@@ -389,7 +404,8 @@ def _capture(
         outcome = "created"
         if photo_id:
             photo_applied = "product_image"
-        enrichment_job_id = session.queue_enrichment(product.id, "user_capture", CAPTURE_ENRICHMENT_CHAIN)
+        if upc:  # the enrichment adapters all look products up by UPC
+            enrichment_job_id = session.queue_enrichment(product.id, "user_capture", CAPTURE_ENRICHMENT_CHAIN)
 
     if photo_id and photo_applied == "none":
         if product.image_url is None:
@@ -545,14 +561,15 @@ class _BaseRepository:
             return _rekey(s, old, upc, source, confidence)
 
     def capture(
-        self, *, store_chain_id: str, upc: str, hh: str, fallback_name: str, fallback_category: str,
+        self, *, store_chain_id: str, hh: str, fallback_name: str, fallback_category: str,
+        upc: str | None = None, plu_code: str | None = None,
         alias_text: str | None = None, name: str | None = None, brand: str | None = None,
         category: str | None = None, unit_size: str | None = None, photo_id: str | None = None,
         previous_product_id: str | None = None, receipt_id: str | None = None, line_item_id: str | None = None,
     ) -> CaptureResult:
         with self._session() as s:
             return _capture(
-                s, store_chain_id=store_chain_id, upc=upc, hh=hh, fallback_name=fallback_name,
+                s, store_chain_id=store_chain_id, upc=upc, plu_code=plu_code, hh=hh, fallback_name=fallback_name,
                 fallback_category=fallback_category, alias_text=alias_text, name=name, brand=brand,
                 category=category, unit_size=unit_size, photo_id=photo_id,
                 previous_product_id=previous_product_id, receipt_id=receipt_id, line_item_id=line_item_id,

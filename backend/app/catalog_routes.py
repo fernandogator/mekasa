@@ -32,9 +32,10 @@ from app.models import (
 products_router = APIRouter(prefix="/v1/catalog/products", tags=["products"])
 
 
-def _to_response(product: CatalogProduct) -> CatalogProductResponse:
+def product_to_response(product: CatalogProduct) -> CatalogProductResponse:
     return CatalogProductResponse(
-        id=product.id, upc=product.upc, store_chain_id=product.store_chain_id, name=product.name,
+        id=product.id, code_kind=product.code_kind, upc=product.upc, plu_code=product.plu_code,
+        store_chain_id=product.store_chain_id, name=product.name,
         brand=product.brand, category=product.category, unit_size=product.unit_size,
         image_url=product.image_url, image_source=product.image_source, source=product.source,
         confidence_score=product.confidence_score, confirmation_count=product.confirmation_count,
@@ -42,7 +43,7 @@ def _to_response(product: CatalogProduct) -> CatalogProductResponse:
     )
 
 
-def _conflict_to_response(conflict: CatalogConflict) -> ProductConflictResponse:
+def conflict_to_response(conflict: CatalogConflict) -> ProductConflictResponse:
     return ProductConflictResponse(**conflict.model_dump())
 
 
@@ -60,7 +61,7 @@ def search_catalog_products(
     Spec version: 1.0
     """
     results = repo.search(q, store_chain_id=store_chain_id, status=status_filter, limit=limit)
-    return CatalogSearchResponse(query=q, results=[_to_response(p) for p in results])
+    return CatalogSearchResponse(query=q, results=[product_to_response(p) for p in results])
 
 
 @products_router.get("/{product_id}", response_model=CatalogProductResponse)
@@ -78,7 +79,7 @@ def get_catalog_product(
     product = repo.get_product(product_id)
     if product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
-    return _to_response(product)
+    return product_to_response(product)
 
 
 @products_router.post("/{product_id}/corrections", response_model=ProductCorrectionResponse)
@@ -123,7 +124,7 @@ def correct_catalog_product(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return ProductCorrectionResponse(
         applied=result.applied,
-        product=_to_response(result.product),
-        conflicts=[_conflict_to_response(c) for c in result.conflicts],
+        product=product_to_response(result.product),
+        conflicts=[conflict_to_response(c) for c in result.conflicts],
         status_reset=result.status_reset,
     )
