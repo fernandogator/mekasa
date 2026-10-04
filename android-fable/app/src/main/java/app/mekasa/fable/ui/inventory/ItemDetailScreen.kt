@@ -1,5 +1,12 @@
 package app.mekasa.fable.ui.inventory
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -31,9 +39,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.core.content.ContextCompat
 import app.mekasa.fable.data.model.InventoryItem
 import app.mekasa.fable.session.SessionViewModel
 import app.mekasa.fable.ui.TestTags
@@ -45,6 +55,8 @@ import app.mekasa.fable.ui.components.ProductThumbnail
 import app.mekasa.fable.ui.components.ScreenHeader
 import app.mekasa.fable.ui.components.SectionLabel
 import app.mekasa.fable.ui.components.money
+import app.mekasa.fable.ui.dashboard.decodeBitmap
+import app.mekasa.fable.ui.dashboard.encodeJpeg
 import app.mekasa.fable.ui.theme.MekasaTheme
 import app.mekasa.fable.ui.theme.Shapes
 import app.mekasa.fable.ui.theme.Space
@@ -62,10 +74,49 @@ fun ItemDetailScreen(
     onBack: () -> Unit,
 ) {
     val palette = MekasaTheme.palette
+    val context = LocalContext.current
     var lightbox by remember { mutableStateOf(false) }
+    var saving by remember { mutableStateOf(false) }
 
     LaunchedEffect(item.id) {
         if (!item.hasImage) session.refreshItemImage(item.id)
+    }
+
+    // REQ-INV-019 AC8: replace the picture with the member's own photo (private to the household).
+    fun submit(bitmap: Bitmap?, failure: String) {
+        if (bitmap == null) {
+            session.fail(failure)
+            return
+        }
+        val jpeg = encodeJpeg(bitmap)
+        if (jpeg == null) {
+            session.fail("Couldn't encode that photo.")
+            return
+        }
+        saving = true
+        session.replaceItemPhoto(item.id, jpeg) { saving = false }
+    }
+
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
+        if (uri != null) submit(decodeBitmap(context, uri), "Couldn't read that photo. Try a JPEG or PNG.")
+    }
+    val legacyPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) submit(decodeBitmap(context, uri), "Couldn't read that photo. Try a JPEG or PNG.")
+    }
+    val takePhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+        submit(bitmap, "Couldn't capture a photo.")
+    }
+    val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) takePhoto.launch(null) else session.fail("Camera permission is needed to take a photo.")
+    }
+    val openGallery = {
+        runCatching { pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+            .onFailure { legacyPicker.launch("image/*") }
+        Unit
+    }
+    val openCamera = {
+        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        if (granted) takePhoto.launch(null) else cameraPermission.launch(Manifest.permission.CAMERA)
     }
 
     Backdrop(modifier = Modifier.testTag(TestTags.ITEM_DETAIL_VIEW)) {
@@ -97,6 +148,11 @@ fun ItemDetailScreen(
                         shape = Shapes.card,
                     )
                 }
+                ItemPhotoActions(
+                    saving = saving,
+                    onTakePhoto = openCamera,
+                    onChooseFromLibrary = openGallery,
+                )
                 if (!item.hasImage) {
                     LinkButton("Look up product image", onClick = { session.refreshItemImage(item.id) })
                 }
@@ -165,6 +221,43 @@ fun ItemDetailScreen(
                 )
             }
         }
+    }
+}
+
+/** "Take photo" / "Choose from library" under the hero image (REQ-INV-019 AC8). */
+@Composable
+private fun ItemPhotoActions(
+    saving: Boolean,
+    onTakePhoto: () -> Unit,
+    onChooseFromLibrary: () -> Unit,
+) {
+    val palette = MekasaTheme.palette
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Space.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LinkButton(
+            text = if (saving) "Saving photo…" else "Take photo",
+            onClick = onTakePhoto,
+            enabled = !saving,
+            color = palette.text,
+            modifier = Modifier.testTag(TestTags.ITEM_PHOTO_CAMERA_BUTTON),
+        )
+        LinkButton(
+            text = "Choose from library",
+            onClick = onChooseFromLibrary,
+            enabled = !saving,
+            color = palette.text,
+            modifier = Modifier.testTag(TestTags.ITEM_PHOTO_LIBRARY_BUTTON),
+        )
+        Spacer(Modifier.weight(1f))
+        Icon(
+            Icons.Outlined.Lock,
+            contentDescription = "Your photos stay private to this household",
+            tint = palette.textMuted,
+            modifier = Modifier.size(16.dp),
+        )
     }
 }
 

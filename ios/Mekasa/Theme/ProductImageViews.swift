@@ -11,7 +11,7 @@ struct ProductThumbnail: View {
     var body: some View {
         Group {
             if let urlString, let url = URL(string: urlString) {
-                AsyncImage(url: url) { phase in
+                MekasaRemoteImage(url: url) { phase in
                     switch phase {
                     case let .success(image):
                         image
@@ -64,7 +64,7 @@ struct ProductHeroImage: View {
         } label: {
             Group {
                 if let urlString, let url = URL(string: urlString) {
-                    AsyncImage(url: url) { phase in
+                    MekasaRemoteImage(url: url) { phase in
                         switch phase {
                         case let .success(image):
                             image
@@ -151,7 +151,7 @@ struct ProductImageLightbox: View {
         ZStack {
             Color.black.ignoresSafeArea()
             if let urlString, let url = URL(string: urlString) {
-                AsyncImage(url: url) { phase in
+                MekasaRemoteImage(url: url) { phase in
                     switch phase {
                     case let .success(image):
                         image

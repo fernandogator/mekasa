@@ -173,6 +173,26 @@ Acceptance Criteria:
 - AC1: Client calls purge so the Firestore document no longer exists
   (Cloud Tasks/Function may replace the client timer later)
 
+### REQ-INV-019: Replace an Item Picture With a Private Photo
+Priority: P1
+Description: A household member **shall** be able to replace any inventory
+item's picture (and a draft's picture before it saves) with a photo they
+take or pick. The photo is stored in Google Cloud Storage under the
+household's account and is served only to signed-in members of that
+household; it is never shared with other households or with the shared
+product catalog.
+Design Artifact: design/pages/product-image-editor.html, design/mockups/ItemDetail.jsx
+Test File: tests/backend/test_item_photos.py, ios/MekasaTests/ItemPhotoTests.swift, android-fable/app/src/test/java/app/mekasa/fable/ItemPhotoTest.kt
+Acceptance Criteria:
+- AC1: `POST /v1/households/{hid}/item-photos` (multipart `file`, JPEG/PNG/WebP ≤ 8 MB, household member; both apps re-encode camera output to JPEG before upload) re-encodes the image as JPEG with all metadata (EXIF, GPS) stripped, limits the long edge to 1600 px, and returns `{photo_id, url}` where `url` is `/v1/households/{hid}/item-photos/{photo_id}`
+- AC2: Objects live in bucket `ITEM_PHOTO_BUCKET` (`mekasa-item-photos-<env>`) at `households/{hid}/item-photos/{photo_id}.jpg` with uniform bucket-level access and no public ACL; the only readers are the API's service account
+- AC3: `GET /v1/households/{hid}/item-photos/{photo_id}` requires a bearer token for a member of `{hid}`; non-members receive `403`, unknown ids `404`; bytes are served with `Cache-Control: private`
+- AC4: Setting `image_url` on an inventory item through the existing `PATCH …/inventory/{item_id}` to a photo URL from AC1 replaces the picture; a previous private photo of the same household that the item pointed at is deleted from the bucket after the update succeeds
+- AC5: `DELETE /v1/households/{hid}/item-photos/{photo_id}` (member) removes the object; an item still pointing at it falls back to the category placeholder on the next image refresh
+- AC6: Private photos are never copied into the shared product catalog (`products.image_url`) and are never written to `product_conflicts`; a user who wants to contribute a product picture to the catalog does so through a separate, explicit action (REQ-RCP-021, Deferred)
+- AC7: With `ITEM_PHOTO_BUCKET` unset (local, tests) the API keeps photos in memory with the same endpoints and rules
+- AC8: Both apps upload through AC1 and load private photo URLs with the bearer token (plain image loaders cannot fetch them); the iOS item detail hero, list thumbnails, and confirm-haul drafts offer "Take photo / Choose from library"; Android item detail offers the same
+
 ### REQ-010: Low Stock Threshold — Learned
 Priority: P2
 Description: System learns consumption rate and suggests threshold
@@ -712,7 +732,7 @@ Acceptance Criteria:
 - AC1: `PATCH …/line-items/{lid}` accepts `name`, `brand`, `category`, `unit_size`, `qty`, `unit`, `quantity`, `price_paid`, `unit_price`, and `photo_id`; the edit is stored on the line (`user_edited_fields` lists the fields) and is what `confirm` writes to inventory and purchases
 - AC2: A correction of `category` (or any attribute) on a line that is `auto_matched`/`confirmed` keeps the link to the product; the line stores the override and `POST /v1/catalog/products/{id}/corrections` is offered as a separate, explicit step ("also fix it for everyone")
 - AC3: `POST /v1/catalog/products/{id}/corrections` on an `unverified` or `pending` product applies the correction directly, appends `user_scan` to `sources_seen`, resets `confirmation_count` to 0 and `status` to `unverified` when `name`, `brand`, `upc`, or `category` changed; on a `verified` product the row is left untouched and a `product_conflicts` record (`field` ∈ name, brand, unit_size, category, upc, image_url) is written and returned
-- AC4: The product image can be replaced on a line, an inventory item, and a shared product by referencing a `photo_id` from REQ-RCP-021; `image_url` then resolves to `/v1/product-photos/{photo_id}` and `image_source=user_photo`
+- AC4: The product image can be replaced on a line and an inventory item with a household-private photo (REQ-INV-019); replacing the *shared* product image by referencing a `photo_id` (`image_url` → `/v1/product-photos/{photo_id}`, `image_source=user_photo`) is Deferred with REQ-RCP-021
 - AC5: Corrections are attributed only by `household_hash`; no user id or household id is written to the shared catalog (NFR-002 AC1)
 - AC6: Inventory corrections keep working through the existing `PATCH …/inventory/{item_id}` (`name`, `category`, `quantity`, `price_paid`, `barcode`, `image_url`), which now also accepts `photo_id`
 
@@ -736,6 +756,10 @@ Acceptance Criteria:
 
 ### REQ-RCP-021: Product Photo Upload and Storage
 Priority: P0
+Status: Deferred (2026-10-03) — user photos are household-private by
+decision (REQ-INV-019); sharing a photo with the catalog needs an explicit
+opt-in flow that is not designed yet. The endpoints below remain the
+contract for that flow.
 Description: The system **shall** accept product photos taken by users,
 store them without personal metadata, and serve them to any signed-in user
 through a stable URL that carries no household or user identifier, so that

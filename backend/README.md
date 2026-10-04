@@ -90,6 +90,8 @@ TEST_DATABASE_URL=postgresql://postgres@localhost:5432/mekasa_test \
 | PATCH | `/v1/households/{id}/purchases/{event_id}` | yes | Recategorize / edit purchase (REQ-017) |
 | POST | `/v1/households/{id}/receipts/scan` | yes | Receipt OCR + catalog enrich (`image_url`, `identified`) |
 | POST | `/v1/households/{id}/photo` | yes | Household photo (data-URL thin path) |
+| POST | `/v1/households/{id}/item-photos` | yes | Upload a household-private item photo → `{photo_id, url}`; JPEG re-encode, metadata stripped, stored in `ITEM_PHOTO_BUCKET` (REQ-INV-019) |
+| GET/DELETE | `/v1/households/{id}/item-photos/{photo_id}` | yes (member) | Fetch (`Cache-Control: private`) / delete a private photo (REQ-INV-019) |
 | GET/POST | `/v1/households/{id}/members` / invites | yes | Family members + invites (REQ-019) |
 | POST | `/v1/invites/accept` | yes | Accept invite token |
 | GET | `/v1/barcode/{code}?household_id=` | yes | Open Food Facts family UPC lookup (`found` false if unknown; `503` when the databases are unreachable so the client can retry); `source` names the database that answered; includes `health` grade data and, when scoped to a household, member `warnings` (REQ-021) |

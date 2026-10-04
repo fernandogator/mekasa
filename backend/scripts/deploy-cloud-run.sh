@@ -12,6 +12,9 @@ MIN_INSTANCES="${CLOUD_RUN_MIN_INSTANCES:-0}"
 # Shared Postgres (store item / UPC tables); create with provision-cloud-sql.sh.
 SQL_INSTANCE="${CLOUD_SQL_INSTANCE:-mekasa-pg}"
 DATABASE_URL_SECRET="${DATABASE_URL_SECRET:-mekasa-database-url}"
+# Household-private item photos (REQ-INV-019). Private bucket, uniform access,
+# readable only by the runtime service account; created here if missing.
+ITEM_PHOTO_BUCKET="${ITEM_PHOTO_BUCKET:-mekasa-item-photos-prod}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -34,7 +37,21 @@ gcloud services enable \
   vision.googleapis.com \
   aiplatform.googleapis.com \
   sqladmin.googleapis.com \
+  storage.googleapis.com \
   --project "$PROJECT_ID"
+
+# Private item photos: one bucket, no public access, service account only.
+if ! gcloud storage buckets describe "gs://${ITEM_PHOTO_BUCKET}" --project "$PROJECT_ID" >/dev/null 2>&1; then
+  gcloud storage buckets create "gs://${ITEM_PHOTO_BUCKET}" \
+    --project "$PROJECT_ID" \
+    --location "$REGION" \
+    --uniform-bucket-level-access \
+    --public-access-prevention
+fi
+gcloud storage buckets add-iam-policy-binding "gs://${ITEM_PHOTO_BUCKET}" \
+  --member "serviceAccount:mekasa-api@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role "roles/storage.objectUser" \
+  --quiet >/dev/null
 
 # Receipt scanning calls Gemini on Vertex AI as the runtime service account.
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
@@ -60,7 +77,7 @@ gcloud run deploy "$SERVICE" \
   --project "$PROJECT_ID" \
   --allow-unauthenticated \
   --min-instances "$MIN_INSTANCES" \
-  --set-env-vars "ENVIRONMENT=prod,GCP_PROJECT_ID=${PROJECT_ID},FIREBASE_PROJECT_ID=${PROJECT_ID},FIRESTORE_DATABASE_ID=mekasa-db,HOUSEHOLD_PERSISTENCE=firestore,ALLOW_TEST_AUTH=false" \
+  --set-env-vars "ENVIRONMENT=prod,GCP_PROJECT_ID=${PROJECT_ID},FIREBASE_PROJECT_ID=${PROJECT_ID},FIRESTORE_DATABASE_ID=mekasa-db,HOUSEHOLD_PERSISTENCE=firestore,ALLOW_TEST_AUTH=false,ITEM_PHOTO_BUCKET=${ITEM_PHOTO_BUCKET}" \
   --service-account "mekasa-api@${PROJECT_ID}.iam.gserviceaccount.com" \
   ${SQL_FLAGS[@]+"${SQL_FLAGS[@]}"}
 
