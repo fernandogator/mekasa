@@ -118,7 +118,7 @@ TEST_DATABASE_URL=postgresql://postgres@localhost:5432/mekasa_test \
 | `GOOGLE_PLACES_API_KEY` | later | When leaving stub store search |
 | `DATABASE_URL` | prod | Shared product catalog (Cloud SQL Postgres, ADR-008). Secret Manager `mekasa-database-url`; unset → in-memory catalog |
 | `DATABASE_POOL_SIZE` | no | Catalog connection pool size (default 5) |
-| `CATALOG_HOUSEHOLD_SALT` | prod | Salt for `household_hash` in the catalog (NFR-002 AC1); stable per environment, from Secret Manager |
+| `CATALOG_HOUSEHOLD_SALT` | prod | Salt for `household_hash` in the catalog (NFR-002 AC1). From Secret Manager `mekasa-catalog-salt` (created by `provision-cloud-sql.sh`, injected by `deploy-cloud-run.sh`); never rotate it once hashes exist. Prod returns `503 catalog_unavailable` on catalog writes when it is missing (REQ-RCP-009 AC5) |
 
 Production secrets belong in **GCP Secret Manager**, not in git.
 

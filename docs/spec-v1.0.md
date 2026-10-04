@@ -616,6 +616,7 @@ Acceptance Criteria:
 - AC2: `source=llm_ocr`, `confidence_score = extraction_confidence × 0.6`, `origin_parse_job_id`, `origin_prompt_version` set
 - AC3: Exactly one `enrichment_jobs` row is created per new product (none for repeat sightings within 7 days); the catalog enforces at most one `queued`/`running` job per product
 - AC4: Catalog rows contain no household or user identifiers; households appear only as salted SHA-256 hashes in `product_confirmations` / `product_conflicts`
+- AC5: The salt is a random per-environment value held in Secret Manager (`mekasa-catalog-salt`, injected as `CATALOG_HOUSEHOLD_SALT`) and never changes once hashes exist. In `ENVIRONMENT=prod` the API refuses to compute a household hash with the built-in development salt, so a missing secret fails the catalog write instead of storing guessable hashes
 
 ### REQ-RCP-010: Enrichment Source Order
 Priority: P1

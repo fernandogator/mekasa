@@ -35,7 +35,7 @@ from typing import Literal, Protocol
 from pydantic import BaseModel, Field
 
 from app.categories import Category, normalize_category
-from app.config import Settings, get_settings
+from app.config import DEV_HOUSEHOLD_SALT, Settings, get_settings
 
 # ---------------------------------------------------------------------------
 # Pure rules (design §3.5)
@@ -83,10 +83,20 @@ def llm_product_id(store_chain_id: str, normalized_name: str) -> str:
     return f"llm:{digest}"
 
 
+class CatalogSaltMissing(RuntimeError):
+    """Production is running with the built-in development salt (REQ-RCP-009 AC5)."""
+
+
 def household_hash(household_id: str, salt: str | None = None) -> str:
-    """SHA-256(household_id + server salt): the only household reference the catalog sees (NFR-002 AC1)."""
+    """SHA-256(household_id + server salt): the only household reference the catalog sees.
+
+    Satisfies: NFR-002 AC1, REQ-RCP-009 AC4/AC5.
+    """
     if salt is None:
-        salt = get_settings().catalog_household_salt
+        settings = get_settings()
+        salt = settings.catalog_household_salt
+        if settings.environment == "prod" and salt == DEV_HOUSEHOLD_SALT:
+            raise CatalogSaltMissing("CATALOG_HOUSEHOLD_SALT is not set in prod")
     return hashlib.sha256(f"{household_id}{salt}".encode("utf-8")).hexdigest()
 
 

@@ -1,9 +1,13 @@
 """Mekasa API entrypoint."""
 
-from fastapi import FastAPI
+import logging
+
+from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse
 
 from app.barcode_lookup import clear_lookup_cache
 from app.capture_routes import capture_router
+from app.catalog_repository import CatalogSaltMissing
 from app.catalog_routes import products_router
 from app.config import get_settings
 from app.product_photo_routes import product_photos_router
@@ -15,6 +19,8 @@ from app.routers import (
     shopping_list_router,
     spending_router,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
@@ -39,8 +45,17 @@ def create_app() -> FastAPI:
     application.include_router(products_router)
     application.include_router(product_photos_router)
     application.include_router(capture_router)
+    application.add_exception_handler(CatalogSaltMissing, _catalog_salt_missing)
     application.state.settings = settings  # type: ignore[attr-defined]
     return application
+
+
+async def _catalog_salt_missing(_request: Request, exc: Exception) -> JSONResponse:
+    logger.error("Catalog write refused: %s (REQ-RCP-009 AC5)", exc)
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"detail": "catalog_unavailable"},
+    )
 
 
 app = create_app()

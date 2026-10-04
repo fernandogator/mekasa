@@ -4,6 +4,8 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+DEV_HOUSEHOLD_SALT = "mekasa-local-salt"
+
 
 class Settings(BaseSettings):
     """Runtime configuration. Secrets never live in source."""
@@ -34,8 +36,9 @@ class Settings(BaseSettings):
     database_url: str | None = None
     database_pool_size: int = 5
     # Server salt for household_hash = SHA-256(household_id + salt) (NFR-002 AC1).
-    # Must be stable per environment; from Secret Manager in prod.
-    catalog_household_salt: str = "mekasa-local-salt"
+    # Must be stable per environment; prod reads Secret Manager `mekasa-catalog-salt`
+    # and refuses the default (REQ-RCP-009 AC5).
+    catalog_household_salt: str = DEV_HOUSEHOLD_SALT
     # Household-private item photos (REQ-INV-019). Cloud Storage bucket name
     # (e.g. mekasa-item-photos-prod); unset → photos kept in memory.
     item_photo_bucket: str | None = None
