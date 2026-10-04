@@ -257,7 +257,7 @@ private fun BottomPillNav(
                 .testTag(TestTags.ADD_ITEM_BUTTON),
             shape = CircleShape,
             containerColor = palette.accent,
-            contentColor = palette.onBrand,
+            contentColor = palette.onAccent,
         ) {
             Icon(Icons.Filled.Add, contentDescription = "Add items")
         }

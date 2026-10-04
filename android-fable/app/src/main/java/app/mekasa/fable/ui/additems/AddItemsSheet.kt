@@ -558,7 +558,7 @@ private fun VoiceStep(
                     modifier = Modifier.size(56.dp).background(palette.success, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Filled.Mic, contentDescription = "Speak", tint = palette.onBrand)
+                    Icon(Icons.Filled.Mic, contentDescription = "Speak", tint = palette.onAccent)
                 }
                 Spacer(Modifier.width(Space.md))
                 Column {
@@ -584,7 +584,7 @@ private fun VoiceStep(
         )
         val p = parsed
         if (phrase.isNotBlank() && p == null) {
-            Text("Couldn't find an item in that phrase.", style = Type.caption, color = palette.accent)
+            Text("Couldn't find an item in that phrase.", style = Type.caption, color = palette.danger)
         }
         if (p != null) {
             Card {

@@ -106,7 +106,7 @@ struct FamilyMembersView: View {
             if session.isUIPreview {
                 Text(FamilySummary.offlinePreviewNotice)
                     .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(MekasaTheme.accent)
+                    .foregroundStyle(MekasaTheme.warning)
                     .padding(.top, 4)
                     .accessibilityIdentifier(TestIdentifiers.familyOfflineNotice)
             }
@@ -180,7 +180,7 @@ struct FamilyMembersView: View {
                         HStack(alignment: .top, spacing: 8) {
                             Image(systemName: member.avoid.isEmpty ? "leaf" : "exclamationmark.shield.fill")
                                 .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(member.avoid.isEmpty ? MekasaTheme.brandMuted : MekasaTheme.accent)
+                                .foregroundStyle(member.avoid.isEmpty ? MekasaTheme.border : MekasaTheme.danger)
                                 .padding(.top, 2)
                             Text(avoidSummary(for: member))
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))

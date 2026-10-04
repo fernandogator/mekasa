@@ -209,7 +209,7 @@ struct InventoryListView: View {
                 } label: {
                     Label("Remove", systemImage: "trash.fill")
                 }
-                .tint(MekasaTheme.accent)
+                .tint(MekasaTheme.danger)
                 .accessibilityIdentifier(TestIdentifiers.inventoryRemoveAction)
             }
         }
@@ -218,7 +218,7 @@ struct InventoryListView: View {
     private func stockChip(_ label: String) -> some View {
         Text(label)
             .font(.system(size: 11, weight: .heavy, design: .rounded))
-            .foregroundStyle(MekasaTheme.accent)
+            .foregroundStyle(MekasaTheme.warning)
     }
 
     // MARK: - Empty state

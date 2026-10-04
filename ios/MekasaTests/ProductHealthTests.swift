@@ -241,6 +241,6 @@ final class ProductHealthTests: XCTestCase {
         XCTAssertEqual(HealthGrade.label(for: "E"), "Bad")
         XCTAssertEqual(HealthGrade.label(for: nil), "No grade")
         XCTAssertNotEqual(HealthGrade.color(for: "A"), HealthGrade.color(for: "E"))
-        XCTAssertEqual(HealthGrade.color(for: nil), MekasaTheme.brandMuted)
+        XCTAssertEqual(HealthGrade.color(for: nil), MekasaTheme.border)
     }
 }

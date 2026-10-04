@@ -1,36 +1,46 @@
 import SwiftUI
 import UIKit
 
-/// Mekasa design tokens from design/design-system.md
-/// Satisfies: NFR-005 AC5 — screens use only these roles, never literal colors,
-/// so a color scheme change is made here and contrast-checked per role pair.
+/// Mekasa design tokens from design/design-system.md (Rich & Grounded, light appearance)
+/// Satisfies: NFR-005 AC2, AC5 — screens use only these roles, never literal colors,
+/// and every text/fill pair here is contrast-checked in design/design-system.md.
 enum MekasaTheme {
-    static let brand = Color(red: 0x17 / 255, green: 0x1e / 255, blue: 0x19 / 255)
-    static let brandMuted = Color(red: 0xb7 / 255, green: 0xc6 / 255, blue: 0xc2 / 255)
-    static let surface = Color(red: 0xee / 255, green: 0xeb / 255, blue: 0xe3 / 255)
-    static let surfaceElevated = Color.white
+    /// Warm charcoal: primary text, dark fills (tab bar, selected rows), progress fill.
+    static let brand = hex(0x5d5652)
+    /// Decorative sage for washes, wells and disabled fills; fails 3:1, so never text, icons or outlines.
+    static let brandMuted = hex(0x8fa085)
+    static let surface = hex(0xede8e0)
+    static let surfaceElevated = hex(0xfaf7f3)
     static let text = brand
-    static let textMuted = Color(red: 0x6d / 255, green: 0x7a / 255, blue: 0x76 / 255)
-    static let accent = Color(red: 0xca / 255, green: 0x00 / 255, blue: 0x13 / 255)
-    static let success = Color(red: 0x2f / 255, green: 0x6b / 255, blue: 0x4f / 255)
-    static let warning = Color(red: 0xc4 / 255, green: 0x5c / 255, blue: 0x12 / 255)
-    static let accentTint = Color(red: 0xfc / 255, green: 0xe5 / 255, blue: 0xe7 / 255)
-    static let successTint = Color(red: 0xea / 255, green: 0xf1 / 255, blue: 0xec / 255)
-    static let warningTint = Color(red: 1, green: 0xf5 / 255, blue: 0xf0 / 255)
+    static let textMuted = hex(0x5c6b54)
+    /// Primary buttons, the Add button, selections, links and toggles.
+    static let accent = hex(0x5a6f4f)
+    /// Errors, destructive actions, allergen and health warnings.
+    static let danger = hex(0xa44a3f)
+    static let success = hex(0x5a6f4f)
+    static let warning = hex(0x8b5c32)
+    static let accentTint = hex(0xdce8d3)
+    static let dangerTint = hex(0xf6e3e0)
+    static let successTint = hex(0xdce8d3)
+    static let warningTint = hex(0xf3e6d8)
+    /// Icons, input borders, chip outlines and unchecked controls (3:1 on surface).
+    static let border = hex(0x76896b)
     /// Neutral fill for wells, image placeholders, steppers and unselected options.
-    static let surfaceMuted = Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255)
-    static let progressTrack = Color(red: 0xd5 / 255, green: 0xdd / 255, blue: 0xd9 / 255)
-    /// Text and icons on brand, accent, success and warning fills, and over photos.
+    static let surfaceMuted = hex(0xece7df)
+    static let progressTrack = hex(0xd9d3c9)
+    /// Text and icons on brand, accent, danger and success fills, and over photos.
     static let onBrand = Color.white
+    /// Inactive icons and secondary text on `brand` fills.
+    static let onBrandMuted = hex(0xc9d6c0)
     /// Full-screen camera, scanner and photo viewer background.
-    static let cameraSurface = Color.black
+    static let cameraSurface = hex(0x1a1918)
     /// Text, icons and the reticle over `cameraSurface` or a live preview.
-    static let onCamera = Color.white
+    static let onCamera = hex(0xfaf7f3)
     /// Darkening overlay on photos (busy spinners, overlaid text); always used with opacity.
-    static let scrim = Color.black
+    static let scrim = hex(0x1a1918)
     static let shadow = Color.black
 
-    /// Nutri-Score style A–D health grade colors; E uses `accent`.
+    /// Nutri-Score style A–D health grade colors; E uses `danger`.
     static let gradeA = Color(red: 0x1f / 255, green: 0x8a / 255, blue: 0x4c / 255)
     static let gradeB = Color(red: 0x6f / 255, green: 0xa8 / 255, blue: 0x2f / 255)
     static let gradeC = Color(red: 0xd9 / 255, green: 0xa4 / 255, blue: 0x06 / 255)
@@ -40,6 +50,14 @@ enum MekasaTheme {
     static let titleFont = Font.system(size: 28, weight: .black, design: .rounded)
     static let bodyFont = Font.system(size: 16, weight: .semibold, design: .rounded)
     static let labelFont = Font.system(size: 10, weight: .bold, design: .rounded)
+
+    private static func hex(_ rgb: UInt32) -> Color {
+        Color(
+            red: Double((rgb >> 16) & 0xff) / 255,
+            green: Double((rgb >> 8) & 0xff) / 255,
+            blue: Double(rgb & 0xff) / 255
+        )
+    }
 }
 
 struct MekasaScreen<Content: View>: View {
@@ -138,7 +156,7 @@ struct SecondaryButton: View {
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(MekasaTheme.brandMuted.opacity(0.35), lineWidth: 1)
+                    .stroke(MekasaTheme.border, lineWidth: 1)
             )
         }
         .disabled(disabled || isLoading)
@@ -188,7 +206,7 @@ struct MekasaTextField: View {
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1)
+                    .stroke(MekasaTheme.border, lineWidth: 1)
             )
         }
     }

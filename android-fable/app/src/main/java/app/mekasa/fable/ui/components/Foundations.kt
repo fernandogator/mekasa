@@ -192,7 +192,7 @@ fun PrimaryButton(
 ) {
     val palette = MekasaTheme.palette
     val container = if (accent) palette.accent else palette.brand
-    val content = if (palette.isDark && !accent) palette.surface else palette.onBrand
+    val content = if (accent) palette.onAccent else palette.onBrand
     Button(
         onClick = onClick,
         enabled = enabled && !loading,
@@ -236,7 +236,7 @@ fun SecondaryButton(
             contentColor = palette.text,
             disabledContentColor = palette.textMuted,
         ),
-        border = BorderStroke(1.dp, palette.brandMuted),
+        border = BorderStroke(1.dp, palette.border),
     ) {
         if (icon != null) {
             Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
@@ -305,7 +305,7 @@ fun LabeledField(
             trailingIcon = trailing,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = palette.accent,
-                unfocusedBorderColor = palette.brandMuted.copy(alpha = 0.6f),
+                unfocusedBorderColor = palette.border,
                 focusedContainerColor = palette.surfaceElevated,
                 unfocusedContainerColor = palette.surfaceElevated,
                 cursorColor = palette.accent,

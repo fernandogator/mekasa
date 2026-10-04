@@ -33,9 +33,6 @@
 | `--color-camera-surface` | Camera viewfinder and full-screen camera | `#1a1918` |
 | `--color-on-camera` | Text and icons on the camera surface | `#faf7f3` |
 | `--color-overlay` | Sage wash / atmosphere | `rgba(143, 160, 133, 0.15)` |
-| `--color-grade-a` … `--color-grade-d` | Health grades A–D (E uses danger) | `#1f8a4c` `#6fa82f` `#d9a406` `#e06c1a` |
-
-These roles are the only colors screens may use (spec NFR-005 AC5).
 
 Decorative only, never text: amber `#c48c5a` and light sage `#b8d4a8`.
 
@@ -56,6 +53,25 @@ Contrast (NFR-005 AC2, light appearance):
 | `#faf7f3` on camera `#1a1918` | 16.4 | 4.5 |
 
 The palette's original sage `#8fa085` (2.3:1 on surface) and amber `#c48c5a` (2.4:1) fail as text, so the text roles use the darker shades above. White text on amber or sage fills is not allowed.
+
+### Native theme roles
+
+`MekasaTheme` (iOS) and `MekasaPalette` (Android) expose the tokens above plus these roles. They are the only colors screens may use (NFR-005 AC5). iOS ships the light appearance only; Android maps both appearances.
+
+| Role | Use | Light | Dark (Android) |
+|------|-----|-------|----------------|
+| `accentTint` | Accent icon wells, selected tiles | `#dce8d3` | `#2c3628` |
+| `dangerTint` | Error and destructive wells, depleted scan feedback | `#f6e3e0` | `#3a2220` |
+| `onBrand` | Text and icons on brand fills and photos | `#ffffff` | `#ede8e0` |
+| `onAccent` (Android) | Text and icons on accent, success and danger fills | `#ffffff` | `#1c1a18` |
+| `onBrandMuted` | Inactive tab icons, secondary text on brand fills | `#c9d6c0` | `#b5c2ab` |
+| `surfaceMuted` (iOS) | Wells, image placeholders, steppers, unselected options | `#ece7df` | — |
+| `progressTrack` (iOS) | Progress bar track | `#d9d3c9` | — |
+| `scrim` / `photoScrim` | Overlay on photos, used with opacity | `#1a1918` | `#0f0e0d` |
+| `shadow` (iOS) | Drop shadows, used with opacity | `#000000` | — |
+| `gradeA` … `gradeD` (iOS) | Health grades A–D (E uses `danger`) | `#1f8a4c` `#6fa82f` `#d9a406` `#e06c1a` | — |
+
+The health grade fills predate this palette, and white text on grades B–D is below 4.5:1; they need their own pass.
 
 ### Dark (Rich & Grounded, 2026-10-04)
 

@@ -164,7 +164,7 @@ struct ProductSearchHitRow: View {
             Spacer(minLength: 0)
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(MekasaTheme.brandMuted)
+                .foregroundStyle(MekasaTheme.border)
         }
         .padding(12)
         .background(MekasaTheme.surfaceElevated)
@@ -342,7 +342,7 @@ struct ItemConfirmView: View {
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                             .tracking(0.6)
                             .textCase(.uppercase)
-                            .foregroundStyle(MekasaTheme.accent)
+                            .foregroundStyle(MekasaTheme.warning)
                             .accessibilityIdentifier(TestIdentifiers.scanPromptLabel)
                     } else if capturedDraftIDs.contains(draft.wrappedValue.id) {
                         Text("Scanned in store")
@@ -519,7 +519,7 @@ struct ItemConfirmView: View {
                 .stroke(
                     draft.wrappedValue.isIdentified
                         ? MekasaTheme.brandMuted.opacity(0.3)
-                        : MekasaTheme.accent.opacity(0.55),
+                        : MekasaTheme.warning,
                     lineWidth: 1
                 )
         )

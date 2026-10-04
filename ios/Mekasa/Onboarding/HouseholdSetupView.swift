@@ -35,7 +35,7 @@ struct HouseholdSetupView: View {
                                                 .strokeBorder(
                                                     style: StrokeStyle(lineWidth: 2, dash: [6])
                                                 )
-                                                .foregroundStyle(MekasaTheme.brandMuted)
+                                                .foregroundStyle(MekasaTheme.border)
                                         )
                                         .frame(width: 128, height: 128)
                                         .shadow(color: MekasaTheme.shadow.opacity(0.06), radius: 8, y: 2)

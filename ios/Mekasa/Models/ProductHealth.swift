@@ -210,8 +210,8 @@ enum HealthGrade {
         case "B": return MekasaTheme.gradeB
         case "C": return MekasaTheme.gradeC
         case "D": return MekasaTheme.gradeD
-        case "E": return MekasaTheme.accent
-        default: return MekasaTheme.brandMuted
+        case "E": return MekasaTheme.danger
+        default: return MekasaTheme.border
         }
     }
 
@@ -228,11 +228,11 @@ enum HealthGrade {
 
     static func concernColor(_ concern: String) -> Color {
         switch concern {
-        case "high": return MekasaTheme.accent
+        case "high": return MekasaTheme.danger
         case "moderate": return MekasaTheme.gradeD
         case "low": return MekasaTheme.gradeC
         case "none": return MekasaTheme.success
-        default: return MekasaTheme.brandMuted
+        default: return MekasaTheme.border
         }
     }
 }

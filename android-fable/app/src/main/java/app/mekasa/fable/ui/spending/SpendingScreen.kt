@@ -82,7 +82,7 @@ fun SpendingScreen(
                 } else {
                     SectionLabel("By category")
                     val max = report.byCategory.maxOf { it.total }.coerceAtLeast(0.01)
-                    val colors = listOf(palette.accent, palette.success, palette.warning, palette.brand, palette.brandMuted)
+                    val colors = listOf(palette.accent, palette.warning, palette.danger, palette.text, palette.border)
                     report.byCategory.sortedByDescending { it.total }.forEachIndexed { index, cat ->
                         CategoryBar(
                             name = cat.category,
@@ -124,7 +124,7 @@ private fun PeriodToggle(selected: String, onSelect: (String) -> Unit) {
                 Text(
                     label,
                     style = Type.caption,
-                    color = if (active) (if (palette.isDark) palette.surface else palette.onBrand) else palette.textMuted,
+                    color = if (active) palette.onBrand else palette.textMuted,
                     textAlign = TextAlign.Center,
                 )
             }
