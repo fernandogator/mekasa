@@ -746,7 +746,7 @@ is `null` or an `llm:`/`plu:` key), **then** the system **shall** offer the
 user an in-app capture flow: scan the product's barcode with the camera and
 take a picture of the product, and **shall** create or link the shared
 product from that capture.
-Design Artifact: design/mockups/AddItems.jsx (confirm haul, "Scan this product" affordance)
+Design Artifact: Superdesign project "Mekasa v1.0" (2026-10-03) drafts "Receipt Results Interstitial", "Guided Barcode Scan - Item 1", "Mekasa Picture Step", "Mekasa PLU Produce Scan", "Unidentified Item Entry", "Mekasa Scan Completion Summary", "Mekasa Scan Flow Component Sheet" (export to `design/pages/` pending); earlier: design/mockups/AddItems.jsx
 Test File: tests/backend/test_line_item_capture.py
 Acceptance Criteria:
 - AC1: Every line whose `barcode` is `null` exposes `capture_available=true`; the confirm-haul screen shows a "Scan product" action on such lines (and on `needs_review`/`unresolved` lines regardless of barcode)
@@ -756,6 +756,7 @@ Acceptance Criteria:
 - AC5: Barcode scanning uses the existing camera scanner; the photo step is optional and may be skipped — a capture with `upc` alone is valid. A capture photo is uploaded through REQ-RCP-021 (`POST …/product-photos`) and is shared with the UPC: it becomes the product's `image_url` when the product has none, the line's image when it already has one, or a `product_conflicts` proposal when the product is `verified` (`photo_applied_as`)
 - AC6: The same capture works from inventory: `POST …/inventory/{item_id}/capture` with the same body links or creates the product and sets `inventory_items.barcode`, `product_id`, `image_url`
 - AC7: Produce lines (category `Produce`, or a printed 4–5 digit code) are captured by typing the PLU from the sticker — no camera viewfinder, since barcode scanners cannot read most PLU stickers — plus the optional photo. A capture with `plu_code` links to or creates the shared product `plu:<code>` (`code_kind=plu`, shared across chains, REQ-RCP-010 AC9) with the same `source`, confidence, alias, photo and `scan_events` rules as a UPC capture; it is never re-keyed to a UPC and, having no UPC, stays at most `pending` (REQ-RCP-011). (Decided 2026-10-04.)
+- AC8: The flow ends on one review screen, the Haul Summary, which replaces the earlier confirm-haul list and keeps REQ-005 AC2/AC6: every line shows its status chip and code, lines still missing a code show "Scan →" (re-entering the capture for that line), and tapping any row opens an edit sheet with name, quantity, price, category, photo, and catalog search. Nothing saves until the user taps the add-to-inventory button. (Decided 2026-10-04.)
 
 ### REQ-RCP-021: Product Photo Upload and Storage
 Priority: P0
