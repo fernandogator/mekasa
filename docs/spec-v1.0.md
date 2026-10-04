@@ -757,7 +757,7 @@ is `null` or an `llm:`/`plu:` key), **then** the system **shall** offer the
 user an in-app capture flow: scan the product's barcode with the camera and
 take a picture of the product, and **shall** create or link the shared
 product from that capture.
-Design Artifact: Superdesign project "Mekasa v1.0" (2026-10-03) drafts "Receipt Results Interstitial", "Guided Barcode Scan - Item 1", "Mekasa Picture Step", "Mekasa PLU Produce Scan", "Unidentified Item Entry", "Mekasa Scan Completion Summary", "Mekasa Scan Flow Component Sheet" (export to `design/pages/` pending); earlier: design/mockups/AddItems.jsx
+Design Artifact: Superdesign project "Mekasa v1.0" (2026-10-03) drafts "Receipt Results Interstitial", "Guided Barcode Scan - Item 1", "Mekasa Picture Step", "Mekasa PLU Produce Scan", "Unidentified Item Entry", "Mekasa Scan Completion Summary", "Mekasa Scan Flow Component Sheet" (export to `design/pages/` pending). These drafts predate AC7–AC14, REQ-RCP-021 AC7, REQ-017 AC4 and NFR-005; where they differ, the spec wins. They are revised and exported in one pass together with the upcoming color scheme change (Decided 2026-10-04); earlier: design/mockups/AddItems.jsx
 Test File: tests/backend/test_line_item_capture.py
 Acceptance Criteria:
 - AC1: Every line whose `barcode` is `null` exposes `capture_available=true`; the confirm-haul screen shows a "Scan product" action on such lines (and on `needs_review`/`unresolved` lines regardless of barcode)
@@ -787,7 +787,7 @@ during a product capture, store them without personal metadata, and serve
 them to any signed-in user through a stable URL that carries no household
 or user identifier, so that user photos can safely back shared catalog
 images.
-Design Artifact: Superdesign project "Mekasa v1.0", draft "Mekasa Picture Step" (export to `design/pages/` pending)
+Design Artifact: Superdesign project "Mekasa v1.0", draft "Mekasa Picture Step" (revision and export to `design/pages/` pending with the color scheme change; the spec wins where the draft differs)
 Test File: tests/backend/test_product_photos.py
 Acceptance Criteria:
 - AC1: `POST …/households/{hid}/product-photos` accepts a JPEG/PNG/HEIC ≤ 8 MB (base64 JSON or multipart), re-encodes it as JPEG with EXIF/GPS stripped, limits the long edge to 1600 px, and returns `photo_id` (UUID v4) and `image_url=/v1/product-photos/{photo_id}`
