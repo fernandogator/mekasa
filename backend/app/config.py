@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # Household-private item photos (REQ-INV-019). Cloud Storage bucket name
     # (e.g. mekasa-item-photos-prod); unset → photos kept in memory.
     item_photo_bucket: str | None = None
+    # Shared product photos from the capture flow (REQ-RCP-021), e.g.
+    # mekasa-product-photos-prod; unset → photos and ownership kept in memory.
+    product_photo_bucket: str | None = None
 
 
 @lru_cache
