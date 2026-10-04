@@ -1,0 +1,51 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="view-transition" content="same-origin"><title>New Product Card - Dark Mode</title><link rel="prefetch" href="dashboard-dark.html" as="document"><link rel="prefetch" href="scan-barcode-dark.html" as="document"><link rel="prefetch" href="scan-new-product-dark.html" as="document"><link rel="prefetch" href="scan-haul-summary-dark.html" as="document"><script src="https://cdn.tailwindcss.com"></script><script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script><link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"><style>
+    :root {
+      --color-surface: #1C1A18;
+      --color-elevated: #272421;
+      --color-text: #EDE8E0;
+      --color-text-muted: #A9B79F;
+      --color-primary: #8FA085;
+      --color-primary-label: #1C1A18;
+      --color-accent-link: #A3B598;
+      --color-danger: #E39286;
+      --color-warning-text: #E2B07E;
+      --color-warning-tint: #3A2E22;
+      --color-success-tint: #2C3628;
+      --color-outline: #7F8E76;
+      --color-dark-fill: #3A3531;
+      --color-camera: #0F0E0D;
+    }
+    html { background-color: #1C1A18; }
+    body { font-family: 'Nunito', sans-serif; background-color: var(--color-surface); color: var(--color-text); -webkit-font-smoothing: antialiased; }
+    .sage-blob { position: absolute; top: -50px; right: -50px; width: 300px; height: 300px; border-radius: 50%; background: rgba(90, 111, 79, 0.15); filter: blur(40px); z-index: 0; pointer-events: none; }
+    .mono { font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace; }
+    @view-transition { navigation: auto; }
+    ::view-transition { background-color: #1C1A18; }
+    ::view-transition-old(main-content) { animation: 0.25s ease-out both fade-out; }
+    ::view-transition-new(main-content) { animation: 0.25s ease-in 0.1s both fade-in; }
+    @keyframes fade-out { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.98); } }
+    @keyframes fade-in { from { opacity: 0; transform: scale(1.02); } to { opacity: 1; transform: scale(1); } }
+    ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+  </style></head><body><div class="w-full h-screen flex flex-col relative overflow-hidden" data-sd-id="1"><div class="sage-blob" data-sd-id="2"></div><header class="shrink-0 pt-14 px-6 z-10 flex items-center justify-between" data-sd-id="3"><a id="nav-back-new-product" href="scan-barcode-dark.html" class="w-11 h-11 -ml-2 rounded-full flex items-center justify-center text-[#EDE8E0] hover:bg-[#272421] transition-colors" data-sd-id="4"><iconify-icon icon="lucide:chevron-left" class="text-2xl"></iconify-icon></a><div class="flex flex-col items-center" data-sd-id="5"><span class="text-[12px] font-bold uppercase tracking-[0.12em] text-[#A9B79F]" data-sd-id="6">Step 3 of 3</span><div class="h-1 w-24 bg-[#3A3531] rounded-full mt-1 overflow-hidden" data-sd-id="7"><div class="h-full w-full bg-[#EDE8E0] rounded-full transition-all duration-500" data-sd-id="8"></div></div></div><div class="w-11" data-sd-id="9"></div></header><main class="flex-1 overflow-y-auto px-6 pt-6 z-10 relative" style="view-transition-name: main-content;" data-sd-id="10"><div class="mb-6 text-center" data-sd-id="11"><div class="mono text-[16px] font-bold tracking-wide text-[#EDE8E0] mb-2" data-sd-id="upc-code">UPC 0 12000 00130 7</div><div class="bg-[#3A2E22] inline-flex items-center gap-2 px-3 py-1.5 rounded-full min-h-[28px]" data-sd-id="12"><iconify-icon icon="lucide:sparkles" class="text-[#E2B07E] text-base"></iconify-icon><span class="text-[12px] font-black uppercase tracking-wider text-[#E2B07E]" data-sd-id="13">New to the catalog</span></div><p class="text-[14px] text-[#A9B79F] font-semibold mt-3" data-sd-id="15">"MTN DEW 12PK" at $7.49</p></div><div class="flex items-center gap-4 mb-2" data-sd-id="photo-row"><button id="photo-thumbnail-btn" class="shrink-0 w-16 h-16 rounded-[16px] bg-[#0F0E0D] flex items-center justify-center active:scale-95 transition-transform" data-sd-id="photo-thumb"><iconify-icon icon="lucide:camera" class="text-[#FAF7F3] text-2xl"></iconify-icon></button><div class="flex-1" data-sd-id="photo-caption-wrap"><p class="text-[14px] font-bold text-[#EDE8E0]" data-sd-id="photo-caption-title">Product photo</p><button id="photo-caption-action" class="text-[12px] font-bold text-[#A9B79F] underline underline-offset-2 min-h-[44px]" data-sd-id="photo-caption-action-text">Add a photo (optional)</button></div></div><div class="flex items-center gap-2 mb-6 min-h-[44px]" data-sd-id="shared-row"><iconify-icon icon="lucide:users" class="text-[#7F8E76] text-lg shrink-0"></iconify-icon><span class="text-[13px] font-semibold text-[#A9B79F]" data-sd-id="shared-label">Shared with all users</span><button id="shared-info-btn" aria-label="More information about shared products" class="w-[28px] h-[28px] rounded-full border border-[#7F8E76] flex items-center justify-center text-[#7F8E76] hover:bg-[#7F8E76]/10 transition-colors shrink-0" data-sd-id="shared-info"><iconify-icon icon="lucide:info" class="text-sm"></iconify-icon></button></div><div class="bg-[#272421] rounded-[24px] p-5 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.35)] border border-[#7F8E76]/20 mb-8" data-sd-id="25"><h3 class="text-[12px] font-black text-[#A9B79F] uppercase tracking-wider mb-4" data-sd-id="26">Product details</h3><div class="space-y-4" data-sd-id="27"><div class="space-y-1" data-sd-id="28"><label for="product-name-input" class="text-[12px] font-bold text-[#A9B79F] uppercase tracking-widest pl-1" data-sd-id="29">Name</label><input id="product-name-input" type="text" value="Mtn Dew 12 Pack" class="w-full h-12 bg-[#3A3531]/60 rounded-[12px] px-4 font-bold text-[16px] text-[#EDE8E0] border border-transparent focus:bg-[#3A3531] focus:border-[#8FA085] focus:outline-none" data-sd-id="30"></div><div class="space-y-1" data-sd-id="31"><label for="product-category-select" class="text-[12px] font-bold text-[#A9B79F] uppercase tracking-widest pl-1" data-sd-id="32">Category</label><div class="relative" data-sd-id="33"><select id="product-category-select" class="w-full h-12 bg-[#3A3531]/60 rounded-[12px] px-4 font-bold text-[16px] text-[#EDE8E0] border border-transparent appearance-none focus:bg-[#3A3531] focus:border-[#8FA085] focus:outline-none" data-sd-id="34"><option value="Produce" data-sd-id="cat-produce">Produce</option><option value="Dairy" data-sd-id="cat-dairy">Dairy</option><option value="Pantry" data-sd-id="cat-pantry">Pantry</option><option value="Meat" data-sd-id="cat-meat">Meat</option><option value="Frozen" data-sd-id="cat-frozen">Frozen</option><option value="Beverages" selected="" data-sd-id="cat-beverages">Beverages</option><option value="Household" data-sd-id="cat-household">Household</option><option value="Other" data-sd-id="cat-other">Other</option></select><iconify-icon icon="lucide:chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 text-[#7F8E76]"></iconify-icon></div></div></div></div></main><footer class="shrink-0 p-6 pb-[34px] z-10 space-y-3" data-sd-id="39"><button id="cta-save-product" class="flex items-center justify-center w-full h-14 bg-[#8FA085] text-[#1C1A18] rounded-[24px] font-black text-[18px] shadow-[0_8px_20px_rgba(0,0,0,0.35)] active:scale-95 transition-transform px-4" data-sd-id="40"><span id="cta-save-product-label" class="truncate whitespace-nowrap overflow-hidden max-w-full">Save as Mtn Dew 12 Pack</span></button><a id="btn-skip-item" href="scan-haul-summary-dark.html" class="w-full min-h-[44px] flex items-center justify-center text-[14px] font-extrabold text-[#A9B79F] uppercase tracking-wider" data-sd-id="skip-item">Skip this item</a></footer></div><script>
+    (function() {
+      var nameInput = document.getElementById('product-name-input');
+      var saveBtn = document.getElementById('cta-save-product');
+      var saveLabel = document.getElementById('cta-save-product-label');
+      function updateSaveButton() {
+        var val = nameInput.value.trim();
+        if (val === '') {
+          saveLabel.textContent = 'Save product';
+          saveBtn.setAttribute('disabled', 'true');
+          saveBtn.classList.remove('bg-[#8FA085]');
+          saveBtn.classList.add('bg-[#7F8E76]', 'opacity-60', 'cursor-not-allowed');
+        } else {
+          saveLabel.textContent = 'Save as ' + val;
+          saveBtn.removeAttribute('disabled');
+          saveBtn.classList.remove('bg-[#7F8E76]', 'opacity-60', 'cursor-not-allowed');
+          saveBtn.classList.add('bg-[#8FA085]');
+        }
+      }
+      nameInput.addEventListener('input', updateSaveButton);
+      updateSaveButton();
+    })();
+  </script></body></html>

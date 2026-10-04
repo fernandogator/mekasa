@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-brand: #5d5652;
+      --color-brand-muted: #76896b;
+      --color-surface: #ede8e0;
+      --color-surface-elevated: #faf7f3;
+      --color-text: #5d5652;
+      --color-text-muted: #5c6b54;
+      --color-accent: #5a6f4f;
+      --color-warning: #8b5c32;
+      --color-warning-bg: #f3e6d8;
+      --color-danger: #a44a3f;
+      --color-success-bg: #dce8d3;
+      --color-overlay: rgba(143, 160, 133, 0.15);
+    }
+    body {
+      font-family: 'Nunito', sans-serif;
+      background-color: var(--color-surface);
+      color: var(--color-text);
+      -webkit-font-smoothing: antialiased;
+    }
+    .sage-blob {
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: var(--color-overlay);
+      filter: blur(40px);
+      z-index: 0;
+      pointer-events: none;
+    }
+    .mono {
+      font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    }
+    .component-card {
+      background: #faf7f3;
+      border-radius: 24px;
+      padding: 20px;
+      border: 1px solid rgba(23, 30, 25, 0.05);
+      margin-bottom: 24px;
+      position: relative;
+    }
+    .spec-label {
+      font-size: 12px;
+      font-weight: 800;
+      color: #5c6b54;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+      display: block;
+    }
+    .code-box {
+      background: #ede8e0;
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 12px;
+      border: 1px solid #eee;
+      overflow-x: auto;
+    }
+    .code-text {
+      font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      color: #5d5652;
+      white-space: pre;
+    }
+    .viewfinder-bg {
+      background: #1a1918;
+      position: relative;
+      height: 160px;
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .reticle {
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      border-radius: 8px;
+      width: 80px;
+      height: 40px;
+      position: relative;
+      margin-bottom: 16px;
+    }
+    .reticle::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.8);
+    }
+  </style>
+</head>
+<body>
+  <div class="w-full h-screen flex flex-col relative overflow-hidden text-[#5d5652]">
+    <div class="sage-blob"></div>
+    <header class="shrink-0 pt-14 px-6 z-10">
+      <h1 class="text-[24px] font-black leading-tight tracking-tight">Scan Flow<br>Component Sheet</h1>
+      <p class="text-[14px] text-[#5c6b54] font-semibold mt-1">Source of truth for SwiftUI &amp; Compose</p>
+    </header>
+    
+    <main class="flex-1 overflow-y-auto px-6 pt-6 z-10 relative pb-20">
+      
+      <!-- 1 & 2. Status Chips & Ready States -->
+      <section class="component-card">
+        <span class="spec-label">1 &amp; 2. Status Chips &amp; Values</span>
+        <div class="flex flex-wrap gap-4 items-center mb-4">
+          <div class="bg-[#f3e6d8] text-[#8b5c32] text-[12px] font-black px-4 py-2 min-h-[44px] flex items-center rounded-full uppercase tracking-wider">
+            Needs scan
+          </div>
+          <div class="bg-[#faf7f3] border border-[#76896b] text-[#5d5652] text-[12px] font-black px-4 py-2 min-h-[44px] flex items-center rounded-full uppercase tracking-wider">
+            Needs info
+          </div>
+        </div>
+        <div class="flex flex-col gap-2">
+          <span class="mono text-[14px] font-bold text-[#5c6b54]">UPC 0 41220 57603 7</span>
+          <span class="mono text-[14px] font-bold text-[#5c6b54]">PLU 4011</span>
+          <span class="text-[14px] font-bold text-[#5c6b54]">No barcode</span>
+        </div>
+        <div class="code-box">
+          <div class="code-text">&lt;div class="bg-[#f3e6d8] text-[#8b5c32]..."&gt;Needs scan&lt;/div&gt;
+&lt;div class="bg-[#faf7f3] border border-[#76896b]..."&gt;Needs info&lt;/div&gt;</div>
+        </div>
+      </section>
+
+      <!-- 4. Per-Row Scan Action -->
+      <section class="component-card">
+        <span class="spec-label">4. Per-Row Scan Action</span>
+        <div class="flex justify-end">
+          <button class="text-[#5a6f4f] text-[14px] font-black uppercase tracking-widest flex items-center gap-1 h-[44px]">
+            Scan <iconify-icon icon="lucide:arrow-right" class="text-lg"></iconify-icon>
+          </button>
+        </div>
+      </section>
+
+      <!-- 5. Progress Header -->
+      <section class="component-card">
+        <span class="spec-label">5. Progress Header</span>
+        <div class="flex flex-col items-center w-full">
+          <span class="text-[12px] font-black uppercase tracking-[0.12em] text-[#5c6b54]">2 of 3</span>
+          <div class="h-1 w-full max-w-[120px] bg-[#ede8e0] border border-black/5 rounded-full mt-1 overflow-hidden">
+            <div class="h-full w-2/3 bg-[#5d5652] rounded-full"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6 & 7. Monospace Entry Fields + Error -->
+      <section class="component-card">
+        <span class="spec-label">6 &amp; 7. Monospace Entry Fields</span>
+        <div class="space-y-4">
+          <div class="relative">
+            <input type="text" placeholder="Enter PLU code (e.g., 4011)" class="w-full h-14 bg-[#faf7f3] rounded-[24px] border border-[#76896b] px-5 mono text-[16px] font-bold text-center placeholder:font-sans placeholder:text-[#5c6b54] focus:outline-none">
+          </div>
+          <div class="relative">
+            <input type="text" value="4122" class="w-full h-14 bg-[#faf7f3] rounded-[24px] border-2 border-[#a44a3f] px-5 mono text-[16px] font-bold text-[#a44a3f] text-center focus:outline-none">
+            <p class="text-[#a44a3f] text-[12px] font-bold text-center mt-2">
+              That code doesn't look right — UPCs have 8–14 digits
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8. Standard Item Row Card -->
+      <section class="component-card">
+        <span class="spec-label">8. Standard Item Row Card</span>
+        <div class="bg-[#ede8e0] p-4 rounded-[24px] border border-black/5 flex items-center">
+          <div class="w-10 h-10 rounded-full bg-[#5d5652] flex items-center justify-center mr-4 shrink-0">
+            <div class="w-3 h-3 rounded-full bg-[#faf7f3]"></div>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between mb-0.5">
+              <h3 class="font-extrabold text-[15px] truncate">Sourdough Loaf</h3>
+              <span class="text-[14px] font-black text-[#5d5652] ml-2">$4.99</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <p class="text-[12px] font-bold text-[#5c6b54] uppercase tracking-wider mono truncate">HEB SRDGH LOAF</p>
+              <span class="mono text-[12px] font-bold text-[#5c6b54] ml-2">UPC ...603 7</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 9. Camera Viewfinder -->
+      <section class="component-card">
+        <span class="spec-label">9. Camera Viewfinder</span>
+        <div class="viewfinder-bg">
+          <div class="reticle"></div>
+          <button class="min-h-[44px] px-4 rounded-full bg-[#faf7f3] text-[#1a1918] text-[14px] font-bold">
+            Can't read it? Type the code
+          </button>
+        </div>
+      </section>
+
+      <!-- 10. Info Sheets -->
+      <section class="component-card">
+        <span class="spec-label">10. Info Sheets</span>
+        <div class="flex items-center gap-2 mb-4 h-[44px]">
+          <span class="text-[14px] font-bold text-[#5c6b54]">Shared with all users</span>
+          <button class="w-[44px] h-[44px] flex items-center justify-center text-[#76896b]">
+            <iconify-icon icon="lucide:info" class="text-lg"></iconify-icon>
+          </button>
+        </div>
+        <div class="bg-[#ede8e0] rounded-[24px] p-5">
+          <h4 class="text-[18px] font-black mb-2">Product photos are shared</h4>
+          <p class="text-[14px] font-semibold text-[#5c6b54] mb-4 leading-relaxed">
+            Photos you take here are shown with this product to all Mekasa users. Item-detail photos stay private to your household. Keep people, faces and receipts out of the shot.
+          </p>
+          <button class="w-full h-[56px] bg-[#5a6f4f] text-white rounded-[24px] font-extrabold text-[16px]">
+            Got it
+          </button>
+        </div>
+      </section>
+
+      <!-- 11. Photo Actions -->
+      <section class="component-card">
+        <span class="spec-label">11. Photo Actions</span>
+        <div class="flex items-end gap-4">
+          <button class="w-16 h-16 rounded-[16px] bg-[#ede8e0] overflow-hidden relative flex items-center justify-center">
+            <iconify-icon icon="lucide:camera" class="text-2xl text-[#5c6b54]"></iconify-icon>
+          </button>
+          <div class="flex flex-col gap-2">
+            <button class="h-[44px] px-4 text-[14px] font-black text-[#5d5652] bg-[#ede8e0] rounded-full">
+              Retake
+            </button>
+            <button class="h-[44px] px-4 text-[14px] font-black text-[#a44a3f] bg-[#ede8e0] rounded-full">
+              Remove
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 12. Save Button States -->
+      <section class="component-card">
+        <span class="spec-label">12. Save Button States</span>
+        <div class="space-y-3">
+          <button class="w-full h-[56px] bg-[#5a6f4f] text-white rounded-[24px] font-extrabold text-[16px]">
+            Save as Mtn Dew 12 Pack
+          </button>
+          <button class="w-full h-[56px] bg-[#5a6f4f] text-white rounded-[24px] font-extrabold text-[16px] truncate px-4">
+            Save as Kirkland Signature Organ…
+          </button>
+          <button class="w-full h-[56px] bg-[#76896b] text-white/70 rounded-[24px] font-extrabold text-[16px] opacity-60" disabled>
+            Save product
+          </button>
+        </div>
+      </section>
+
+      <!-- 13. Error & Edge States -->
+      <section class="component-card">
+        <span class="spec-label">13. Error &amp; Edge States</span>
+        
+        <!-- Offline Banner -->
+        <div class="bg-[#a44a3f] text-white p-3 rounded-[16px] mb-4 flex items-center justify-center gap-2">
+          <iconify-icon icon="lucide:wifi-off" class="text-lg"></iconify-icon>
+          <span class="text-[14px] font-bold">You're offline — captures need a connection</span>
+        </div>
+
+        <!-- Camera Perms -->
+        <div class="bg-[#ede8e0] rounded-[24px] p-5 mb-4 text-center">
+          <h4 class="text-[16px] font-black mb-4">Camera access needed to scan</h4>
+          <button class="w-full h-[56px] bg-[#5d5652] text-white rounded-[24px] font-extrabold text-[16px] mb-2">
+            Open Settings
+          </button>
+          <button class="w-full h-[44px] text-[#5a6f4f] font-bold text-[14px] mb-2">
+            Type the code instead
+          </button>
+          <button class="w-full h-[44px] text-[#5c6b54] font-bold text-[14px]">
+            Skip this item
+          </button>
+        </div>
+
+        <!-- Inline Save Error -->
+        <div class="bg-[#faf7f3] border border-[#a44a3f]/30 rounded-[24px] p-4 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <iconify-icon icon="lucide:alert-circle" class="text-[#a44a3f] text-xl"></iconify-icon>
+            <span class="text-[14px] font-bold text-[#a44a3f]">Couldn't save. Try again</span>
+          </div>
+          <button class="h-[44px] px-4 text-[14px] font-black text-[#5a6f4f] bg-[#dce8d3] rounded-full">
+            Try again
+          </button>
+        </div>
+      </section>
+
+    </main>
+    <footer class="shrink-0 pb-[34px] px-6 z-10">
+      <div class="pt-4 border-t border-[#76896b]/30 text-center">
+        <p class="text-[12px] font-bold text-[#5c6b54] italic">For SwiftUI &amp; Compose mapping • Version 1.1</p>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

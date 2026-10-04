@@ -50,7 +50,7 @@ struct WelcomeView: View {
                            message.localizedCaseInsensitiveContains("session expired") {
                             Text(message)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.accent)
+                                .foregroundStyle(MekasaTheme.danger)
                                 .accessibilityIdentifier("SessionExpiredBanner")
                         }
 

@@ -94,8 +94,8 @@ fun DashboardScreen(
                     label = "Low stock",
                     value = plural(lowStock.size, "item"),
                     icon = Icons.Outlined.WarningAmber,
-                    tint = palette.accent,
-                    tintBackground = palette.accentTint,
+                    tint = palette.warning,
+                    tintBackground = palette.warningTint,
                     onClick = onOpenInventory,
                 )
                 StatCard(

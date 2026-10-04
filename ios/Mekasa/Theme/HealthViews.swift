@@ -33,7 +33,7 @@ struct AffectedMembersChip: View {
             .foregroundStyle(MekasaTheme.onBrand)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(MekasaTheme.accent)
+            .background(MekasaTheme.danger)
             .clipShape(Capsule())
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(AffectedMembers.summary(warnings))
@@ -50,7 +50,7 @@ struct AffectedMembersCaption: View {
         if !warnings.isEmpty {
             Text("\(AffectedMembers.contains(warnings)) · affects \(AffectedMembers.names(warnings))")
                 .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(MekasaTheme.accent)
+                .foregroundStyle(MekasaTheme.danger)
                 .lineLimit(2)
                 .accessibilityIdentifier(TestIdentifiers.affectedMembersCaption)
         }
@@ -72,7 +72,7 @@ struct MemberWarningBanner: View {
                         .textCase(.uppercase)
                         .tracking(0.6)
                 }
-                .foregroundStyle(MekasaTheme.accent)
+                .foregroundStyle(MekasaTheme.danger)
                 ForEach(warnings) { warning in
                     Text(warning.sentence)
                         .font(.system(size: 15, weight: .bold, design: .rounded))
@@ -81,11 +81,11 @@ struct MemberWarningBanner: View {
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(MekasaTheme.accent.opacity(0.08))
+            .background(MekasaTheme.dangerTint)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(MekasaTheme.accent.opacity(0.35), lineWidth: 1)
+                    .stroke(MekasaTheme.danger, lineWidth: 1)
             )
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier(TestIdentifiers.memberWarningBanner)
@@ -148,7 +148,7 @@ struct HealthSummaryCard: View {
             }
 
             if !health.allergens.isEmpty {
-                section("Contains") { chipRow(health.allergens, tint: MekasaTheme.accent) }
+                section("Contains") { chipRow(health.allergens, tint: MekasaTheme.danger) }
             }
             if !health.traces.isEmpty {
                 section("May contain") { chipRow(health.traces, tint: MekasaTheme.textMuted) }
@@ -180,7 +180,7 @@ struct HealthSummaryCard: View {
 
             Text("Grade from Open Food Facts Nutri-Score, NOVA processing group and additive risk. Informational only — not medical advice.")
                 .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundStyle(MekasaTheme.brandMuted)
+                .foregroundStyle(MekasaTheme.textMuted)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(20)

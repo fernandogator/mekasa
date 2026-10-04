@@ -39,7 +39,7 @@ struct ProductThumbnail: View {
             .fill(MekasaTheme.surfaceMuted)
             .overlay {
                 Image(systemName: "photo")
-                    .foregroundStyle(MekasaTheme.brandMuted)
+                    .foregroundStyle(MekasaTheme.border)
             }
     }
 }
@@ -137,7 +137,7 @@ struct ProductHeroImage: View {
     private var heroPlaceholder: some View {
         Image(systemName: "photo")
             .font(.system(size: 40, weight: .semibold))
-            .foregroundStyle(MekasaTheme.brandMuted)
+            .foregroundStyle(MekasaTheme.border)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

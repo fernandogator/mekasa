@@ -232,14 +232,14 @@ fun TrashStationScreen(
 @Composable
 private fun ScanEvent.Tone.color() = when (this) {
     ScanEvent.Tone.Used -> MekasaTheme.palette.success
-    ScanEvent.Tone.Depleted -> MekasaTheme.palette.accent
+    ScanEvent.Tone.Depleted -> MekasaTheme.palette.danger
     ScanEvent.Tone.Unknown -> MekasaTheme.palette.warning
-    ScanEvent.Tone.Failed -> MekasaTheme.palette.accent
+    ScanEvent.Tone.Failed -> MekasaTheme.palette.danger
 }
 
 @Composable
 private fun ScanEvent.Tone.tint() = when (this) {
     ScanEvent.Tone.Used -> MekasaTheme.palette.successTint
-    ScanEvent.Tone.Depleted, ScanEvent.Tone.Failed -> MekasaTheme.palette.accentTint
+    ScanEvent.Tone.Depleted, ScanEvent.Tone.Failed -> MekasaTheme.palette.dangerTint
     ScanEvent.Tone.Unknown -> MekasaTheme.palette.warningTint
 }

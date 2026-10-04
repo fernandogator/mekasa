@@ -97,7 +97,7 @@ struct DashboardView: View {
                             .font(MekasaTheme.labelFont)
                             .tracking(1.2)
                             .textCase(.uppercase)
-                            .foregroundStyle(MekasaTheme.brandMuted)
+                            .foregroundStyle(MekasaTheme.border)
                         Text(householdTitle)
                             .font(.system(size: 30, weight: .black, design: .rounded))
                             .foregroundStyle(MekasaTheme.onBrand)
@@ -143,7 +143,7 @@ struct DashboardView: View {
                         .clipShape(Circle())
                     if !pendingApprovals.isEmpty {
                         Circle()
-                            .fill(MekasaTheme.accent)
+                            .fill(MekasaTheme.danger)
                             .frame(width: 8, height: 8)
                             .overlay(Circle().stroke(MekasaTheme.onBrand, lineWidth: 1))
                             .offset(x: -2, y: 2)
@@ -678,13 +678,13 @@ struct HomePhotoView: View {
                         if let localError {
                             Text(localError)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.accent)
+                                .foregroundStyle(MekasaTheme.danger)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal, 24)
                         } else if let message = session.lastError {
                             Text(message)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.accent)
+                                .foregroundStyle(MekasaTheme.danger)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal, 24)
                         }

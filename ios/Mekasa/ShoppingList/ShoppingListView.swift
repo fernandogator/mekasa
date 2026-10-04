@@ -346,7 +346,7 @@ struct ShoppingListView: View {
     private func checkbox(checked: Bool) -> some View {
         ZStack {
             Circle()
-                .stroke(checked ? MekasaTheme.accent : MekasaTheme.brandMuted, lineWidth: 2)
+                .stroke(checked ? MekasaTheme.accent : MekasaTheme.border, lineWidth: 2)
                 .background(Circle().fill(checked ? MekasaTheme.accent : Color.clear))
             if checked {
                 Image(systemName: "checkmark")
@@ -375,7 +375,7 @@ struct ShoppingListView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
-                    .foregroundStyle(MekasaTheme.brandMuted)
+                    .foregroundStyle(MekasaTheme.border)
             )
         }
         .buttonStyle(.plain)
