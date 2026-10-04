@@ -401,3 +401,51 @@ def test_release_user_photo_clears_only_that_user_photo(repo) -> None:
     cleared = repo.get_product("041220576037")
     assert cleared.image_url is None and cleared.image_source is None
     assert repo.release_user_photo(PHOTO) == 0
+
+
+# --- PLU capture (REQ-RCP-020 AC7) -------------------------------------------
+
+
+def test_plu_capture_creates_one_shared_product_across_chains(repo) -> None:
+    created = repo.capture(
+        store_chain_id="heb", plu_code="4011", hh=HH_A, fallback_name="Bananas", fallback_category="Produce",
+        alias_text="BANANAS", photo_id=PHOTO,
+    )
+    product = created.product
+    assert created.outcome == "created"
+    assert (product.id, product.code_kind, product.plu_code, product.upc) == ("plu:4011", "plu", "4011", None)
+    assert product.store_chain_id == "unknown"
+    assert product.source == "user_scan" and product.confidence_score == CAPTURE_CONFIDENCE
+    assert product.image_url == f"/v1/product-photos/{PHOTO}" and created.photo_applied_as == "product_image"
+    assert created.enrichment_job_id is None and _jobs(repo) == []
+    assert _alias_target(repo, "heb", "BANANAS") == "plu:4011"
+
+    linked = repo.capture(store_chain_id="walmart", plu_code="4011", hh=HH_B, fallback_name="x", fallback_category="Produce")
+    assert linked.outcome == "linked" and linked.product.id == "plu:4011" and linked.confirmation_counted
+
+
+def test_plu_product_stays_at_most_pending(repo) -> None:
+    for hh in (HH_A, HH_B, HH_C, household_hash("household-d", salt="test-salt")):
+        result = repo.capture(store_chain_id="heb", plu_code="94011", hh=hh, fallback_name="Organic Bananas", fallback_category="Produce")
+    assert result.product.confirmation_count == 4
+    assert result.product.status == "pending"
+
+
+def test_capture_requires_exactly_one_valid_code(repo) -> None:
+    with pytest.raises(ValueError, match="exactly_one_code_required"):
+        repo.capture(store_chain_id="heb", hh=HH_A, fallback_name="x", fallback_category="Produce")
+    with pytest.raises(ValueError, match="exactly_one_code_required"):
+        repo.capture(store_chain_id="heb", upc="041220576037", plu_code="4011", hh=HH_A, fallback_name="x", fallback_category="Produce")
+    with pytest.raises(ValueError, match="invalid_plu"):
+        repo.capture(store_chain_id="heb", plu_code="401", hh=HH_A, fallback_name="x", fallback_category="Produce")
+
+
+def test_upc_capture_never_rekeys_a_plu_product(repo) -> None:
+    repo.capture(store_chain_id="heb", plu_code="4011", hh=HH_A, fallback_name="Bananas", fallback_category="Produce")
+    result = repo.capture(
+        store_chain_id="heb", upc="033383000014", hh=HH_A, fallback_name="Bananas bag", fallback_category="Produce",
+        previous_product_id="plu:4011",
+    )
+    assert result.outcome == "created" and result.product.id == "033383000014"
+    plu = repo.get_product("plu:4011", follow_superseded=False)
+    assert plu.superseded_by is None and plu.code_kind == "plu"

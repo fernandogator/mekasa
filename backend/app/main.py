@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 
 from app.barcode_lookup import clear_lookup_cache
+from app.capture_routes import capture_router
 from app.catalog_routes import products_router
 from app.config import get_settings
 from app.product_photo_routes import product_photos_router
@@ -37,6 +38,7 @@ def create_app() -> FastAPI:
     application.include_router(barcode_router)
     application.include_router(products_router)
     application.include_router(product_photos_router)
+    application.include_router(capture_router)
     application.state.settings = settings  # type: ignore[attr-defined]
     return application
 

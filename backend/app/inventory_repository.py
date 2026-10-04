@@ -77,6 +77,18 @@ class InventoryRepository(Protocol):
     ) -> InventoryItemResponse:
         """Decrement matching barcode; KeyError if unknown (REQ-008 AC3)."""
 
+    def apply_capture(
+        self,
+        household_id: str,
+        item_id: str,
+        actor_uid: str,
+        *,
+        barcode: str | None,
+        product_id: str,
+        image_url: str | None,
+    ) -> InventoryItemResponse:
+        """Link the item to a captured product (REQ-RCP-020 AC6); KeyError if missing."""
+
 
 class InMemoryInventoryRepository:
     """
@@ -180,6 +192,33 @@ class InMemoryInventoryRepository:
             data["updated_by_uid"] = owner_uid
             data["updated_at"] = _utcnow()
             updated = item.model_copy(update=data)
+            self._items[household_id][item_id] = updated
+            return updated
+
+    def apply_capture(
+        self,
+        household_id: str,
+        item_id: str,
+        actor_uid: str,
+        *,
+        barcode: str | None,
+        product_id: str,
+        image_url: str | None,
+    ) -> InventoryItemResponse:
+        self._require_owner(household_id, actor_uid)
+        with self._lock:
+            item = self._items.get(household_id, {}).get(item_id)
+            if item is None or item.deleted:
+                raise KeyError(item_id)
+            updated = item.model_copy(
+                update={
+                    "barcode": barcode,
+                    "product_id": product_id,
+                    "image_url": image_url,
+                    "updated_by_uid": actor_uid,
+                    "updated_at": _utcnow(),
+                }
+            )
             self._items[household_id][item_id] = updated
             return updated
 
