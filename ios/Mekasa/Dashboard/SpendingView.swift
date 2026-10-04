@@ -42,7 +42,7 @@ struct SpendingView: View {
             VStack(alignment: .leading, spacing: 24) {
                 Text("Spending")
                     .font(MekasaTheme.titleFont)
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
 
                 Text(
                     usingLiveReport
@@ -70,7 +70,7 @@ struct SpendingView: View {
                         .foregroundStyle(MekasaTheme.textMuted)
                     Text(String(format: "$%.2f", totalSpend))
                         .font(.system(size: 36, weight: .black, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                     if let currency = report?.currency, usingLiveReport {
                         Text(currency)
                             .font(.system(size: 12, weight: .semibold, design: .rounded))
@@ -94,16 +94,16 @@ struct SpendingView: View {
                 } else {
                     Text("By category")
                         .font(.system(size: 18, weight: .heavy, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                     ForEach(byCategory, id: \.0) { category, amount in
                         HStack {
                             Text(category)
                                 .font(.system(size: 15, weight: .bold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                             Spacer()
                             Text(String(format: "$%.2f", amount))
                                 .font(.system(size: 15, weight: .heavy, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                         }
                         .padding(14)
                         .background(MekasaTheme.surfaceElevated)
@@ -114,13 +114,13 @@ struct SpendingView: View {
                 if usingLiveReport, let events = report?.events, !events.isEmpty {
                     Text("Recent purchases")
                         .font(.system(size: 18, weight: .heavy, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                     ForEach(events.prefix(12)) { event in
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(event.name)
                                     .font(.system(size: 15, weight: .bold, design: .rounded))
-                                    .foregroundStyle(MekasaTheme.brand)
+                                    .foregroundStyle(MekasaTheme.text)
                                 Text(event.category)
                                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                                     .foregroundStyle(MekasaTheme.textMuted)
@@ -128,7 +128,7 @@ struct SpendingView: View {
                             Spacer()
                             Text(String(format: "$%.2f", event.lineTotal))
                                 .font(.system(size: 15, weight: .heavy, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                         }
                         .padding(14)
                         .background(MekasaTheme.surfaceElevated)

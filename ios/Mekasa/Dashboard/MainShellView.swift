@@ -81,7 +81,7 @@ private struct BottomNavBar: View {
             Button(action: onAdd) {
                 Image(systemName: "plus")
                     .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(MekasaTheme.onBrand)
+                    .foregroundStyle(MekasaTheme.onAccent)
                     .frame(width: 56, height: 56)
                     .background(MekasaTheme.accent)
                     .clipShape(Circle())

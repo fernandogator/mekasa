@@ -94,7 +94,7 @@ struct InventoryListView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Inventory")
                     .font(MekasaTheme.titleFont)
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                 Text(InventoryListModel.summary(session.inventory))
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                     .tracking(1)
@@ -169,7 +169,7 @@ struct InventoryListView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.name)
                         .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                         .accessibilityIdentifier(TestIdentifiers.itemTitle)
                     Text("Qty \(item.quantity) · \(item.category)")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
@@ -245,13 +245,13 @@ struct InventoryListView: View {
         HStack {
             Text("Item removed")
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
-                .foregroundStyle(MekasaTheme.surface)
+                .foregroundStyle(MekasaTheme.onBrand)
             Spacer()
             Button("Undo") {
                 session.undoInventoryRemove()
             }
             .font(.system(size: 15, weight: .bold, design: .rounded))
-            .foregroundStyle(MekasaTheme.accent)
+            .foregroundStyle(MekasaTheme.onBrandMuted)
             .accessibilityIdentifier(TestIdentifiers.inventoryUndoButton)
         }
         .padding(.horizontal, 16)

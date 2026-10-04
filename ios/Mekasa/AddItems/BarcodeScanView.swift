@@ -57,7 +57,7 @@ struct BarcodeScanView: View {
                     VStack(spacing: 12) {
                         if isLookingUp {
                             ProgressView("Looking up product…")
-                                .tint(MekasaTheme.brand)
+                                .tint(MekasaTheme.text)
                         }
                         if !cameraAvailable {
                             PrimaryButton(title: "Simulate known scan") {
@@ -73,7 +73,7 @@ struct BarcodeScanView: View {
                         } label: {
                             Text("Enter manually")
                                 .font(.system(size: 15, weight: .bold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 8)
                         }

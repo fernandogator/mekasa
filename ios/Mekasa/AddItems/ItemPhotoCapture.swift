@@ -171,7 +171,7 @@ struct LocalItemCaptureView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         Text(CaptureGuidance.message(itemName: itemName, storeName: store?.storeName))
                             .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                             .accessibilityIdentifier(TestIdentifiers.captureGuidanceLabel)
 
                         barcodeStep
@@ -219,7 +219,7 @@ struct LocalItemCaptureView: View {
                 HStack {
                     Label("Code \(code)", systemImage: "barcode")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                         .accessibilityIdentifier(TestIdentifiers.captureCodeLabel)
                     Spacer()
                     Button("Rescan") {
@@ -259,7 +259,7 @@ struct LocalItemCaptureView: View {
                     Button("Use") { code = typedCode }
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(
-                            CaptureGuidance.isValidCode(typedCode) ? MekasaTheme.brand : MekasaTheme.textMuted
+                            CaptureGuidance.isValidCode(typedCode) ? MekasaTheme.text : MekasaTheme.textMuted
                         )
                         .disabled(!CaptureGuidance.isValidCode(typedCode))
                 }
@@ -291,7 +291,7 @@ struct LocalItemCaptureView: View {
                 PhotosPicker(selection: $libraryItem, matching: .images) {
                     Text(photo == nil ? "From library" : "Choose another")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(MekasaTheme.surfaceElevated)

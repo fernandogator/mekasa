@@ -1,43 +1,48 @@
 import SwiftUI
 import UIKit
 
-/// Mekasa design tokens from design/design-system.md (Rich & Grounded, light appearance)
-/// Satisfies: NFR-005 AC2, AC5 — screens use only these roles, never literal colors,
-/// and every text/fill pair here is contrast-checked in design/design-system.md.
+/// Mekasa design tokens from design/design-system.md (Rich & Grounded). Every role
+/// resolves per appearance (light / dark) and follows the system setting.
+/// Satisfies: UI-002 AC3; NFR-005 AC2, AC5 — screens use only these roles, never literal
+/// colors, and every text/fill pair here is contrast-checked in design/design-system.md.
 enum MekasaTheme {
-    /// Warm charcoal: primary text, dark fills (tab bar, selected rows), progress fill.
-    static let brand = hex(0x5d5652)
+    /// Dark fills: tab bar, selected rows and chips, photo washes. Not a text color — use `text`.
+    static let brand = dynamic(0x5d5652, dark: 0x3a3531)
     /// Decorative sage for washes, wells and disabled fills; fails 3:1, so never text, icons or outlines.
-    static let brandMuted = hex(0x8fa085)
-    static let surface = hex(0xede8e0)
-    static let surfaceElevated = hex(0xfaf7f3)
-    static let text = brand
-    static let textMuted = hex(0x5c6b54)
+    static let brandMuted = dynamic(0x8fa085, dark: 0x5a6f4f)
+    static let surface = dynamic(0xede8e0, dark: 0x1c1a18)
+    static let surfaceElevated = dynamic(0xfaf7f3, dark: 0x272421)
+    /// Primary text, and the onboarding progress fill.
+    static let text = dynamic(0x5d5652, dark: 0xede8e0)
+    static let textMuted = dynamic(0x5c6b54, dark: 0xa9b79f)
     /// Primary buttons, the Add button, selections, links and toggles.
-    static let accent = hex(0x5a6f4f)
+    static let accent = dynamic(0x5a6f4f, dark: 0x8fa085)
     /// Errors, destructive actions, allergen and health warnings.
-    static let danger = hex(0xa44a3f)
-    static let success = hex(0x5a6f4f)
-    static let warning = hex(0x8b5c32)
-    static let accentTint = hex(0xdce8d3)
-    static let dangerTint = hex(0xf6e3e0)
-    static let successTint = hex(0xdce8d3)
-    static let warningTint = hex(0xf3e6d8)
+    static let danger = dynamic(0xa44a3f, dark: 0xe39286)
+    static let success = dynamic(0x5a6f4f, dark: 0xa3b598)
+    static let warning = dynamic(0x8b5c32, dark: 0xe2b07e)
+    static let accentTint = dynamic(0xdce8d3, dark: 0x2c3628)
+    static let dangerTint = dynamic(0xf6e3e0, dark: 0x3a2220)
+    static let successTint = dynamic(0xdce8d3, dark: 0x2c3628)
+    static let warningTint = dynamic(0xf3e6d8, dark: 0x3a2e22)
     /// Icons, input borders, chip outlines and unchecked controls (3:1 on surface).
-    static let border = hex(0x76896b)
+    static let border = dynamic(0x76896b, dark: 0x7f8e76)
     /// Neutral fill for wells, image placeholders, steppers and unselected options.
-    static let surfaceMuted = hex(0xece7df)
-    static let progressTrack = hex(0xd9d3c9)
-    /// Text and icons on brand, accent, danger and success fills, and over photos.
-    static let onBrand = Color.white
+    static let surfaceMuted = dynamic(0xece7df, dark: 0x312d29)
+    static let progressTrack = dynamic(0xd9d3c9, dark: 0x3a3531)
+    /// Text and icons on `brand` fills and over photos.
+    static let onBrand = dynamic(0xffffff, dark: 0xede8e0)
+    /// Text and icons on accent, success, warning and danger fills. Dark mode lightens
+    /// those fills, so their labels turn charcoal there.
+    static let onAccent = dynamic(0xffffff, dark: 0x1c1a18)
     /// Inactive icons and secondary text on `brand` fills.
-    static let onBrandMuted = hex(0xc9d6c0)
+    static let onBrandMuted = dynamic(0xc9d6c0, dark: 0xb5c2ab)
     /// Full-screen camera, scanner and photo viewer background.
-    static let cameraSurface = hex(0x1a1918)
+    static let cameraSurface = dynamic(0x1a1918, dark: 0x0f0e0d)
     /// Text, icons and the reticle over `cameraSurface` or a live preview.
     static let onCamera = hex(0xfaf7f3)
     /// Darkening overlay on photos (busy spinners, overlaid text); always used with opacity.
-    static let scrim = hex(0x1a1918)
+    static let scrim = dynamic(0x1a1918, dark: 0x0f0e0d)
     static let shadow = Color.black
 
     /// Nutri-Score style A–D health grade colors; E uses `danger`.
@@ -52,10 +57,21 @@ enum MekasaTheme {
     static let labelFont = Font.system(size: 10, weight: .bold, design: .rounded)
 
     private static func hex(_ rgb: UInt32) -> Color {
-        Color(
-            red: Double((rgb >> 16) & 0xff) / 255,
-            green: Double((rgb >> 8) & 0xff) / 255,
-            blue: Double(rgb & 0xff) / 255
+        Color(uiColor: uiColor(rgb))
+    }
+
+    private static func dynamic(_ light: UInt32, dark: UInt32) -> Color {
+        Color(uiColor: UIColor { traits in
+            uiColor(traits.userInterfaceStyle == .dark ? dark : light)
+        })
+    }
+
+    private static func uiColor(_ rgb: UInt32) -> UIColor {
+        UIColor(
+            red: CGFloat((rgb >> 16) & 0xff) / 255,
+            green: CGFloat((rgb >> 8) & 0xff) / 255,
+            blue: CGFloat(rgb & 0xff) / 255,
+            alpha: 1
         )
     }
 }
@@ -95,7 +111,7 @@ struct OnboardingHeader: View {
             }
             Text("Mekasa")
                 .font(.system(size: 28, weight: .black, design: .rounded))
-                .foregroundStyle(MekasaTheme.brand)
+                .foregroundStyle(MekasaTheme.text)
                 .tracking(-0.5)
         }
         .frame(maxWidth: .infinity)
@@ -116,13 +132,13 @@ struct PrimaryButton: View {
                     .opacity(isLoading ? 0 : 1)
                 if isLoading {
                     ProgressView()
-                        .tint(MekasaTheme.onBrand)
+                        .tint(MekasaTheme.onAccent)
                 }
             }
             .font(.system(size: 17, weight: .bold, design: .rounded))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
-            .foregroundStyle(MekasaTheme.onBrand)
+            .foregroundStyle(MekasaTheme.onAccent)
             .background(disabled || isLoading ? MekasaTheme.brandMuted : MekasaTheme.accent)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .shadow(color: MekasaTheme.accent.opacity(disabled ? 0 : 0.22), radius: 12, y: 6)
@@ -145,13 +161,13 @@ struct SecondaryButton: View {
                     .opacity(isLoading ? 0 : 1)
                 if isLoading {
                     ProgressView()
-                        .tint(MekasaTheme.brand)
+                        .tint(MekasaTheme.text)
                 }
             }
             .font(.system(size: 16, weight: .bold, design: .rounded))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .foregroundStyle(MekasaTheme.brand)
+            .foregroundStyle(MekasaTheme.text)
             .background(MekasaTheme.surfaceElevated)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay(
@@ -224,7 +240,7 @@ struct StickyBottomBar<Content: View>: View {
                     ZStack(alignment: .leading) {
                         Capsule().fill(MekasaTheme.progressTrack)
                         Capsule()
-                            .fill(MekasaTheme.brand)
+                            .fill(MekasaTheme.text)
                             .frame(width: max(8, geo.size.width * progress))
                     }
                 }

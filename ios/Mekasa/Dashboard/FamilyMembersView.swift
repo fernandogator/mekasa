@@ -22,7 +22,7 @@ struct FamilyMembersView: View {
             VStack(alignment: .leading, spacing: 24) {
                 Text("Family")
                     .font(MekasaTheme.titleFont)
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
 
                 accountCard
                 householdCard
@@ -36,7 +36,7 @@ struct FamilyMembersView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("You have a pending invite.")
                             .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                         PrimaryButton(title: "Accept invite", isLoading: session.isBusy) {
                             Task {
                                 await session.acceptPendingInviteIfNeeded()
@@ -52,7 +52,7 @@ struct FamilyMembersView: View {
                 if let statusMessage {
                     Text(statusMessage)
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                 }
 
                 SecondaryButton(title: isRefreshingAll ? "Refreshing…" : "Refresh data", disabled: isRefreshingAll) {
@@ -96,7 +96,7 @@ struct FamilyMembersView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(FamilySummary.accountTitle(displayName: session.displayName, email: session.email))
                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(MekasaTheme.brand)
+                .foregroundStyle(MekasaTheme.text)
                 .accessibilityIdentifier(TestIdentifiers.familyAccountTitle)
             if let subtitle = FamilySummary.accountSubtitle(displayName: session.displayName, email: session.email) {
                 Text(subtitle)
@@ -121,14 +121,14 @@ struct FamilyMembersView: View {
         HStack(spacing: 12) {
             Image(systemName: "house.fill")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(MekasaTheme.brand)
+                .foregroundStyle(MekasaTheme.text)
                 .frame(width: 40, height: 40)
                 .background(MekasaTheme.successTint)
                 .clipShape(Circle())
             VStack(alignment: .leading, spacing: 2) {
                 Text(FamilySummary.householdTitle(session.household))
                     .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                     .accessibilityIdentifier(TestIdentifiers.familyHouseholdTitle)
                 Text(FamilySummary.householdAddress(session.household))
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
@@ -148,7 +148,7 @@ struct FamilyMembersView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Members")
                 .font(.system(size: 18, weight: .heavy, design: .rounded))
-                .foregroundStyle(MekasaTheme.brand)
+                .foregroundStyle(MekasaTheme.text)
 
             if members.isEmpty {
                 Text(isLoading ? "Loading…" : "You’re the only member so far.")
@@ -161,7 +161,7 @@ struct FamilyMembersView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(member.name ?? member.email ?? member.uid)
                                     .font(.system(size: 16, weight: .bold, design: .rounded))
-                                    .foregroundStyle(MekasaTheme.brand)
+                                    .foregroundStyle(MekasaTheme.text)
                                 Text(FamilySummary.memberSubtitle(role: member.role, status: member.status))
                                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                                     .foregroundStyle(MekasaTheme.textMuted)
@@ -184,7 +184,7 @@ struct FamilyMembersView: View {
                                 .padding(.top, 2)
                             Text(avoidSummary(for: member))
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .foregroundStyle(member.avoid.isEmpty ? MekasaTheme.textMuted : MekasaTheme.brand)
+                                .foregroundStyle(member.avoid.isEmpty ? MekasaTheme.textMuted : MekasaTheme.text)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .accessibilityIdentifier(TestIdentifiers.memberAvoidLabel)
                             Spacer(minLength: 0)
@@ -209,7 +209,7 @@ struct FamilyMembersView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Invite someone")
                 .font(.system(size: 18, weight: .heavy, design: .rounded))
-                .foregroundStyle(MekasaTheme.brand)
+                .foregroundStyle(MekasaTheme.text)
 
             MekasaTextField(label: "Name", placeholder: "Sam", text: $name)
             MekasaTextField(
@@ -238,7 +238,7 @@ struct FamilyMembersView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("\(invite.name) · \(invite.role)")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                         if let link = invite.inviteLink {
                             Text(link)
                                 .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -265,12 +265,12 @@ struct FamilyMembersView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Scanner")
                 .font(.system(size: 18, weight: .heavy, design: .rounded))
-                .foregroundStyle(MekasaTheme.brand)
+                .foregroundStyle(MekasaTheme.text)
             Toggle(isOn: $scanSoundsEnabled) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Scan sounds")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                     Text("Beep and haptic when a barcode is read.")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(MekasaTheme.textMuted)
@@ -293,7 +293,7 @@ struct FamilyMembersView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Trash station")
                 .font(.system(size: 18, weight: .heavy, design: .rounded))
-                .foregroundStyle(MekasaTheme.brand)
+                .foregroundStyle(MekasaTheme.text)
             Text("Open full-screen dispose mode for a kitchen iPad or secondary phone.")
                 .font(MekasaTheme.bodyFont)
                 .foregroundStyle(MekasaTheme.textMuted)

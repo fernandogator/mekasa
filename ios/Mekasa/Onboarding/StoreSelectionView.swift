@@ -27,7 +27,7 @@ struct StoreSelectionView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Where do you shop?")
                         .font(MekasaTheme.displayFont)
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
 
                     Text(subtitle)
                         .font(MekasaTheme.bodyFont)
@@ -164,7 +164,7 @@ private struct StoreRow: View {
                         .frame(width: 48, height: 48)
                     Text(store.initials)
                         .font(.system(size: 11, weight: .black, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                 }
@@ -207,12 +207,12 @@ private struct StoreRow: View {
                     if isSelected {
                         Image(systemName: "checkmark")
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(MekasaTheme.onBrand)
+                            .foregroundStyle(MekasaTheme.onAccent)
                     }
                 }
             }
             .padding(16)
-            .foregroundStyle(isSelected ? MekasaTheme.onBrand : MekasaTheme.brand)
+            .foregroundStyle(isSelected ? MekasaTheme.onBrand : MekasaTheme.text)
             .background(
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
                     .fill(isSelected ? MekasaTheme.brand : Color.clear)

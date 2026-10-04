@@ -17,7 +17,7 @@ struct AddItemsView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                             .frame(width: 40, height: 40)
                             .background(MekasaTheme.surfaceElevated)
                             .clipShape(Circle())
@@ -35,7 +35,7 @@ struct AddItemsView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Add to the house")
                                 .font(MekasaTheme.displayFont)
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                             Text("Each path lets you confirm before anything saves.")
                                 .font(MekasaTheme.bodyFont)
                                 .foregroundStyle(MekasaTheme.textMuted)
@@ -126,7 +126,7 @@ struct AddItemsView: View {
         HStack(spacing: 16) {
             Image(systemName: icon)
                 .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(accent ? MekasaTheme.accent : MekasaTheme.brand)
+                .foregroundStyle(accent ? MekasaTheme.accent : MekasaTheme.text)
                 .frame(width: 56, height: 56)
                 .background(
                     accent
@@ -138,7 +138,7 @@ struct AddItemsView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(size: 18, weight: .heavy, design: .rounded))
-                    .foregroundStyle(accent ? MekasaTheme.accent : MekasaTheme.brand)
+                    .foregroundStyle(accent ? MekasaTheme.accent : MekasaTheme.text)
                 Text(subtitle)
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundStyle(MekasaTheme.textMuted)
