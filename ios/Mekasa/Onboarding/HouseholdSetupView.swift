@@ -21,7 +21,7 @@ struct HouseholdSetupView: View {
                     VStack(spacing: 32) {
                         Text("Name this house.")
                             .font(MekasaTheme.displayFont)
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                             .multilineTextAlignment(.center)
                             .padding(.top, 36)
 
@@ -56,7 +56,7 @@ struct HouseholdSetupView: View {
                                                 .textCase(.uppercase)
                                                 .foregroundStyle(MekasaTheme.textMuted)
                                         }
-                                        .foregroundStyle(MekasaTheme.brand)
+                                        .foregroundStyle(MekasaTheme.text)
                                     }
                                 }
                                 Circle()

@@ -46,6 +46,14 @@ final class UI004SnapshotTests: XCTestCase {
         try MekasaSnapshots.assertScreen(of: vc, as: .image(on: .iPhone13Pro, precision: 0.98))
     }
 
+    func testShoppingList_dark_iPhone13Pro() throws {
+        let vc = SnapshotHost.controller { _ in ShoppingListView() }
+        try MekasaSnapshots.assertScreen(
+            of: vc,
+            as: .image(on: .iPhone13Pro, precision: 0.98, traits: .init(userInterfaceStyle: .dark))
+        )
+    }
+
     func testAddItemsHub_default_iPhone13Pro() throws {
         let vc = SnapshotHost.controller { _ in
             NavigationStack { AddItemsView() }

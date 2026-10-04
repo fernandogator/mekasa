@@ -56,20 +56,22 @@ The palette's original sage `#8fa085` (2.3:1 on surface) and amber `#c48c5a` (2.
 
 ### Native theme roles
 
-`MekasaTheme` (iOS) and `MekasaPalette` (Android) expose the tokens above plus these roles. They are the only colors screens may use (NFR-005 AC5). iOS ships the light appearance only; Android maps both appearances.
+`MekasaTheme` (iOS) and `MekasaPalette` (Android) expose the tokens above plus these roles. They are the only colors screens may use (NFR-005 AC5). Both apps follow the system appearance (UI-001 AC3, UI-002 AC3).
 
-| Role | Use | Light | Dark (Android) |
-|------|-----|-------|----------------|
+| Role | Use | Light | Dark |
+|------|-----|-------|------|
 | `accentTint` | Accent icon wells, selected tiles | `#dce8d3` | `#2c3628` |
 | `dangerTint` | Error and destructive wells, depleted scan feedback | `#f6e3e0` | `#3a2220` |
 | `onBrand` | Text and icons on brand fills and photos | `#ffffff` | `#ede8e0` |
-| `onAccent` (Android) | Text and icons on accent, success and danger fills | `#ffffff` | `#1c1a18` |
+| `onAccent` | Text and icons on accent, success, warning and danger fills | `#ffffff` | `#1c1a18` |
 | `onBrandMuted` | Inactive tab icons, secondary text on brand fills | `#c9d6c0` | `#b5c2ab` |
-| `surfaceMuted` (iOS) | Wells, image placeholders, steppers, unselected options | `#ece7df` | — |
-| `progressTrack` (iOS) | Progress bar track | `#d9d3c9` | — |
+| `surfaceMuted` (iOS) | Wells, image placeholders, steppers, unselected options | `#ece7df` | `#312d29` |
+| `progressTrack` (iOS) | Progress bar track | `#d9d3c9` | `#3a3531` |
 | `scrim` / `photoScrim` | Overlay on photos, used with opacity | `#1a1918` | `#0f0e0d` |
-| `shadow` (iOS) | Drop shadows, used with opacity | `#000000` | — |
-| `gradeA` … `gradeD` (iOS) | Health grades A–D (E uses `danger`) | `#1f8a4c` `#6fa82f` `#d9a406` `#e06c1a` | — |
+| `shadow` (iOS) | Drop shadows, used with opacity | `#000000` | `#000000` |
+| `gradeA` … `gradeD` (iOS) | Health grades A–D (E uses `danger`) | `#1f8a4c` `#6fa82f` `#d9a406` `#e06c1a` | same |
+
+`brand` is a fill role only: in dark mode it is `#3a3531`, which is 1.4:1 on the surface, so text and the progress fill use `text` instead. Dark pairs added for these roles: `onAccent` `#1c1a18` on accent / danger / warning / success fills 6.2 / 7.2 / 8.9 / 8.0; text and muted text on `surfaceMuted` 11.2 / 6.5; border on `surfaceMuted` 3.9.
 
 The health grade fills predate this palette, and white text on grades B–D is below 4.5:1; they need their own pass.
 

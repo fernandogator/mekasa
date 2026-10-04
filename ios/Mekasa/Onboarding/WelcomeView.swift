@@ -39,7 +39,7 @@ struct WelcomeView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         Text("Your house,\norganized.")
                             .font(MekasaTheme.displayFont)
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                             .padding(.top, 40)
 
                         Text("Sign in to create a household, pick your stores, and start scanning inventory.")

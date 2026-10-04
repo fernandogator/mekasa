@@ -30,10 +30,10 @@ struct ReceiptScanView: View {
                             VStack(spacing: 12) {
                                 Image(systemName: "doc.text.viewfinder")
                                     .font(.system(size: 40, weight: .semibold))
-                                    .foregroundStyle(MekasaTheme.brand)
+                                    .foregroundStyle(MekasaTheme.text)
                                 Text("Photograph your receipt")
                                     .font(.system(size: 16, weight: .heavy, design: .rounded))
-                                    .foregroundStyle(MekasaTheme.brand)
+                                    .foregroundStyle(MekasaTheme.text)
                             }
                         }
 
@@ -103,7 +103,7 @@ struct ReceiptScanView: View {
                 }
                 TextEditor(text: $pastedText)
                     .font(.system(size: 15, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                     .scrollContentBackground(.hidden)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)

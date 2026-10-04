@@ -58,7 +58,7 @@ struct ShoppingListView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(listTitle)
                     .font(.system(size: 30, weight: .black, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                 HStack(spacing: 8) {
                     Label(householdTitle, systemImage: "house.fill")
                         .labelStyle(.titleAndIcon)
@@ -86,7 +86,7 @@ struct ShoppingListView: View {
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                     .frame(width: 40, height: 40)
                     .background(MekasaTheme.surfaceElevated)
                     .clipShape(Circle())
@@ -237,7 +237,7 @@ struct ShoppingListView: View {
                 Text(item.name)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .strikethrough(item.isChecked)
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                     .accessibilityIdentifier(TestIdentifiers.itemTitle)
                 HStack(spacing: 8) {
                     if !item.displayQuantity.isEmpty {
@@ -272,7 +272,7 @@ struct ShoppingListView: View {
         HStack(spacing: 16) {
             Text(initials(item.requestedBy ?? "?"))
                 .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(MekasaTheme.brand)
+                .foregroundStyle(MekasaTheme.text)
                 .frame(width: 40, height: 40)
                 .background(MekasaTheme.surfaceMuted)
                 .clipShape(Circle())
@@ -282,13 +282,13 @@ struct ShoppingListView: View {
                 HStack(spacing: 8) {
                     Text(item.name)
                         .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                         .accessibilityIdentifier(TestIdentifiers.requestedItemLabel)
                     Text("Needs approval")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .tracking(0.6)
                         .textCase(.uppercase)
-                        .foregroundStyle(MekasaTheme.onBrand)
+                        .foregroundStyle(MekasaTheme.onAccent)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(MekasaTheme.warning)
@@ -309,7 +309,7 @@ struct ShoppingListView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                         .frame(width: 40, height: 40)
                         .background(MekasaTheme.surfaceElevated)
                         .clipShape(Circle())
@@ -351,7 +351,7 @@ struct ShoppingListView: View {
             if checked {
                 Image(systemName: "checkmark")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(MekasaTheme.onBrand)
+                    .foregroundStyle(MekasaTheme.onAccent)
             }
         }
         .frame(width: 40, height: 40)
@@ -369,7 +369,7 @@ struct ShoppingListView: View {
                 Text("Add custom item")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
             }
-            .foregroundStyle(MekasaTheme.brand)
+            .foregroundStyle(MekasaTheme.text)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .overlay(
@@ -402,7 +402,7 @@ struct ShoppingListView: View {
                             .labelsHidden()
                         Text("\(customQty)")
                             .font(.system(size: 20, weight: .black, design: .rounded))
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                             .frame(minWidth: 28)
                     }
                     .padding(16)

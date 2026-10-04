@@ -21,7 +21,7 @@ struct AddressConfirmView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         Text("Where is home?")
                             .font(MekasaTheme.displayFont)
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                             .padding(.top, 36)
 
                         Text("We'll use this to find grocery stores within 15 miles. Edit anything that looks wrong.")

@@ -47,7 +47,7 @@ struct AvoidEditorView: View {
                             } label: {
                                 Text(option?.label ?? key)
                                     .font(.system(size: 14, weight: .bold, design: .rounded))
-                                    .foregroundStyle(isOn ? MekasaTheme.onBrand : MekasaTheme.brand)
+                                    .foregroundStyle(isOn ? MekasaTheme.onAccent : MekasaTheme.text)
                                     .padding(.horizontal, 14)
                                     .padding(.vertical, 9)
                                     .background(isOn ? MekasaTheme.accent : MekasaTheme.surfaceElevated)

@@ -173,7 +173,7 @@ struct DashboardView: View {
             HStack {
                 Text("Low stock")
                     .font(.system(size: 20, weight: .heavy, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                 Spacer()
                 Button("All inventory") {
                     showInventory = true
@@ -207,7 +207,7 @@ struct DashboardView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.name)
                                     .font(.system(size: 16, weight: .bold, design: .rounded))
-                                    .foregroundStyle(MekasaTheme.brand)
+                                    .foregroundStyle(MekasaTheme.text)
                                 Text("Qty \(item.quantity) · threshold \(item.lowStockThreshold)")
                                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                                     .foregroundStyle(MekasaTheme.textMuted)
@@ -275,7 +275,7 @@ struct DashboardView: View {
             HStack(spacing: 8) {
                 Image(systemName: icon)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                     .frame(width: 32, height: 32)
                     .background(iconBg)
                     .clipShape(Circle())
@@ -286,7 +286,7 @@ struct DashboardView: View {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(value)
                     .font(.system(size: 24, weight: .black, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                 if let suffix {
                     Text(suffix)
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
@@ -310,7 +310,7 @@ struct DashboardView: View {
             HStack {
                 Text("Needs Approval")
                     .font(.system(size: 20, weight: .heavy, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                 Spacer()
                 Button("View All") {
                     selectedTab = .list
@@ -356,7 +356,7 @@ struct DashboardView: View {
             HStack {
                 Text("Shopping list")
                     .font(.system(size: 20, weight: .heavy, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                 Spacer()
                 Button("Open list") {
                     selectedTab = .list
@@ -374,14 +374,14 @@ struct DashboardView: View {
                 HStack(spacing: 14) {
                     Image(systemName: "cart")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                         .frame(width: 44, height: 44)
                         .background(MekasaTheme.successTint)
                         .clipShape(Circle())
                     VStack(alignment: .leading, spacing: 2) {
                         Text(ShoppingTeaser.headline(session.shoppingList))
                             .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                             .accessibilityIdentifier(TestIdentifiers.dashboardShoppingHeadline)
                         if let preview = ShoppingTeaser.preview(session.shoppingList) {
                             Text(preview)
@@ -410,7 +410,7 @@ struct DashboardView: View {
         HStack(spacing: 16) {
             Image(systemName: "cart")
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(MekasaTheme.brand)
+                .foregroundStyle(MekasaTheme.text)
                 .frame(width: 40, height: 40)
                 .background(MekasaTheme.surfaceMuted)
                 .clipShape(Circle())
@@ -419,7 +419,7 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                     .accessibilityIdentifier(TestIdentifiers.requestedItemLabel)
                 Text("Requested by \(item.requestedBy ?? "member")")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
@@ -435,7 +435,7 @@ struct DashboardView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                         .frame(width: 40, height: 40)
                         .overlay(Circle().stroke(MekasaTheme.brandMuted.opacity(0.4), lineWidth: 1))
                 }
@@ -466,7 +466,7 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Recent Activity")
                 .font(.system(size: 20, weight: .heavy, design: .rounded))
-                .foregroundStyle(MekasaTheme.brand)
+                .foregroundStyle(MekasaTheme.text)
 
             VStack(alignment: .leading, spacing: 16) {
                 ForEach(session.activity) { item in
@@ -480,7 +480,7 @@ struct DashboardView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(item.title)
                                 .font(.system(size: 16, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                             Text(item.when)
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
                                 .tracking(0.8)
@@ -593,7 +593,7 @@ struct HomePhotoView: View {
                     Spacer()
                     Text("Home photo")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                     Spacer()
                     Button("Save") {
                         Task { await save() }
@@ -622,7 +622,7 @@ struct HomePhotoView: View {
                                 .foregroundStyle(MekasaTheme.textMuted)
                             TextField("e.g. The Guerrero Home", text: $houseName)
                                 .font(.system(size: 17, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 14)
                                 .background(MekasaTheme.surfaceElevated)
@@ -662,7 +662,7 @@ struct HomePhotoView: View {
                                     .font(.system(size: 16, weight: .bold, design: .rounded))
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 14)
-                                    .foregroundStyle(MekasaTheme.brand)
+                                    .foregroundStyle(MekasaTheme.text)
                                     .background(MekasaTheme.surfaceElevated)
                                     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                                     .overlay(

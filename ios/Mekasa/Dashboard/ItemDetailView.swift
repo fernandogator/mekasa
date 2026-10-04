@@ -29,7 +29,7 @@ struct ItemDetailView: View {
 
                             Text(item.name)
                                 .font(.system(size: 28, weight: .black, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                                 .accessibilityIdentifier(TestIdentifiers.itemNameLabel)
 
                             Text(item.category)
@@ -78,7 +78,7 @@ struct ItemDetailView: View {
                             if let useOneMessage {
                                 Text(useOneMessage)
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
-                                    .foregroundStyle(MekasaTheme.brand)
+                                    .foregroundStyle(MekasaTheme.text)
                                     .accessibilityIdentifier(TestIdentifiers.itemDetailUseOneStatus)
                             }
                         }
@@ -147,7 +147,7 @@ struct ItemDetailView: View {
 
                 Text("\(value.wrappedValue)")
                     .font(.system(size: 28, weight: .black, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                     .frame(maxWidth: .infinity)
 
                 Button {

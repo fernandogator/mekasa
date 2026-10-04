@@ -28,7 +28,7 @@ struct InviteView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         Text("Invite your household.")
                             .font(MekasaTheme.displayFont)
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                             .padding(.top, 36)
 
                         Text("Owners manage inventory and spending. Members can scan and request items. Send a name plus email or phone.")
@@ -68,7 +68,7 @@ struct InviteView: View {
                         if let statusMessage {
                             Text(statusMessage)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                         }
 
                         if let lastInviteLink {

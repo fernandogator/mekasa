@@ -30,7 +30,7 @@ struct AffectedMembersChip: View {
                     .font(.system(size: 11, weight: .heavy, design: .rounded))
                     .lineLimit(1)
             }
-            .foregroundStyle(MekasaTheme.onBrand)
+            .foregroundStyle(MekasaTheme.onAccent)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(MekasaTheme.danger)
@@ -76,7 +76,7 @@ struct MemberWarningBanner: View {
                 ForEach(warnings) { warning in
                     Text(warning.sentence)
                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                 }
             }
             .padding(14)
@@ -105,7 +105,7 @@ struct HealthSummaryCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(HealthGrade.label(for: health.grade))
                         .font(.system(size: 20, weight: .black, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                     if let score = health.score {
                         Text("\(score)/100 · \(health.summaryLine)")
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
@@ -132,11 +132,11 @@ struct HealthSummaryCard: View {
                                 .frame(width: 10, height: 10)
                             Text(additive.code)
                                 .font(.system(size: 13, weight: .heavy, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                                 .frame(width: 52, alignment: .leading)
                             Text(additive.name)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                                 .lineLimit(2)
                             Spacer(minLength: 0)
                             Text(additive.concern.capitalized)

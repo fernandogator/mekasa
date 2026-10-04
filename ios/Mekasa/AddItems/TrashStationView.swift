@@ -25,7 +25,7 @@ struct TrashStationView: View {
                     HStack {
                         Text("Trash station")
                             .font(.system(size: 16, weight: .heavy, design: .rounded))
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                         Spacer()
                         Button("Exit") {
                             session.isTrashKioskMode = false
@@ -85,7 +85,7 @@ struct TrashStationView: View {
                         if let last = session.trashEvents.first {
                             Text(last.itemName)
                                 .font(.system(size: 14, weight: .bold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                                 .accessibilityIdentifier(TestIdentifiers.lastScannedItem)
                         }
 
@@ -104,7 +104,7 @@ struct TrashStationView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Unknown scans")
                                     .font(.system(size: 16, weight: .heavy, design: .rounded))
-                                    .foregroundStyle(MekasaTheme.brand)
+                                    .foregroundStyle(MekasaTheme.text)
                                 ForEach(session.unknownTrashScans.prefix(12)) { event in
                                     Text(event.barcode)
                                         .font(.system(size: 13, weight: .semibold, design: .rounded))
@@ -251,7 +251,7 @@ struct TrashStationView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Nothing to mark gone yet")
                 .font(.system(size: 18, weight: .heavy, design: .rounded))
-                .foregroundStyle(MekasaTheme.brand)
+                .foregroundStyle(MekasaTheme.text)
             Text("Add items from Type it in or a barcode scan, then come back here.")
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .foregroundStyle(MekasaTheme.textMuted)
@@ -274,7 +274,7 @@ struct TrashStationView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                 Text("\(item.category) · qty \(item.quantity)")
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(MekasaTheme.textMuted)
