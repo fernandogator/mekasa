@@ -26,6 +26,20 @@
 | `--color-danger` | Destructive actions | `#ca0013` |
 | `--color-success` | Positive confirmation | `#2f6b4f` |
 | `--color-warning` | Low-stock / pending | `#c45c12` |
+| `--color-accent-tint` | Alert icon wells, selected receipt tiles | `#fce5e7` |
+| `--color-success-tint` | Success icon wells, member chips | `#eaf1ec` |
+| `--color-warning-tint` | Pending-approval rows | `#fff5f0` |
+| `--color-surface-muted` | Wells, image placeholders, steppers, unselected options | `#f1f4f3` |
+| `--color-progress-track` | Progress bar track | `#d5ddd9` |
+| `--color-on-brand` | Text and icons on brand / accent / success / warning fills and photos | `#ffffff` |
+| `--color-on-brand-muted` | Inactive tab icons on the brand tab bar | `#b7c6c2` |
+| `--color-camera-surface` | Camera, scanner and full-screen photo backgrounds | `#000000` |
+| `--color-on-camera` | Text, icons and reticle over the camera | `#ffffff` |
+| `--color-scrim` | Overlay on photos, used with opacity (iOS black, Android brand) | `#000000` / `#171e19` |
+| `--color-shadow` | Drop shadows, used with opacity | `#000000` |
+| `--color-grade-a` … `--color-grade-d` | Health grades A–D (E uses accent) | `#1f8a4c` `#6fa82f` `#d9a406` `#e06c1a` |
+
+These roles are the only colors screens may use (spec NFR-005 AC5). The camera, scrim and shadow roles still use pure black from before this rule; the upcoming color scheme should replace them with near-charcoal, and every text/background pair must pass WCAG AA (NFR-005 AC2) before adoption.
 
 ### Dark
 

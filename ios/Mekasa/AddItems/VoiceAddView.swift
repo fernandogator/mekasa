@@ -71,7 +71,7 @@ struct VoiceAddView: View {
                             } label: {
                                 Image(systemName: isListening ? "stop.fill" : "mic.fill")
                                     .font(.system(size: 36, weight: .semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MekasaTheme.onBrand)
                                     .frame(width: 96, height: 96)
                                     .background(MekasaTheme.accent)
                                     .clipShape(Circle())

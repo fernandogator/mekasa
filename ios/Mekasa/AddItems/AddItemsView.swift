@@ -130,8 +130,8 @@ struct AddItemsView: View {
                 .frame(width: 56, height: 56)
                 .background(
                     accent
-                        ? Color(red: 0xfc / 255, green: 0xe5 / 255, blue: 0xe7 / 255)
-                        : Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255)
+                        ? MekasaTheme.accentTint
+                        : MekasaTheme.surfaceMuted
                 )
                 .clipShape(Circle())
 
@@ -156,7 +156,7 @@ struct AddItemsView: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
+        .shadow(color: MekasaTheme.shadow.opacity(0.04), radius: 6, y: 2)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title). \(subtitle)")
     }

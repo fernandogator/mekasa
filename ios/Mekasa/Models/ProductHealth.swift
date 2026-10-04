@@ -206,10 +206,10 @@ struct AvoidancesResponseDTO: Codable, Equatable {
 enum HealthGrade {
     static func color(for grade: String?) -> Color {
         switch grade?.uppercased() ?? "" {
-        case "A": return Color(red: 0x1f / 255, green: 0x8a / 255, blue: 0x4c / 255)
-        case "B": return Color(red: 0x6f / 255, green: 0xa8 / 255, blue: 0x2f / 255)
-        case "C": return Color(red: 0xd9 / 255, green: 0xa4 / 255, blue: 0x06 / 255)
-        case "D": return Color(red: 0xe0 / 255, green: 0x6c / 255, blue: 0x1a / 255)
+        case "A": return MekasaTheme.gradeA
+        case "B": return MekasaTheme.gradeB
+        case "C": return MekasaTheme.gradeC
+        case "D": return MekasaTheme.gradeD
         case "E": return MekasaTheme.accent
         default: return MekasaTheme.brandMuted
         }
@@ -229,8 +229,8 @@ enum HealthGrade {
     static func concernColor(_ concern: String) -> Color {
         switch concern {
         case "high": return MekasaTheme.accent
-        case "moderate": return Color(red: 0xe0 / 255, green: 0x6c / 255, blue: 0x1a / 255)
-        case "low": return Color(red: 0xd9 / 255, green: 0xa4 / 255, blue: 0x06 / 255)
+        case "moderate": return MekasaTheme.gradeD
+        case "low": return MekasaTheme.gradeC
         case "none": return MekasaTheme.success
         default: return MekasaTheme.brandMuted
         }

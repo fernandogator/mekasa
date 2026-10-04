@@ -2,6 +2,8 @@ import SwiftUI
 import UIKit
 
 /// Mekasa design tokens from design/design-system.md
+/// Satisfies: NFR-005 AC5 — screens use only these roles, never literal colors,
+/// so a color scheme change is made here and contrast-checked per role pair.
 enum MekasaTheme {
     static let brand = Color(red: 0x17 / 255, green: 0x1e / 255, blue: 0x19 / 255)
     static let brandMuted = Color(red: 0xb7 / 255, green: 0xc6 / 255, blue: 0xc2 / 255)
@@ -11,6 +13,28 @@ enum MekasaTheme {
     static let textMuted = Color(red: 0x6d / 255, green: 0x7a / 255, blue: 0x76 / 255)
     static let accent = Color(red: 0xca / 255, green: 0x00 / 255, blue: 0x13 / 255)
     static let success = Color(red: 0x2f / 255, green: 0x6b / 255, blue: 0x4f / 255)
+    static let warning = Color(red: 0xc4 / 255, green: 0x5c / 255, blue: 0x12 / 255)
+    static let accentTint = Color(red: 0xfc / 255, green: 0xe5 / 255, blue: 0xe7 / 255)
+    static let successTint = Color(red: 0xea / 255, green: 0xf1 / 255, blue: 0xec / 255)
+    static let warningTint = Color(red: 1, green: 0xf5 / 255, blue: 0xf0 / 255)
+    /// Neutral fill for wells, image placeholders, steppers and unselected options.
+    static let surfaceMuted = Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255)
+    static let progressTrack = Color(red: 0xd5 / 255, green: 0xdd / 255, blue: 0xd9 / 255)
+    /// Text and icons on brand, accent, success and warning fills, and over photos.
+    static let onBrand = Color.white
+    /// Full-screen camera, scanner and photo viewer background.
+    static let cameraSurface = Color.black
+    /// Text, icons and the reticle over `cameraSurface` or a live preview.
+    static let onCamera = Color.white
+    /// Darkening overlay on photos (busy spinners, overlaid text); always used with opacity.
+    static let scrim = Color.black
+    static let shadow = Color.black
+
+    /// Nutri-Score style A–D health grade colors; E uses `accent`.
+    static let gradeA = Color(red: 0x1f / 255, green: 0x8a / 255, blue: 0x4c / 255)
+    static let gradeB = Color(red: 0x6f / 255, green: 0xa8 / 255, blue: 0x2f / 255)
+    static let gradeC = Color(red: 0xd9 / 255, green: 0xa4 / 255, blue: 0x06 / 255)
+    static let gradeD = Color(red: 0xe0 / 255, green: 0x6c / 255, blue: 0x1a / 255)
 
     static let displayFont = Font.system(size: 32, weight: .black, design: .rounded)
     static let titleFont = Font.system(size: 28, weight: .black, design: .rounded)
@@ -74,13 +98,13 @@ struct PrimaryButton: View {
                     .opacity(isLoading ? 0 : 1)
                 if isLoading {
                     ProgressView()
-                        .tint(.white)
+                        .tint(MekasaTheme.onBrand)
                 }
             }
             .font(.system(size: 17, weight: .bold, design: .rounded))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
-            .foregroundStyle(.white)
+            .foregroundStyle(MekasaTheme.onBrand)
             .background(disabled || isLoading ? MekasaTheme.brandMuted : MekasaTheme.accent)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .shadow(color: MekasaTheme.accent.opacity(disabled ? 0 : 0.22), radius: 12, y: 6)
@@ -180,7 +204,7 @@ struct StickyBottomBar<Content: View>: View {
             if let progress {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Color(red: 0xd5 / 255, green: 0xdd / 255, blue: 0xd9 / 255))
+                        Capsule().fill(MekasaTheme.progressTrack)
                         Capsule()
                             .fill(MekasaTheme.brand)
                             .frame(width: max(8, geo.size.width * progress))
@@ -260,7 +284,7 @@ struct HouseholdPhotoView: View {
             )
             Image(systemName: "house.fill")
                 .font(.system(size: 36, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(MekasaTheme.onBrand.opacity(0.85))
         }
     }
 }

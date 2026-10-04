@@ -105,14 +105,14 @@ struct EditableProductThumbnail: View {
             .overlay {
                 if isUploading {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(.black.opacity(0.35))
-                        .overlay { ProgressView().tint(.white) }
+                        .fill(MekasaTheme.scrim.opacity(0.35))
+                        .overlay { ProgressView().tint(MekasaTheme.onBrand) }
                 }
             }
             .overlay(alignment: .bottomTrailing) {
                 Image(systemName: "camera.fill")
                     .font(.system(size: max(9, size * 0.16), weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MekasaTheme.onBrand)
                     .padding(4)
                     .background(MekasaTheme.brand.opacity(0.85))
                     .clipShape(Circle())

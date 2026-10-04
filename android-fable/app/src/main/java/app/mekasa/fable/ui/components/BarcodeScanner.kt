@@ -38,7 +38,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -91,12 +90,12 @@ fun BarcodeScanner(
                     .align(Alignment.Center)
                     .fillMaxWidth(0.72f)
                     .height((height * 0.42f).dp)
-                    .border(2.dp, Color.White.copy(alpha = 0.85f), Shapes.well),
+                    .border(2.dp, palette.onCamera.copy(alpha = 0.85f), Shapes.well),
             )
             Text(
                 "Point at a UPC / EAN barcode",
                 style = Type.caption,
-                color = Color.White.copy(alpha = 0.85f),
+                color = palette.onCamera.copy(alpha = 0.85f),
                 modifier = Modifier.align(Alignment.BottomCenter).padding(Space.md),
             )
         } else {
@@ -105,9 +104,9 @@ fun BarcodeScanner(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
             ) {
-                Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, tint = Color.White, modifier = Modifier.size(36.dp))
+                Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, tint = palette.onCamera, modifier = Modifier.size(36.dp))
                 Spacer(Modifier.height(Space.sm))
-                Text("Camera access lets you scan barcodes live.", style = Type.caption, color = Color.White.copy(alpha = 0.85f))
+                Text("Camera access lets you scan barcodes live.", style = Type.caption, color = palette.onCamera.copy(alpha = 0.85f))
                 Spacer(Modifier.height(Space.md))
                 SecondaryButton(
                     text = "Allow camera",

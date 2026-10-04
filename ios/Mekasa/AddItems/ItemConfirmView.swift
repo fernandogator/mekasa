@@ -389,7 +389,7 @@ struct ItemConfirmView: View {
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(MekasaTheme.textMuted)
                             .frame(width: 28, height: 28)
-                            .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                            .background(MekasaTheme.surfaceMuted)
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
@@ -413,7 +413,7 @@ struct ItemConfirmView: View {
                 } label: {
                     Label("Scan item & take picture", systemImage: "barcode.viewfinder")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MekasaTheme.onBrand)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .background(MekasaTheme.brand)
@@ -431,7 +431,7 @@ struct ItemConfirmView: View {
                             .foregroundStyle(MekasaTheme.brand)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                            .background(MekasaTheme.surfaceMuted)
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     .buttonStyle(.plain)
@@ -459,7 +459,7 @@ struct ItemConfirmView: View {
                     Image(systemName: "minus")
                         .font(.system(size: 12, weight: .bold))
                         .frame(width: 32, height: 32)
-                        .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                        .background(MekasaTheme.surfaceMuted)
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
@@ -474,7 +474,7 @@ struct ItemConfirmView: View {
                     Image(systemName: "plus")
                         .font(.system(size: 12, weight: .bold))
                         .frame(width: 32, height: 32)
-                        .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                        .background(MekasaTheme.surfaceMuted)
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)

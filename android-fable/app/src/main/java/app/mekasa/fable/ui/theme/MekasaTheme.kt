@@ -21,6 +21,9 @@ import androidx.compose.ui.unit.sp
 /**
  * Semantic palette from design/DESIGN_SYSTEM.md. Screens read colours through
  * [MekasaTheme.palette] so dark mode (UI-001 AC3) only needs a second instance.
+ *
+ * Satisfies: NFR-005 AC5 — screens never use literal colours, so a colour
+ * scheme change is made here and contrast-checked per role pair.
  */
 @Immutable
 data class MekasaPalette(
@@ -37,6 +40,14 @@ data class MekasaPalette(
     val successTint: Color,
     val accentTint: Color,
     val warningTint: Color,
+    /** Text and icons on brand, accent and success fills. */
+    val onBrand: Color,
+    /** Inactive icons on the brand-coloured tab bar. */
+    val onBrandMuted: Color,
+    /** Text, icons and the reticle over the live camera preview. */
+    val onCamera: Color,
+    /** Gradient laid over photos so overlaid text keeps contrast (NFR-005 AC2). */
+    val photoScrim: Color,
     val isDark: Boolean,
 )
 
@@ -54,6 +65,10 @@ val LightPalette = MekasaPalette(
     successTint = Color(0xFFEAF1EC),
     accentTint = Color(0xFFFCE5E7),
     warningTint = Color(0xFFFFF5F0),
+    onBrand = Color(0xFFFFFFFF),
+    onBrandMuted = Color(0xFFB7C6C2),
+    onCamera = Color(0xFFFFFFFF),
+    photoScrim = Color(0xFF171E19),
     isDark = false,
 )
 
@@ -71,6 +86,10 @@ val DarkPalette = MekasaPalette(
     successTint = Color(0xFF1F3328),
     accentTint = Color(0xFF3A1A1E),
     warningTint = Color(0xFF3A2A1C),
+    onBrand = Color(0xFFFFFFFF),
+    onBrandMuted = Color(0xFFB7C6C2),
+    onCamera = Color(0xFFFFFFFF),
+    photoScrim = Color(0xFF171E19),
     isDark = true,
 )
 
@@ -124,7 +143,7 @@ private fun MekasaPalette.toColorScheme(): ColorScheme = if (isDark) {
     )
 } else {
     lightColorScheme(
-        primary = brand, onPrimary = Color.White, secondary = brandMuted, background = surface,
+        primary = brand, onPrimary = onBrand, secondary = brandMuted, background = surface,
         surface = surfaceElevated, onBackground = text, onSurface = text, error = accent,
         surfaceVariant = surfaceElevated, onSurfaceVariant = textMuted, outline = brandMuted,
     )
