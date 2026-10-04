@@ -390,12 +390,9 @@ class ReceiptLineItem(BaseModel):
     image_url: str | None = Field(default=None, max_length=2048)
     identified: bool = False
     # Line text as printed (before abbreviation expansion) and any item code
-    # printed on the line; both feed the per-store catalog.
+    # printed on the line; both feed the shared catalog's aliases (ADR-008).
     receipt_text: str | None = Field(default=None, max_length=200)
     receipt_code: str | None = Field(default=None, max_length=64)
-    # Row in the store's shared table; clients send it back with an in-store
-    # capture (barcode + photo) when the catalog could not identify the line.
-    store_item_id: str | None = Field(default=None, max_length=120)
 
 
 class ReceiptScanRequest(BaseModel):
@@ -417,74 +414,8 @@ class ReceiptScanResponse(BaseModel):
     household_id: str
     engine: str
     items: list[ReceiptLineItem]
-    store_id: str | None = None
+    # Printed store brand ("Walmart #1234"); shown in capture guidance (REQ-RCP-020).
     store_name: str | None = None
-
-
-StoreCodeSource = Literal["receipt", "catalog", "manual_scan"]
-StoreItemStatus = Literal["confirmed", "conflict", "receipt_only", "manual_only"]
-
-
-class StoreItemCode(BaseModel):
-    """One UPC / store SKU discovered for a store item, with where it came from."""
-
-    code: str
-    kind: Literal["upc", "sku"]
-    sources: list[StoreCodeSource]
-    seen_count: int = 1
-    first_seen: datetime
-    last_seen: datetime
-
-
-class StoreCatalogItem(BaseModel):
-    """
-    One row of a store's shared item table: a receipt line and/or a manual scan
-    (receipt_text is None when the item was only ever scanned).
-
-    status compares manually scanned codes with receipt / catalog codes:
-    confirmed = a manual scan matches a receipt or catalog code,
-    conflict = both exist but none match,
-    receipt_only / manual_only = only one side has a code (or none yet).
-    """
-
-    id: str
-    store_id: str
-    receipt_text: str | None = None
-    name: str
-    category: str = "Other"
-    last_price: float | None = None
-    codes: list[StoreItemCode] = Field(default_factory=list)
-    status: StoreItemStatus = "receipt_only"
-    # Latest in-store photo; photo_url is filled by the API when served.
-    photo_id: str | None = None
-    photo_url: str | None = None
-    updated_at: datetime
-
-
-class StoreCatalogSummary(BaseModel):
-    """A store that has a shared item table."""
-
-    id: str
-    name: str
-    address: str | None = None
-    item_count: int = 0
-    updated_at: datetime
-
-
-class PhotoUploadResponse(BaseModel):
-    """A stored user photo; url is public by unguessable id."""
-
-    id: str
-    url: str
-
-
-class StoreCatalogListResponse(BaseModel):
-    stores: list[StoreCatalogSummary]
-
-
-class StoreCatalogItemsResponse(BaseModel):
-    store: StoreCatalogSummary
-    items: list[StoreCatalogItem]
 
 
 class ItemPhotoUploadResponse(BaseModel):

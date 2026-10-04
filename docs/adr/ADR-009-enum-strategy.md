@@ -22,9 +22,9 @@ and the new `products.image_source` column was added) by
 `DROP CONSTRAINT IF EXISTS` / `ADD CONSTRAINT` inside one idempotent
 script.
 
-Before the PR #106 cleanup and the retirement of the prototype
-`store_catalog.sql`, we want to confirm whether that trade-off still
-holds while the schema is young and cheap to change.
+With the prototype `store_catalog.sql` (PR #106) retired, we want to
+confirm whether that trade-off still holds while the schema is young
+and cheap to change.
 
 ## Decision
 
@@ -133,8 +133,9 @@ against the database?
   `enrichment_steps.adapter`/`status`, and `enrichment_jobs.result_source`
   have no Python `Literal` yet; add them when the enrichment worker is
   implemented.
-- The prototype `store_catalog.sql` (PR #106) is out of scope here; it
-  is being retired rather than aligned with this pattern.
+- The prototype `store_catalog.sql` (PR #106) was out of scope here; it
+  was retired rather than aligned with this pattern (migration
+  `0003_retire_store_catalog_prototype.sql`, 2026-10-03).
 
 ## References
 

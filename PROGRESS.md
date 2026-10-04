@@ -96,7 +96,12 @@
 
 ## Running Log
 
-### 2026-09-28 — Gemini receipt scanning + shared per-store UPC table
+### 2026-10-03 — Retired the prototype per-store Postgres tables
+- Removed `backend/app/store_catalog.py` / `store_catalog.sql` (PR #106 prototype: `stores`, `store_items`, `store_item_codes`, `photos`, `household_latest_receipts`) and the `/v1/store-catalogs*`, `/v1/households/{id}/photos`, `…/store-catalogs/{store}/items/{item}/capture`, `/v1/photos/{id}` routes. The ADR-008 catalog (`backend/postgres/migrations`) is the only Postgres schema; the API no longer runs DDL at startup.
+- Migration `0003_retire_store_catalog_prototype.sql` drops the prototype tables (`.down.sql` recreates them empty). **Apply it once against `mekasa-pg`** (`psql "$DATABASE_URL" -f backend/postgres/migrations/0003_retire_store_catalog_prototype.sql`).
+- Receipt scan response drops `store_id` and per-line `store_item_id` (keeps `store_name`); iOS in-store capture now = barcode lookup + household-private photo (REQ-INV-019). The shared-catalog write for captures lands with the REQ-RCP-020 `capture` endpoints.
+
+### 2026-09-28 — Gemini receipt scanning + shared per-store UPC table (superseded 2026-10-03)
 - Receipt scan now calls Gemini (`gemini-3.1-pro-preview`, Vertex AI `global`) on the photo or pasted text: expanded product names, qty, price, category, printed item codes, store name/address. Vision OCR + regex stays as fallback (`engine` = `gemini` / `vision` / `text` / `stub`).
 - New shared per-store tables in **Postgres (Cloud SQL `mekasa-pg`)**, schema `backend/app/store_catalog.sql`: every receipt line with printed + Open Food Facts UPCs; confirmed barcode adds are compared with the household's latest receipt (code match → `confirmed`, differing code → `conflict`, unmatched → own `manual_only` row).
 - `GET /v1/store-catalogs`, `GET /v1/store-catalogs/{store_id}/items`. Unit: `test_receipt_llm`, `test_store_catalog`.

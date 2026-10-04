@@ -1,5 +1,8 @@
--- Shared per-store item / UPC tables (all accounts). Idempotent: applied on
--- API startup by PostgresStoreCatalogRepository.apply_schema().
+-- Rollback of 0003_retire_store_catalog_prototype: recreates the prototype
+-- tables with the DDL the API used to apply at startup
+-- (backend/app/store_catalog.sql, PR #106). Rows are not restored.
+
+BEGIN;
 
 CREATE TABLE IF NOT EXISTS stores (
     id          text PRIMARY KEY,
@@ -18,6 +21,7 @@ CREATE TABLE IF NOT EXISTS store_items (
     last_price    numeric(10, 2),
     status        text NOT NULL
         CHECK (status IN ('confirmed', 'conflict', 'receipt_only', 'manual_only')),
+    photo_id      uuid,
     updated_at    timestamptz NOT NULL,
     PRIMARY KEY (store_id, id)
 );
@@ -35,9 +39,6 @@ CREATE TABLE IF NOT EXISTS store_item_codes (
     FOREIGN KEY (store_id, item_id) REFERENCES store_items (store_id, id) ON DELETE CASCADE
 );
 
--- User photos: in-store captures for items the catalog could not identify
--- (store_id / item_id set) and replacement item pictures (both null).
--- Served publicly by unguessable id (/v1/photos/{id}).
 CREATE TABLE IF NOT EXISTS photos (
     id            uuid PRIMARY KEY,
     household_id  text NOT NULL,
@@ -49,15 +50,13 @@ CREATE TABLE IF NOT EXISTS photos (
     FOREIGN KEY (store_id, item_id) REFERENCES store_items (store_id, id) ON DELETE CASCADE
 );
 
-ALTER TABLE store_items ADD COLUMN IF NOT EXISTS photo_id uuid;
-
--- "Which stores / items carry this UPC?" lookups.
 CREATE INDEX IF NOT EXISTS store_item_codes_code_idx ON store_item_codes (code);
 
--- Per-household pointer used to compare manual scans with the latest receipt.
 CREATE TABLE IF NOT EXISTS household_latest_receipts (
     household_id  text PRIMARY KEY,
     store_id      text NOT NULL REFERENCES stores (id),
     item_ids      text[] NOT NULL,
     scanned_at    timestamptz NOT NULL
 );
+
+COMMIT;
