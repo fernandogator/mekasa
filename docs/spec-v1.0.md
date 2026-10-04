@@ -343,7 +343,7 @@ Acceptance Criteria:
 Priority: P0
 Design Artifact: design/mockups/ (all screens)
 User Flow: design/user-flows.md
-Test File: android/src/test/ui/
+Test File: android-fable/app/src/test/java/app/mekasa/fable/ui/
 Acceptance Criteria:
 - AC1: Built entirely in Jetpack Compose, no XML layouts
 - AC2: Follows Material Design 3
@@ -363,7 +363,7 @@ Acceptance Criteria:
 Priority: P0
 Design Artifact: design/mockups/OnboardingStoreSelection.jsx
 User Flow: design/user-flows.md
-Test File: android/src/test/ui/OnboardingUITest.kt, ios/MekasaTests/UI/OnboardingUITest.swift
+Test File: android-fable/app/src/test/java/app/mekasa/fable/ui/OnboardingUITest.kt, ios/MekasaTests/UI/OnboardingUITest.swift
 Acceptance Criteria:
 - AC1: Follows sequence: signup → household name/photo → address
   confirmation → store selection → inventory scan → invite prompt
@@ -374,7 +374,7 @@ Acceptance Criteria:
 Priority: P0
 Design Artifact: design/mockups/Dashboard.jsx
 User Flow: design/user-flows.md
-Test File: android/src/test/ui/DashboardUITest.kt, ios/MekasaTests/UI/DashboardUITest.swift
+Test File: android-fable/app/src/test/java/app/mekasa/fable/ui/DashboardUITest.kt, ios/MekasaTests/UI/DashboardUITest.swift
 Acceptance Criteria:
 - AC1: Displays low-stock items prominently
 - AC2: Displays pending child requests for Owner users
@@ -387,7 +387,7 @@ Priority: P0
 Design Artifact: design/mockups/TrashStationMode.jsx
 User Flow: design/user-flows.md
 Test File: ios/Tests/UI/Structure/UI005StructureTests.swift,
-  android/app/src/test/java/app/mekasa/android/ui/TrashStationModeUITest.kt,
+  android-fable/app/src/test/java/app/mekasa/fable/ui/TrashStationModeUITest.kt,
   ios/MekasaTests/ScanFeedbackTests.swift, ios/MekasaTests/ScanCooldownTests.swift
 Acceptance Criteria:
 - AC1: Simplified single-purpose UI for scanning only

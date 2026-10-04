@@ -31,7 +31,7 @@ All screens are **390×844** (mobile-first, iPhone SE/13 mini) with full navigat
 ./design/scripts/sync_scanner_beep.sh
 ```
 
-That copies to `ios/Mekasa/Sounds/scanner-beep.mp3` and `android/app/src/main/res/raw/scanner_beep.mp3`. Unknown scans use a platform nack tone instead. Family → **Scan sounds** (default on) mutes beep + haptic/vibrate on that device. Quiet under UI tests.
+That copies to `ios/Mekasa/Sounds/scanner-beep.mp3` and `android-fable/app/src/main/res/raw/scanner_beep.mp3`. Unknown scans use a platform nack tone instead. Family → **Scan sounds** (default on) mutes beep + haptic/vibrate on that device. Quiet under UI tests.
 
 ### 📚 Documentation
 

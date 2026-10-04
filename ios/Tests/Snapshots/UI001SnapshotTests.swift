@@ -10,7 +10,6 @@ import XCTest
 
 final class UI001SnapshotTests: XCTestCase {
     func testAndroidInterface_placeholderOnIOS() throws {
-        // TODO: Android Compose screenshot baselines under android/
         throw XCTSkip("UI-001 is Android-only")
     }
 }
