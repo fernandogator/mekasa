@@ -300,6 +300,65 @@ paths:
           description: '`receipt_confirmed`'
           content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
 
+  /v1/households/{household_id}/receipts/{receipt_id}/line-items/{line_item_id}/no-barcode:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+      - $ref: '#/components/parameters/ReceiptId'
+      - $ref: '#/components/parameters/LineItemId'
+    post:
+      tags: [line-items]
+      operationId: markLineItemNoBarcode
+      summary: Mark this receipt text as having no barcode (deli, bakery, butcher)
+      description: |
+        Satisfies: REQ-RCP-020 AC10 · Spec version: 1.0
+
+        Saves the line as a household item with no code and remembers the
+        choice for this household under the store chain + normalized receipt
+        text (Firestore `households/{hid}/no_barcode_aliases/{chain}:{alias}`).
+        Nothing is written to the shared catalog; `photo_id` must be a
+        household-private item photo (`item-photos`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name, category]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 120 }
+                category: { type: string, minLength: 1, maxLength: 60 }
+                photo_id: { type: [string, 'null'], format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LineItem' }
+        '400':
+          description: '`unknown_photo_id`'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: '`receipt_confirmed`'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    delete:
+      tags: [line-items]
+      operationId: clearLineItemNoBarcode
+      summary: 'Forget the no-barcode choice ("This item has a barcode")'
+      description: |
+        Satisfies: REQ-RCP-020 AC10 · Spec version: 1.0
+
+        Deletes the remembered alias; the line gets `capture_available: true`
+        again.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LineItem' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /v1/households/{household_id}/receipts/{receipt_id}/line-items/{line_item_id}/candidates:
     parameters:
       - $ref: '#/components/parameters/HouseholdId'
@@ -1045,7 +1104,13 @@ components:
           description: |
             True when `barcode` is null or `resolution_status` is
             `needs_review`/`unresolved`: the client offers "Scan product"
-            (REQ-RCP-020 AC1).
+            (REQ-RCP-020 AC1). False when `no_barcode` is true.
+        no_barcode:
+          type: boolean
+          description: |
+            The household marked this receipt text (per store chain) as having
+            no barcode (REQ-RCP-020 AC10); the client shows a "No barcode"
+            chip instead of "Scan →".
         user_edited_fields:
           type: array
           items:
