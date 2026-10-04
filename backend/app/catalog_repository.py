@@ -34,6 +34,7 @@ from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
 
+from app.categories import Category, normalize_category
 from app.config import Settings, get_settings
 
 # ---------------------------------------------------------------------------
@@ -124,7 +125,7 @@ class CatalogProduct(BaseModel):
     name: str
     normalized_name: str
     brand: str | None = None
-    category: str
+    category: Category
     unit_size: str | None = None
     image_url: str | None = None
     image_source: ImageSource | None = None
@@ -173,7 +174,7 @@ class ReceiptLineSave(BaseModel):
 
     raw_text: str
     description: str
-    category: str
+    category: Category
     brand: str | None = None
     unit_size: str | None = None
     product_id: str | None = None
@@ -366,6 +367,8 @@ def _capture(
     photo_applied: str = "none"
     conflict: CatalogConflict | None = None
     enrichment_job_id: str | None = None
+    category = normalize_category(category) if category else None
+    fallback_category = normalize_category(fallback_category)
     overrides = {k: v for k, v in {"name": name, "brand": brand, "category": category, "unit_size": unit_size}.items() if v}
 
     if previous is not None:
@@ -419,6 +422,8 @@ def _correct(
     photo_id: str | None, receipt_id: str | None, line_item_id: str | None,
 ) -> CorrectionResult:
     """REQ-RCP-019 AC3 (design §3.11 step 1, shared-product layer)."""
+    if changes.get("category"):
+        changes = {**changes, "category": normalize_category(changes["category"])}
     product = _follow(session, session.get(product_id, for_update=True))
     if product is None:
         raise ProductNotFound(product_id)
