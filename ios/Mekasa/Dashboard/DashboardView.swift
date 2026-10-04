@@ -59,7 +59,7 @@ struct DashboardView: View {
             if let toast {
                 Text(toast)
                     .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MekasaTheme.onBrand)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background(MekasaTheme.brand)
@@ -100,16 +100,16 @@ struct DashboardView: View {
                             .foregroundStyle(MekasaTheme.brandMuted)
                         Text(householdTitle)
                             .font(.system(size: 30, weight: .black, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MekasaTheme.onBrand)
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
                             .minimumScaleFactor(0.8)
-                            .shadow(color: .black.opacity(0.25), radius: 4, y: 1)
+                            .shadow(color: MekasaTheme.shadow.opacity(0.25), radius: 4, y: 1)
 
                         if session.household?.photoURL == nil {
                             Text("Tap to add a home photo")
                                 .font(.system(size: 13, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.9))
+                                .foregroundStyle(MekasaTheme.onBrand.opacity(0.9))
                                 .padding(.top, 2)
                         }
                     }
@@ -136,16 +136,16 @@ struct DashboardView: View {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: "bell")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MekasaTheme.onBrand)
                         .frame(width: 40, height: 40)
-                        .background(.white.opacity(0.22))
+                        .background(MekasaTheme.onBrand.opacity(0.22))
                         .background(.ultraThinMaterial)
                         .clipShape(Circle())
                     if !pendingApprovals.isEmpty {
                         Circle()
                             .fill(MekasaTheme.accent)
                             .frame(width: 8, height: 8)
-                            .overlay(Circle().stroke(Color.white, lineWidth: 1))
+                            .overlay(Circle().stroke(MekasaTheme.onBrand, lineWidth: 1))
                             .offset(x: -2, y: 2)
                     }
                 }
@@ -236,7 +236,7 @@ struct DashboardView: View {
             } label: {
                 statCard(
                     icon: "exclamationmark.circle",
-                    iconBg: Color(red: 0xfc / 255, green: 0xe5 / 255, blue: 0xe7 / 255),
+                    iconBg: MekasaTheme.accentTint,
                     label: "Low Stock",
                     value: "\(session.lowStockCount) items"
                 )
@@ -250,7 +250,7 @@ struct DashboardView: View {
             } label: {
                 statCard(
                     icon: "creditcard",
-                    iconBg: Color(red: 0xea / 255, green: 0xf1 / 255, blue: 0xec / 255),
+                    iconBg: MekasaTheme.successTint,
                     label: "Spend",
                     value: String(format: "$%.0f", displayedSpend),
                     suffix: "/cap"
@@ -302,7 +302,7 @@ struct DashboardView: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
+        .shadow(color: MekasaTheme.shadow.opacity(0.04), radius: 6, y: 2)
     }
 
     private var needsApprovalSection: some View {
@@ -343,7 +343,7 @@ struct DashboardView: View {
                     RoundedRectangle(cornerRadius: 32, style: .continuous)
                         .stroke(MekasaTheme.brandMuted.opacity(0.25), lineWidth: 1)
                 )
-                .shadow(color: .black.opacity(0.08), radius: 24, y: 12)
+                .shadow(color: MekasaTheme.shadow.opacity(0.08), radius: 24, y: 12)
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier(TestIdentifiers.requestQueue)
             }
@@ -376,7 +376,7 @@ struct DashboardView: View {
                         .font(.system(size: 18, weight: .bold))
                         .foregroundStyle(MekasaTheme.brand)
                         .frame(width: 44, height: 44)
-                        .background(Color(red: 0xea / 255, green: 0xf1 / 255, blue: 0xec / 255))
+                        .background(MekasaTheme.successTint)
                         .clipShape(Circle())
                     VStack(alignment: .leading, spacing: 2) {
                         Text(ShoppingTeaser.headline(session.shoppingList))
@@ -412,7 +412,7 @@ struct DashboardView: View {
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(MekasaTheme.brand)
                 .frame(width: 40, height: 40)
-                .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                .background(MekasaTheme.surfaceMuted)
                 .clipShape(Circle())
                 .accessibilityIdentifier(TestIdentifiers.itemThumbnail)
 
@@ -448,7 +448,7 @@ struct DashboardView: View {
                 } label: {
                     Image(systemName: "checkmark")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MekasaTheme.onBrand)
                         .frame(width: 40, height: 40)
                         .background(MekasaTheme.brand)
                         .clipShape(Circle())
@@ -473,7 +473,7 @@ struct DashboardView: View {
                     HStack(alignment: .top, spacing: 16) {
                         Circle()
                             .fill(item.kind == .warning
-                                  ? Color(red: 0xc4 / 255, green: 0x5c / 255, blue: 0x12 / 255)
+                                  ? MekasaTheme.warning
                                   : MekasaTheme.success)
                             .frame(width: 8, height: 8)
                             .padding(.top, 8)

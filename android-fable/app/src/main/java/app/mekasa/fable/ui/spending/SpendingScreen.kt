@@ -124,7 +124,7 @@ private fun PeriodToggle(selected: String, onSelect: (String) -> Unit) {
                 Text(
                     label,
                     style = Type.caption,
-                    color = if (active) (if (palette.isDark) palette.surface else Color.White) else palette.textMuted,
+                    color = if (active) (if (palette.isDark) palette.surface else palette.onBrand) else palette.textMuted,
                     textAlign = TextAlign.Center,
                 )
             }

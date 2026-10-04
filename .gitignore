@@ -28,7 +28,6 @@ service-account*.json
 # (android-fable/app/google-services.json) and *.example files are tracked.
 google-services*.json
 !google-services.json.example
-!android/app/google-services.json
 !android-fable/app/google-services.json
 GoogleService-Info*.plist
 !ios/Config/GoogleService-Info.ci.plist
@@ -49,8 +48,8 @@ __pycache__/
 .pytest_cache/
 
 # Android
-android/local.properties
-android/.kotlin/
+android-fable/local.properties
+android-fable/.kotlin/
 **/.gradle/
 **/build/
 

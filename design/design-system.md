@@ -33,6 +33,9 @@
 | `--color-camera-surface` | Camera viewfinder and full-screen camera | `#1a1918` |
 | `--color-on-camera` | Text and icons on the camera surface | `#faf7f3` |
 | `--color-overlay` | Sage wash / atmosphere | `rgba(143, 160, 133, 0.15)` |
+| `--color-grade-a` … `--color-grade-d` | Health grades A–D (E uses danger) | `#1f8a4c` `#6fa82f` `#d9a406` `#e06c1a` |
+
+These roles are the only colors screens may use (spec NFR-005 AC5).
 
 Decorative only, never text: amber `#c48c5a` and light sage `#b8d4a8`.
 

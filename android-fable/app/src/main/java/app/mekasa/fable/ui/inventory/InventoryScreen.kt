@@ -35,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -202,12 +201,12 @@ fun SwipeActionPane(action: SwipeAction, modifier: Modifier = Modifier) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.xs)) {
             when (action) {
                 SwipeAction.UseOne -> {
-                    Icon(Icons.Filled.Remove, contentDescription = null, tint = Color.White)
-                    Text("Use 1", style = Type.button, color = Color.White)
+                    Icon(Icons.Filled.Remove, contentDescription = null, tint = palette.onBrand)
+                    Text("Use 1", style = Type.button, color = palette.onBrand)
                 }
                 SwipeAction.Remove -> {
-                    Icon(Icons.Filled.Delete, contentDescription = null, tint = Color.White)
-                    Text("Remove", style = Type.button, color = Color.White)
+                    Icon(Icons.Filled.Delete, contentDescription = null, tint = palette.onBrand)
+                    Text("Remove", style = Type.button, color = palette.onBrand)
                 }
             }
         }
@@ -239,7 +238,7 @@ private fun UndoToast(
                 .testTag(TestTags.INVENTORY_UNDO_TOAST),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Item removed", style = Type.body, color = Color.White, modifier = Modifier.weight(1f))
+            Text("Item removed", style = Type.body, color = palette.onBrand, modifier = Modifier.weight(1f))
             TextButton(onClick = onUndo, modifier = Modifier.testTag(TestTags.INVENTORY_UNDO_BUTTON)) {
                 Text("Undo", style = Type.button, color = palette.brandMuted)
             }

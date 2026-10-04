@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.categories import Category, OptionalCategory
+
 
 class HealthResponse(BaseModel):
     """Liveness payload."""
@@ -178,7 +180,7 @@ class InventoryItemCreateRequest(BaseModel):
     """
 
     name: str = Field(min_length=1, max_length=120)
-    category: str = Field(default="Other", min_length=1, max_length=60)
+    category: Category = Field(default="Other", min_length=1, max_length=60)
     quantity: int = Field(default=1, ge=0, le=9999)
     low_stock_threshold: int = Field(default=1, ge=0, le=9999)
     price_paid: float | None = Field(default=None, ge=0)
@@ -195,7 +197,7 @@ class InventoryItemUpdateRequest(BaseModel):
     """
 
     name: str | None = Field(default=None, min_length=1, max_length=120)
-    category: str | None = Field(default=None, min_length=1, max_length=60)
+    category: OptionalCategory = Field(default=None, min_length=1, max_length=60)
     quantity: int | None = Field(default=None, ge=0, le=9999)
     low_stock_threshold: int | None = Field(default=None, ge=0, le=9999)
     price_paid: float | None = Field(default=None, ge=0)
@@ -341,7 +343,7 @@ class BarcodeLookupResponse(BaseModel):
     found: bool
     name: str | None = None
     brand: str | None = None
-    category: str | None = None
+    category: OptionalCategory = None
     quantity: int = 1
     image_url: str | None = None
     source: Literal[
@@ -358,7 +360,7 @@ class ProductSearchHit(BaseModel):
     barcode: str | None = None
     name: str
     brand: str | None = None
-    category: str
+    category: Category
     image_url: str | None = None
     source: Literal["openfoodfacts"] = "openfoodfacts"
     health: ProductHealth | None = None
@@ -383,7 +385,7 @@ class ReceiptLineItem(BaseModel):
     """Parsed receipt line awaiting user confirmation (REQ-005)."""
 
     name: str = Field(min_length=1, max_length=120)
-    category: str = Field(default="Other", min_length=1, max_length=60)
+    category: Category = Field(default="Other", min_length=1, max_length=60)
     quantity: int = Field(default=1, ge=1, le=9999)
     price_paid: float | None = Field(default=None, ge=0)
     barcode: str | None = Field(default=None, max_length=64)
@@ -429,6 +431,37 @@ class ItemPhotoUploadResponse(BaseModel):
 
     photo_id: str
     url: str
+
+
+class ProductPhotoUploadJson(BaseModel):
+    """
+    Satisfies: REQ-RCP-021 AC1
+    Spec version: 1.0
+
+    JSON form of the product photo upload; multipart `file` is also accepted.
+    """
+
+    image_base64: str = Field(min_length=1)
+    content_type: Literal["image/jpeg", "image/png", "image/heic"] = "image/jpeg"
+
+
+class ProductPhotoResponse(BaseModel):
+    """
+    Satisfies: REQ-RCP-021 AC1, AC4
+    Spec version: 1.0
+
+    `image_url` is the stable `/v1/product-photos/{photo_id}` path that a
+    capture stores on the product; `expires_at` stays set until a capture
+    references the photo.
+    """
+
+    photo_id: str
+    image_url: str
+    width: int
+    height: int
+    bytes: int
+    created_at: datetime
+    expires_at: datetime | None = None
 
 
 class HouseholdPhotoResponse(BaseModel):
@@ -564,7 +597,7 @@ class PurchaseEventCreateRequest(BaseModel):
     """
 
     name: str = Field(min_length=1, max_length=120)
-    category: str = Field(min_length=1, max_length=60)
+    category: Category = Field(min_length=1, max_length=60)
     price_paid: float = Field(ge=0)
     quantity: int = Field(default=1, ge=1)
     store_id: str | None = Field(default=None, max_length=120)
@@ -579,7 +612,7 @@ class PurchaseEventUpdateRequest(BaseModel):
     Spec version: 1.0
     """
 
-    category: str | None = Field(default=None, min_length=1, max_length=60)
+    category: OptionalCategory = Field(default=None, min_length=1, max_length=60)
     name: str | None = Field(default=None, min_length=1, max_length=120)
     price_paid: float | None = Field(default=None, ge=0)
 
@@ -689,7 +722,7 @@ class ProductCorrectionRequest(BaseModel):
     household_id: str = Field(min_length=1)
     name: str | None = Field(default=None, min_length=1, max_length=120)
     brand: str | None = Field(default=None, max_length=80)
-    category: str | None = Field(default=None, min_length=1, max_length=60)
+    category: OptionalCategory = Field(default=None, min_length=1, max_length=60)
     unit_size: str | None = Field(default=None, max_length=40)
     upc: str | None = Field(default=None, pattern=r"^[0-9]{8,14}$")
     source_line_item: ProductCorrectionSourceLine | None = None

@@ -34,6 +34,7 @@ from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
 
+from app.categories import Category, normalize_category
 from app.config import Settings, get_settings
 
 # ---------------------------------------------------------------------------
@@ -124,7 +125,7 @@ class CatalogProduct(BaseModel):
     name: str
     normalized_name: str
     brand: str | None = None
-    category: str
+    category: Category
     unit_size: str | None = None
     image_url: str | None = None
     image_source: ImageSource | None = None
@@ -173,7 +174,7 @@ class ReceiptLineSave(BaseModel):
 
     raw_text: str
     description: str
-    category: str
+    category: Category
     brand: str | None = None
     unit_size: str | None = None
     product_id: str | None = None
@@ -246,6 +247,7 @@ class _Session(Protocol):
         field_name: str, verified_value: str, observed_value: str,
     ) -> CatalogConflict: ...
     def search(self, q: str, store_chain_id: str | None, status: str | None, limit: int) -> list[CatalogProduct]: ...
+    def clear_image(self, image_url: str) -> int: ...
 
 
 # ---------------------------------------------------------------------------
@@ -366,6 +368,8 @@ def _capture(
     photo_applied: str = "none"
     conflict: CatalogConflict | None = None
     enrichment_job_id: str | None = None
+    category = normalize_category(category) if category else None
+    fallback_category = normalize_category(fallback_category)
     overrides = {k: v for k, v in {"name": name, "brand": brand, "category": category, "unit_size": unit_size}.items() if v}
 
     if previous is not None:
@@ -419,6 +423,8 @@ def _correct(
     photo_id: str | None, receipt_id: str | None, line_item_id: str | None,
 ) -> CorrectionResult:
     """REQ-RCP-019 AC3 (design §3.11 step 1, shared-product layer)."""
+    if changes.get("category"):
+        changes = {**changes, "category": normalize_category(changes["category"])}
     product = _follow(session, session.get(product_id, for_update=True))
     if product is None:
         raise ProductNotFound(product_id)
@@ -490,6 +496,7 @@ class CatalogRepository(Protocol):
     def rekey_to_upc(self, product_id: str, upc: str, source: str, confidence: float) -> CatalogProduct: ...
     def capture(self, **kwargs) -> CaptureResult: ...
     def correct(self, **kwargs) -> CorrectionResult: ...
+    def release_user_photo(self, photo_id: str) -> int: ...
 
 
 class _BaseRepository:
@@ -565,6 +572,15 @@ class _BaseRepository:
                 s, product_id=product_id, hh=hh, changes=changes, photo_id=photo_id,
                 receipt_id=receipt_id, line_item_id=line_item_id,
             )
+
+    def release_user_photo(self, photo_id: str) -> int:
+        """
+        REQ-RCP-021 AC5: products whose image is this user photo lose it, so
+        clients fall back to the category placeholder until enrichment finds
+        another image. Returns how many products changed.
+        """
+        with self._session() as s:
+            return s.clear_image(photo_image_url(photo_id))
 
 
 # ---------------------------------------------------------------------------
@@ -679,6 +695,14 @@ class _MemorySession:
                 scored.append((score, p.model_copy()))
         scored.sort(key=lambda t: (-t[0], t[1].id))
         return [p for _, p in scored[:limit]]
+
+    def clear_image(self, image_url: str) -> int:
+        changed = 0
+        for p in self._s.products.values():
+            if p.image_url == image_url and p.image_source == "user_photo":
+                p.image_url, p.image_source = None, None
+                changed += 1
+        return changed
 
 
 class InMemoryCatalogRepository(_BaseRepository):
@@ -873,6 +897,13 @@ class _PostgresSession:
             {"q": q, "chain": store_chain_id, "status": status, "threshold": FUZZY_CANDIDATE_THRESHOLD, "limit": limit},
         ).fetchall()
         return [_row_to_product(r) for r in rows]
+
+    def clear_image(self, image_url: str) -> int:
+        cur = self._conn.execute(
+            "UPDATE products SET image_url = NULL, image_source = NULL WHERE image_url = %s AND image_source = 'user_photo'",
+            (image_url,),
+        )
+        return cur.rowcount
 
 
 class PostgresCatalogRepository(_BaseRepository):

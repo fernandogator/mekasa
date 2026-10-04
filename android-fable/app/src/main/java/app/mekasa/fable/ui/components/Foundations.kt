@@ -192,7 +192,7 @@ fun PrimaryButton(
 ) {
     val palette = MekasaTheme.palette
     val container = if (accent) palette.accent else palette.brand
-    val content = if (palette.isDark && !accent) palette.surface else Color.White
+    val content = if (palette.isDark && !accent) palette.surface else palette.onBrand
     Button(
         onClick = onClick,
         enabled = enabled && !loading,

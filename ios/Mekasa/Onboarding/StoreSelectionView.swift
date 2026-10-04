@@ -62,7 +62,7 @@ struct StoreSelectionView: View {
                         .padding(8)
                         .background(MekasaTheme.surfaceElevated)
                         .clipShape(RoundedRectangle(cornerRadius: 40, style: .continuous))
-                        .shadow(color: .black.opacity(0.08), radius: 24, y: 12)
+                        .shadow(color: MekasaTheme.shadow.opacity(0.08), radius: 24, y: 12)
                         .overlay(
                             RoundedRectangle(cornerRadius: 40, style: .continuous)
                                 .stroke(MekasaTheme.brandMuted.opacity(0.25), lineWidth: 1)
@@ -160,7 +160,7 @@ private struct StoreRow: View {
             HStack(spacing: 16) {
                 ZStack {
                     Circle()
-                        .fill(isSelected ? Color.white : Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                        .fill(isSelected ? MekasaTheme.surfaceElevated : MekasaTheme.surfaceMuted)
                         .frame(width: 48, height: 48)
                     Text(store.initials)
                         .font(.system(size: 11, weight: .black, design: .rounded))
@@ -207,12 +207,12 @@ private struct StoreRow: View {
                     if isSelected {
                         Image(systemName: "checkmark")
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MekasaTheme.onBrand)
                     }
                 }
             }
             .padding(16)
-            .foregroundStyle(isSelected ? Color.white : MekasaTheme.brand)
+            .foregroundStyle(isSelected ? MekasaTheme.onBrand : MekasaTheme.brand)
             .background(
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
                     .fill(isSelected ? MekasaTheme.brand : Color.clear)

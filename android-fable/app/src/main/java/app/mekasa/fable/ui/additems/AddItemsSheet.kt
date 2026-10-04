@@ -558,7 +558,7 @@ private fun VoiceStep(
                     modifier = Modifier.size(56.dp).background(palette.success, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Filled.Mic, contentDescription = "Speak", tint = Color.White)
+                    Icon(Icons.Filled.Mic, contentDescription = "Speak", tint = palette.onBrand)
                 }
                 Spacer(Modifier.width(Space.md))
                 Column {
@@ -887,7 +887,7 @@ private fun StepButton(icon: ImageVector, enabled: Boolean, tag: String, onClick
             .background(if (enabled) palette.brand else palette.overlay, CircleShape)
             .testTag(tag),
     ) {
-        Icon(icon, contentDescription = null, tint = if (enabled) Color.White else palette.textMuted)
+        Icon(icon, contentDescription = null, tint = if (enabled) palette.onBrand else palette.textMuted)
     }
 }
 

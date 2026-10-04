@@ -30,7 +30,7 @@ Every function includes:
 ## Tests
 
 - Test files: one test file per UI screen, named to match the screen module.
-- Android: `android/src/test/ui/[ScreenName]UITest.kt`
+- Android: `android-fable/app/src/test/java/app/mekasa/fable/ui/[ScreenName]UITest.kt`
 - iOS: `ios/MekasaTests/UI/[ScreenName]UITest.swift`
 - Visual verification is semantic/structural, not pixel-exact.
   Content differences from test data are expected and acceptable.

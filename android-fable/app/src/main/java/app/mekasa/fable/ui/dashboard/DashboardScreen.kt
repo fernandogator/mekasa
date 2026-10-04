@@ -222,7 +222,7 @@ private fun HeroBand(
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color(0x1A171E19), Color(0x99171E19)),
+                            listOf(palette.photoScrim.copy(alpha = 0.1f), palette.photoScrim.copy(alpha = 0.6f)),
                         ),
                     ),
             )
@@ -231,9 +231,9 @@ private fun HeroBand(
                     .align(Alignment.BottomStart)
                     .padding(Space.base),
             ) {
-                Text(name, style = Type.title, color = Color.White)
+                Text(name, style = Type.title, color = palette.onBrand)
                 if (!address.isNullOrBlank()) {
-                    Text(address, style = Type.caption, color = Color.White.copy(alpha = 0.85f))
+                    Text(address, style = Type.caption, color = palette.onBrand.copy(alpha = 0.85f))
                 }
             }
             Box(
@@ -241,11 +241,11 @@ private fun HeroBand(
                     .align(Alignment.TopEnd)
                     .padding(Space.md)
                     .size(40.dp)
-                    .background(Color.White.copy(alpha = 0.25f), CircleShape)
+                    .background(palette.onBrand.copy(alpha = 0.25f), CircleShape)
                     .testTag(TestTags.EDIT_HOME_BUTTON),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Filled.PhotoCamera, contentDescription = "Edit home photo", tint = Color.White, modifier = Modifier.size(20.dp))
+                Icon(Icons.Filled.PhotoCamera, contentDescription = "Edit home photo", tint = palette.onBrand, modifier = Modifier.size(20.dp))
             }
         }
     }

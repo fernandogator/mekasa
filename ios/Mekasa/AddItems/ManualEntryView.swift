@@ -247,7 +247,7 @@ struct ManualEntryView: View {
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .foregroundStyle(selected ? Color.white : MekasaTheme.brand)
+                .foregroundStyle(selected ? MekasaTheme.onBrand : MekasaTheme.brand)
                 .background(selected ? MekasaTheme.brand : MekasaTheme.surfaceElevated)
                 .clipShape(Capsule())
                 .overlay(

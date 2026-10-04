@@ -40,12 +40,12 @@ REQ-RCP-018,"Retain Raw Gemini Output for Audit",backend/firestore/schema/llm_pa
 REQ-RCP-019,User Corrections to Product Details and Image,docs/design/gemini-receipt-parser.md §3.11; backend/postgres/migrations/0002_product_corrections.sql,test_product_corrections; test_catalog_repository + test_products_api (corrections layer); line/inventory edits pending,tests/backend/test_product_corrections.py,spec + design + contract + DDL (phase 1); catalog repository + routes tested (phase 2 slice 1); remaining tests pending,2026-10-02
 REQ-RCP-020,Scan and Photograph a Product When the UPC Is Not Discovered,docs/design/gemini-receipt-parser.md §3.11; backend/firestore/schema/scan_events.schema.json,test_line_item_capture; test_catalog_repository (capture transaction); routes pending,tests/backend/test_line_item_capture.py,spec + design + contract + DDL (phase 1); catalog repository + routes tested (phase 2 slice 1); remaining tests pending,2026-10-02
 REQ-RCP-021,"Product Photo Upload and Storage",docs/design/gemini-receipt-parser.md §3.11; backend/firestore/migrations/0001_receipt_parser.md (product_photos),test_product_photos (planned),tests/backend/test_product_photos.py,spec + design + contract (phase 1); tests pending phase 2,—
-UI-001,Native Android Interface,design/mockups/ (all screens),pending,android/src/test/ui/,not tested,—
+UI-001,Native Android Interface,design/mockups/ (all screens),pending,android-fable/app/src/test/java/app/mekasa/fable/ui/,not tested,—
 UI-002,Native iOS Interface,design/mockups/ (all screens),pending,ios/MekasaTests/UI/,not tested,—
-UI-003,Onboarding Flow,design/mockups/OnboardingStoreSelection.jsx,pending,android/src/test/ui/OnboardingUITest.kt; ios/MekasaTests/UI/OnboardingUITest.swift,not tested,—
-UI-004,Home Dashboard,design/mockups/Dashboard.jsx,pending,android/src/test/ui/DashboardUITest.kt; ios/MekasaTests/UI/DashboardUITest.swift,not tested,—
-UI-005,Trash Station Mode,design/mockups/TrashStationMode.jsx,pending,android/src/test/ui/TrashStationUITest.kt; ios/MekasaTests/UI/TrashStationUITest.swift,not tested,—
-UI-006,Inventory List Thumbnails and Item Detail,design/pages/inventory-list.html; design/pages/item-detail.html; design/mockups/InventoryList.jsx; design/mockups/ItemDetail.jsx,pending,android/src/test/ui/InventoryScreenUITest.kt; ios/MekasaTests/UI/InventoryScreenUITest.swift,not tested,—
+UI-003,Onboarding Flow,design/mockups/OnboardingStoreSelection.jsx,pending,android-fable/app/src/test/java/app/mekasa/fable/ui/OnboardingUITest.kt; ios/MekasaTests/UI/OnboardingUITest.swift,not tested,—
+UI-004,Home Dashboard,design/mockups/Dashboard.jsx,pending,android-fable/app/src/test/java/app/mekasa/fable/ui/DashboardUITest.kt; ios/MekasaTests/UI/DashboardUITest.swift,not tested,—
+UI-005,Trash Station Mode,design/mockups/TrashStationMode.jsx,pending,android-fable/app/src/test/java/app/mekasa/fable/ui/TrashStationModeUITest.kt; ios/MekasaTests/UI/TrashStationUITest.swift,not tested,—
+UI-006,Inventory List Thumbnails and Item Detail,design/pages/inventory-list.html; design/pages/item-detail.html; design/mockups/InventoryList.jsx; design/mockups/ItemDetail.jsx,pending,android-fable/app/src/test/java/app/mekasa/fable/ui/InventoryScreenUITest.kt; ios/MekasaTests/UI/InventoryScreenUITest.swift,not tested,—
 NFR-001,Scan Performance,—,pending,pending,not tested,—
 NFR-002,Data Privacy,—,pending,pending,not tested,—
 NFR-003,Offline Resilience,—,pending,pending,not tested,—

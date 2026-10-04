@@ -25,7 +25,7 @@ struct ReceiptScanView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 32, style: .continuous)
-                                .fill(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                                .fill(MekasaTheme.surfaceMuted)
                                 .frame(height: 200)
                             VStack(spacing: 12) {
                                 Image(systemName: "doc.text.viewfinder")
@@ -50,7 +50,7 @@ struct ReceiptScanView: View {
                         PhotosPicker(selection: $photoItem, matching: .images) {
                             Text("Choose receipt photo")
                                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MekasaTheme.onBrand)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
                                 .background(MekasaTheme.brand)
