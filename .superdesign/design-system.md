@@ -37,25 +37,53 @@ Mockup set for this project:
 
 ## Branding & styling
 
-### Color (light)
+### Color (light) — Rich & Grounded (2026-10-04)
 
 | Token | Role | Value |
 |-------|------|-------|
-| `--color-brand` | Charcoal ink / dark surfaces | `#171e19` |
-| `--color-brand-muted` | Sage gray-green secondary | `#b7c6c2` |
-| `--color-surface` | Page background (warm off-white) | `#eeebe3` |
-| `--color-surface-elevated` | Interactive cards / sheets only | `#ffffff` |
-| `--color-text` | Primary text | `#171e19` |
-| `--color-text-muted` | Labels, distances, secondary | `#6d7a76` |
-| `--color-accent` | CTA / focus / critical action | `#ca0013` |
-| `--color-danger` | Destructive (same family as accent) | `#ca0013` |
-| `--color-success` | Positive confirmation | `#2f6b4f` |
-| `--color-warning` | Low-stock / pending approval | `#c45c12` |
-| `--color-overlay` | Sage wash / atmosphere | `rgba(183, 198, 194, 0.20)` |
+| `--color-brand` | Warm charcoal: nav pill, dark fills, progress fill | `#5d5652` |
+| `--color-brand-muted` | Decorative sage: blobs, icon wells, tracks (never text) | `#8fa085` |
+| `--color-surface` | Page / screen background | `#ede8e0` |
+| `--color-surface-elevated` | Cards / sheets | `#faf7f3` |
+| `--color-text` | Primary text | `#5d5652` |
+| `--color-text-muted` | Secondary text, labels, codes | `#5c6b54` |
+| `--color-accent` | Primary buttons, FAB, focus, positive states | `#5a6f4f` |
+| `--color-danger` | Destructive actions, errors | `#a44a3f` |
+| `--color-success` | Positive confirmation | `#5a6f4f` |
+| `--color-warning` | Warning text (Needs scan, low stock, pending) | `#8b5c32` |
+| `--color-warning-tint` | Warning chip background | `#f3e6d8` |
+| `--color-success-tint` | Match / success chip background | `#dce8d3` |
+| `--color-border` | Icons, input borders, chip outlines | `#76896b` |
+| `--color-on-brand-muted` | Inactive icons on the brand nav pill | `#c9d6c0` |
+| `--color-camera-surface` | Camera viewfinder and full-screen camera | `#1a1918` |
+| `--color-on-camera` | Text and icons on the camera surface | `#faf7f3` |
+| `--color-overlay` | Sage wash / atmosphere | `rgba(143, 160, 133, 0.15)` |
 
-MUST use `#ca0013` exclusively for primary actions and critical alerts. MUST NOT use pure black — always `#171e19`. MUST NOT introduce purple, indigo, terracotta, cream-serif luxury palettes, or neon.
+Decorative only, never text: amber `#c48c5a` and light sage `#b8d4a8`.
+
+Contrast (NFR-005 AC2, light appearance):
+
+| Pair | Ratio | Needs |
+|------|-------|-------|
+| Text `#5d5652` on surface / elevated | 5.9 / 6.7 | 4.5 |
+| Muted text `#5c6b54` on surface / elevated | 4.7 / 5.3 | 4.5 |
+| Accent `#5a6f4f` text on surface / elevated | 4.5 / 5.2 | 4.5 |
+| White on accent `#5a6f4f` | 5.5 | 4.5 |
+| White on brand `#5d5652` | 7.2 | 4.5 |
+| Danger `#a44a3f` on surface / elevated | 4.7 / 5.4 | 4.5 |
+| Warning `#8b5c32` on surface / warning tint | 4.7 / 4.7 | 4.5 |
+| Text `#5d5652` on success tint `#dce8d3` | 5.7 | 4.5 |
+| Border `#76896b` on surface / elevated | 3.1 / 3.5 | 3 |
+| `#c9d6c0` icon on brand `#5d5652` | 4.8 | 3 |
+| `#faf7f3` on camera `#1a1918` | 16.4 | 4.5 |
+
+The palette's original sage `#8fa085` (2.3:1 on surface) and amber `#c48c5a` (2.4:1) fail as text, so the text roles use the darker shades above. White text on amber or sage fills is not allowed.
+
+MUST keep every text color at 4.5:1 or better against its background and every icon, input border and chip outline at 3:1 (NFR-005). MUST NOT use pure black. MUST NOT introduce purple, indigo, cream-serif luxury palettes, or neon.
 
 ### Color (dark)
+
+Dark tokens below predate the Rich & Grounded palette and are kept until a matching dark variant is designed; NFR-005 AC5 requires that variant to pass AC2 before the apps adopt the new palette.
 
 | Token | Role | Value |
 |-------|------|-------|
@@ -84,7 +112,7 @@ Google Fonts: **Nunito** for all UI text (400 / 600 / 800 / 900). No Inter, Robo
 | Screen title | 28–32px | 900 | Sentence case |
 | Subhead | 20px | 800 | |
 | Body | 16px | 400–600 | Line-height 1.4 |
-| Label | 10–12px | 700 | Uppercase, 0.08–0.12em tracking, muted color |
+| Label | 12px | 700 | Uppercase, 0.08–0.12em tracking, muted color; nothing under 12px (NFR-005 AC1) |
 | Mono / barcode | 13px | 600 | `ui-monospace, "SF Mono", Menlo` for UPC only |
 
 ### Radius, spacing, elevation
@@ -94,16 +122,16 @@ Google Fonts: **Nunito** for all UI text (400 / 600 / 800 / 900). No Inter, Robo
 - Nested items / list rows: `24px` (1.5rem)
 - Pills / chips: `999px`
 - Icon wells: `16px` square or circle
-- Borders: `1px solid #b7c6c2` at 20–30% opacity
+- Borders: decorative card edges `#8fa085` at 20–30% opacity; input borders and chip outlines `1px solid #76896b`
 - Shadow: `0 20px 50px -12px rgba(0,0,0,0.08)` on elevated interactive surfaces only
 - Screen padding: 24px horizontal; header starts ~56px from top (status-bar safe)
 
 ### Buttons & controls
 
-- Primary CTA: 56px min height, `#ca0013` fill, white label, 999px or 24px radius, red-tinted shadow
-- Secondary: white fill, sage border, charcoal label
-- Center Add FAB: 56px circle `#ca0013`, white plus, 4px `--color-surface` ring, offset −32px above the tab bar
-- Checkboxes: 40px circular hit target; checked fill `#ca0013`
+- Primary CTA: 56px min height, `#5a6f4f` fill, white label, 999px or 24px radius
+- Secondary: `#faf7f3` fill, `#76896b` border, `#5d5652` label
+- Center Add FAB: 56px circle `#5a6f4f`, white plus, 4px `--color-surface` ring, offset −32px above the tab bar
+- Checkboxes: 44px circular hit target; checked fill `#5a6f4f`
 - Selection rows: selected = charcoal fill + white type, or 2px accent ring — never a purple check
 
 ### Layout structure
@@ -111,13 +139,13 @@ Google Fonts: **Nunito** for all UI text (400 / 600 / 800 / 900). No Inter, Robo
 **Logged-in shell**
 - Status bar + greeting header (12px uppercase muted label + 30px household name)
 - Scrollable content, 24px gutter
-- Fixed bottom pill nav, 8px from screen edges, height 64px, fill `#171e19`
+- Fixed bottom pill nav, 8px from screen edges, height 64px, fill `#5d5652`
 - Destinations: Home, List, **Add (FAB)**, Spend, People
-- Active icon white; inactive `#b7c6c2`
+- Active icon white; inactive `#c9d6c0`
 
 **Onboarding shell**
 - No tab bar
-- Top: step index (`2 / 6`) as 10px uppercase label + Mekasa wordmark
+- Top: step index (`2 / 6`) as 12px uppercase label + Mekasa wordmark
 - Bottom: sticky primary CTA (“Continue”, “Confirm stores”)
 - Progress as a thin charcoal track, not a rainbow
 
@@ -136,7 +164,7 @@ Google Fonts: **Nunito** for all UI text (400 / 600 / 800 / 900). No Inter, Robo
 - **ShoppingListItem** — name + qty, optional “Needs approval” warning chip, circular check, requester avatar 32px
 - **AddMethodTile** — 56px icon well, title 18/800, one-line subtitle muted
 - **MemberRow** — avatar, name, role chip (Admin / Member), overflow
-- **SpendCategoryBar** — label, amount, sage track with charcoal fill (accent only for over-budget)
+- **SpendCategoryBar** — label, amount, sage track with charcoal fill (danger `#a44a3f` only for over-budget)
 - **EmptyState** — short practical copy, one primary action, no illustration maze
 
 ## Content rules

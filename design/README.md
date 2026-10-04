@@ -22,6 +22,15 @@ All screens are **390×844** (mobile-first, iPhone SE/13 mini) with full navigat
 | UI-006 | Household Setup | Onboarding step 2 — name & photo | `pages/onboarding-household.html` |
 | UI-007 | Spending Report | Category analytics & budget tracking | `pages/spending-report.html` |
 | UI-008 | Family Members | Household roster & member roles | `pages/family-members.html` |
+| REQ-RCP-020 | Receipt Results | Lines that still need a scan | `pages/scan-receipt-results.html` |
+| REQ-RCP-020 | Barcode Scan | Guided scan with typed-code fallback | `pages/scan-barcode.html` |
+| REQ-RCP-020 | PLU Entry | Typed produce code, optional photo | `pages/scan-plu-entry.html` |
+| REQ-RCP-020/021 | Picture Step | Optional shared photo + catalog match | `pages/scan-picture-step.html` |
+| REQ-RCP-020 | New Product | Unknown code: name, category, "Save as {name}" | `pages/scan-new-product.html` |
+| REQ-RCP-020 | Haul Summary | Final review before adding to inventory | `pages/scan-haul-summary.html` |
+| REQ-RCP-020 | Scan Flow Components | Chips, error states, photo and sharing sheet | `pages/scan-flow-component-sheet.html` |
+
+Colors follow the Rich & Grounded palette in `design-system.md`. `inventory-list.html` and `item-detail.html` have no Superdesign draft and still use the previous palette.
 
 ### 🔊 Scanner beep
 

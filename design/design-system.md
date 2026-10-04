@@ -12,22 +12,51 @@
 
 ## Color Tokens
 
-### Light
+### Light (Rich & Grounded, 2026-10-04)
 
 | Token | Role | Value |
 |-------|------|-------|
-| `--color-brand` | Charcoal ink / dark surfaces | `#171e19` |
-| `--color-brand-muted` | Sage gray-green secondary | `#b7c6c2` |
-| `--color-surface` | Page / screen background | `#eeebe3` |
-| `--color-surface-elevated` | Interactive surfaces only | `#ffffff` |
-| `--color-text` | Primary text | `#171e19` |
-| `--color-text-muted` | Secondary text | `#6d7a76` |
-| `--color-accent` | CTA / focus | `#ca0013` |
-| `--color-danger` | Destructive actions | `#ca0013` |
-| `--color-success` | Positive confirmation | `#2f6b4f` |
-| `--color-warning` | Low-stock / pending | `#c45c12` |
+| `--color-brand` | Warm charcoal: nav pill, dark fills, progress fill | `#5d5652` |
+| `--color-brand-muted` | Decorative sage: blobs, icon wells, tracks (never text) | `#8fa085` |
+| `--color-surface` | Page / screen background | `#ede8e0` |
+| `--color-surface-elevated` | Cards / sheets | `#faf7f3` |
+| `--color-text` | Primary text | `#5d5652` |
+| `--color-text-muted` | Secondary text, labels, codes | `#5c6b54` |
+| `--color-accent` | Primary buttons, FAB, focus, positive states | `#5a6f4f` |
+| `--color-danger` | Destructive actions, errors | `#a44a3f` |
+| `--color-success` | Positive confirmation | `#5a6f4f` |
+| `--color-warning` | Warning text (Needs scan, low stock, pending) | `#8b5c32` |
+| `--color-warning-tint` | Warning chip background | `#f3e6d8` |
+| `--color-success-tint` | Match / success chip background | `#dce8d3` |
+| `--color-border` | Icons, input borders, chip outlines | `#76896b` |
+| `--color-on-brand-muted` | Inactive icons on the brand nav pill | `#c9d6c0` |
+| `--color-camera-surface` | Camera viewfinder and full-screen camera | `#1a1918` |
+| `--color-on-camera` | Text and icons on the camera surface | `#faf7f3` |
+| `--color-overlay` | Sage wash / atmosphere | `rgba(143, 160, 133, 0.15)` |
+
+Decorative only, never text: amber `#c48c5a` and light sage `#b8d4a8`.
+
+Contrast (NFR-005 AC2, light appearance):
+
+| Pair | Ratio | Needs |
+|------|-------|-------|
+| Text `#5d5652` on surface / elevated | 5.9 / 6.7 | 4.5 |
+| Muted text `#5c6b54` on surface / elevated | 4.7 / 5.3 | 4.5 |
+| Accent `#5a6f4f` text on surface / elevated | 4.5 / 5.2 | 4.5 |
+| White on accent `#5a6f4f` | 5.5 | 4.5 |
+| White on brand `#5d5652` | 7.2 | 4.5 |
+| Danger `#a44a3f` on surface / elevated | 4.7 / 5.4 | 4.5 |
+| Warning `#8b5c32` on surface / warning tint | 4.7 / 4.7 | 4.5 |
+| Text `#5d5652` on success tint `#dce8d3` | 5.7 | 4.5 |
+| Border `#76896b` on surface / elevated | 3.1 / 3.5 | 3 |
+| `#c9d6c0` icon on brand `#5d5652` | 4.8 | 3 |
+| `#faf7f3` on camera `#1a1918` | 16.4 | 4.5 |
+
+The palette's original sage `#8fa085` (2.3:1 on surface) and amber `#c48c5a` (2.4:1) fail as text, so the text roles use the darker shades above. White text on amber or sage fills is not allowed.
 
 ### Dark
+
+Dark tokens below predate the Rich & Grounded palette and are kept until a matching dark variant is designed; NFR-005 AC5 requires that variant to pass AC2 before the apps adopt the new palette.
 
 | Token | Role | Value |
 |-------|------|-------|
@@ -41,8 +70,8 @@
 | `--color-success` | Positive | `#5dba8a` |
 
 Do not introduce purple, indigo, terracotta, cream-serif luxury, or neon palettes.
-Never use pure black; always `#171e19` (light) / near-charcoal (dark).
-Accent red is reserved for primary actions and critical alerts.
+Never use pure black; dark fills use `#5d5652` (light) / near-charcoal (dark).
+Danger red `#a44a3f` is reserved for destructive actions and errors.
 
 ## Typography
 
@@ -50,7 +79,7 @@ Accent red is reserved for primary actions and critical alerts.
 |-------|-----|-------|
 | `--font-display` | Brand / hero | Nunito 900, 32px |
 | `--font-body` | Body copy | Nunito 400–600, 16px |
-| `--font-label` | Eyebrow labels | Nunito 700, 10–12px, uppercase, tracked |
+| `--font-label` | Eyebrow labels | Nunito 700, 12px minimum (NFR-005 AC1), uppercase, tracked |
 | `--font-mono` | Codes / barcodes | ui-monospace / SF Mono / Menlo, 13px |
 
 Do not use Inter, Roboto, Arial, or system UI as the product typeface.
@@ -62,12 +91,12 @@ Do not use Inter, Roboto, Arial, or system UI as the product typeface.
 - Main cards / sheets: 40px radius
 - Nested rows / tiles: 24px radius
 - Screen gutter: 24px
-- Bottom nav pill: 64px tall, 8px from edges, `#171e19`
+- Bottom nav pill: 64px tall, 8px from edges, `#5d5652`
 
 ## Elevation
 
 Cards (interactive only): `0 20px 50px -12px rgba(0,0,0,0.08)`.
-Borders: `1px solid #b7c6c2` at 20–30% opacity.
+Borders: decorative card edges `#8fa085` at 20–30% opacity; input borders and chip outlines `1px solid #76896b`.
 Atmosphere: sage wash blob on `--color-surface`, not a flat fill and not a card-wrapped page.
 
 ## Component Names
