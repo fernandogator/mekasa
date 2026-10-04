@@ -24,6 +24,13 @@ Thumbs.db
 *.pem
 credentials.json
 service-account*.json
+# Firebase app configs are per-developer; only the Android CI stub
+# (android-fable/app/google-services.json) and *.example files are tracked.
+google-services*.json
+!google-services.json.example
+!android-fable/app/google-services.json
+GoogleService-Info*.plist
+!ios/Config/GoogleService-Info.ci.plist
 
 # Build outputs
 dist/
@@ -41,8 +48,8 @@ __pycache__/
 .pytest_cache/
 
 # Android
-android/local.properties
-android/.kotlin/
+android-fable/local.properties
+android-fable/.kotlin/
 **/.gradle/
 **/build/
 
