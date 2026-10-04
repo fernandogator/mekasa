@@ -1109,8 +1109,9 @@ components:
           type: boolean
           description: |
             The household marked this receipt text (per store chain) as having
-            no barcode (REQ-RCP-020 AC10); the client shows a "No barcode"
-            chip instead of "Scan →".
+            no barcode (REQ-RCP-020 AC10); the client treats the line as ready
+            and shows plain "No barcode" text (no chip) instead of "Scan →"
+            (REQ-RCP-020 AC11).
         user_edited_fields:
           type: array
           items:
