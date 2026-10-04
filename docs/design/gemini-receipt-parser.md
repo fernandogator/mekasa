@@ -18,7 +18,7 @@ Phase 1 deliverables are in this PR. Nothing under `backend/app/` changes yet.
 |---|-------------|-------|
 | 1a | Household data model + migration `0001_receipt_parser` (Firestore) | `backend/firestore/migrations/0001_receipt_parser.md`, `backend/firestore/schema/*.schema.json`, `backend/firestore/firestore.indexes.json` |
 | 1b | Shared catalog data model + migration `0001_shared_products` (Cloud SQL Postgres) | `backend/postgres/migrations/0001_shared_products.sql` (+ `.down.sql`), `backend/postgres/seed/store_chains.sql`, `backend/postgres/README.md` |
-| 1c | User corrections, in-store capture, product photos (REQ-RCP-019 … 021) | §3.11, migration `backend/postgres/migrations/0002_product_corrections.sql` (+ `.down.sql`), Firestore `product_photos` + line-item override fields |
+| 1c | User corrections, product capture, product photos (REQ-RCP-019 … 021) | §3.11, migration `backend/postgres/migrations/0002_product_corrections.sql` (+ `.down.sql`), Firestore `product_photos` + line-item override fields |
 | 3 | API contract (OpenAPI 3.1) | `docs/api/receipt-parser.openapi.yaml` |
 | — | Gemini prompt + response schema contract (v1) | `backend/prompts/receipt_parse/v1/` |
 | — | Spec entries REQ-RCP-001 … 018, ADR-007, ADR-008, traceability rows | `docs/spec-v1.0.md`, `docs/architecture.md`, `traceability/matrix.*` |
@@ -392,7 +392,7 @@ trash_station`, `outcome: consumed|unknown`). The existing
   `UPCITEMDB_API_KEY` and the Kroger client credentials stay in Secret Manager
   (ADR-006, §3.6).
 
-### 3.11 User corrections and in-store capture (REQ-RCP-019 … REQ-RCP-021)
+### 3.11 User corrections and product capture (REQ-RCP-019 … REQ-RCP-021)
 
 The H-E-B fixture shows why this exists: of 40 lines, 11 resolve to the right
 UPC automatically, ~12 land on the right brand/wrong variant or a wrong
