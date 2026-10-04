@@ -19,30 +19,40 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Semantic palette from design/DESIGN_SYSTEM.md. Screens read colours through
- * [MekasaTheme.palette] so dark mode (UI-001 AC3) only needs a second instance.
+ * Semantic palette from design/design-system.md (Rich & Grounded). Screens read
+ * colours through [MekasaTheme.palette] so dark mode (UI-001 AC3) is a second instance.
  *
- * Satisfies: NFR-005 AC5 — screens never use literal colours, so a colour
- * scheme change is made here and contrast-checked per role pair.
+ * Satisfies: NFR-005 AC2, AC5 — screens never use literal colours, and every
+ * text/fill pair below is contrast-checked in design/design-system.md.
  */
 @Immutable
 data class MekasaPalette(
+    /** Primary text in light mode; tab bar, selected rows and dark fills. */
     val brand: Color,
+    /** Decorative sage for washes and wells; never text, icons or outlines. */
     val brandMuted: Color,
     val surface: Color,
     val surfaceElevated: Color,
     val text: Color,
     val textMuted: Color,
+    /** Primary buttons, the Add button, selections and links. */
     val accent: Color,
+    /** Errors, destructive actions and depleted / failed scan feedback. */
+    val danger: Color,
     val success: Color,
     val warning: Color,
     val overlay: Color,
     val successTint: Color,
     val accentTint: Color,
+    val dangerTint: Color,
     val warningTint: Color,
-    /** Text and icons on brand, accent and success fills. */
+    /** Icons, input borders, chip outlines and unchecked controls (3:1). */
+    val border: Color,
+    /** Text and icons on brand fills. */
     val onBrand: Color,
-    /** Inactive icons on the brand-coloured tab bar. */
+    /** Text and icons on accent, success and danger fills. */
+    val onAccent: Color,
+    /** Inactive icons and secondary text on brand fills. */
     val onBrandMuted: Color,
     /** Text, icons and the reticle over the live camera preview. */
     val onCamera: Color,
@@ -52,44 +62,52 @@ data class MekasaPalette(
 )
 
 val LightPalette = MekasaPalette(
-    brand = Color(0xFF171E19),
-    brandMuted = Color(0xFFB7C6C2),
-    surface = Color(0xFFEEEBE3),
-    surfaceElevated = Color(0xFFFFFFFF),
-    text = Color(0xFF171E19),
-    textMuted = Color(0xFF6D7A76),
-    accent = Color(0xFFCA0013),
-    success = Color(0xFF2F6B4F),
-    warning = Color(0xFFC45C12),
-    overlay = Color(0x33B7C6C2),
-    successTint = Color(0xFFEAF1EC),
-    accentTint = Color(0xFFFCE5E7),
-    warningTint = Color(0xFFFFF5F0),
+    brand = Color(0xFF5D5652),
+    brandMuted = Color(0xFF8FA085),
+    surface = Color(0xFFEDE8E0),
+    surfaceElevated = Color(0xFFFAF7F3),
+    text = Color(0xFF5D5652),
+    textMuted = Color(0xFF5C6B54),
+    accent = Color(0xFF5A6F4F),
+    danger = Color(0xFFA44A3F),
+    success = Color(0xFF5A6F4F),
+    warning = Color(0xFF8B5C32),
+    overlay = Color(0x268FA085),
+    successTint = Color(0xFFDCE8D3),
+    accentTint = Color(0xFFDCE8D3),
+    dangerTint = Color(0xFFF6E3E0),
+    warningTint = Color(0xFFF3E6D8),
+    border = Color(0xFF76896B),
     onBrand = Color(0xFFFFFFFF),
-    onBrandMuted = Color(0xFFB7C6C2),
-    onCamera = Color(0xFFFFFFFF),
-    photoScrim = Color(0xFF171E19),
+    onAccent = Color(0xFFFFFFFF),
+    onBrandMuted = Color(0xFFC9D6C0),
+    onCamera = Color(0xFFFAF7F3),
+    photoScrim = Color(0xFF1A1918),
     isDark = false,
 )
 
 val DarkPalette = MekasaPalette(
-    brand = Color(0xFF1F2A24),
-    brandMuted = Color(0xFF5E706C),
-    surface = Color(0xFF121612),
-    surfaceElevated = Color(0xFF1C241F),
-    text = Color(0xFFEEEBE3),
-    textMuted = Color(0xFF9AADA8),
-    accent = Color(0xFFFF3B4E),
-    success = Color(0xFF5DBA8A),
-    warning = Color(0xFFE28A4A),
-    overlay = Color(0x335E706C),
-    successTint = Color(0xFF1F3328),
-    accentTint = Color(0xFF3A1A1E),
-    warningTint = Color(0xFF3A2A1C),
-    onBrand = Color(0xFFFFFFFF),
-    onBrandMuted = Color(0xFFB7C6C2),
-    onCamera = Color(0xFFFFFFFF),
-    photoScrim = Color(0xFF171E19),
+    brand = Color(0xFF3A3531),
+    brandMuted = Color(0xFF5A6F4F),
+    surface = Color(0xFF1C1A18),
+    surfaceElevated = Color(0xFF272421),
+    text = Color(0xFFEDE8E0),
+    textMuted = Color(0xFFA9B79F),
+    accent = Color(0xFF8FA085),
+    danger = Color(0xFFE39286),
+    success = Color(0xFFA3B598),
+    warning = Color(0xFFE2B07E),
+    overlay = Color(0x265A6F4F),
+    successTint = Color(0xFF2C3628),
+    accentTint = Color(0xFF2C3628),
+    dangerTint = Color(0xFF3A2220),
+    warningTint = Color(0xFF3A2E22),
+    border = Color(0xFF7F8E76),
+    onBrand = Color(0xFFEDE8E0),
+    onAccent = Color(0xFF1C1A18),
+    onBrandMuted = Color(0xFFB5C2AB),
+    onCamera = Color(0xFFFAF7F3),
+    photoScrim = Color(0xFF0F0E0D),
     isDark = true,
 )
 
@@ -137,15 +155,15 @@ object MekasaTheme {
 
 private fun MekasaPalette.toColorScheme(): ColorScheme = if (isDark) {
     darkColorScheme(
-        primary = text, onPrimary = brand, secondary = brandMuted, background = surface,
-        surface = surfaceElevated, onBackground = text, onSurface = text, error = accent,
-        surfaceVariant = surfaceElevated, onSurfaceVariant = textMuted, outline = brandMuted,
+        primary = accent, onPrimary = onAccent, secondary = brandMuted, background = surface,
+        surface = surfaceElevated, onBackground = text, onSurface = text, error = danger,
+        surfaceVariant = surfaceElevated, onSurfaceVariant = textMuted, outline = border,
     )
 } else {
     lightColorScheme(
-        primary = brand, onPrimary = onBrand, secondary = brandMuted, background = surface,
-        surface = surfaceElevated, onBackground = text, onSurface = text, error = accent,
-        surfaceVariant = surfaceElevated, onSurfaceVariant = textMuted, outline = brandMuted,
+        primary = accent, onPrimary = onAccent, secondary = brandMuted, background = surface,
+        surface = surfaceElevated, onBackground = text, onSurface = text, error = danger,
+        surfaceVariant = surfaceElevated, onSurfaceVariant = textMuted, outline = border,
     )
 }
 

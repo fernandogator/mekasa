@@ -147,7 +147,7 @@ struct AddItemsView: View {
             Spacer(minLength: 0)
             Image(systemName: "chevron.right")
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(MekasaTheme.brandMuted)
+                .foregroundStyle(MekasaTheme.border)
         }
         .padding(20)
         .background(MekasaTheme.surfaceElevated)

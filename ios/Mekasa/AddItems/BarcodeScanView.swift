@@ -42,7 +42,7 @@ struct BarcodeScanView: View {
                         if let cameraError {
                             Text(cameraError)
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.accent)
+                                .foregroundStyle(MekasaTheme.danger)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal, 32)
                         }

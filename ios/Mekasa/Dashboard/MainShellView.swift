@@ -103,7 +103,7 @@ private struct BottomNavBar: View {
         } label: {
             Image(systemName: tab.systemImage)
                 .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(selected == tab ? MekasaTheme.onBrand : MekasaTheme.brandMuted)
+                .foregroundStyle(selected == tab ? MekasaTheme.onBrand : MekasaTheme.onBrandMuted)
                 .frame(width: 48, height: 48)
         }
         .buttonStyle(.plain)

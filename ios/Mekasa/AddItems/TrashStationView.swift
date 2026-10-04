@@ -57,7 +57,7 @@ struct TrashStationView: View {
                         if let cameraError {
                             Text(cameraError)
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.accent)
+                                .foregroundStyle(MekasaTheme.danger)
                         }
 
                         manualEntry
@@ -266,9 +266,9 @@ struct TrashStationView: View {
         HStack(spacing: 16) {
             Image(systemName: "trash")
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(MekasaTheme.accent)
+                .foregroundStyle(MekasaTheme.danger)
                 .frame(width: 44, height: 44)
-                .background(MekasaTheme.accentTint)
+                .background(MekasaTheme.dangerTint)
                 .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 2) {
@@ -282,7 +282,7 @@ struct TrashStationView: View {
             Spacer()
             Text("−1")
                 .font(.system(size: 14, weight: .heavy, design: .rounded))
-                .foregroundStyle(MekasaTheme.accent)
+                .foregroundStyle(MekasaTheme.danger)
         }
         .padding(16)
         .background(MekasaTheme.surfaceElevated)

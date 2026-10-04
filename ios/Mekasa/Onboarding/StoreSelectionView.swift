@@ -176,12 +176,12 @@ private struct StoreRow: View {
                         if store.provider == "places" {
                             Text("Places")
                                 .font(.system(size: 10, weight: .heavy, design: .rounded))
-                                .foregroundStyle(isSelected ? MekasaTheme.brandMuted : MekasaTheme.accent)
+                                .foregroundStyle(isSelected ? MekasaTheme.onBrandMuted : MekasaTheme.accent)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .overlay(
                                     Capsule().stroke(
-                                        isSelected ? MekasaTheme.brandMuted : MekasaTheme.accent,
+                                        isSelected ? MekasaTheme.onBrandMuted : MekasaTheme.accent,
                                         lineWidth: 1
                                     )
                                 )
@@ -191,7 +191,7 @@ private struct StoreRow: View {
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .tracking(0.8)
                         .textCase(.uppercase)
-                        .foregroundStyle(isSelected ? MekasaTheme.brandMuted : MekasaTheme.textMuted)
+                        .foregroundStyle(isSelected ? MekasaTheme.onBrandMuted : MekasaTheme.textMuted)
                 }
 
                 Spacer()
@@ -202,7 +202,7 @@ private struct StoreRow: View {
                         .frame(width: 32, height: 32)
                         .overlay(
                             Circle()
-                                .stroke(isSelected ? MekasaTheme.accent : MekasaTheme.brandMuted, lineWidth: 2)
+                                .stroke(isSelected ? MekasaTheme.accent : MekasaTheme.border, lineWidth: 2)
                         )
                     if isSelected {
                         Image(systemName: "checkmark")

@@ -195,6 +195,40 @@ class ScreenSnapshotTest {
         snapshot("TrashStation")
     }
 
+    // ------------------------------------------------------------ dark palette (UI-001 AC3, NFR-005 AC5)
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun dashboardDark() {
+        compose.setApp(UiHarness.demoSession())
+        compose.awaitDisplayed(TestTags.DASHBOARD_VIEW)
+        compose.awaitDisplayed(TestTags.itemCell(UiHarness.DIET_COKE_ID))
+        snapshot("DashboardDark")
+    }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun inventorySwipeRemoveDark() {
+        compose.setApp(UiHarness.demoSession(), startRoute = Routes.INVENTORY)
+        compose.awaitDisplayed(TestTags.itemCell(UiHarness.WHOLE_MILK_ID))
+        compose.node(TestTags.itemCell(UiHarness.WHOLE_MILK_ID)).performTouchInput {
+            down(centerRight)
+            moveBy(Offset(-width * 0.35f, 0f))
+        }
+        snapshot("InventorySwipeRemoveDark")
+        compose.node(TestTags.itemCell(UiHarness.WHOLE_MILK_ID)).performTouchInput { up() }
+    }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun inventoryUndoToastDark() {
+        compose.setApp(UiHarness.demoSession(undoWindowMillis = 60_000), startRoute = Routes.INVENTORY)
+        compose.awaitDisplayed(TestTags.itemCell(UiHarness.WHOLE_MILK_ID))
+        compose.node(TestTags.itemCell(UiHarness.WHOLE_MILK_ID)).performTouchInput { swipeLeft() }
+        compose.awaitDisplayed(TestTags.INVENTORY_UNDO_TOAST)
+        snapshot("InventoryUndoToastDark")
+    }
+
     // ------------------------------------------------------------ add items
 
     @Test

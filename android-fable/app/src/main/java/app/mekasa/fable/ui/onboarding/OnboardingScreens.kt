@@ -222,7 +222,7 @@ private fun StoreRow(store: Store, selected: Boolean, onClick: () -> Unit) {
         Icon(
             imageVector = if (selected) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
             contentDescription = if (selected) "Selected" else "Not selected",
-            tint = if (selected) palette.accent else palette.brandMuted,
+            tint = if (selected) palette.accent else palette.border,
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(store.name, style = Type.body, color = palette.text)

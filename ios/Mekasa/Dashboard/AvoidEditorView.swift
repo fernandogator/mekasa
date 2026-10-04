@@ -116,7 +116,7 @@ struct AvoidEditorView: View {
                         if let errorMessage {
                             Text(errorMessage)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.accent)
+                                .foregroundStyle(MekasaTheme.danger)
                         }
                     }
                     .padding(.horizontal, 24)
