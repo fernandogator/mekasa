@@ -492,7 +492,7 @@ Rules embedded in the decision:
   stored raw household ids (NFR-002) and user photo bytes behind a
   public URL, and their receipt-line / manual-scan bookkeeping is
   superseded by `products` + `product_aliases` +
-  `product_confirmations`. In-store capture for an unidentified
+  `product_confirmations`. Product capture for an unidentified
   receipt line now does a barcode lookup plus a household-private
   photo (REQ-INV-019); the shared-catalog write arrives with the
   REQ-RCP-020 `capture` endpoints. All DDL goes through numbered

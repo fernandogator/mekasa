@@ -255,7 +255,7 @@ paths:
       description: |
         Satisfies: REQ-RCP-020 AC2–AC5, REQ-RCP-013 · Spec version: 1.0
 
-        The in-store / at-home fallback for lines with `barcode: null`
+        The fallback (usually at home while unpacking) for lines with `barcode: null`
         (`capture_available: true`). The client scans the package barcode with
         the existing camera scanner and may upload a photo first
         (`POST …/product-photos`).
@@ -691,11 +691,11 @@ paths:
     post:
       tags: [product-photos]
       operationId: uploadProductPhoto
-      summary: Upload a product photo taken during in-store capture (REQ-RCP-021)
+      summary: Upload a product photo taken during product capture (REQ-RCP-021)
       description: |
         Satisfies: REQ-RCP-021 AC1/AC2/AC6, REQ-RCP-020 AC5 · Spec version: 1.0
 
-        Used only by the in-store capture flow: the returned `photo_id` is
+        Used only by the product capture flow: the returned `photo_id` is
         sent with `…/capture` and the photo is shared with the scanned UPC
         (visible to every signed-in household). Item-picture replacements
         from item detail stay household-private and use `item-photos` above
@@ -1099,7 +1099,7 @@ components:
         - required: [plu_code]
           not: { required: [upc] }
       description: |
-        In-store capture (REQ-RCP-020 AC2/AC7): the scanned barcode, or the
+        Product capture (REQ-RCP-020 AC2/AC7), usually at home while unpacking: the scanned barcode, or the
         PLU typed from a produce sticker, plus an optional photo and attribute
         overrides. Missing attributes fall back to the line / inventory item
         (`name`, `category`) when a product has to be created. A `plu_code`
