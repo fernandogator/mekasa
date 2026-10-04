@@ -28,7 +28,7 @@ struct ShoppingListView: View {
             if let toast {
                 Text(toast)
                     .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MekasaTheme.onBrand)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background(MekasaTheme.brand)
@@ -91,7 +91,7 @@ struct ShoppingListView: View {
                     .background(MekasaTheme.surfaceElevated)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1))
-                    .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
+                    .shadow(color: MekasaTheme.shadow.opacity(0.06), radius: 4, y: 2)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("List options")
@@ -142,7 +142,7 @@ struct ShoppingListView: View {
                     RoundedRectangle(cornerRadius: 32, style: .continuous)
                         .stroke(MekasaTheme.brandMuted.opacity(0.25), lineWidth: 1)
                 )
-                .shadow(color: .black.opacity(0.08), radius: 24, y: 12)
+                .shadow(color: MekasaTheme.shadow.opacity(0.08), radius: 24, y: 12)
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier(TestIdentifiers.itemList)
             }
@@ -274,7 +274,7 @@ struct ShoppingListView: View {
                 .font(.system(size: 12, weight: .bold, design: .rounded))
                 .foregroundStyle(MekasaTheme.brand)
                 .frame(width: 40, height: 40)
-                .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                .background(MekasaTheme.surfaceMuted)
                 .clipShape(Circle())
                 .overlay(Circle().stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1))
 
@@ -288,15 +288,15 @@ struct ShoppingListView: View {
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .tracking(0.6)
                         .textCase(.uppercase)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MekasaTheme.onBrand)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(Color(red: 0xc4 / 255, green: 0x5c / 255, blue: 0x12 / 255))
+                        .background(MekasaTheme.warning)
                         .clipShape(Capsule())
                 }
                 Text("\(item.displayQuantity) • Requested by \(item.requestedBy ?? "member")")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color(red: 0xc4 / 255, green: 0x5c / 255, blue: 0x12 / 255))
+                    .foregroundStyle(MekasaTheme.warning)
                     .accessibilityIdentifier(TestIdentifiers.requestorLabel)
             }
 
@@ -311,7 +311,7 @@ struct ShoppingListView: View {
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(MekasaTheme.brand)
                         .frame(width: 40, height: 40)
-                        .background(Color.white)
+                        .background(MekasaTheme.surfaceElevated)
                         .clipShape(Circle())
                         .overlay(Circle().stroke(MekasaTheme.brandMuted.opacity(0.4), lineWidth: 1))
                 }
@@ -325,7 +325,7 @@ struct ShoppingListView: View {
                 } label: {
                     Image(systemName: "checkmark")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MekasaTheme.onBrand)
                         .frame(width: 40, height: 40)
                         .background(MekasaTheme.brand)
                         .clipShape(Circle())
@@ -338,7 +338,7 @@ struct ShoppingListView: View {
             }
         }
         .padding(12)
-        .background(Color(red: 1, green: 0xf5 / 255, blue: 0xf0 / 255))
+        .background(MekasaTheme.warningTint)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .accessibilityIdentifier(TestIdentifiers.requestCell)
     }
@@ -351,7 +351,7 @@ struct ShoppingListView: View {
             if checked {
                 Image(systemName: "checkmark")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MekasaTheme.onBrand)
             }
         }
         .frame(width: 40, height: 40)

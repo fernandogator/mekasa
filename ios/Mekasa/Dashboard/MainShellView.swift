@@ -76,12 +76,12 @@ private struct BottomNavBar: View {
             .frame(height: 64)
             .background(MekasaTheme.brand)
             .clipShape(Capsule())
-            .shadow(color: .black.opacity(0.2), radius: 16, y: 8)
+            .shadow(color: MekasaTheme.shadow.opacity(0.2), radius: 16, y: 8)
 
             Button(action: onAdd) {
                 Image(systemName: "plus")
                     .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MekasaTheme.onBrand)
                     .frame(width: 56, height: 56)
                     .background(MekasaTheme.accent)
                     .clipShape(Circle())
@@ -103,7 +103,7 @@ private struct BottomNavBar: View {
         } label: {
             Image(systemName: tab.systemImage)
                 .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(selected == tab ? Color.white : MekasaTheme.brandMuted)
+                .foregroundStyle(selected == tab ? MekasaTheme.onBrand : MekasaTheme.brandMuted)
                 .frame(width: 48, height: 48)
         }
         .buttonStyle(.plain)

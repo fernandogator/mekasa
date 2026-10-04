@@ -38,7 +38,7 @@ struct HouseholdSetupView: View {
                                                 .foregroundStyle(MekasaTheme.brandMuted)
                                         )
                                         .frame(width: 128, height: 128)
-                                        .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+                                        .shadow(color: MekasaTheme.shadow.opacity(0.06), radius: 8, y: 2)
 
                                     if let photoImage {
                                         Image(uiImage: photoImage)
@@ -65,7 +65,7 @@ struct HouseholdSetupView: View {
                                     .overlay(
                                         Image(systemName: "camera.fill")
                                             .font(.system(size: 12, weight: .bold))
-                                            .foregroundStyle(.white)
+                                            .foregroundStyle(MekasaTheme.onBrand)
                                     )
                                     .shadow(radius: 4, y: 2)
                             }

@@ -123,7 +123,7 @@ struct FamilyMembersView: View {
                 .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(MekasaTheme.brand)
                 .frame(width: 40, height: 40)
-                .background(Color(red: 0xea / 255, green: 0xf1 / 255, blue: 0xec / 255))
+                .background(MekasaTheme.successTint)
                 .clipShape(Circle())
             VStack(alignment: .leading, spacing: 2) {
                 Text(FamilySummary.householdTitle(session.household))

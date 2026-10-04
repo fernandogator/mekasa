@@ -8,7 +8,7 @@ struct HealthGradeBadge: View {
     var body: some View {
         Text(grade?.uppercased() ?? "–")
             .font(.system(size: size * 0.5, weight: .black, design: .rounded))
-            .foregroundStyle(.white)
+            .foregroundStyle(MekasaTheme.onBrand)
             .frame(width: size, height: size)
             .background(HealthGrade.color(for: grade))
             .clipShape(Circle())
@@ -30,7 +30,7 @@ struct AffectedMembersChip: View {
                     .font(.system(size: 11, weight: .heavy, design: .rounded))
                     .lineLimit(1)
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(MekasaTheme.onBrand)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(MekasaTheme.accent)
