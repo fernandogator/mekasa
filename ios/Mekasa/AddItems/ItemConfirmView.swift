@@ -287,8 +287,7 @@ struct ItemConfirmView: View {
             NavigationStack {
                 LocalItemCaptureView(
                     itemName: drafts.first(where: { $0.id == route.id })?.name ?? "",
-                    store: storeContext,
-                    storeItemID: storeContext?.storeItemIDs[route.id]
+                    store: storeContext
                 ) { result in
                     applyCapture(result, to: route.id)
                 }

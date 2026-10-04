@@ -1,12 +1,10 @@
 import PhotosUI
 import SwiftUI
 
-/// Store the receipt came from, so an in-store capture lands on the right shared row.
+/// Store brand printed on the receipt, used in the capture guidance copy
+/// ("We could not find the H-E-B Bananas…"). REQ-RCP-020 AC1.
 struct ReceiptStoreContext: Equatable {
-    let storeID: String
     let storeName: String?
-    /// Draft id → row id in the store's table.
-    var storeItemIDs: [String: String]
 }
 
 /// Copy for receipt lines Open Food Facts could not identify. Pure for unit tests.
@@ -149,7 +147,6 @@ struct LocalItemCaptureView: View {
 
     let itemName: String
     let store: ReceiptStoreContext?
-    let storeItemID: String?
     let onCaptured: (LocalItemCaptureResult) -> Void
 
     @State private var code = ""
@@ -318,8 +315,6 @@ struct LocalItemCaptureView: View {
         errorMessage = nil
         defer { isSaving = false }
         let result = await session.captureUnidentifiedItem(
-            store: store,
-            storeItemID: storeItemID,
             barcode: CaptureGuidance.isValidCode(code) ? code : nil,
             image: photo
         )

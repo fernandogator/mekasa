@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # One-time: create the Cloud SQL Postgres instance for data shared across all
-# accounts (per-store item / UPC tables) and store its DATABASE_URL in Secret
+# accounts (ADR-008 product catalog) and store its DATABASE_URL in Secret
 # Manager for Cloud Run. Safe to re-run: existing resources are kept.
-# The API creates its tables on startup (backend/app/store_catalog.sql).
+# Schema is applied separately with psql from backend/postgres/migrations
+# (see backend/postgres/README.md); the API never creates tables.
 set -euo pipefail
 
 PROJECT_ID="${GCP_PROJECT_ID:-hackathon2025-472017}"

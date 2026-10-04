@@ -341,29 +341,6 @@ actor MekasaAPIClient {
         )
     }
 
-    /// In-store capture (barcode / PLU and/or photo) for a receipt line the catalog missed.
-    func captureStoreItem(
-        householdID: String,
-        storeID: String,
-        storeItemID: String,
-        barcode: String?,
-        imageData: Data?,
-        token: String
-    ) async throws -> StoreCatalogItemDTO {
-        let store = storeID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? storeID
-        let item = storeItemID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? storeItemID
-        var fields: [String: String] = [:]
-        if let barcode, !barcode.isEmpty { fields["barcode"] = barcode }
-        return try await multipartRequest(
-            path: "/v1/households/\(householdID)/store-catalogs/\(store)/items/\(item)/capture",
-            fields: fields,
-            file: imageData.map {
-                MultipartFile(field: "photo", filename: "item.jpg", mimeType: "image/jpeg", data: $0)
-            },
-            token: token
-        )
-    }
-
     struct MultipartFile {
         let field: String
         let filename: String

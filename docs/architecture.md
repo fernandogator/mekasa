@@ -484,6 +484,19 @@ decision rests on):
    index or an export.
 
 Rules embedded in the decision:
+- **One Postgres schema.** The pre-ADR-008 prototype per-store tables
+  (`stores`, `store_items`, `store_item_codes`, `photos`,
+  `household_latest_receipts`; DDL `backend/app/store_catalog.sql`
+  applied at API startup, PR #106) were retired on 2026-10-03:
+  migration `0003_retire_store_catalog_prototype.sql` drops them. They
+  stored raw household ids (NFR-002) and user photo bytes behind a
+  public URL, and their receipt-line / manual-scan bookkeeping is
+  superseded by `products` + `product_aliases` +
+  `product_confirmations`. In-store capture for an unidentified
+  receipt line now does a barcode lookup plus a household-private
+  photo (REQ-INV-019); the shared-catalog write arrives with the
+  REQ-RCP-020 `capture` endpoints. All DDL goes through numbered
+  migrations — the API never creates tables.
 - Connection: Cloud Run connects over the Cloud SQL Unix socket.
   `DATABASE_URL=postgresql://USER:PASS@/DB?host=/cloudsql/PROJECT:REGION:INSTANCE`
   is read from Secret Manager secret `mekasa-database-url`; only the

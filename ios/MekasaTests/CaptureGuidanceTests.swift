@@ -44,25 +44,43 @@ final class CaptureGuidanceTests: XCTestCase {
         XCTAssertEqual(max(decoded.size.width, decoded.size.height), ItemPhotoEncoding.maxDimension)
     }
 
-    func testReceiptScanResponse_decodesStoreContext() throws {
+    func testReceiptScanResponse_decodesStoreName() throws {
+        let json = Data("""
+        {"household_id": "h1", "engine": "gemini", "store_name": "HEB",
+         "items": [{"name": "Bananas", "category": "Produce", "quantity": 1, "price_paid": 0.62,
+                    "identified": false}]}
+        """.utf8)
+        let dto = try JSONDecoder().decode(ReceiptScanResponseDTO.self, from: json)
+        XCTAssertEqual(dto.storeName, "HEB")
+        XCTAssertEqual(dto.items.first?.identified, false)
+    }
+
+    func testReceiptScanResponse_ignoresRetiredStoreFields() throws {
+        // Older API revisions sent store_id / store_item_id (prototype store tables); decoding stays tolerant.
         let json = Data("""
         {"household_id": "h1", "engine": "gemini", "store_id": "heb", "store_name": "HEB",
-         "items": [{"name": "Bananas", "category": "Produce", "quantity": 1, "price_paid": 0.62,
+         "items": [{"name": "Bananas", "category": "Produce", "quantity": 1,
                     "identified": false, "store_item_id": "heb-bananas"}]}
         """.utf8)
         let dto = try JSONDecoder().decode(ReceiptScanResponseDTO.self, from: json)
-        XCTAssertEqual(dto.storeId, "heb")
         XCTAssertEqual(dto.storeName, "HEB")
-        XCTAssertEqual(dto.items.first?.storeItemId, "heb-bananas")
+        XCTAssertEqual(dto.items.count, 1)
     }
 
-    func testReceiptScanResponse_toleratesMissingStoreFields() throws {
+    func testReceiptScanResponse_toleratesMissingStoreName() throws {
         let json = Data("""
         {"household_id": "h1", "engine": "text",
          "items": [{"name": "Bananas", "category": "Produce", "quantity": 1, "identified": false}]}
         """.utf8)
         let dto = try JSONDecoder().decode(ReceiptScanResponseDTO.self, from: json)
-        XCTAssertNil(dto.storeId)
-        XCTAssertNil(dto.items.first?.storeItemId)
+        XCTAssertNil(dto.storeName)
+    }
+
+    func testReceiptStoreContext_onlyCarriesStoreName() {
+        let context = ReceiptStoreContext(storeName: "HEB")
+        XCTAssertEqual(
+            CaptureGuidance.message(itemName: "Bananas", storeName: context.storeName),
+            "We could not find the HEB Bananas. Please scan the item and take a picture."
+        )
     }
 }
