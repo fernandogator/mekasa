@@ -458,6 +458,16 @@ Acceptance Criteria:
 - AC2: No secrets in source control history
 - AC3: Secrets rotated on a defined schedule
 
+### NFR-005: Accessible Text, Contrast and Targets
+Priority: P0
+Description: Every iOS and Android screen, and every design draft it is built from, meets minimum text size, contrast and touch-target rules. (Decided 2026-10-04.)
+Acceptance Criteria:
+- AC1: Text is at least 12 pt (sp on Android); 11 pt is allowed only for secondary captions; status chips and placeholders count as text
+- AC2: Contrast meets WCAG 2.2 AA against the actual background: 4.5:1 for normal text (including placeholder and disabled-but-readable text), 3:1 for large text (≥ 18 pt, or ≥ 14 pt bold), icons, chip outlines and input borders
+- AC3: Text scales with the system setting (iOS Dynamic Type, Android font scale) up to at least 200% without clipping or overlap; truncation (e.g. REQ-RCP-020 AC14) still exposes the full string to VoiceOver/TalkBack
+- AC4: Tap targets are at least 44×44 pt on iOS and 48×48 dp on Android, including chips, the photo thumbnail and "Scan →"
+- AC5: Colors come from theme roles (`MekasaTheme` on iOS and Android), not hardcoded values; any new or changed color scheme is adopted only after every role pair it defines (text on surface, text on brand, text on warning/success, light text on the dark camera surface) passes AC2 in every appearance the app supports
+
 ### REQ-022: Expired Session Auto Sign-Out
 Priority: P0
 Description: When the GCP / Firebase authenticated session expires
