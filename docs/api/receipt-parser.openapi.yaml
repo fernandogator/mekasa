@@ -1013,7 +1013,10 @@ components:
         quantity:
           type: integer
           minimum: 1
-          description: Integer quantity for inventory (legacy; `qty` rounded, min 1).
+          description: |
+            Integer quantity for inventory. `1` for weighed lines (`unit` lb/oz/kg/g:
+            one bunch or bag as sold; the weight stays in `qty`); otherwise `qty`
+            rounded, min 1 (REQ-RCP-006 AC5).
         qty: { type: number, exclusiveMinimum: 0 }
         unit: { type: [string, 'null'] }
         price_paid:
