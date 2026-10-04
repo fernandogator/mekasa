@@ -292,7 +292,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ProductCaptureResponse' }
         '400':
-          description: '`invalid_upc`, `unknown_photo_id`'
+          description: '`invalid_upc`, `invalid_plu`, `exactly_one_code_required`, `unknown_photo_id`'
           content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -594,7 +594,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ProductCaptureResponse' }
         '400':
-          description: '`invalid_upc`, `unknown_photo_id`'
+          description: '`invalid_upc`, `invalid_plu`, `exactly_one_code_required`, `unknown_photo_id`'
           content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -691,13 +691,15 @@ paths:
     post:
       tags: [product-photos]
       operationId: uploadProductPhoto
-      summary: Upload a product photo taken by the user (Deferred — REQ-RCP-021)
+      summary: Upload a product photo taken during in-store capture (REQ-RCP-021)
       description: |
-        Satisfies: REQ-RCP-021 AC1/AC2/AC6 · Spec version: 1.0
+        Satisfies: REQ-RCP-021 AC1/AC2/AC6, REQ-RCP-020 AC5 · Spec version: 1.0
 
-        Deferred (2026-10-03): user photos are household-private by decision
-        (REQ-INV-019, `item-photos` above). This endpoint is the contract for
-        a future explicit "share this picture with the catalog" action.
+        Used only by the in-store capture flow: the returned `photo_id` is
+        sent with `…/capture` and the photo is shared with the scanned UPC
+        (visible to every signed-in household). Item-picture replacements
+        from item detail stay household-private and use `item-photos` above
+        (REQ-INV-019).
 
         Accepts JPEG/PNG/HEIC ≤ 8 MB as base64 JSON or multipart. The server
         re-encodes to JPEG, strips EXIF/GPS, limits the long edge to 1600 px and
@@ -1088,14 +1090,20 @@ components:
     ProductCaptureRequest:
       type: object
       additionalProperties: false
-      required: [upc]
+      oneOf:
+        - required: [upc]
+          not: { required: [plu_code] }
+        - required: [plu_code]
+          not: { required: [upc] }
       description: |
-        In-store capture (REQ-RCP-020 AC2): the scanned barcode plus an
-        optional photo and attribute overrides. Missing attributes fall back
-        to the line / inventory item (`name`, `category`) when a product has to
-        be created.
+        In-store capture (REQ-RCP-020 AC2/AC7): the scanned barcode, or the
+        PLU typed from a produce sticker, plus an optional photo and attribute
+        overrides. Missing attributes fall back to the line / inventory item
+        (`name`, `category`) when a product has to be created. A `plu_code`
+        capture links to or creates the shared product `plu:<code>`.
       properties:
         upc: { type: string, pattern: '^[0-9]{8,14}$' }
+        plu_code: { type: string, pattern: '^[0-9]{4,5}$' }
         photo_id: { type: [string, 'null'], format: uuid }
         name: { type: [string, 'null'], minLength: 1, maxLength: 120 }
         brand: { type: [string, 'null'], maxLength: 80 }
