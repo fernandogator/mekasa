@@ -390,3 +390,14 @@ def test_search_is_fuzzy_chain_scoped_and_skips_superseded(repo) -> None:
     assert [p.id for p in heb_hits] == ["041220576037"]
     assert repo.search("whole milk", status="verified") == []
     assert repo.search("zzzz qqqq") == []
+
+
+def test_release_user_photo_clears_only_that_user_photo(repo) -> None:
+    """REQ-RCP-021 AC5: deleting a product photo drops it from products that use it."""
+    repo.capture(store_chain_id="heb", upc="041220576037", hh=HH_A, fallback_name="Coke", fallback_category="Beverages", photo_id=PHOTO)
+    repo.capture(store_chain_id="heb", upc="049000028904", hh=HH_A, fallback_name="Coke Zero", fallback_category="Beverages")
+
+    assert repo.release_user_photo(PHOTO) == 1
+    cleared = repo.get_product("041220576037")
+    assert cleared.image_url is None and cleared.image_source is None
+    assert repo.release_user_photo(PHOTO) == 0

@@ -433,6 +433,37 @@ class ItemPhotoUploadResponse(BaseModel):
     url: str
 
 
+class ProductPhotoUploadJson(BaseModel):
+    """
+    Satisfies: REQ-RCP-021 AC1
+    Spec version: 1.0
+
+    JSON form of the product photo upload; multipart `file` is also accepted.
+    """
+
+    image_base64: str = Field(min_length=1)
+    content_type: Literal["image/jpeg", "image/png", "image/heic"] = "image/jpeg"
+
+
+class ProductPhotoResponse(BaseModel):
+    """
+    Satisfies: REQ-RCP-021 AC1, AC4
+    Spec version: 1.0
+
+    `image_url` is the stable `/v1/product-photos/{photo_id}` path that a
+    capture stores on the product; `expires_at` stays set until a capture
+    references the photo.
+    """
+
+    photo_id: str
+    image_url: str
+    width: int
+    height: int
+    bytes: int
+    created_at: datetime
+    expires_at: datetime | None = None
+
+
 class HouseholdPhotoResponse(BaseModel):
     """Photo upload result (REQ-002)."""
 
