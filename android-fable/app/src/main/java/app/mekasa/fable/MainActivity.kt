@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import app.mekasa.fable.auth.FirebaseAuthGateway
 import app.mekasa.fable.auth.FirebaseGate
+import app.mekasa.fable.data.remote.ImageAuth
 import app.mekasa.fable.data.remote.KtorMekasaApi
 import app.mekasa.fable.session.PrefsEmailMemory
 import app.mekasa.fable.session.SessionViewModel
@@ -23,6 +24,7 @@ class MainActivity : ComponentActivity() {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 val api = KtorMekasaApi(BuildConfig.API_BASE_URL, enableLogging = BuildConfig.DEBUG)
+                ImageAuth.apiBaseUrl = BuildConfig.API_BASE_URL
                 return SessionViewModel(
                     api = api,
                     auth = FirebaseAuthGateway(configured = FirebaseGate.isConfigured),

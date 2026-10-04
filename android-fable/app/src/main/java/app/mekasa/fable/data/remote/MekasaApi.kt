@@ -8,6 +8,7 @@ import app.mekasa.fable.data.model.HouseholdInvite
 import app.mekasa.fable.data.model.HouseholdInvitesResponse
 import app.mekasa.fable.data.model.HouseholdMember
 import app.mekasa.fable.data.model.HouseholdMembersResponse
+import app.mekasa.fable.data.model.ItemPhotoUpload
 import app.mekasa.fable.data.model.InventoryItem
 import app.mekasa.fable.data.model.InventoryItemCreateRequest
 import app.mekasa.fable.data.model.InventoryItemPatch
@@ -52,6 +53,15 @@ interface MekasaApi {
     suspend fun listInventory(token: String, householdId: String): InventoryListResponse
     suspend fun createInventoryItem(token: String, householdId: String, body: InventoryItemCreateRequest): InventoryItem
     suspend fun patchInventoryItem(token: String, householdId: String, itemId: String, patch: InventoryItemPatch): InventoryItem
+
+    /** REQ-INV-019 AC1: upload a household-private item photo. */
+    suspend fun uploadItemPhoto(
+        token: String,
+        householdId: String,
+        bytes: ByteArray,
+        mimeType: String,
+        filename: String,
+    ): ItemPhotoUpload
     suspend fun refreshInventoryImage(token: String, householdId: String, itemId: String): InventoryItem
     suspend fun consumeInventoryItem(token: String, householdId: String, itemId: String, amount: Int): InventoryItem
     suspend fun consumeByBarcode(token: String, householdId: String, barcode: String, amount: Int): ConsumeByBarcodeResult

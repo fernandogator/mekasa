@@ -25,15 +25,15 @@ struct ReceiptScanView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 32, style: .continuous)
-                                .fill(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                                .fill(MekasaTheme.surfaceMuted)
                                 .frame(height: 200)
                             VStack(spacing: 12) {
                                 Image(systemName: "doc.text.viewfinder")
                                     .font(.system(size: 40, weight: .semibold))
-                                    .foregroundStyle(MekasaTheme.brand)
+                                    .foregroundStyle(MekasaTheme.text)
                                 Text("Photograph your receipt")
                                     .font(.system(size: 16, weight: .heavy, design: .rounded))
-                                    .foregroundStyle(MekasaTheme.brand)
+                                    .foregroundStyle(MekasaTheme.text)
                             }
                         }
 
@@ -50,7 +50,7 @@ struct ReceiptScanView: View {
                         PhotosPicker(selection: $photoItem, matching: .images) {
                             Text("Choose receipt photo")
                                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MekasaTheme.onBrand)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
                                 .background(MekasaTheme.brand)
@@ -103,7 +103,7 @@ struct ReceiptScanView: View {
                 }
                 TextEditor(text: $pastedText)
                     .font(.system(size: 15, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                     .scrollContentBackground(.hidden)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
@@ -201,13 +201,7 @@ struct ReceiptScanView: View {
             )
             drafts = response.items.map { $0.toLocal() }
             engineLabel = response.engine
-            storeContext = response.storeId.map { storeID in
-                var ids: [String: String] = [:]
-                for (draft, line) in zip(drafts, response.items) {
-                    if let rowID = line.storeItemId { ids[draft.id] = rowID }
-                }
-                return ReceiptStoreContext(storeID: storeID, storeName: response.storeName, storeItemIDs: ids)
-            }
+            storeContext = response.storeName.map { ReceiptStoreContext(storeName: $0) }
             let unidentified = drafts.filter { !$0.isIdentified }.count
             if drafts.isEmpty {
                 statusMessage = "No line items found — try another photo or demo haul."

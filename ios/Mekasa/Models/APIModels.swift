@@ -485,14 +485,11 @@ struct ReceiptLineItemDTO: Codable, Equatable {
     let barcode: String?
     let imageUrl: String?
     let identified: Bool
-    /// Row in the store's shared table, sent back with an in-store capture.
-    var storeItemId: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case name, category, quantity, barcode, identified
         case pricePaid = "price_paid"
         case imageUrl = "image_url"
-        case storeItemId = "store_item_id"
     }
 
     init(
@@ -522,7 +519,6 @@ struct ReceiptLineItemDTO: Codable, Equatable {
         barcode = try container.decodeIfPresent(String.self, forKey: .barcode)
         imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
         identified = try container.decodeIfPresent(Bool.self, forKey: .identified) ?? false
-        storeItemId = try container.decodeIfPresent(String.self, forKey: .storeItemId)
     }
 
     func toLocal() -> InventoryItem {
@@ -543,35 +539,25 @@ struct ReceiptScanResponseDTO: Codable, Equatable {
     let householdId: String
     let engine: String
     let items: [ReceiptLineItemDTO]
-    /// Store read off the receipt (e.g. "H-E-B"); nil when unknown.
-    let storeId: String?
+    /// Store brand printed on the receipt (e.g. "H-E-B"); nil when unknown.
     let storeName: String?
 
     enum CodingKeys: String, CodingKey {
         case engine, items
         case householdId = "household_id"
-        case storeId = "store_id"
         case storeName = "store_name"
     }
 }
 
-/// A stored user photo (`POST /v1/households/{id}/photos`).
-struct PhotoUploadDTO: Codable, Equatable {
-    let id: String
+/// A household-private item photo (`POST /v1/households/{id}/item-photos`).
+/// The `url` only loads with the member's bearer token (REQ-INV-019 AC1/AC3).
+struct ItemPhotoUploadDTO: Codable, Equatable {
+    let photoId: String
     let url: String
-}
-
-/// Store table row returned by an in-store capture (only the fields the app uses).
-struct StoreCatalogItemDTO: Codable, Equatable {
-    let id: String
-    let storeId: String
-    let status: String
-    let photoUrl: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, status
-        case storeId = "store_id"
-        case photoUrl = "photo_url"
+        case url
+        case photoId = "photo_id"
     }
 }
 

@@ -45,6 +45,17 @@ final class UI006SnapshotTests: XCTestCase {
         )
     }
 
+    func testInventoryList_undoToastDark_iPhone13Pro() throws {
+        let vc = SnapshotHost.controller { session in
+            session.showInventoryUndoToast = true
+            return NavigationStack { InventoryListView() }
+        }
+        try MekasaSnapshots.assertScreen(
+            of: vc,
+            as: .image(on: .iPhone13Pro, precision: 0.98, traits: .init(userInterfaceStyle: .dark))
+        )
+    }
+
     func testInventoryList_small_iPhone13Mini() throws {
         let vc = SnapshotHost.controller { _ in
             NavigationStack { InventoryListView() }

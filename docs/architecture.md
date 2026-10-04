@@ -484,6 +484,19 @@ decision rests on):
    index or an export.
 
 Rules embedded in the decision:
+- **One Postgres schema.** The pre-ADR-008 prototype per-store tables
+  (`stores`, `store_items`, `store_item_codes`, `photos`,
+  `household_latest_receipts`; DDL `backend/app/store_catalog.sql`
+  applied at API startup, PR #106) were retired on 2026-10-03:
+  migration `0003_retire_store_catalog_prototype.sql` drops them. They
+  stored raw household ids (NFR-002) and user photo bytes behind a
+  public URL, and their receipt-line / manual-scan bookkeeping is
+  superseded by `products` + `product_aliases` +
+  `product_confirmations`. Product capture for an unidentified
+  receipt line now does a barcode lookup plus a household-private
+  photo (REQ-INV-019); the shared-catalog write arrives with the
+  REQ-RCP-020 `capture` endpoints. All DDL goes through numbered
+  migrations — the API never creates tables.
 - Connection: Cloud Run connects over the Cloud SQL Unix socket.
   `DATABASE_URL=postgresql://USER:PASS@/DB?host=/cloudsql/PROJECT:REGION:INSTANCE`
   is read from Secret Manager secret `mekasa-database-url`; only the
@@ -502,7 +515,8 @@ Rules embedded in the decision:
   `product_confirmations` and `product_conflicts`; a `CHECK` enforces
   the hash shape.
 - Enumerations are `TEXT` + named `CHECK` constraints (not
-  `CREATE TYPE`) so values can be added in one transaction.
+  `CREATE TYPE`) so values can be added in one transaction; revisited
+  in [ADR-009](adr/ADR-009-enum-strategy.md).
 - Provenance weights: `gs1_registry 0.9 > store_api 0.8 > user_scan
   0.7 > llm_ocr 0.4`; only GS1-verified and official-store-API hits
   are authoritative for status transitions.
@@ -517,10 +531,13 @@ Rules embedded in the decision:
   rows, filed as `product_conflicts` on `verified` rows (REQ-RCP-019).
   When no UPC is discovered the user scans the barcode and optionally
   photographs the product; the capture creates or re-keys the shared
-  row in one transaction (REQ-RCP-020). User photos are stored under a
-  random id (`/v1/product-photos/{uuid}`, EXIF stripped, auth-gated
-  redirect to a signed URL) so they can back a shared `image_url`
-  without leaking a household id (REQ-RCP-021; design §3.11).
+  row in one transaction (REQ-RCP-020). The capture photo is shared with
+  that UPC (decided 2026-10-04): it is stored under a random id
+  (`/v1/product-photos/{uuid}`, EXIF stripped, auth-gated redirect to a
+  signed URL) so it can back a shared `image_url` without leaking a
+  household id (REQ-RCP-021; design §3.11). Pictures a member sets from
+  item detail stay household-private (REQ-INV-019) and never reach the
+  catalog.
 - Enrichment order: official store API → Open Food Facts → UPCitemdb
   (discovery, stop at first UPC) → GS1 verification of any known UPC →
   crowdsourced pending (REQ-RCP-010), reusing the ADR-006 waterfall.

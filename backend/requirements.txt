@@ -1,6 +1,6 @@
 fastapi==0.116.1
 uvicorn[standard]==0.35.0
-pydantic==2.11.7
+pydantic==2.12.5
 pydantic-settings==2.10.1
 firebase-admin==7.1.0
 httpx==0.28.1
@@ -8,6 +8,11 @@ google-cloud-firestore==2.21.0
 python-multipart==0.0.20
 pytest==8.4.1
 google-cloud-vision==3.10.1
+# Receipt line-item extraction with Gemini on Vertex AI (ADR-007, receipt_llm.py).
+google-genai==2.28.0
+# Household-private item photos (REQ-INV-019): re-encode uploads, store in GCS.
+pillow==12.3.0
+google-cloud-storage==3.14.1
 # Shared product catalog (Cloud SQL Postgres over the /cloudsql Unix socket, ADR-008).
 # Migrations are plain SQL via psql; the runtime repository (phase 2) uses these.
 psycopg[binary]==3.3.6

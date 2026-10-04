@@ -27,6 +27,7 @@ tags:
   - name: line-items
   - name: parse-jobs
   - name: products
+  - name: item-photos
   - name: product-photos
   - name: inventory
   - name: scan-events
@@ -254,7 +255,7 @@ paths:
       description: |
         Satisfies: REQ-RCP-020 AC2–AC5, REQ-RCP-013 · Spec version: 1.0
 
-        The in-store / at-home fallback for lines with `barcode: null`
+        The fallback (usually at home while unpacking) for lines with `barcode: null`
         (`capture_available: true`). The client scans the package barcode with
         the existing camera scanner and may upload a photo first
         (`POST …/product-photos`).
@@ -291,13 +292,72 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ProductCaptureResponse' }
         '400':
-          description: '`invalid_upc`, `unknown_photo_id`'
+          description: '`invalid_upc`, `invalid_plu`, `exactly_one_code_required`, `unknown_photo_id`'
           content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: '`receipt_confirmed`'
           content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /v1/households/{household_id}/receipts/{receipt_id}/line-items/{line_item_id}/no-barcode:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+      - $ref: '#/components/parameters/ReceiptId'
+      - $ref: '#/components/parameters/LineItemId'
+    post:
+      tags: [line-items]
+      operationId: markLineItemNoBarcode
+      summary: Mark this receipt text as having no barcode (deli, bakery, butcher)
+      description: |
+        Satisfies: REQ-RCP-020 AC10 · Spec version: 1.0
+
+        Saves the line as a household item with no code and remembers the
+        choice for this household under the store chain + normalized receipt
+        text (Firestore `households/{hid}/no_barcode_aliases/{chain}:{alias}`).
+        Nothing is written to the shared catalog; `photo_id` must be a
+        household-private item photo (`item-photos`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name, category]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 120 }
+                category: { type: string, minLength: 1, maxLength: 60 }
+                photo_id: { type: [string, 'null'], format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LineItem' }
+        '400':
+          description: '`unknown_photo_id`'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: '`receipt_confirmed`'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    delete:
+      tags: [line-items]
+      operationId: clearLineItemNoBarcode
+      summary: 'Forget the no-barcode choice ("This item has a barcode")'
+      description: |
+        Satisfies: REQ-RCP-020 AC10 · Spec version: 1.0
+
+        Deletes the remembered alias; the line gets `capture_available: true`
+        again.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LineItem' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /v1/households/{household_id}/receipts/{receipt_id}/line-items/{line_item_id}/candidates:
     parameters:
@@ -593,8 +653,94 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ProductCaptureResponse' }
         '400':
-          description: '`invalid_upc`, `unknown_photo_id`'
+          description: '`invalid_upc`, `invalid_plu`, `exactly_one_code_required`, `unknown_photo_id`'
           content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/households/{household_id}/item-photos:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+    post:
+      tags: [item-photos]
+      operationId: uploadItemPhoto
+      summary: Upload a household-private item photo (implemented)
+      description: |
+        Satisfies: REQ-INV-019 AC1/AC2/AC7 · Spec version: 1.0
+
+        Replace an item picture with the member's own photo. Multipart
+        `file` (JPEG/PNG/WebP ≤ 8 MB). The server re-encodes to JPEG, strips
+        all metadata (EXIF/GPS), caps the long edge at 1600 px and stores
+        `households/{hid}/item-photos/{photo_id}.jpg` in `ITEM_PHOTO_BUCKET`.
+        The returned `url` is the household-scoped GET below and only works
+        with a member's bearer token; it is never shared with other
+        households or copied into the shared catalog (AC6).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [photo_id, url]
+                properties:
+                  photo_id: { type: string, format: uuid }
+                  url:
+                    type: string
+                    format: uri
+                    description: '`https://<host>/v1/households/{hid}/item-photos/{photo_id}`'
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413':
+          description: '`payload_too_large` (> 8 MB)'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '415':
+          description: '`unsupported_media_type`'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /v1/households/{household_id}/item-photos/{photo_id}:
+    parameters:
+      - $ref: '#/components/parameters/HouseholdId'
+      - $ref: '#/components/parameters/PhotoId'
+    get:
+      tags: [item-photos]
+      operationId: getItemPhoto
+      summary: Fetch a private item photo (household members only)
+      description: |
+        Satisfies: REQ-INV-019 AC3 · Spec version: 1.0
+
+        Streams the JPEG with `Cache-Control: private, max-age=86400`.
+        Clients must send the bearer token; plain image loaders cannot fetch
+        this URL.
+      responses:
+        '200':
+          description: JPEG bytes
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [item-photos]
+      operationId: deleteItemPhoto
+      summary: Delete a private item photo
+      description: |
+        Satisfies: REQ-INV-019 AC5 · Spec version: 1.0
+
+        Removes the object. An inventory item still pointing at it gets a
+        category placeholder on its next `refresh-image`. Replacing an item's
+        `image_url` with another private photo deletes the previous one
+        automatically (AC4).
+      responses:
+        '204': { description: Deleted }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
@@ -604,9 +750,15 @@ paths:
     post:
       tags: [product-photos]
       operationId: uploadProductPhoto
-      summary: Upload a product photo taken by the user
+      summary: Upload a product photo taken during product capture (REQ-RCP-021)
       description: |
-        Satisfies: REQ-RCP-021 AC1/AC2/AC6 · Spec version: 1.0
+        Satisfies: REQ-RCP-021 AC1/AC2/AC6, REQ-RCP-020 AC5 · Spec version: 1.0
+
+        Used only by the product capture flow: the returned `photo_id` is
+        sent with `…/capture` and the photo is shared with the scanned UPC
+        (visible to every signed-in household). Item-picture replacements
+        from item detail stay household-private and use `item-photos` above
+        (REQ-INV-019).
 
         Accepts JPEG/PNG/HEIC ≤ 8 MB as base64 JSON or multipart. The server
         re-encodes to JPEG, strips EXIF/GPS, limits the long edge to 1600 px and
@@ -688,6 +840,10 @@ paths:
           headers:
             Location: { schema: { type: string, format: uri } }
             Cache-Control: { schema: { type: string }, description: '`private, max-age=600`' }
+        '200':
+          description: Local / test mode only (`PRODUCT_PHOTO_BUCKET` unset, REQ-RCP-021 AC8) — the JPEG bytes
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
         '401': { description: Missing/invalid bearer token }
         '404': { $ref: '#/components/responses/NotFound' }
 
@@ -784,6 +940,9 @@ components:
       schema: { type: string, format: uuid }
 
   responses:
+    Unauthorized:
+      description: Missing or invalid bearer token.
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
     Forbidden:
       description: Caller is not a member of the household (or lacks the Owner role where required).
       content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
@@ -917,7 +1076,10 @@ components:
         quantity:
           type: integer
           minimum: 1
-          description: Integer quantity for inventory (legacy; `qty` rounded, min 1).
+          description: |
+            Integer quantity for inventory. `1` for weighed lines (`unit` lb/oz/kg/g:
+            one bunch or bag as sold; the weight stays in `qty`); otherwise `qty`
+            rounded, min 1 (REQ-RCP-006 AC5).
         qty: { type: number, exclusiveMinimum: 0 }
         unit: { type: [string, 'null'] }
         price_paid:
@@ -946,7 +1108,14 @@ components:
           description: |
             True when `barcode` is null or `resolution_status` is
             `needs_review`/`unresolved`: the client offers "Scan product"
-            (REQ-RCP-020 AC1).
+            (REQ-RCP-020 AC1). False when `no_barcode` is true.
+        no_barcode:
+          type: boolean
+          description: |
+            The household marked this receipt text (per store chain) as having
+            no barcode (REQ-RCP-020 AC10); the client treats the line as ready
+            and shows plain "No barcode" text (no chip) instead of "Scan →"
+            (REQ-RCP-020 AC11).
         user_edited_fields:
           type: array
           items:
@@ -994,14 +1163,20 @@ components:
     ProductCaptureRequest:
       type: object
       additionalProperties: false
-      required: [upc]
+      oneOf:
+        - required: [upc]
+          not: { required: [plu_code] }
+        - required: [plu_code]
+          not: { required: [upc] }
       description: |
-        In-store capture (REQ-RCP-020 AC2): the scanned barcode plus an
-        optional photo and attribute overrides. Missing attributes fall back
-        to the line / inventory item (`name`, `category`) when a product has to
-        be created.
+        Product capture (REQ-RCP-020 AC2/AC7), usually at home while unpacking: the scanned barcode, or the
+        PLU typed from a produce sticker, plus an optional photo and attribute
+        overrides. Missing attributes fall back to the line / inventory item
+        (`name`, `category`) when a product has to be created. A `plu_code`
+        capture links to or creates the shared product `plu:<code>`.
       properties:
         upc: { type: string, pattern: '^[0-9]{8,14}$' }
+        plu_code: { type: string, pattern: '^[0-9]{4,5}$' }
         photo_id: { type: [string, 'null'], format: uuid }
         name: { type: [string, 'null'], minLength: 1, maxLength: 120 }
         brand: { type: [string, 'null'], maxLength: 80 }
@@ -1023,6 +1198,12 @@ components:
         inventory_item_id:
           type: [string, 'null']
           description: Present for the inventory variant.
+        inventory_item:
+          type: [object, 'null']
+          description: |
+            Inventory variant only: the updated item (`barcode` is set for UPC
+            captures only, `product_id` is the UPC or `plu:<code>`, `image_url`
+            is the capture photo when one was sent).
         scan_event_id: { type: string }
         confirmation_counted: { type: boolean }
         enrichment_job_id:
@@ -1258,7 +1439,9 @@ components:
       required: [id, upc, store_chain_id, name, category, source, confidence_score, confirmation_count, status]
       properties:
         id: { type: string }
+        code_kind: { type: string, enum: [upc, plu, llm], description: '`plu` rows are keyed `plu:<code>` and filed under store chain `unknown` (shared across chains).' }
         upc: { type: [string, 'null'] }
+        plu_code: { type: [string, 'null'], pattern: '^[0-9]{4,5}$' }
         store_chain_id: { type: string }
         name: { type: string }
         brand: { type: [string, 'null'] }
@@ -1286,10 +1469,11 @@ components:
 
     ScanEvent:
       type: object
-      required: [id, upc, scanned_by_uid, scanned_at, context, outcome]
+      required: [id, scanned_by_uid, scanned_at, context, outcome]
       properties:
         id: { type: string }
-        upc: { type: string }
+        upc: { type: [string, 'null'] }
+        plu_code: { type: [string, 'null'], description: Set instead of `upc` for a PLU capture (REQ-RCP-020 AC7). }
         scanned_by_uid: { type: string }
         scanned_at: { type: string, format: date-time }
         context: { type: string, enum: [add_items, trash_station, manual_entry, receipt_capture, inventory_capture] }

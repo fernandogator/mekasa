@@ -27,7 +27,7 @@ struct StoreSelectionView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Where do you shop?")
                         .font(MekasaTheme.displayFont)
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
 
                     Text(subtitle)
                         .font(MekasaTheme.bodyFont)
@@ -62,7 +62,7 @@ struct StoreSelectionView: View {
                         .padding(8)
                         .background(MekasaTheme.surfaceElevated)
                         .clipShape(RoundedRectangle(cornerRadius: 40, style: .continuous))
-                        .shadow(color: .black.opacity(0.08), radius: 24, y: 12)
+                        .shadow(color: MekasaTheme.shadow.opacity(0.08), radius: 24, y: 12)
                         .overlay(
                             RoundedRectangle(cornerRadius: 40, style: .continuous)
                                 .stroke(MekasaTheme.brandMuted.opacity(0.25), lineWidth: 1)
@@ -160,11 +160,11 @@ private struct StoreRow: View {
             HStack(spacing: 16) {
                 ZStack {
                     Circle()
-                        .fill(isSelected ? Color.white : Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                        .fill(isSelected ? MekasaTheme.surfaceElevated : MekasaTheme.surfaceMuted)
                         .frame(width: 48, height: 48)
                     Text(store.initials)
                         .font(.system(size: 11, weight: .black, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                 }
@@ -176,12 +176,12 @@ private struct StoreRow: View {
                         if store.provider == "places" {
                             Text("Places")
                                 .font(.system(size: 10, weight: .heavy, design: .rounded))
-                                .foregroundStyle(isSelected ? MekasaTheme.brandMuted : MekasaTheme.accent)
+                                .foregroundStyle(isSelected ? MekasaTheme.onBrandMuted : MekasaTheme.accent)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .overlay(
                                     Capsule().stroke(
-                                        isSelected ? MekasaTheme.brandMuted : MekasaTheme.accent,
+                                        isSelected ? MekasaTheme.onBrandMuted : MekasaTheme.accent,
                                         lineWidth: 1
                                     )
                                 )
@@ -191,7 +191,7 @@ private struct StoreRow: View {
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .tracking(0.8)
                         .textCase(.uppercase)
-                        .foregroundStyle(isSelected ? MekasaTheme.brandMuted : MekasaTheme.textMuted)
+                        .foregroundStyle(isSelected ? MekasaTheme.onBrandMuted : MekasaTheme.textMuted)
                 }
 
                 Spacer()
@@ -202,17 +202,17 @@ private struct StoreRow: View {
                         .frame(width: 32, height: 32)
                         .overlay(
                             Circle()
-                                .stroke(isSelected ? MekasaTheme.accent : MekasaTheme.brandMuted, lineWidth: 2)
+                                .stroke(isSelected ? MekasaTheme.accent : MekasaTheme.border, lineWidth: 2)
                         )
                     if isSelected {
                         Image(systemName: "checkmark")
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MekasaTheme.onAccent)
                     }
                 }
             }
             .padding(16)
-            .foregroundStyle(isSelected ? Color.white : MekasaTheme.brand)
+            .foregroundStyle(isSelected ? MekasaTheme.onBrand : MekasaTheme.text)
             .background(
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
                     .fill(isSelected ? MekasaTheme.brand : Color.clear)

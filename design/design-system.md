@@ -12,37 +12,111 @@
 
 ## Color Tokens
 
-### Light
+### Light (Rich & Grounded, 2026-10-04)
 
 | Token | Role | Value |
 |-------|------|-------|
-| `--color-brand` | Charcoal ink / dark surfaces | `#171e19` |
-| `--color-brand-muted` | Sage gray-green secondary | `#b7c6c2` |
-| `--color-surface` | Page / screen background | `#eeebe3` |
-| `--color-surface-elevated` | Interactive surfaces only | `#ffffff` |
-| `--color-text` | Primary text | `#171e19` |
-| `--color-text-muted` | Secondary text | `#6d7a76` |
-| `--color-accent` | CTA / focus | `#ca0013` |
-| `--color-danger` | Destructive actions | `#ca0013` |
-| `--color-success` | Positive confirmation | `#2f6b4f` |
-| `--color-warning` | Low-stock / pending | `#c45c12` |
+| `--color-brand` | Warm charcoal: nav pill, dark fills, progress fill | `#5d5652` |
+| `--color-brand-muted` | Decorative sage: blobs, icon wells, tracks (never text) | `#8fa085` |
+| `--color-surface` | Page / screen background | `#ede8e0` |
+| `--color-surface-elevated` | Cards / sheets | `#faf7f3` |
+| `--color-text` | Primary text | `#5d5652` |
+| `--color-text-muted` | Secondary text, labels, codes | `#5c6b54` |
+| `--color-accent` | Primary buttons, FAB, focus, positive states | `#5a6f4f` |
+| `--color-danger` | Destructive actions, errors | `#a44a3f` |
+| `--color-success` | Positive confirmation | `#5a6f4f` |
+| `--color-warning` | Warning text (Needs scan, low stock, pending) | `#8b5c32` |
+| `--color-warning-tint` | Warning chip background | `#f3e6d8` |
+| `--color-success-tint` | Match / success chip background | `#dce8d3` |
+| `--color-border` | Icons, input borders, chip outlines | `#76896b` |
+| `--color-on-brand-muted` | Inactive icons on the brand nav pill | `#c9d6c0` |
+| `--color-camera-surface` | Camera viewfinder and full-screen camera | `#1a1918` |
+| `--color-on-camera` | Text and icons on the camera surface | `#faf7f3` |
+| `--color-overlay` | Sage wash / atmosphere | `rgba(143, 160, 133, 0.15)` |
 
-### Dark
+Decorative only, never text: amber `#c48c5a` and light sage `#b8d4a8`.
+
+Contrast (NFR-005 AC2, light appearance):
+
+| Pair | Ratio | Needs |
+|------|-------|-------|
+| Text `#5d5652` on surface / elevated | 5.9 / 6.7 | 4.5 |
+| Muted text `#5c6b54` on surface / elevated | 4.7 / 5.3 | 4.5 |
+| Accent `#5a6f4f` text on surface / elevated | 4.5 / 5.2 | 4.5 |
+| White on accent `#5a6f4f` | 5.5 | 4.5 |
+| White on brand `#5d5652` | 7.2 | 4.5 |
+| Danger `#a44a3f` on surface / elevated | 4.7 / 5.4 | 4.5 |
+| Warning `#8b5c32` on surface / warning tint | 4.7 / 4.7 | 4.5 |
+| Text `#5d5652` on success tint `#dce8d3` | 5.7 | 4.5 |
+| Border `#76896b` on surface / elevated | 3.1 / 3.5 | 3 |
+| `#c9d6c0` icon on brand `#5d5652` | 4.8 | 3 |
+| `#faf7f3` on camera `#1a1918` | 16.4 | 4.5 |
+
+The palette's original sage `#8fa085` (2.3:1 on surface) and amber `#c48c5a` (2.4:1) fail as text, so the text roles use the darker shades above. White text on amber or sage fills is not allowed.
+
+### Native theme roles
+
+`MekasaTheme` (iOS) and `MekasaPalette` (Android) expose the tokens above plus these roles. They are the only colors screens may use (NFR-005 AC5). Both apps follow the system appearance (UI-001 AC3, UI-002 AC3).
+
+| Role | Use | Light | Dark |
+|------|-----|-------|------|
+| `accentTint` | Accent icon wells, selected tiles | `#dce8d3` | `#2c3628` |
+| `dangerTint` | Error and destructive wells, depleted scan feedback | `#f6e3e0` | `#3a2220` |
+| `onBrand` | Text and icons on brand fills and photos | `#ffffff` | `#ede8e0` |
+| `onAccent` | Text and icons on accent, success, warning and danger fills | `#ffffff` | `#1c1a18` |
+| `onBrandMuted` | Inactive tab icons, secondary text on brand fills | `#c9d6c0` | `#b5c2ab` |
+| `surfaceMuted` (iOS) | Wells, image placeholders, steppers, unselected options | `#ece7df` | `#312d29` |
+| `progressTrack` (iOS) | Progress bar track | `#d9d3c9` | `#3a3531` |
+| `scrim` / `photoScrim` | Overlay on photos, used with opacity | `#1a1918` | `#0f0e0d` |
+| `shadow` (iOS) | Drop shadows, used with opacity | `#000000` | `#000000` |
+| `gradeA` … `gradeD` (iOS) | Health grades A–D (E uses `danger`) | `#1f8a4c` `#6fa82f` `#d9a406` `#e06c1a` | same |
+
+`brand` is a fill role only: in dark mode it is `#3a3531`, which is 1.4:1 on the surface, so text and the progress fill use `text` instead. Dark pairs added for these roles: `onAccent` `#1c1a18` on accent / danger / warning / success fills 6.2 / 7.2 / 8.9 / 8.0; text and muted text on `surfaceMuted` 11.2 / 6.5; border on `surfaceMuted` 3.9.
+
+The health grade fills predate this palette, and white text on grades B–D is below 4.5:1; they need their own pass.
+
+### Dark (Rich & Grounded, 2026-10-04)
 
 | Token | Role | Value |
 |-------|------|-------|
-| `--color-brand` | Elevated dark green-charcoal | `#1f2a24` |
-| `--color-surface` | Page background | `#121612` |
-| `--color-surface-elevated` | Cards / sheets | `#1c241f` |
-| `--color-text` | Primary text | `#eeebe3` |
-| `--color-text-muted` | Secondary | `#9aada8` |
-| `--color-accent` | CTA | `#ff3b4e` |
-| `--color-brand-muted` | Borders / inactive | `#5e706c` |
-| `--color-success` | Positive | `#5dba8a` |
+| `--color-brand` | Nav pill, dark fills, icon wells | `#3a3531` |
+| `--color-brand-muted` | Decorative sage blob (15% opacity; never text) | `#5a6f4f` |
+| `--color-surface` | Page background | `#1c1a18` |
+| `--color-surface-elevated` | Cards / sheets | `#272421` |
+| `--color-text` | Primary text | `#ede8e0` |
+| `--color-text-muted` | Secondary text, labels, codes | `#a9b79f` |
+| `--color-accent` | Primary button and FAB fill (label `#1c1a18`) | `#8fa085` |
+| `--color-accent-text` | Accent text and links | `#a3b598` |
+| `--color-danger` | Destructive actions, errors | `#e39286` |
+| `--color-success` | Positive confirmation | `#a3b598` |
+| `--color-warning` | Warning text | `#e2b07e` |
+| `--color-warning-tint` | Warning chip background | `#3a2e22` |
+| `--color-success-tint` | Match / success chip background | `#2c3628` |
+| `--color-border` | Icons, input borders, chip outlines | `#7f8e76` |
+| `--color-on-brand-muted` | Inactive icons on the nav pill | `#b5c2ab` |
+| `--color-camera-surface` | Camera viewfinder | `#0f0e0d` |
+| `--color-on-camera` | Text and icons on the camera surface | `#faf7f3` |
+
+Contrast (NFR-005 AC2, dark appearance):
+
+| Pair | Ratio | Needs |
+|------|-------|-------|
+| Text `#ede8e0` on surface / elevated / nav pill | 14.2 / 12.7 / 9.9 | 4.5 |
+| Muted text `#a9b79f` on surface / elevated | 8.2 / 7.3 | 4.5 |
+| Accent text `#a3b598` on surface / elevated | 8.0 / 7.1 | 4.5 |
+| `#1c1a18` label on accent `#8fa085` | 6.2 | 4.5 |
+| Danger `#e39286` on surface / elevated | 7.2 / 6.4 | 4.5 |
+| Warning `#e2b07e` on surface / warning tint | 8.9 / 6.7 | 4.5 |
+| Text on success tint `#2c3628` | 10.3 | 4.5 |
+| Border `#7f8e76` on surface / elevated | 5.0 / 4.4 | 3 |
+| `#b5c2ab` icon on nav pill `#3a3531` | 6.5 | 3 |
+| `#faf7f3` on camera `#0f0e0d` | 18.1 | 4.5 |
+
+Design reference: `design/pages/dashboard-dark.html`, `scan-barcode-dark.html`, `scan-new-product-dark.html`, `scan-haul-summary-dark.html`.
 
 Do not introduce purple, indigo, terracotta, cream-serif luxury, or neon palettes.
-Never use pure black; always `#171e19` (light) / near-charcoal (dark).
-Accent red is reserved for primary actions and critical alerts.
+Never use pure black; dark fills use `#5d5652` (light) / near-charcoal (dark).
+Danger red `#a44a3f` is reserved for destructive actions and errors.
 
 ## Typography
 
@@ -50,7 +124,7 @@ Accent red is reserved for primary actions and critical alerts.
 |-------|-----|-------|
 | `--font-display` | Brand / hero | Nunito 900, 32px |
 | `--font-body` | Body copy | Nunito 400–600, 16px |
-| `--font-label` | Eyebrow labels | Nunito 700, 10–12px, uppercase, tracked |
+| `--font-label` | Eyebrow labels | Nunito 700, 12px minimum (NFR-005 AC1), uppercase, tracked |
 | `--font-mono` | Codes / barcodes | ui-monospace / SF Mono / Menlo, 13px |
 
 Do not use Inter, Roboto, Arial, or system UI as the product typeface.
@@ -62,12 +136,12 @@ Do not use Inter, Roboto, Arial, or system UI as the product typeface.
 - Main cards / sheets: 40px radius
 - Nested rows / tiles: 24px radius
 - Screen gutter: 24px
-- Bottom nav pill: 64px tall, 8px from edges, `#171e19`
+- Bottom nav pill: 64px tall, 8px from edges, `#5d5652`
 
 ## Elevation
 
 Cards (interactive only): `0 20px 50px -12px rgba(0,0,0,0.08)`.
-Borders: `1px solid #b7c6c2` at 20–30% opacity.
+Borders: decorative card edges `#8fa085` at 20–30% opacity; input borders and chip outlines `1px solid #76896b`.
 Atmosphere: sage wash blob on `--color-surface`, not a flat fill and not a card-wrapped page.
 
 ## Component Names

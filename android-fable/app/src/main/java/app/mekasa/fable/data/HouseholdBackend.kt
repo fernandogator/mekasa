@@ -49,6 +49,12 @@ interface HouseholdBackend {
     suspend fun consume(householdId: String, itemId: String, amount: Int): InventoryItem
     suspend fun consumeByBarcode(householdId: String, barcode: String, amount: Int): ConsumeByBarcodeResult
     suspend fun refreshImage(householdId: String, itemId: String): InventoryItem
+
+    /**
+     * REQ-INV-019: replace an item's picture with the member's own photo. The JPEG is
+     * stored privately for this household and the item's `image_url` points at it.
+     */
+    suspend fun replaceItemPhoto(householdId: String, itemId: String, jpeg: ByteArray): InventoryItem
     suspend fun unknownScans(householdId: String): List<UnknownBarcodeEvent>
 
     /** REQ-INV-016: hide the row server-side but keep the document for [restoreInventory]. */

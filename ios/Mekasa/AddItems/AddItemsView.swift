@@ -17,7 +17,7 @@ struct AddItemsView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                             .frame(width: 40, height: 40)
                             .background(MekasaTheme.surfaceElevated)
                             .clipShape(Circle())
@@ -35,7 +35,7 @@ struct AddItemsView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Add to the house")
                                 .font(MekasaTheme.displayFont)
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                             Text("Each path lets you confirm before anything saves.")
                                 .font(MekasaTheme.bodyFont)
                                 .foregroundStyle(MekasaTheme.textMuted)
@@ -126,19 +126,19 @@ struct AddItemsView: View {
         HStack(spacing: 16) {
             Image(systemName: icon)
                 .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(accent ? MekasaTheme.accent : MekasaTheme.brand)
+                .foregroundStyle(accent ? MekasaTheme.accent : MekasaTheme.text)
                 .frame(width: 56, height: 56)
                 .background(
                     accent
-                        ? Color(red: 0xfc / 255, green: 0xe5 / 255, blue: 0xe7 / 255)
-                        : Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255)
+                        ? MekasaTheme.accentTint
+                        : MekasaTheme.surfaceMuted
                 )
                 .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(size: 18, weight: .heavy, design: .rounded))
-                    .foregroundStyle(accent ? MekasaTheme.accent : MekasaTheme.brand)
+                    .foregroundStyle(accent ? MekasaTheme.accent : MekasaTheme.text)
                 Text(subtitle)
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundStyle(MekasaTheme.textMuted)
@@ -147,7 +147,7 @@ struct AddItemsView: View {
             Spacer(minLength: 0)
             Image(systemName: "chevron.right")
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(MekasaTheme.brandMuted)
+                .foregroundStyle(MekasaTheme.border)
         }
         .padding(20)
         .background(MekasaTheme.surfaceElevated)
@@ -156,7 +156,7 @@ struct AddItemsView: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
+        .shadow(color: MekasaTheme.shadow.opacity(0.04), radius: 6, y: 2)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title). \(subtitle)")
     }

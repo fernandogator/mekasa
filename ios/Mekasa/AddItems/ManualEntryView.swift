@@ -75,7 +75,7 @@ struct ManualEntryView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
-                                .foregroundStyle(canSearch ? MekasaTheme.brand : MekasaTheme.textMuted)
+                                .foregroundStyle(canSearch ? MekasaTheme.text : MekasaTheme.textMuted)
                                 .background(MekasaTheme.surfaceElevated)
                                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             }
@@ -210,7 +210,7 @@ struct ManualEntryView: View {
 
                 Text("\(quantity)")
                     .font(.system(size: 28, weight: .black, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                     .frame(maxWidth: .infinity)
 
                 Button {
@@ -234,7 +234,7 @@ struct ManualEntryView: View {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1)
             )
-            .foregroundStyle(MekasaTheme.brand)
+            .foregroundStyle(MekasaTheme.text)
         }
     }
 
@@ -247,7 +247,7 @@ struct ManualEntryView: View {
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .foregroundStyle(selected ? Color.white : MekasaTheme.brand)
+                .foregroundStyle(selected ? MekasaTheme.onBrand : MekasaTheme.text)
                 .background(selected ? MekasaTheme.brand : MekasaTheme.surfaceElevated)
                 .clipShape(Capsule())
                 .overlay(

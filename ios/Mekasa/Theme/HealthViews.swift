@@ -8,7 +8,7 @@ struct HealthGradeBadge: View {
     var body: some View {
         Text(grade?.uppercased() ?? "–")
             .font(.system(size: size * 0.5, weight: .black, design: .rounded))
-            .foregroundStyle(.white)
+            .foregroundStyle(MekasaTheme.onBrand)
             .frame(width: size, height: size)
             .background(HealthGrade.color(for: grade))
             .clipShape(Circle())
@@ -30,10 +30,10 @@ struct AffectedMembersChip: View {
                     .font(.system(size: 11, weight: .heavy, design: .rounded))
                     .lineLimit(1)
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(MekasaTheme.onAccent)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(MekasaTheme.accent)
+            .background(MekasaTheme.danger)
             .clipShape(Capsule())
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(AffectedMembers.summary(warnings))
@@ -50,7 +50,7 @@ struct AffectedMembersCaption: View {
         if !warnings.isEmpty {
             Text("\(AffectedMembers.contains(warnings)) · affects \(AffectedMembers.names(warnings))")
                 .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(MekasaTheme.accent)
+                .foregroundStyle(MekasaTheme.danger)
                 .lineLimit(2)
                 .accessibilityIdentifier(TestIdentifiers.affectedMembersCaption)
         }
@@ -72,20 +72,20 @@ struct MemberWarningBanner: View {
                         .textCase(.uppercase)
                         .tracking(0.6)
                 }
-                .foregroundStyle(MekasaTheme.accent)
+                .foregroundStyle(MekasaTheme.danger)
                 ForEach(warnings) { warning in
                     Text(warning.sentence)
                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                 }
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(MekasaTheme.accent.opacity(0.08))
+            .background(MekasaTheme.dangerTint)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(MekasaTheme.accent.opacity(0.35), lineWidth: 1)
+                    .stroke(MekasaTheme.danger, lineWidth: 1)
             )
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier(TestIdentifiers.memberWarningBanner)
@@ -105,7 +105,7 @@ struct HealthSummaryCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(HealthGrade.label(for: health.grade))
                         .font(.system(size: 20, weight: .black, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                     if let score = health.score {
                         Text("\(score)/100 · \(health.summaryLine)")
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
@@ -132,11 +132,11 @@ struct HealthSummaryCard: View {
                                 .frame(width: 10, height: 10)
                             Text(additive.code)
                                 .font(.system(size: 13, weight: .heavy, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                                 .frame(width: 52, alignment: .leading)
                             Text(additive.name)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                                 .lineLimit(2)
                             Spacer(minLength: 0)
                             Text(additive.concern.capitalized)
@@ -148,7 +148,7 @@ struct HealthSummaryCard: View {
             }
 
             if !health.allergens.isEmpty {
-                section("Contains") { chipRow(health.allergens, tint: MekasaTheme.accent) }
+                section("Contains") { chipRow(health.allergens, tint: MekasaTheme.danger) }
             }
             if !health.traces.isEmpty {
                 section("May contain") { chipRow(health.traces, tint: MekasaTheme.textMuted) }
@@ -180,7 +180,7 @@ struct HealthSummaryCard: View {
 
             Text("Grade from Open Food Facts Nutri-Score, NOVA processing group and additive risk. Informational only — not medical advice.")
                 .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundStyle(MekasaTheme.brandMuted)
+                .foregroundStyle(MekasaTheme.textMuted)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(20)

@@ -1,12 +1,10 @@
 import PhotosUI
 import SwiftUI
 
-/// Store the receipt came from, so an in-store capture lands on the right shared row.
+/// Store brand printed on the receipt, used in the capture guidance copy
+/// ("We could not find the H-E-B Bananas…"). REQ-RCP-020 AC1.
 struct ReceiptStoreContext: Equatable {
-    let storeID: String
     let storeName: String?
-    /// Draft id → row id in the store's table.
-    var storeItemIDs: [String: String]
 }
 
 /// Copy for receipt lines Open Food Facts could not identify. Pure for unit tests.
@@ -107,14 +105,14 @@ struct EditableProductThumbnail: View {
             .overlay {
                 if isUploading {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(.black.opacity(0.35))
-                        .overlay { ProgressView().tint(.white) }
+                        .fill(MekasaTheme.scrim.opacity(0.35))
+                        .overlay { ProgressView().tint(MekasaTheme.onBrand) }
                 }
             }
             .overlay(alignment: .bottomTrailing) {
                 Image(systemName: "camera.fill")
                     .font(.system(size: max(9, size * 0.16), weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MekasaTheme.onBrand)
                     .padding(4)
                     .background(MekasaTheme.brand.opacity(0.85))
                     .clipShape(Circle())
@@ -149,7 +147,6 @@ struct LocalItemCaptureView: View {
 
     let itemName: String
     let store: ReceiptStoreContext?
-    let storeItemID: String?
     let onCaptured: (LocalItemCaptureResult) -> Void
 
     @State private var code = ""
@@ -174,7 +171,7 @@ struct LocalItemCaptureView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         Text(CaptureGuidance.message(itemName: itemName, storeName: store?.storeName))
                             .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                             .accessibilityIdentifier(TestIdentifiers.captureGuidanceLabel)
 
                         barcodeStep
@@ -183,7 +180,7 @@ struct LocalItemCaptureView: View {
                         if let errorMessage {
                             Text(errorMessage)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.accent)
+                                .foregroundStyle(MekasaTheme.danger)
                         }
                     }
                     .padding(.horizontal, 24)
@@ -222,7 +219,7 @@ struct LocalItemCaptureView: View {
                 HStack {
                     Label("Code \(code)", systemImage: "barcode")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                         .accessibilityIdentifier(TestIdentifiers.captureCodeLabel)
                     Spacer()
                     Button("Rescan") {
@@ -262,7 +259,7 @@ struct LocalItemCaptureView: View {
                     Button("Use") { code = typedCode }
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(
-                            CaptureGuidance.isValidCode(typedCode) ? MekasaTheme.brand : MekasaTheme.textMuted
+                            CaptureGuidance.isValidCode(typedCode) ? MekasaTheme.text : MekasaTheme.textMuted
                         )
                         .disabled(!CaptureGuidance.isValidCode(typedCode))
                 }
@@ -294,7 +291,7 @@ struct LocalItemCaptureView: View {
                 PhotosPicker(selection: $libraryItem, matching: .images) {
                     Text(photo == nil ? "From library" : "Choose another")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(MekasaTheme.surfaceElevated)
@@ -318,8 +315,6 @@ struct LocalItemCaptureView: View {
         errorMessage = nil
         defer { isSaving = false }
         let result = await session.captureUnidentifiedItem(
-            store: store,
-            storeItemID: storeItemID,
             barcode: CaptureGuidance.isValidCode(code) ? code : nil,
             image: photo
         )

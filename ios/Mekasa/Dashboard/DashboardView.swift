@@ -59,7 +59,7 @@ struct DashboardView: View {
             if let toast {
                 Text(toast)
                     .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MekasaTheme.onBrand)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background(MekasaTheme.brand)
@@ -97,19 +97,19 @@ struct DashboardView: View {
                             .font(MekasaTheme.labelFont)
                             .tracking(1.2)
                             .textCase(.uppercase)
-                            .foregroundStyle(MekasaTheme.brandMuted)
+                            .foregroundStyle(MekasaTheme.border)
                         Text(householdTitle)
                             .font(.system(size: 30, weight: .black, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MekasaTheme.onBrand)
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
                             .minimumScaleFactor(0.8)
-                            .shadow(color: .black.opacity(0.25), radius: 4, y: 1)
+                            .shadow(color: MekasaTheme.shadow.opacity(0.25), radius: 4, y: 1)
 
                         if session.household?.photoURL == nil {
                             Text("Tap to add a home photo")
                                 .font(.system(size: 13, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.9))
+                                .foregroundStyle(MekasaTheme.onBrand.opacity(0.9))
                                 .padding(.top, 2)
                         }
                     }
@@ -136,16 +136,16 @@ struct DashboardView: View {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: "bell")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MekasaTheme.onBrand)
                         .frame(width: 40, height: 40)
-                        .background(.white.opacity(0.22))
+                        .background(MekasaTheme.onBrand.opacity(0.22))
                         .background(.ultraThinMaterial)
                         .clipShape(Circle())
                     if !pendingApprovals.isEmpty {
                         Circle()
-                            .fill(MekasaTheme.accent)
+                            .fill(MekasaTheme.danger)
                             .frame(width: 8, height: 8)
-                            .overlay(Circle().stroke(Color.white, lineWidth: 1))
+                            .overlay(Circle().stroke(MekasaTheme.onBrand, lineWidth: 1))
                             .offset(x: -2, y: 2)
                     }
                 }
@@ -173,7 +173,7 @@ struct DashboardView: View {
             HStack {
                 Text("Low stock")
                     .font(.system(size: 20, weight: .heavy, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                 Spacer()
                 Button("All inventory") {
                     showInventory = true
@@ -207,7 +207,7 @@ struct DashboardView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.name)
                                     .font(.system(size: 16, weight: .bold, design: .rounded))
-                                    .foregroundStyle(MekasaTheme.brand)
+                                    .foregroundStyle(MekasaTheme.text)
                                 Text("Qty \(item.quantity) · threshold \(item.lowStockThreshold)")
                                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                                     .foregroundStyle(MekasaTheme.textMuted)
@@ -236,7 +236,7 @@ struct DashboardView: View {
             } label: {
                 statCard(
                     icon: "exclamationmark.circle",
-                    iconBg: Color(red: 0xfc / 255, green: 0xe5 / 255, blue: 0xe7 / 255),
+                    iconBg: MekasaTheme.accentTint,
                     label: "Low Stock",
                     value: "\(session.lowStockCount) items"
                 )
@@ -250,7 +250,7 @@ struct DashboardView: View {
             } label: {
                 statCard(
                     icon: "creditcard",
-                    iconBg: Color(red: 0xea / 255, green: 0xf1 / 255, blue: 0xec / 255),
+                    iconBg: MekasaTheme.successTint,
                     label: "Spend",
                     value: String(format: "$%.0f", displayedSpend),
                     suffix: "/cap"
@@ -275,7 +275,7 @@ struct DashboardView: View {
             HStack(spacing: 8) {
                 Image(systemName: icon)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                     .frame(width: 32, height: 32)
                     .background(iconBg)
                     .clipShape(Circle())
@@ -286,7 +286,7 @@ struct DashboardView: View {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(value)
                     .font(.system(size: 24, weight: .black, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                 if let suffix {
                     Text(suffix)
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
@@ -302,7 +302,7 @@ struct DashboardView: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
+        .shadow(color: MekasaTheme.shadow.opacity(0.04), radius: 6, y: 2)
     }
 
     private var needsApprovalSection: some View {
@@ -310,7 +310,7 @@ struct DashboardView: View {
             HStack {
                 Text("Needs Approval")
                     .font(.system(size: 20, weight: .heavy, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                 Spacer()
                 Button("View All") {
                     selectedTab = .list
@@ -343,7 +343,7 @@ struct DashboardView: View {
                     RoundedRectangle(cornerRadius: 32, style: .continuous)
                         .stroke(MekasaTheme.brandMuted.opacity(0.25), lineWidth: 1)
                 )
-                .shadow(color: .black.opacity(0.08), radius: 24, y: 12)
+                .shadow(color: MekasaTheme.shadow.opacity(0.08), radius: 24, y: 12)
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier(TestIdentifiers.requestQueue)
             }
@@ -356,7 +356,7 @@ struct DashboardView: View {
             HStack {
                 Text("Shopping list")
                     .font(.system(size: 20, weight: .heavy, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                 Spacer()
                 Button("Open list") {
                     selectedTab = .list
@@ -374,14 +374,14 @@ struct DashboardView: View {
                 HStack(spacing: 14) {
                     Image(systemName: "cart")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                         .frame(width: 44, height: 44)
-                        .background(Color(red: 0xea / 255, green: 0xf1 / 255, blue: 0xec / 255))
+                        .background(MekasaTheme.successTint)
                         .clipShape(Circle())
                     VStack(alignment: .leading, spacing: 2) {
                         Text(ShoppingTeaser.headline(session.shoppingList))
                             .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                             .accessibilityIdentifier(TestIdentifiers.dashboardShoppingHeadline)
                         if let preview = ShoppingTeaser.preview(session.shoppingList) {
                             Text(preview)
@@ -410,16 +410,16 @@ struct DashboardView: View {
         HStack(spacing: 16) {
             Image(systemName: "cart")
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(MekasaTheme.brand)
+                .foregroundStyle(MekasaTheme.text)
                 .frame(width: 40, height: 40)
-                .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                .background(MekasaTheme.surfaceMuted)
                 .clipShape(Circle())
                 .accessibilityIdentifier(TestIdentifiers.itemThumbnail)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                     .accessibilityIdentifier(TestIdentifiers.requestedItemLabel)
                 Text("Requested by \(item.requestedBy ?? "member")")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
@@ -435,7 +435,7 @@ struct DashboardView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                         .frame(width: 40, height: 40)
                         .overlay(Circle().stroke(MekasaTheme.brandMuted.opacity(0.4), lineWidth: 1))
                 }
@@ -448,7 +448,7 @@ struct DashboardView: View {
                 } label: {
                     Image(systemName: "checkmark")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MekasaTheme.onBrand)
                         .frame(width: 40, height: 40)
                         .background(MekasaTheme.brand)
                         .clipShape(Circle())
@@ -466,21 +466,21 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Recent Activity")
                 .font(.system(size: 20, weight: .heavy, design: .rounded))
-                .foregroundStyle(MekasaTheme.brand)
+                .foregroundStyle(MekasaTheme.text)
 
             VStack(alignment: .leading, spacing: 16) {
                 ForEach(session.activity) { item in
                     HStack(alignment: .top, spacing: 16) {
                         Circle()
                             .fill(item.kind == .warning
-                                  ? Color(red: 0xc4 / 255, green: 0x5c / 255, blue: 0x12 / 255)
+                                  ? MekasaTheme.warning
                                   : MekasaTheme.success)
                             .frame(width: 8, height: 8)
                             .padding(.top, 8)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(item.title)
                                 .font(.system(size: 16, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                             Text(item.when)
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
                                 .tracking(0.8)
@@ -593,7 +593,7 @@ struct HomePhotoView: View {
                     Spacer()
                     Text("Home photo")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                     Spacer()
                     Button("Save") {
                         Task { await save() }
@@ -622,7 +622,7 @@ struct HomePhotoView: View {
                                 .foregroundStyle(MekasaTheme.textMuted)
                             TextField("e.g. The Guerrero Home", text: $houseName)
                                 .font(.system(size: 17, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 14)
                                 .background(MekasaTheme.surfaceElevated)
@@ -662,7 +662,7 @@ struct HomePhotoView: View {
                                     .font(.system(size: 16, weight: .bold, design: .rounded))
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 14)
-                                    .foregroundStyle(MekasaTheme.brand)
+                                    .foregroundStyle(MekasaTheme.text)
                                     .background(MekasaTheme.surfaceElevated)
                                     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                                     .overlay(
@@ -678,13 +678,13 @@ struct HomePhotoView: View {
                         if let localError {
                             Text(localError)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.accent)
+                                .foregroundStyle(MekasaTheme.danger)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal, 24)
                         } else if let message = session.lastError {
                             Text(message)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.accent)
+                                .foregroundStyle(MekasaTheme.danger)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal, 24)
                         }

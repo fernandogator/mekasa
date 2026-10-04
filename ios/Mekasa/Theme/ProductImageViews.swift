@@ -11,7 +11,7 @@ struct ProductThumbnail: View {
     var body: some View {
         Group {
             if let urlString, let url = URL(string: urlString) {
-                AsyncImage(url: url) { phase in
+                MekasaRemoteImage(url: url) { phase in
                     switch phase {
                     case let .success(image):
                         image
@@ -36,10 +36,10 @@ struct ProductThumbnail: View {
 
     private var placeholder: some View {
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+            .fill(MekasaTheme.surfaceMuted)
             .overlay {
                 Image(systemName: "photo")
-                    .foregroundStyle(MekasaTheme.brandMuted)
+                    .foregroundStyle(MekasaTheme.border)
             }
     }
 }
@@ -64,7 +64,7 @@ struct ProductHeroImage: View {
         } label: {
             Group {
                 if let urlString, let url = URL(string: urlString) {
-                    AsyncImage(url: url) { phase in
+                    MekasaRemoteImage(url: url) { phase in
                         switch phase {
                         case let .success(image):
                             image
@@ -85,20 +85,20 @@ struct ProductHeroImage: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 280)
-            .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+            .background(MekasaTheme.surfaceMuted)
             .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
             .overlay {
                 if isUploading {
                     RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .fill(.black.opacity(0.35))
-                        .overlay { ProgressView().tint(.white) }
+                        .fill(MekasaTheme.scrim.opacity(0.35))
+                        .overlay { ProgressView().tint(MekasaTheme.onBrand) }
                 }
             }
             .overlay(alignment: .bottomTrailing) {
                 if onReplace != nil {
                     Label("Change photo", systemImage: "camera.fill")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MekasaTheme.onBrand)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(MekasaTheme.brand.opacity(0.85))
@@ -137,7 +137,7 @@ struct ProductHeroImage: View {
     private var heroPlaceholder: some View {
         Image(systemName: "photo")
             .font(.system(size: 40, weight: .semibold))
-            .foregroundStyle(MekasaTheme.brandMuted)
+            .foregroundStyle(MekasaTheme.border)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
@@ -149,9 +149,9 @@ struct ProductImageLightbox: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            MekasaTheme.cameraSurface.ignoresSafeArea()
             if let urlString, let url = URL(string: urlString) {
-                AsyncImage(url: url) { phase in
+                MekasaRemoteImage(url: url) { phase in
                     switch phase {
                     case let .success(image):
                         image
@@ -159,7 +159,7 @@ struct ProductImageLightbox: View {
                             .scaledToFit()
                             .padding(16)
                     case .failure, .empty:
-                        ProgressView().tint(.white)
+                        ProgressView().tint(MekasaTheme.onCamera)
                     @unknown default:
                         EmptyView()
                     }
@@ -172,7 +172,7 @@ struct ProductImageLightbox: View {
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 32))
-                    .foregroundStyle(.white.opacity(0.9))
+                    .foregroundStyle(MekasaTheme.onCamera.opacity(0.9))
                     .padding(20)
             }
             .accessibilityLabel("Close")

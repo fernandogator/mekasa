@@ -25,7 +25,7 @@ struct TrashStationView: View {
                     HStack {
                         Text("Trash station")
                             .font(.system(size: 16, weight: .heavy, design: .rounded))
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                         Spacer()
                         Button("Exit") {
                             session.isTrashKioskMode = false
@@ -57,7 +57,7 @@ struct TrashStationView: View {
                         if let cameraError {
                             Text(cameraError)
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.accent)
+                                .foregroundStyle(MekasaTheme.danger)
                         }
 
                         manualEntry
@@ -85,7 +85,7 @@ struct TrashStationView: View {
                         if let last = session.trashEvents.first {
                             Text(last.itemName)
                                 .font(.system(size: 14, weight: .bold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                                 .accessibilityIdentifier(TestIdentifiers.lastScannedItem)
                         }
 
@@ -104,7 +104,7 @@ struct TrashStationView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Unknown scans")
                                     .font(.system(size: 16, weight: .heavy, design: .rounded))
-                                    .foregroundStyle(MekasaTheme.brand)
+                                    .foregroundStyle(MekasaTheme.text)
                                 ForEach(session.unknownTrashScans.prefix(12)) { event in
                                     Text(event.barcode)
                                         .font(.system(size: 13, weight: .semibold, design: .rounded))
@@ -131,7 +131,7 @@ struct TrashStationView: View {
                 if let toast {
                     Text(toast)
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MekasaTheme.onBrand)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .background(MekasaTheme.brand)
@@ -156,7 +156,7 @@ struct TrashStationView: View {
     private var cameraPane: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color.black.opacity(0.85))
+                .fill(MekasaTheme.cameraSurface.opacity(0.85))
                 .frame(height: 220)
             if cameraAvailable {
                 BarcodeCameraView(
@@ -173,30 +173,30 @@ struct TrashStationView: View {
                 VStack(spacing: 8) {
                     Image(systemName: "barcode.viewfinder")
                         .font(.system(size: 36, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MekasaTheme.onCamera)
                     Text("Camera unavailable — use simulate buttons")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(MekasaTheme.onCamera.opacity(0.8))
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                 }
             }
             if isBusy {
                 ProgressView()
-                    .tint(.white)
+                    .tint(MekasaTheme.onCamera)
             } else if let cooldownSecondsLeft {
                 VStack(spacing: 6) {
                     Text("\(cooldownSecondsLeft)")
                         .font(.system(size: 44, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MekasaTheme.onCamera)
                         .monospacedDigit()
                     Text("Next scan in a moment")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(MekasaTheme.onCamera.opacity(0.85))
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 14)
-                .background(Color.black.opacity(0.55))
+                .background(MekasaTheme.scrim.opacity(0.55))
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier(TestIdentifiers.scanCooldownOverlay)
@@ -251,7 +251,7 @@ struct TrashStationView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Nothing to mark gone yet")
                 .font(.system(size: 18, weight: .heavy, design: .rounded))
-                .foregroundStyle(MekasaTheme.brand)
+                .foregroundStyle(MekasaTheme.text)
             Text("Add items from Type it in or a barcode scan, then come back here.")
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .foregroundStyle(MekasaTheme.textMuted)
@@ -266,15 +266,15 @@ struct TrashStationView: View {
         HStack(spacing: 16) {
             Image(systemName: "trash")
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(MekasaTheme.accent)
+                .foregroundStyle(MekasaTheme.danger)
                 .frame(width: 44, height: 44)
-                .background(Color(red: 0xfc / 255, green: 0xe5 / 255, blue: 0xe7 / 255))
+                .background(MekasaTheme.dangerTint)
                 .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                 Text("\(item.category) · qty \(item.quantity)")
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(MekasaTheme.textMuted)
@@ -282,7 +282,7 @@ struct TrashStationView: View {
             Spacer()
             Text("−1")
                 .font(.system(size: 14, weight: .heavy, design: .rounded))
-                .foregroundStyle(MekasaTheme.accent)
+                .foregroundStyle(MekasaTheme.danger)
         }
         .padding(16)
         .background(MekasaTheme.surfaceElevated)

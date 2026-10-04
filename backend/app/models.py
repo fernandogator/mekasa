@@ -3,7 +3,9 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from app.categories import Category, OptionalCategory
 
 
 class HealthResponse(BaseModel):
@@ -178,7 +180,7 @@ class InventoryItemCreateRequest(BaseModel):
     """
 
     name: str = Field(min_length=1, max_length=120)
-    category: str = Field(default="Other", min_length=1, max_length=60)
+    category: Category = Field(default="Other", min_length=1, max_length=60)
     quantity: int = Field(default=1, ge=0, le=9999)
     low_stock_threshold: int = Field(default=1, ge=0, le=9999)
     price_paid: float | None = Field(default=None, ge=0)
@@ -195,7 +197,7 @@ class InventoryItemUpdateRequest(BaseModel):
     """
 
     name: str | None = Field(default=None, min_length=1, max_length=120)
-    category: str | None = Field(default=None, min_length=1, max_length=60)
+    category: OptionalCategory = Field(default=None, min_length=1, max_length=60)
     quantity: int | None = Field(default=None, ge=0, le=9999)
     low_stock_threshold: int | None = Field(default=None, ge=0, le=9999)
     price_paid: float | None = Field(default=None, ge=0)
@@ -216,6 +218,8 @@ class InventoryItemResponse(BaseModel):
     price_paid: float | None = None
     barcode: str | None = None
     image_url: str | None = None
+    # Shared catalog product linked by a product capture (REQ-RCP-020 AC6): UPC or plu:<code>.
+    product_id: str | None = None
     source: InventorySource
     created_by_uid: str
     updated_by_uid: str
@@ -341,7 +345,7 @@ class BarcodeLookupResponse(BaseModel):
     found: bool
     name: str | None = None
     brand: str | None = None
-    category: str | None = None
+    category: OptionalCategory = None
     quantity: int = 1
     image_url: str | None = None
     source: Literal[
@@ -358,7 +362,7 @@ class ProductSearchHit(BaseModel):
     barcode: str | None = None
     name: str
     brand: str | None = None
-    category: str
+    category: Category
     image_url: str | None = None
     source: Literal["openfoodfacts"] = "openfoodfacts"
     health: ProductHealth | None = None
@@ -383,19 +387,16 @@ class ReceiptLineItem(BaseModel):
     """Parsed receipt line awaiting user confirmation (REQ-005)."""
 
     name: str = Field(min_length=1, max_length=120)
-    category: str = Field(default="Other", min_length=1, max_length=60)
+    category: Category = Field(default="Other", min_length=1, max_length=60)
     quantity: int = Field(default=1, ge=1, le=9999)
     price_paid: float | None = Field(default=None, ge=0)
     barcode: str | None = Field(default=None, max_length=64)
     image_url: str | None = Field(default=None, max_length=2048)
     identified: bool = False
     # Line text as printed (before abbreviation expansion) and any item code
-    # printed on the line; both feed the per-store catalog.
+    # printed on the line; both feed the shared catalog's aliases (ADR-008).
     receipt_text: str | None = Field(default=None, max_length=200)
     receipt_code: str | None = Field(default=None, max_length=64)
-    # Row in the store's shared table; clients send it back with an in-store
-    # capture (barcode + photo) when the catalog could not identify the line.
-    store_item_id: str | None = Field(default=None, max_length=120)
 
 
 class ReceiptScanRequest(BaseModel):
@@ -417,74 +418,52 @@ class ReceiptScanResponse(BaseModel):
     household_id: str
     engine: str
     items: list[ReceiptLineItem]
-    store_id: str | None = None
+    # Printed store brand ("Walmart #1234"); shown in capture guidance (REQ-RCP-020).
     store_name: str | None = None
 
 
-StoreCodeSource = Literal["receipt", "catalog", "manual_scan"]
-StoreItemStatus = Literal["confirmed", "conflict", "receipt_only", "manual_only"]
-
-
-class StoreItemCode(BaseModel):
-    """One UPC / store SKU discovered for a store item, with where it came from."""
-
-    code: str
-    kind: Literal["upc", "sku"]
-    sources: list[StoreCodeSource]
-    seen_count: int = 1
-    first_seen: datetime
-    last_seen: datetime
-
-
-class StoreCatalogItem(BaseModel):
+class ItemPhotoUploadResponse(BaseModel):
     """
-    One row of a store's shared item table: a receipt line and/or a manual scan
-    (receipt_text is None when the item was only ever scanned).
+    Satisfies: REQ-INV-019 (Replace an Item Picture With a Private Photo)
+    Acceptance criteria: AC1
+    Spec version: 1.0
 
-    status compares manually scanned codes with receipt / catalog codes:
-    confirmed = a manual scan matches a receipt or catalog code,
-    conflict = both exist but none match,
-    receipt_only / manual_only = only one side has a code (or none yet).
+    `url` is the household-scoped API path; it needs the member's bearer token.
     """
 
-    id: str
-    store_id: str
-    receipt_text: str | None = None
-    name: str
-    category: str = "Other"
-    last_price: float | None = None
-    codes: list[StoreItemCode] = Field(default_factory=list)
-    status: StoreItemStatus = "receipt_only"
-    # Latest in-store photo; photo_url is filled by the API when served.
-    photo_id: str | None = None
-    photo_url: str | None = None
-    updated_at: datetime
-
-
-class StoreCatalogSummary(BaseModel):
-    """A store that has a shared item table."""
-
-    id: str
-    name: str
-    address: str | None = None
-    item_count: int = 0
-    updated_at: datetime
-
-
-class PhotoUploadResponse(BaseModel):
-    """A stored user photo; url is public by unguessable id."""
-
-    id: str
+    photo_id: str
     url: str
 
 
-class StoreCatalogListResponse(BaseModel):
-    stores: list[StoreCatalogSummary]
+class ProductPhotoUploadJson(BaseModel):
+    """
+    Satisfies: REQ-RCP-021 AC1
+    Spec version: 1.0
+
+    JSON form of the product photo upload; multipart `file` is also accepted.
+    """
+
+    image_base64: str = Field(min_length=1)
+    content_type: Literal["image/jpeg", "image/png", "image/heic"] = "image/jpeg"
 
 
-class StoreCatalogItemsResponse(BaseModel):
-    store: StoreCatalogSummary
-    items: list[StoreCatalogItem]
+class ProductPhotoResponse(BaseModel):
+    """
+    Satisfies: REQ-RCP-021 AC1, AC4
+    Spec version: 1.0
+
+    `image_url` is the stable `/v1/product-photos/{photo_id}` path that a
+    capture stores on the product; `expires_at` stays set until a capture
+    references the photo.
+    """
+
+    photo_id: str
+    image_url: str
+    width: int
+    height: int
+    bytes: int
+    created_at: datetime
+    expires_at: datetime | None = None
 
 
 class HouseholdPhotoResponse(BaseModel):
@@ -620,7 +599,7 @@ class PurchaseEventCreateRequest(BaseModel):
     """
 
     name: str = Field(min_length=1, max_length=120)
-    category: str = Field(min_length=1, max_length=60)
+    category: Category = Field(min_length=1, max_length=60)
     price_paid: float = Field(ge=0)
     quantity: int = Field(default=1, ge=1)
     store_id: str | None = Field(default=None, max_length=120)
@@ -635,7 +614,7 @@ class PurchaseEventUpdateRequest(BaseModel):
     Spec version: 1.0
     """
 
-    category: str | None = Field(default=None, min_length=1, max_length=60)
+    category: OptionalCategory = Field(default=None, min_length=1, max_length=60)
     name: str | None = Field(default=None, min_length=1, max_length=120)
     price_paid: float | None = Field(default=None, ge=0)
 
@@ -698,7 +677,9 @@ class CatalogProductResponse(BaseModel):
     """
 
     id: str
+    code_kind: Literal["upc", "plu", "llm"] = "upc"
     upc: str | None = None
+    plu_code: str | None = None
     store_chain_id: str
     name: str
     brand: str | None = None
@@ -745,7 +726,7 @@ class ProductCorrectionRequest(BaseModel):
     household_id: str = Field(min_length=1)
     name: str | None = Field(default=None, min_length=1, max_length=120)
     brand: str | None = Field(default=None, max_length=80)
-    category: str | None = Field(default=None, min_length=1, max_length=60)
+    category: OptionalCategory = Field(default=None, min_length=1, max_length=60)
     unit_size: str | None = Field(default=None, max_length=40)
     upc: str | None = Field(default=None, pattern=r"^[0-9]{8,14}$")
     source_line_item: ProductCorrectionSourceLine | None = None
@@ -758,3 +739,54 @@ class ProductCorrectionResponse(BaseModel):
     product: CatalogProductResponse
     conflicts: list[ProductConflictResponse] = Field(default_factory=list)
     status_reset: bool = False
+
+
+class ProductCaptureRequest(BaseModel):
+    """
+    Satisfies: REQ-RCP-020 AC2, AC6, AC7, AC9
+    Spec version: 1.0
+
+    Exactly one of `upc` (scanned barcode) or `plu_code` (typed from a produce
+    sticker), an optional photo from `POST …/product-photos`, and the
+    new-product card's name/category. Missing attributes fall back to the item.
+    Code shapes are checked by the catalog so the API returns
+    `invalid_upc` / `invalid_plu` instead of a generic validation error.
+    """
+
+    model_config = {"extra": "forbid"}
+
+    upc: str | None = Field(default=None, max_length=32)
+    plu_code: str | None = Field(default=None, max_length=16)
+    photo_id: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    brand: str | None = Field(default=None, max_length=80)
+    category: str | None = Field(default=None, min_length=1, max_length=60)
+    unit_size: str | None = Field(default=None, max_length=40)
+
+    @model_validator(mode="after")
+    def _strip(self) -> "ProductCaptureRequest":
+        for key in ("upc", "plu_code", "name", "brand", "unit_size"):
+            value = getattr(self, key)
+            if isinstance(value, str):
+                setattr(self, key, value.strip() or None)
+        return self
+
+
+class ProductCaptureResponse(BaseModel):
+    """
+    Satisfies: REQ-RCP-020 AC2–AC7
+    Spec version: 1.0
+
+    OpenAPI `ProductCaptureResponse`; the inventory variant also returns the
+    updated item so clients need not refetch it.
+    """
+
+    outcome: Literal["linked", "created", "rekeyed"]
+    product: CatalogProductResponse
+    inventory_item_id: str | None = None
+    inventory_item: InventoryItemResponse | None = None
+    scan_event_id: str
+    confirmation_counted: bool
+    enrichment_job_id: str | None = None
+    photo_applied_as: Literal["product_image", "line_image", "correction_proposed", "none"] = "none"
+    conflict: ProductConflictResponse | None = None

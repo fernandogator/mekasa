@@ -90,6 +90,12 @@ TEST_DATABASE_URL=postgresql://postgres@localhost:5432/mekasa_test \
 | PATCH | `/v1/households/{id}/purchases/{event_id}` | yes | Recategorize / edit purchase (REQ-017) |
 | POST | `/v1/households/{id}/receipts/scan` | yes | Receipt OCR + catalog enrich (`image_url`, `identified`) |
 | POST | `/v1/households/{id}/photo` | yes | Household photo (data-URL thin path) |
+| POST | `/v1/households/{id}/item-photos` | yes | Upload a household-private item photo → `{photo_id, url}`; JPEG re-encode, metadata stripped, stored in `ITEM_PHOTO_BUCKET` (REQ-INV-019) |
+| GET/DELETE | `/v1/households/{id}/item-photos/{photo_id}` | yes (member) | Fetch (`Cache-Control: private`) / delete a private photo (REQ-INV-019) |
+| POST | `/v1/households/{id}/product-photos` | yes (member) | Upload a shared product photo for the capture flow (multipart `file` or JSON `image_base64`) → `{photo_id, image_url, width, height, bytes, created_at, expires_at}`; stored in `PRODUCT_PHOTO_BUCKET` at `product-photos/{photo_id}.jpg` (REQ-RCP-021) |
+| DELETE | `/v1/households/{id}/product-photos/{photo_id}` | yes (uploading household) | Delete the photo; catalog products using it lose the image (REQ-RCP-021 AC5) |
+| GET | `/v1/product-photos/{photo_id}` | yes (any user) | 302 to a 15-minute signed URL (Cloud Storage) or the bytes (local) (REQ-RCP-021 AC3) |
+| POST | `/v1/households/{id}/inventory/{item_id}/capture` | yes (member) | Product capture from inventory: exactly one of `upc` / `plu_code` + optional `photo_id` (from `product-photos`), `name`, `category`; links or creates the shared product, sets the item's `barcode` (UPC only), `product_id`, `image_url`, writes a `scan_events` entry (REQ-RCP-020 AC6/AC7) |
 | GET/POST | `/v1/households/{id}/members` / invites | yes | Family members + invites (REQ-019) |
 | POST | `/v1/invites/accept` | yes | Accept invite token |
 | GET | `/v1/barcode/{code}?household_id=` | yes | Open Food Facts family UPC lookup (`found` false if unknown; `503` when the databases are unreachable so the client can retry); `source` names the database that answered; includes `health` grade data and, when scoped to a household, member `warnings` (REQ-021) |

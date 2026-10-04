@@ -17,7 +17,7 @@ struct InitialScanView: View {
                         VStack(alignment: .leading, spacing: 20) {
                             Text("Add what's already home.")
                                 .font(MekasaTheme.displayFont)
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                                 .padding(.top, 36)
 
                             Text("Scan barcodes, snap a receipt, or type items in. You can always add more later from the + button.")
@@ -101,7 +101,7 @@ struct InitialScanView: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1)
         )
-        .foregroundStyle(MekasaTheme.brand)
+        .foregroundStyle(MekasaTheme.text)
     }
 }
 

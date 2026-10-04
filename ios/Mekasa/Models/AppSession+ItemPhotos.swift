@@ -10,10 +10,13 @@ struct LocalItemCaptureResult: Equatable {
 }
 
 /// User item photos: replace any item picture and in-store captures (REQ-004 / REQ-005).
+/// Satisfies: REQ-INV-019 (Replace an Item Picture With a Private Photo)
+/// Acceptance criteria: AC1, AC4, AC8
 /// Spec version: 1.0
 extension AppSession {
-    /// Upload the user's own picture and return its URL for `imageURL`.
-    /// Preview / UI-test sessions return a local data URL (never synced).
+    /// Upload the user's own picture to the household's private photo store and
+    /// return its URL for `imageURL`. The URL is only readable by household
+    /// members (REQ-INV-019). Preview / UI-test sessions return a local data URL.
     func uploadItemPhoto(_ image: UIImage) async -> String? {
         guard let jpeg = ItemPhotoEncoding.jpegData(from: image) else {
             lastError = "Couldn’t encode that photo."
@@ -76,53 +79,31 @@ extension AppSession {
         }
     }
 
-    /// Send an in-store capture for a receipt line the catalog could not identify:
-    /// the scanned barcode / PLU and photo go to the store's shared table, and the
-    /// barcode is looked up in case Open Food Facts knows it by code.
-    func captureUnidentifiedItem(
-        store: ReceiptStoreContext?,
-        storeItemID: String?,
-        barcode: String?,
-        image: UIImage?
-    ) async -> LocalItemCaptureResult? {
+    /// In-store capture for a receipt line the catalog could not identify: the
+    /// photo is stored as a household-private item photo (REQ-INV-019) and the
+    /// scanned barcode / PLU is looked up in case Open Food Facts knows it. The
+    /// shared-catalog write arrives with the REQ-RCP-020 `capture` endpoints.
+    func captureUnidentifiedItem(barcode: String?, image: UIImage?) async -> LocalItemCaptureResult? {
         let code = barcode.flatMap { $0.isEmpty ? nil : $0 }
         var result = LocalItemCaptureResult(barcode: code)
+        if let image {
+            result.photoURL = await uploadItemPhoto(image)
+            if result.photoURL == nil, code == nil {
+                return nil
+            }
+        }
         guard let token = idToken, let householdID = household?.id, !isUIPreview, !isUITesting else {
-            if let image { result.photoURL = await uploadItemPhoto(image) }
             return result
         }
-        do {
-            if let store, let storeItemID {
-                let jpeg = image.flatMap { ItemPhotoEncoding.jpegData(from: $0) }
-                let row = try await MekasaAPIClient.shared.captureStoreItem(
-                    householdID: householdID,
-                    storeID: store.storeID,
-                    storeItemID: storeItemID,
-                    barcode: code,
-                    imageData: jpeg,
-                    token: token
-                )
-                result.photoURL = row.photoUrl
-            } else if let image {
-                result.photoURL = await uploadItemPhoto(image)
-            }
-            if let code, code.count >= ManualBarcodeEntry.minLength {
-                let hit = try? await MekasaAPIClient.shared.lookupBarcode(
-                    code: code,
-                    householdID: householdID,
-                    token: token
-                )
-                if let hit, hit.found { result.lookup = hit }
-            }
-            return result
-        } catch {
-            if SessionExpiry.isUnauthorized(error) {
-                handleAPIFailure(error)
-            } else {
-                lastError = "Couldn’t save the scan. Check your connection and try again."
-            }
-            return nil
+        if let code, code.count >= ManualBarcodeEntry.minLength {
+            let hit = try? await MekasaAPIClient.shared.lookupBarcode(
+                code: code,
+                householdID: householdID,
+                token: token
+            )
+            if let hit, hit.found { result.lookup = hit }
         }
+        return result
     }
 }
 

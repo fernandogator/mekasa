@@ -173,6 +173,26 @@ Acceptance Criteria:
 - AC1: Client calls purge so the Firestore document no longer exists
   (Cloud Tasks/Function may replace the client timer later)
 
+### REQ-INV-019: Replace an Item Picture With a Private Photo
+Priority: P1
+Description: A household member **shall** be able to replace any inventory
+item's picture (and a draft's picture before it saves) with a photo they
+take or pick. The photo is stored in Google Cloud Storage under the
+household's account and is served only to signed-in members of that
+household; it is never shared with other households or with the shared
+product catalog.
+Design Artifact: design/pages/product-image-editor.html, design/mockups/ItemDetail.jsx
+Test File: tests/backend/test_item_photos.py, ios/MekasaTests/ItemPhotoTests.swift, android-fable/app/src/test/java/app/mekasa/fable/ItemPhotoTest.kt
+Acceptance Criteria:
+- AC1: `POST /v1/households/{hid}/item-photos` (multipart `file`, JPEG/PNG/WebP ≤ 8 MB, household member; both apps re-encode camera output to JPEG before upload) re-encodes the image as JPEG with all metadata (EXIF, GPS) stripped, limits the long edge to 1600 px, and returns `{photo_id, url}` where `url` is `/v1/households/{hid}/item-photos/{photo_id}`
+- AC2: Objects live in bucket `ITEM_PHOTO_BUCKET` (`mekasa-item-photos-<env>`) at `households/{hid}/item-photos/{photo_id}.jpg` with uniform bucket-level access and no public ACL; the only readers are the API's service account
+- AC3: `GET /v1/households/{hid}/item-photos/{photo_id}` requires a bearer token for a member of `{hid}`; non-members receive `403`, unknown ids `404`; bytes are served with `Cache-Control: private`
+- AC4: Setting `image_url` on an inventory item through the existing `PATCH …/inventory/{item_id}` to a photo URL from AC1 replaces the picture; a previous private photo of the same household that the item pointed at is deleted from the bucket after the update succeeds
+- AC5: `DELETE /v1/households/{hid}/item-photos/{photo_id}` (member) removes the object; an item still pointing at it falls back to the category placeholder on the next image refresh
+- AC6: Private photos are never copied into the shared product catalog (`products.image_url`) and are never written to `product_conflicts`; a user who wants to contribute a product picture to the catalog does so through the separate, explicit product capture flow (REQ-RCP-020 AC5, REQ-RCP-021)
+- AC7: With `ITEM_PHOTO_BUCKET` unset (local, tests) the API keeps photos in memory with the same endpoints and rules
+- AC8: Both apps upload through AC1 and load private photo URLs with the bearer token (plain image loaders cannot fetch them); the iOS item detail hero, list thumbnails, and confirm-haul drafts offer "Take photo / Choose from library"; Android item detail offers the same
+
 ### REQ-010: Low Stock Threshold — Learned
 Priority: P2
 Description: System learns consumption rate and suggests threshold
@@ -257,6 +277,7 @@ Acceptance Criteria:
 - AC1: Every item has an assigned category at time of entry
 - AC2: Spending reports can be filtered and grouped by category
 - AC3: User can manually recategorize an item
+- AC4: Categories are a fixed list of eight, in this order: Produce, Dairy, Pantry, Meat, Frozen, Beverages, Household, Other. Every category picker (manual add, receipt edit sheet, product capture new-product card) offers only these, and no other value is stored on inventory items, receipt lines or purchases. Any source that produces a finer category (receipt parser, UPC lookup, catalog) maps it before storage: Bakery and Snacks → Pantry, Seafood → Meat, Alcohol → Beverages, Personal Care, Baby and Pet → Household, anything unknown → Other. Design drafts follow the same list. (Decided 2026-10-04.)
 
 ### REQ-018: Spending History Reporting
 Priority: P1
@@ -322,7 +343,7 @@ Acceptance Criteria:
 Priority: P0
 Design Artifact: design/mockups/ (all screens)
 User Flow: design/user-flows.md
-Test File: android/src/test/ui/
+Test File: android-fable/app/src/test/java/app/mekasa/fable/ui/
 Acceptance Criteria:
 - AC1: Built entirely in Jetpack Compose, no XML layouts
 - AC2: Follows Material Design 3
@@ -342,7 +363,7 @@ Acceptance Criteria:
 Priority: P0
 Design Artifact: design/mockups/OnboardingStoreSelection.jsx
 User Flow: design/user-flows.md
-Test File: android/src/test/ui/OnboardingUITest.kt, ios/MekasaTests/UI/OnboardingUITest.swift
+Test File: android-fable/app/src/test/java/app/mekasa/fable/ui/OnboardingUITest.kt, ios/MekasaTests/UI/OnboardingUITest.swift
 Acceptance Criteria:
 - AC1: Follows sequence: signup → household name/photo → address
   confirmation → store selection → inventory scan → invite prompt
@@ -353,7 +374,7 @@ Acceptance Criteria:
 Priority: P0
 Design Artifact: design/mockups/Dashboard.jsx
 User Flow: design/user-flows.md
-Test File: android/src/test/ui/DashboardUITest.kt, ios/MekasaTests/UI/DashboardUITest.swift
+Test File: android-fable/app/src/test/java/app/mekasa/fable/ui/DashboardUITest.kt, ios/MekasaTests/UI/DashboardUITest.swift
 Acceptance Criteria:
 - AC1: Displays low-stock items prominently
 - AC2: Displays pending child requests for Owner users
@@ -366,7 +387,7 @@ Priority: P0
 Design Artifact: design/mockups/TrashStationMode.jsx
 User Flow: design/user-flows.md
 Test File: ios/Tests/UI/Structure/UI005StructureTests.swift,
-  android/app/src/test/java/app/mekasa/android/ui/TrashStationModeUITest.kt,
+  android-fable/app/src/test/java/app/mekasa/fable/ui/TrashStationModeUITest.kt,
   ios/MekasaTests/ScanFeedbackTests.swift, ios/MekasaTests/ScanCooldownTests.swift
 Acceptance Criteria:
 - AC1: Simplified single-purpose UI for scanning only
@@ -436,6 +457,16 @@ Acceptance Criteria:
 - AC1: All secrets stored in GCP Secret Manager
 - AC2: No secrets in source control history
 - AC3: Secrets rotated on a defined schedule
+
+### NFR-005: Accessible Text, Contrast and Targets
+Priority: P0
+Description: Every iOS and Android screen, and every design draft it is built from, meets minimum text size, contrast and touch-target rules. (Decided 2026-10-04.)
+Acceptance Criteria:
+- AC1: Text is at least 12 pt (sp on Android); 11 pt is allowed only for secondary captions; status chips and placeholders count as text
+- AC2: Contrast meets WCAG 2.2 AA against the actual background: 4.5:1 for normal text (including placeholder and disabled-but-readable text), 3:1 for large text (≥ 18 pt, or ≥ 14 pt bold), icons, chip outlines and input borders
+- AC3: Text scales with the system setting (iOS Dynamic Type, Android font scale) up to at least 200% without clipping or overlap; truncation (e.g. REQ-RCP-020 AC14) still exposes the full string to VoiceOver/TalkBack
+- AC4: Tap targets are at least 44×44 pt on iOS and 48×48 dp on Android, including chips, the photo thumbnail and "Scan →"
+- AC5: Colors come from theme roles (`MekasaTheme` on iOS and Android), not hardcoded values; any new or changed color scheme is adopted only after every role pair it defines (text on surface, text on brand, text on warning/success, light text on the dark camera surface) passes AC2 in every appearance the app supports
 
 ### REQ-022: Expired Session Auto Sign-Out
 Priority: P0
@@ -541,8 +572,9 @@ Test File: tests/backend/test_receipt_parser_happy_path.py
 Acceptance Criteria:
 - AC1: Each document stores `line_no`, `raw_text`, `description`, `price`, `qty`, `unit`, `discount`, `printed_code`, `category`, `extraction_confidence`
 - AC2: Receipt header fields `store_chain_detected`, `purchased_at`, `subtotal`, `tax`, `total`, `currency` are written from the response
-- AC3: Legacy fields `name`, `quantity`, `price_paid`, `image_url`, `identified` are derived so existing clients render the haul unchanged
+- AC3: Legacy fields `name`, `quantity`, `price_paid`, `image_url`, `identified` are derived so existing clients render the haul unchanged; `quantity` follows AC5 for weighed lines
 - AC4: Receipt `line_item_count` and `unresolved_count` are maintained
+- AC5: Weighed lines (`unit` ∈ `lb`, `oz`, `kg`, `g`, e.g. bananas "2.41 lb @ 0.50/lb") count as one unit as sold — a bunch, a bag, a piece — so `quantity = 1`; `qty`, `unit`, and `unit_price` keep the weight and per-unit price, and `price_paid` is the printed line total. Only count units (`each`, `pack`, or none) derive `quantity` from `qty` (rounded, min 1). The user can change `quantity` before confirming (REQ-RCP-019 AC1). (Decided 2026-10-04.)
 
 ### REQ-RCP-007: Match Lines Against the Product Database
 Priority: P0
@@ -665,6 +697,7 @@ Acceptance Criteria:
 - AC2: One purchase event per line with `source=receipt`, `store_id`, `receipt_id`, `receipt_line_item_id`, `product_id`
 - AC3: Receipt `status=confirmed`, `confirmed_by_uid`, `confirmed_at` set; the operation is idempotent
 - AC4: `rejected`/`skipped` lines are ignored; `unmatched` lines are saved as plain items only when `include_unmatched=true` (default)
+- AC5: Inventory uses the line's `quantity` (one bunch for a weighed line, REQ-RCP-006 AC5); the purchase event carries `price_paid` plus `qty`, `unit`, `unit_price`, so spending stays exact while inventory counts what the household handles. Weight never becomes an inventory quantity
 
 ### REQ-RCP-016: Persist Scan Events
 Priority: P1
@@ -712,7 +745,7 @@ Acceptance Criteria:
 - AC1: `PATCH …/line-items/{lid}` accepts `name`, `brand`, `category`, `unit_size`, `qty`, `unit`, `quantity`, `price_paid`, `unit_price`, and `photo_id`; the edit is stored on the line (`user_edited_fields` lists the fields) and is what `confirm` writes to inventory and purchases
 - AC2: A correction of `category` (or any attribute) on a line that is `auto_matched`/`confirmed` keeps the link to the product; the line stores the override and `POST /v1/catalog/products/{id}/corrections` is offered as a separate, explicit step ("also fix it for everyone")
 - AC3: `POST /v1/catalog/products/{id}/corrections` on an `unverified` or `pending` product applies the correction directly, appends `user_scan` to `sources_seen`, resets `confirmation_count` to 0 and `status` to `unverified` when `name`, `brand`, `upc`, or `category` changed; on a `verified` product the row is left untouched and a `product_conflicts` record (`field` ∈ name, brand, unit_size, category, upc, image_url) is written and returned
-- AC4: The product image can be replaced on a line, an inventory item, and a shared product by referencing a `photo_id` from REQ-RCP-021; `image_url` then resolves to `/v1/product-photos/{photo_id}` and `image_source=user_photo`
+- AC4: The product image can be replaced on a line and an inventory item with a household-private photo (REQ-INV-019); replacing the *shared* product image through a correction (`photo_id` on `POST /v1/catalog/products/{id}/corrections`) remains Deferred. Sharing a photo with a UPC happens only through the product capture flow (REQ-RCP-020 AC5, REQ-RCP-021)
 - AC5: Corrections are attributed only by `household_hash`; no user id or household id is written to the shared catalog (NFR-002 AC1)
 - AC6: Inventory corrections keep working through the existing `PATCH …/inventory/{item_id}` (`name`, `category`, `quantity`, `price_paid`, `barcode`, `image_url`), which now also accepts `photo_id`
 
@@ -724,23 +757,37 @@ is `null` or an `llm:`/`plu:` key), **then** the system **shall** offer the
 user an in-app capture flow: scan the product's barcode with the camera and
 take a picture of the product, and **shall** create or link the shared
 product from that capture.
-Design Artifact: design/mockups/AddItems.jsx (confirm haul, "Scan this product" affordance)
+Design Artifact: design/pages/scan-receipt-results.html, design/pages/scan-barcode.html, design/pages/scan-picture-step.html, design/pages/scan-plu-entry.html, design/pages/scan-new-product.html, design/pages/scan-haul-summary.html, design/pages/scan-flow-component-sheet.html (exported 2026-10-04 from the Superdesign project "Mekasa v1.0" after revising the drafts for AC7–AC14, REQ-RCP-021 AC7, REQ-017 AC4 and NFR-005 in the Rich & Grounded palette; the component sheet holds the chips, error states, photo thumbnail, sharing sheet and save-button states); earlier: design/mockups/AddItems.jsx
 Test File: tests/backend/test_line_item_capture.py
 Acceptance Criteria:
 - AC1: Every line whose `barcode` is `null` exposes `capture_available=true`; the confirm-haul screen shows a "Scan product" action on such lines (and on `needs_review`/`unresolved` lines regardless of barcode)
-- AC2: `POST …/line-items/{lid}/capture` takes `upc` (required, 8–14 digits) plus optional `photo_id`, `name`, `brand`, `category`, `unit_size`; when a product with that UPC exists the line is linked to it (`match_method=user`, `resolution_status=confirmed`) and REQ-RCP-013 counting applies; when none exists a new `products` row keyed by the UPC is created with `source=user_scan`, `confidence_score=0.9`, attributes from the request falling back to the line's description and category, and `image_url` from `photo_id` when given
+- AC2: `POST …/line-items/{lid}/capture` takes exactly one of `upc` (8–14 digits) or `plu_code` (4–5 digits, AC7) plus optional `photo_id`, `name`, `brand`, `category`, `unit_size`; when a product with that UPC exists the line is linked to it (`match_method=user`, `resolution_status=confirmed`) and REQ-RCP-013 counting applies; when none exists a new `products` row keyed by the UPC is created with `source=user_scan`, `confidence_score=0.9`, attributes from the request falling back to the line's description and category, and `image_url` from `photo_id` when given
 - AC3: When the line previously pointed at an `llm:` product, the capture re-keys it under the REQ-RCP-010 AC2 rules in the same transaction (`superseded_by`, alias repoint, `receipt_line_items` repoint)
 - AC4: The capture records a `scan_events` entry (`context=receipt_capture`, `outcome=found|created`) correlated with the receipt and line, and an `enrichment_jobs` row for the new UPC so store/registry adapters can fill in missing attributes later
-- AC5: Barcode scanning uses the existing camera scanner; the photo step is optional and may be skipped — a capture with `upc` alone is valid
+- AC5: Barcode scanning uses the existing camera scanner; the photo step is optional and may be skipped — a capture with `upc` alone is valid. A capture photo is uploaded through REQ-RCP-021 (`POST …/product-photos`) and is shared with the UPC: it becomes the product's `image_url` when the product has none, the line's image when it already has one, or a `product_conflicts` proposal when the product is `verified` (`photo_applied_as`)
 - AC6: The same capture works from inventory: `POST …/inventory/{item_id}/capture` with the same body links or creates the product and sets `inventory_items.barcode`, `product_id`, `image_url`
+- AC7: Produce lines (category `Produce`, or a printed 4–5 digit code) are captured by typing the PLU from the sticker — no camera viewfinder, since barcode scanners cannot read most PLU stickers — plus the optional photo. A capture with `plu_code` links to or creates the shared product `plu:<code>` (`code_kind=plu`, shared across chains, REQ-RCP-010 AC9) with the same `source`, confidence, alias, photo and `scan_events` rules as a UPC capture; it is never re-keyed to a UPC and, having no UPC, stays at most `pending` (REQ-RCP-011). (Decided 2026-10-04.)
+- AC8: The flow ends on one review screen, the Haul Summary, which replaces the earlier confirm-haul list and keeps REQ-005 AC2/AC6: every line shows its code and, when it needs action, a status chip (AC11); lines still missing a code show "Scan →" (re-entering the capture for that line), and tapping any row opens an edit sheet with name, quantity, price, category, photo, and catalog search. Nothing saves until the user taps the add-to-inventory button. (Decided 2026-10-04.)
+- AC9: Capture usually happens at home while unpacking the groceries, not in the store, so copy and flow assume the product is in hand with time to spare (no store-aisle wording; skipping stays available for items already used or thrown away). After a code is captured the screen shows one of two cards: a **catalog match** (name, category, size, image) with "Looks right — next" and a "Not this product?" action that discards the code and returns to scanning; or a **new product** card (the code is unknown to the catalog) with editable name and category, pre-filled from the receipt line, whose values become the `name`/`category` of the capture. Brand and size are left to enrichment (AC4). (Decided 2026-10-04.)
+- AC10: The scan step offers two distinct exits. **"Skip this item"** leaves the line as parsed; it stays "Needs scan" on the Haul Summary with "Scan →". **"No barcode on this item"** (deli, bakery, butcher counter) opens a photo + name/category step and saves the line as a household item with no code: nothing is written to the shared catalog, and the photo is household-private (REQ-INV-019). The choice is remembered for the household per store chain and normalized receipt text (`POST …/line-items/{lid}/no-barcode`, stored in Firestore `households/{hid}/no_barcode_aliases/{chain}:{alias}`, never in Postgres — NFR-002): later lines with the same text get `capture_available=false` and `no_barcode=true`, show "No barcode" in place of a code on the Haul Summary instead of "Scan →", and reuse the remembered name and category. The edit sheet's "This item has a barcode" action deletes the memory (`DELETE …/line-items/{lid}/no-barcode`) and restores the scan action. (Decided 2026-10-04.)
+- AC11: Haul Summary chips appear only on lines that need action: **"Needs scan"** (no code and not `no_barcode`; paired with "Scan →") or **"Needs info"** (has a code but name or category is still unconfirmed, e.g. `needs_confirmation`). Ready lines (matched, captured, or `no_barcode`) carry no chip and show only their code (UPC or PLU) or the plain text "No barcode". The headline counts remaining work ("6 of 7 ready · 1 needs a scan") and reads "All set" only when no line needs action; the add-to-inventory button stays enabled either way, since skipped lines save as parsed (AC10). (Decided 2026-10-04.)
+- AC12: The scan step handles failures in place, without an offline queue. **Camera permission denied:** a full-screen explainer with "Open Settings", "Type the code instead" (the same typed entry used for PLU, AC7, accepting 8–14 digit UPCs) and "Skip this item". **Barcode not read:** after about 5 seconds without a read the viewfinder shows a "Type the code" hint; typing is always available. **Offline:** the step shows "You're offline — captures need a connection", no capture is sent or queued, and the line stays "Needs scan" (AC11) to finish later from the Haul Summary. **Capture save fails** (5xx, timeout, photo upload error): an inline error on the card with "Try again" that resubmits without losing the code, photo, name or category; client errors such as `invalid_upc` or `invalid_plu` show their message beside the code field instead. (Decided 2026-10-04.)
+- AC13: After the shutter the flow returns straight to the catalog match or new-product card (AC9), which shows the photo as a thumbnail; there is no separate preview screen. Tapping the thumbnail opens the photo full size with "Retake" (reopens the camera and replaces the photo) and "Remove" (the capture continues without a photo, AC5). The photo is uploaded only when the card is submitted, so retaking or removing before then sends nothing to the shared catalog. (Decided 2026-10-04.)
+- AC14: The new-product card's save button reads "Save as {name}" and follows the name field live as the user types; names longer than about 24 characters are truncated with "…" so the button stays on one line (the full name stays visible in the field and is announced in full by VoiceOver/TalkBack). With the name empty or whitespace the button reads "Save product" and is disabled. (Decided 2026-10-04.)
 
 ### REQ-RCP-021: Product Photo Upload and Storage
 Priority: P0
-Description: The system **shall** accept product photos taken by users,
-store them without personal metadata, and serve them to any signed-in user
-through a stable URL that carries no household or user identifier, so that
-user photos can safely back shared catalog images.
-Design Artifact: —
+Status: Active (2026-10-04) for photos taken in the product capture flow
+(REQ-RCP-020): the capture is the explicit sharing action, and its photo is
+shared with the scanned UPC. Was Deferred 2026-10-03. Item-picture
+replacements from item detail stay household-private (REQ-INV-019) and do
+not use these endpoints.
+Description: The system **shall** accept product photos taken by users
+during a product capture, store them without personal metadata, and serve
+them to any signed-in user through a stable URL that carries no household
+or user identifier, so that user photos can safely back shared catalog
+images.
+Design Artifact: design/pages/scan-picture-step.html, design/pages/scan-new-product.html, design/pages/scan-flow-component-sheet.html (sharing label and one-time sheet)
 Test File: tests/backend/test_product_photos.py
 Acceptance Criteria:
 - AC1: `POST …/households/{hid}/product-photos` accepts a JPEG/PNG/HEIC ≤ 8 MB (base64 JSON or multipart), re-encodes it as JPEG with EXIF/GPS stripped, limits the long edge to 1600 px, and returns `photo_id` (UUID v4) and `image_url=/v1/product-photos/{photo_id}`
@@ -749,3 +796,5 @@ Acceptance Criteria:
 - AC4: A photo not referenced by any line item, inventory item, or product within 24 h is deleted by the daily cleanup job; referenced photos are retained while referenced
 - AC5: A photo referenced by a shared product (`image_source=user_photo`) stays available even if the uploading household deletes its inventory item; the household can request removal via `DELETE …/product-photos/{photo_id}`, which replaces the catalog image with the next-best source or a category placeholder
 - AC6: Photo bytes never appear in logs; uploads are rejected (`415 unsupported_media_type`, `413 payload_too_large`) rather than truncated
+- AC8: With `PRODUCT_PHOTO_BUCKET` unset (local, tests) the API keeps photos and ownership records in memory with the same endpoints and rules, and `GET /v1/product-photos/{photo_id}` serves the bytes (`200`) instead of redirecting
+- AC7: The capture screen's photo step states, before the photo is taken, that the picture will be shown with this product to other Mekasa households; the photo step stays optional (REQ-RCP-020 AC5). The first time a signed-in user reaches the photo step, a one-time sheet explains that product photos are shared with all Mekasa users while item-detail photos stay private to the household (REQ-INV-019), and asks them to keep people, faces and receipts out of the shot; it closes with "Got it", and that is remembered on the device per user. After that, the photo step shows only a short "Shared with all users" label with an info button that reopens the sheet. Copy never says the photo is shared only with the household. (Decided 2026-10-04.)

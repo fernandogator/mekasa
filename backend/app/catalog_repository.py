@@ -34,6 +34,7 @@ from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
 
+from app.categories import Category, normalize_category
 from app.config import Settings, get_settings
 
 # ---------------------------------------------------------------------------
@@ -56,6 +57,9 @@ IDENTITY_FIELDS = frozenset({"name", "brand", "category", "upc"})
 CAPTURE_CONFIDENCE = 0.9  # REQ-RCP-020 AC2
 FUZZY_CANDIDATE_THRESHOLD = 0.3
 UPC_RE = re.compile(r"^[0-9]{8,14}$")
+PLU_RE = re.compile(r"^[0-9]{4,5}$")
+# PLU products are shared across chains (REQ-RCP-010 AC9) and filed under the seeded "unknown" chain.
+SHARED_CHAIN_ID = "unknown"
 PHOTO_URL_PREFIX = "/v1/product-photos/"
 
 DEFAULT_DISCOVERY_CHAIN = ["store_api", "openfoodfacts", "upcitemdb", "gs1_verify", "crowdsourced_pending"]
@@ -104,6 +108,10 @@ def next_status(status: str, confirmation_count: int, source: str, has_upc: bool
     return current
 
 
+def plu_product_id(plu_code: str) -> str:
+    return f"plu:{plu_code}"
+
+
 def photo_image_url(photo_id: str) -> str:
     return f"{PHOTO_URL_PREFIX}{photo_id}"
 
@@ -124,7 +132,7 @@ class CatalogProduct(BaseModel):
     name: str
     normalized_name: str
     brand: str | None = None
-    category: str
+    category: Category
     unit_size: str | None = None
     image_url: str | None = None
     image_source: ImageSource | None = None
@@ -173,7 +181,7 @@ class ReceiptLineSave(BaseModel):
 
     raw_text: str
     description: str
-    category: str
+    category: Category
     brand: str | None = None
     unit_size: str | None = None
     product_id: str | None = None
@@ -246,6 +254,7 @@ class _Session(Protocol):
         field_name: str, verified_value: str, observed_value: str,
     ) -> CatalogConflict: ...
     def search(self, q: str, store_chain_id: str | None, status: str | None, limit: int) -> list[CatalogProduct]: ...
+    def clear_image(self, image_url: str) -> int: ...
 
 
 # ---------------------------------------------------------------------------
@@ -348,24 +357,33 @@ def _save_receipt_lines(session: _Session, store_chain_id: str, lines: list[Rece
 
 
 def _capture(
-    session: _Session, *, store_chain_id: str, upc: str, hh: str,
+    session: _Session, *, store_chain_id: str, upc: str | None, plu_code: str | None, hh: str,
     fallback_name: str, fallback_category: str, alias_text: str | None,
     name: str | None, brand: str | None, category: str | None, unit_size: str | None,
     photo_id: str | None, previous_product_id: str | None,
     receipt_id: str | None, line_item_id: str | None,
 ) -> CaptureResult:
-    """REQ-RCP-020 AC2–AC4 (design §3.11 step 2)."""
-    if not UPC_RE.match(upc):
+    """REQ-RCP-020 AC2–AC4, AC7 (design §3.11 step 2)."""
+    if (upc is None) == (plu_code is None):
+        raise ValueError("exactly_one_code_required")
+    if upc is not None and not UPC_RE.match(upc):
         raise ValueError("invalid_upc")
-    session.lock_chain(store_chain_id)
-    previous = session.get(previous_product_id, for_update=True) if previous_product_id else None
-    if previous is not None and (previous.superseded_by or previous.code_kind == "upc"):
-        previous = None  # already re-keyed, or not an llm:/plu: row — nothing to merge
+    if plu_code is not None and not PLU_RE.match(plu_code):
+        raise ValueError("invalid_plu")
+    session.lock_chain(store_chain_id if upc else SHARED_CHAIN_ID)
+    previous = session.get(previous_product_id, for_update=True) if previous_product_id and upc else None
+    if previous is not None and (previous.superseded_by or previous.code_kind != "llm"):
+        previous = None  # already re-keyed, or a UPC/PLU row — PLU products are never re-keyed (AC7)
 
-    existing = session.get_by_upc(upc, for_update=True)
+    if upc:
+        existing = session.get_by_upc(upc, for_update=True)
+    else:
+        existing = _follow(session, session.get(plu_product_id(plu_code or ""), for_update=True))
     photo_applied: str = "none"
     conflict: CatalogConflict | None = None
     enrichment_job_id: str | None = None
+    category = normalize_category(category) if category else None
+    fallback_category = normalize_category(fallback_category)
     overrides = {k: v for k, v in {"name": name, "brand": brand, "category": category, "unit_size": unit_size}.items() if v}
 
     if previous is not None:
@@ -377,7 +395,8 @@ def _capture(
     else:
         display_name = (name or fallback_name)[:120]
         product = CatalogProduct(
-            id=upc, code_kind="upc", upc=upc, store_chain_id=store_chain_id,
+            id=upc or plu_product_id(plu_code or ""), code_kind="upc" if upc else "plu",
+            upc=upc, plu_code=plu_code, store_chain_id=store_chain_id if upc else SHARED_CHAIN_ID,
             name=display_name, normalized_name=normalize_name(display_name)[:120],
             brand=brand, category=(category or fallback_category)[:60], unit_size=unit_size,
             image_url=photo_image_url(photo_id) if photo_id else None,
@@ -388,7 +407,8 @@ def _capture(
         outcome = "created"
         if photo_id:
             photo_applied = "product_image"
-        enrichment_job_id = session.queue_enrichment(product.id, "user_capture", CAPTURE_ENRICHMENT_CHAIN)
+        if upc:  # the enrichment adapters all look products up by UPC
+            enrichment_job_id = session.queue_enrichment(product.id, "user_capture", CAPTURE_ENRICHMENT_CHAIN)
 
     if photo_id and photo_applied == "none":
         if product.image_url is None:
@@ -419,6 +439,8 @@ def _correct(
     photo_id: str | None, receipt_id: str | None, line_item_id: str | None,
 ) -> CorrectionResult:
     """REQ-RCP-019 AC3 (design §3.11 step 1, shared-product layer)."""
+    if changes.get("category"):
+        changes = {**changes, "category": normalize_category(changes["category"])}
     product = _follow(session, session.get(product_id, for_update=True))
     if product is None:
         raise ProductNotFound(product_id)
@@ -490,6 +512,7 @@ class CatalogRepository(Protocol):
     def rekey_to_upc(self, product_id: str, upc: str, source: str, confidence: float) -> CatalogProduct: ...
     def capture(self, **kwargs) -> CaptureResult: ...
     def correct(self, **kwargs) -> CorrectionResult: ...
+    def release_user_photo(self, photo_id: str) -> int: ...
 
 
 class _BaseRepository:
@@ -543,14 +566,15 @@ class _BaseRepository:
             return _rekey(s, old, upc, source, confidence)
 
     def capture(
-        self, *, store_chain_id: str, upc: str, hh: str, fallback_name: str, fallback_category: str,
+        self, *, store_chain_id: str, hh: str, fallback_name: str, fallback_category: str,
+        upc: str | None = None, plu_code: str | None = None,
         alias_text: str | None = None, name: str | None = None, brand: str | None = None,
         category: str | None = None, unit_size: str | None = None, photo_id: str | None = None,
         previous_product_id: str | None = None, receipt_id: str | None = None, line_item_id: str | None = None,
     ) -> CaptureResult:
         with self._session() as s:
             return _capture(
-                s, store_chain_id=store_chain_id, upc=upc, hh=hh, fallback_name=fallback_name,
+                s, store_chain_id=store_chain_id, upc=upc, plu_code=plu_code, hh=hh, fallback_name=fallback_name,
                 fallback_category=fallback_category, alias_text=alias_text, name=name, brand=brand,
                 category=category, unit_size=unit_size, photo_id=photo_id,
                 previous_product_id=previous_product_id, receipt_id=receipt_id, line_item_id=line_item_id,
@@ -565,6 +589,15 @@ class _BaseRepository:
                 s, product_id=product_id, hh=hh, changes=changes, photo_id=photo_id,
                 receipt_id=receipt_id, line_item_id=line_item_id,
             )
+
+    def release_user_photo(self, photo_id: str) -> int:
+        """
+        REQ-RCP-021 AC5: products whose image is this user photo lose it, so
+        clients fall back to the category placeholder until enrichment finds
+        another image. Returns how many products changed.
+        """
+        with self._session() as s:
+            return s.clear_image(photo_image_url(photo_id))
 
 
 # ---------------------------------------------------------------------------
@@ -679,6 +712,14 @@ class _MemorySession:
                 scored.append((score, p.model_copy()))
         scored.sort(key=lambda t: (-t[0], t[1].id))
         return [p for _, p in scored[:limit]]
+
+    def clear_image(self, image_url: str) -> int:
+        changed = 0
+        for p in self._s.products.values():
+            if p.image_url == image_url and p.image_source == "user_photo":
+                p.image_url, p.image_source = None, None
+                changed += 1
+        return changed
 
 
 class InMemoryCatalogRepository(_BaseRepository):
@@ -873,6 +914,13 @@ class _PostgresSession:
             {"q": q, "chain": store_chain_id, "status": status, "threshold": FUZZY_CANDIDATE_THRESHOLD, "limit": limit},
         ).fetchall()
         return [_row_to_product(r) for r in rows]
+
+    def clear_image(self, image_url: str) -> int:
+        cur = self._conn.execute(
+            "UPDATE products SET image_url = NULL, image_source = NULL WHERE image_url = %s AND image_source = 'user_photo'",
+            (image_url,),
+        )
+        return cur.rowcount
 
 
 class PostgresCatalogRepository(_BaseRepository):

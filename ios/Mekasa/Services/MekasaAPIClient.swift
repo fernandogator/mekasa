@@ -7,7 +7,7 @@ actor MekasaAPIClient {
     static let shared = MekasaAPIClient()
 
     /// Production Cloud Run service.
-    var baseURL = URL(string: "https://mekasa-api-934775015882.us-central1.run.app")!
+    nonisolated let baseURL = URL(string: "https://mekasa-api-934775015882.us-central1.run.app")!
 
     private let decoder: JSONDecoder = {
         let d = JSONDecoder()
@@ -320,35 +320,24 @@ actor MekasaAPIClient {
     }
 
     /// Store the user's own item picture; the returned URL goes into `image_url`.
-    func uploadItemPhoto(householdID: String, imageData: Data, token: String) async throws -> PhotoUploadDTO {
+    /// Upload the member's own item picture; stored privately for this household
+    /// (REQ-INV-019 AC1). The returned `url` goes into `image_url`.
+    func uploadItemPhoto(householdID: String, imageData: Data, token: String) async throws -> ItemPhotoUploadDTO {
         try await multipartRequest(
-            path: "/v1/households/\(householdID)/photos",
+            path: "/v1/households/\(householdID)/item-photos",
             fields: [:],
             file: MultipartFile(field: "file", filename: "item.jpg", mimeType: "image/jpeg", data: imageData),
             token: token
         )
     }
 
-    /// In-store capture (barcode / PLU and/or photo) for a receipt line the catalog missed.
-    func captureStoreItem(
-        householdID: String,
-        storeID: String,
-        storeItemID: String,
-        barcode: String?,
-        imageData: Data?,
-        token: String
-    ) async throws -> StoreCatalogItemDTO {
-        let store = storeID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? storeID
-        let item = storeItemID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? storeItemID
-        var fields: [String: String] = [:]
-        if let barcode, !barcode.isEmpty { fields["barcode"] = barcode }
-        return try await multipartRequest(
-            path: "/v1/households/\(householdID)/store-catalogs/\(store)/items/\(item)/capture",
-            fields: fields,
-            file: imageData.map {
-                MultipartFile(field: "photo", filename: "item.jpg", mimeType: "image/jpeg", data: $0)
-            },
-            token: token
+    /// Remove a private item photo (REQ-INV-019 AC5).
+    func deleteItemPhoto(householdID: String, photoID: String, token: String) async throws {
+        _ = try await rawRequest(
+            path: "/v1/households/\(householdID)/item-photos/\(photoID)",
+            method: "DELETE",
+            token: token,
+            body: nil as String?
         )
     }
 

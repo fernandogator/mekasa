@@ -42,7 +42,7 @@ struct BarcodeScanView: View {
                         if let cameraError {
                             Text(cameraError)
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.accent)
+                                .foregroundStyle(MekasaTheme.danger)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal, 32)
                         }
@@ -57,7 +57,7 @@ struct BarcodeScanView: View {
                     VStack(spacing: 12) {
                         if isLookingUp {
                             ProgressView("Looking up product…")
-                                .tint(MekasaTheme.brand)
+                                .tint(MekasaTheme.text)
                         }
                         if !cameraAvailable {
                             PrimaryButton(title: "Simulate known scan") {
@@ -73,7 +73,7 @@ struct BarcodeScanView: View {
                         } label: {
                             Text("Enter manually")
                                 .font(.system(size: 15, weight: .bold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.brand)
+                                .foregroundStyle(MekasaTheme.text)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 8)
                         }
@@ -123,7 +123,7 @@ struct BarcodeScanView: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .strokeBorder(style: StrokeStyle(lineWidth: 3, dash: [10, 8]))
-                        .foregroundStyle(Color.white.opacity(0.85))
+                        .foregroundStyle(MekasaTheme.onCamera.opacity(0.85))
                         .frame(width: 220, height: 120)
                         .allowsHitTesting(false)
                 )
@@ -135,15 +135,15 @@ struct BarcodeScanView: View {
                         VStack(spacing: 12) {
                             Image(systemName: "barcode.viewfinder")
                                 .font(.system(size: 40, weight: .semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MekasaTheme.onCamera)
                             Text(cameraAvailable ? "Camera permission needed" : "Camera unavailable here")
                                 .font(.system(size: 15, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.9))
+                                .foregroundStyle(MekasaTheme.onCamera.opacity(0.9))
                             Text(cameraAvailable
                                   ? "Allow camera access, or type a UPC below."
                                   : "Simulator has no barcode camera — use Lookup / Simulate.")
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.75))
+                                .foregroundStyle(MekasaTheme.onCamera.opacity(0.75))
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal, 24)
                         }

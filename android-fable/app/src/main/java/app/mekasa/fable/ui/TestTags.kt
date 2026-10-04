@@ -79,6 +79,8 @@ object TestTags {
     const val ITEM_DETAIL_VIEW = "ItemDetailView"
     const val ITEM_IMAGE = "ItemImage"
     const val ITEM_LIGHTBOX = "ItemLightbox"
+    const val ITEM_PHOTO_CAMERA_BUTTON = "ItemPhotoCameraButton"
+    const val ITEM_PHOTO_LIBRARY_BUTTON = "ItemPhotoLibraryButton"
     const val QUANTITY_CONTROL = "QuantityControl"
     const val THRESHOLD_CONTROL = "ThresholdControl"
 

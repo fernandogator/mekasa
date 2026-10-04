@@ -215,7 +215,7 @@ private fun ShoppingRow(
                         tint = when {
                             item.isChecked -> palette.success
                             locked -> palette.textMuted
-                            else -> palette.brandMuted
+                            else -> palette.border
                         },
                     )
                 }

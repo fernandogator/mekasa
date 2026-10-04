@@ -257,7 +257,7 @@ private fun BottomPillNav(
                 .testTag(TestTags.ADD_ITEM_BUTTON),
             shape = CircleShape,
             containerColor = palette.accent,
-            contentColor = Color.White,
+            contentColor = palette.onAccent,
         ) {
             Icon(Icons.Filled.Add, contentDescription = "Add items")
         }
@@ -266,6 +266,7 @@ private fun BottomPillNav(
 
 @Composable
 private fun RowScope.NavSlot(tab: HomeTab, selected: Boolean, onSelect: (HomeTab) -> Unit) {
+    val palette = MekasaTheme.palette
     IconButton(
         onClick = { onSelect(tab) },
         modifier = Modifier.weight(1f).testTag(TestTags.tab(tab.label)),
@@ -273,7 +274,7 @@ private fun RowScope.NavSlot(tab: HomeTab, selected: Boolean, onSelect: (HomeTab
         Icon(
             imageVector = if (selected) tab.selectedIcon else tab.icon,
             contentDescription = tab.label,
-            tint = if (selected) Color.White else Color(0xFFB7C6C2),
+            tint = if (selected) palette.onBrand else palette.onBrandMuted,
             modifier = Modifier.size(24.dp),
         )
     }

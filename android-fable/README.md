@@ -1,11 +1,8 @@
 # Mekasa Android — Fable build
 
-> Implemented by Claude Fable 5.1 for comparison with the auto-model build in `android/`.
-
-An independent, from-scratch Android client for the Mekasa household-inventory
-API. It targets the same Cloud Run backend and the same feature list as
-`android/`, but shares no Kotlin with it (only the launcher icons and the Gradle
-wrapper were copied). Package name: `com.fernandogator.mekasa.fable`
+The Android client for the Mekasa household-inventory API, built by Claude
+Fable 5.1. It targets the same Cloud Run backend and feature list as the iOS
+app. Package name: `com.fernandogator.mekasa.fable`
 (debug builds add `.debug`).
 
 ## Requirements
@@ -113,10 +110,7 @@ See `app/google-services.json.example` for the same steps inline.
 | Session expiry | Any 401 triggers one forced ID-token refresh and retry; a second failure or Firebase dropping the user signs out to Welcome with a notice and the remembered email (REQ-022). |
 | Theme | Design-system tokens (sage/charcoal/red, 40/24/16 radii, 64 dp pill nav, 56 dp FAB) plus a dark palette. |
 
-## How this differs from `android/`
-
-Both apps hit the same routes and DTOs, but the internals are deliberately
-different so the two can be compared honestly:
+## Architecture
 
 - **Transport abstraction.** A `HouseholdBackend` interface has two
   implementations — `RemoteBackend` (Ktor + OkHttp against Cloud Run) and
@@ -130,7 +124,7 @@ different so the two can be compared honestly:
   Sign-In; `FakeAuthGateway` drives the ViewModel tests, including the
   "Firebase signed us out" flow.
 - **Navigation.** In-shell routing uses `navigation-compose` with saved tab
-  state; `android/` keeps its own enum-driven navigation.
+  state.
 - **Networking.** Ktor client with kotlinx.serialization (`explicitNulls =
   false`, so PATCH bodies omit untouched fields) and an injectable engine for
   `MockEngine` tests.

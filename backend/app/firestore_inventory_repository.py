@@ -42,6 +42,7 @@ def _to_item(household_id: str, doc_id: str, data: dict[str, Any]) -> InventoryI
         price_paid=data.get("price_paid"),
         barcode=data.get("barcode"),
         image_url=data.get("image_url"),
+        product_id=data.get("product_id"),
         source=data.get("source") or "manual",
         created_by_uid=str(data["created_by_uid"]),
         updated_by_uid=str(data["updated_by_uid"]),
@@ -184,6 +185,30 @@ class FirestoreInventoryRepository:
         self._col(household_id).document(item_id).update(data)
         if "health" in data:
             data["health"] = payload.health
+        return item.model_copy(update=data)
+
+    def apply_capture(
+        self,
+        household_id: str,
+        item_id: str,
+        actor_uid: str,
+        *,
+        barcode: str | None,
+        product_id: str,
+        image_url: str | None,
+    ) -> InventoryItemResponse:
+        self._require_owner(household_id, actor_uid)
+        item = self.get(household_id, item_id, actor_uid)
+        if item is None or item.deleted:
+            raise KeyError(item_id)
+        data = {
+            "barcode": barcode,
+            "product_id": product_id,
+            "image_url": image_url,
+            "updated_by_uid": actor_uid,
+            "updated_at": _utcnow(),
+        }
+        self._col(household_id).document(item_id).update(data)
         return item.model_copy(update=data)
 
     def delete(self, household_id: str, item_id: str, owner_uid: str) -> None:

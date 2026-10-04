@@ -15,6 +15,7 @@ import app.mekasa.fable.data.model.HouseholdMembersResponse
 import app.mekasa.fable.data.model.InventoryItem
 import app.mekasa.fable.data.model.InventoryItemCreateRequest
 import app.mekasa.fable.data.model.InventoryItemPatch
+import app.mekasa.fable.data.model.ItemPhotoUpload
 import app.mekasa.fable.data.model.InventoryListResponse
 import app.mekasa.fable.data.model.InviteCreateRequest
 import app.mekasa.fable.data.model.ProductSearchResponse
@@ -154,9 +155,16 @@ open class FakeApi : MekasaApi {
         val updated = inventory[idx].copy(
             quantity = patch.quantity ?: inventory[idx].quantity,
             lowStockThreshold = patch.lowStockThreshold ?: inventory[idx].lowStockThreshold,
+            imageUrl = patch.imageUrl ?: inventory[idx].imageUrl,
         )
         inventory[idx] = updated
         return updated
+    }
+
+    override suspend fun uploadItemPhoto(token: String, householdId: String, bytes: ByteArray, mimeType: String, filename: String): ItemPhotoUpload {
+        record("uploadItemPhoto:${bytes.size}")
+        val id = "0b5c7e4e-7f3e-4d0c-9c1e-6d2b8a9f1c22"
+        return ItemPhotoUpload(photoId = id, url = "https://api.test/v1/households/$householdId/item-photos/$id")
     }
 
     override suspend fun refreshInventoryImage(token: String, householdId: String, itemId: String): InventoryItem {

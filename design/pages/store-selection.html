@@ -1,99 +1,142 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <meta name="view-transition" content="same-origin" />
-  <title>Mekasa — Store selection</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="view-transition" content="same-origin">
+  <link rel="prefetch" href="dashboard.html" as="document">
+  <link rel="prefetch" href="store-selection.html" as="document">
+  <link rel="prefetch" href="shopping-list.html" as="document">
+  <link rel="prefetch" href="add-items.html" as="document">
+  <link rel="prefetch" href="trash-station.html" as="document">
+  <link rel="prefetch" href="onboarding-household.html" as="document">
+  <link rel="prefetch" href="spending-report.html" as="document">
+  <link rel="prefetch" href="family-members.html" as="document">
+  <title>Store Selection - Mekasa</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
   <style>
-    body { margin: 0; background: #eeebe3; }
-    @view-transition { navigation: auto; }
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+    :root {
+      --color-brand: #5d5652;
+      --color-brand-muted: #8fa085;
+      --color-surface: #ede8e0;
+      --color-surface-elevated: #faf7f3;
+      --color-text: #5d5652;
+      --color-text-muted: #5c6b54;
+      --color-accent: #5a6f4f;
+      --color-danger: #5a6f4f;
+      --color-success: #5a6f4f;
+      --color-warning: #8b5c32;
+      --color-overlay: rgba(143, 160, 133, 0.15);
+    }
+    body {
+      font-family: 'Nunito', sans-serif;
+      background-color: var(--color-surface);
+      color: var(--color-text);
+      margin: 0;
+    }
+    html {
+      background-color: var(--color-surface);
+    }
+    @view-transition {
+      navigation: auto;
+    }
+    ::view-transition {
+      background-color: var(--color-surface);
+    }
+    ::view-transition-old(main-content) {
+      animation: 0.25s ease-out both fade-out;
+    }
+    ::view-transition-new(main-content) {
+      animation: 0.25s ease-in 0.1s both fade-in;
+    }
+    @keyframes fade-out {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation: none;
+      mix-blend-mode: normal;
+    }
+
+    .text-brand { color: var(--color-brand); }
+    .text-text { color: var(--color-text); }
+    .text-muted { color: var(--color-text-muted); }
+    .bg-brand { background-color: var(--color-brand); }
+    .bg-accent { background-color: var(--color-accent); }
+    .bg-surface-elevated { background-color: var(--color-surface-elevated); }
+    .border-muted { border-color: rgba(183, 198, 194, 0.3); }
+    
+    .sage-blob {
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: var(--color-overlay);
+      filter: blur(40px);
+      z-index: 0;
+      pointer-events: none;
+    }
+    
+    /* Custom checkbox styling */
+    .store-checkbox {
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--color-brand-muted);
+      border-radius: 50%;
+      outline: none;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+    .store-checkbox:checked {
+      background-color: var(--color-success);
+      border-color: var(--color-success);
+    }
+    .store-checkbox:checked::after {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 4px;
+      width: 6px;
+      height: 10px;
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
   </style>
 </head>
 <body>
-<style>  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
-  :root {
-    --color-brand: #171e19;
-    --color-brand-muted: #b7c6c2;
-    --color-surface: #eeebe3;
-    --color-surface-elevated: #ffffff;
-    --color-text: #171e19;
-    --color-text-muted: #6d7a76;
-    --color-accent: #ca0013;
-    --color-danger: #ca0013;
-    --color-success: #2f6b4f;
-    --color-warning: #c45c12;
-    --color-overlay: rgba(183, 198, 194, 0.20);
-  }
-  .mekasa-screen {
-    font-family: Nunito, sans-serif;
-    background-color: var(--color-surface);
-    color: var(--color-text);
-  }
-  .mekasa-screen .text-brand { color: var(--color-brand); }
-  .mekasa-screen .text-muted { color: var(--color-text-muted); }
-  .mekasa-screen .bg-brand { background-color: var(--color-brand); }
-  .mekasa-screen .bg-accent { background-color: var(--color-accent); }
-  .mekasa-screen .bg-surface-elevated { background-color: var(--color-surface-elevated); }
-  .mekasa-screen .border-muted { border-color: rgba(183, 198, 194, 0.3); }
-  .mekasa-screen .sage-blob {
-    position: absolute;
-    top: -50px;
-    right: -50px;
-    width: 300px;
-    height: 300px;
-    border-radius: 50%;
-    background: var(--color-overlay);
-    filter: blur(40px);
-    z-index: 0;
-    pointer-events: none;
-  }
-  .mekasa-screen .store-checkbox {
-    appearance: none;
-    width: 24px;
-    height: 24px;
-    border: 2px solid var(--color-brand-muted);
-    border-radius: 50%;
-    outline: none;
-    cursor: pointer;
-    position: relative;
-  }
-  .mekasa-screen .store-checkbox:checked {
-    background-color: var(--color-accent);
-    border-color: var(--color-accent);
-  }
-  .mekasa-screen .checkbox-custom {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 2px solid var(--color-brand-muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .mekasa-screen .checkbox-custom.checked {
-    background-color: var(--color-accent);
-    border-color: var(--color-accent);
-    color: white;
-  }</style>
-
-      <div class="mekasa-screen w-full h-screen flex flex-col relative overflow-hidden bg-[#eeebe3]">
+  <div class="w-full h-screen flex flex-col relative overflow-hidden bg-[#ede8e0]">
     <div class="sage-blob"></div>
     
-    
+    <!-- Onboarding Header -->
     <header class="shrink-0 pt-14 px-6 z-10">
-      <div class="flex flex-col items-center justify-center space-y-1">
-        <p class="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">Step 4 of 6</p>
-        <h1 class="text-xl font-black text-brand tracking-tight">Mekasa</h1>
+      <div class="flex items-center justify-between mb-4">
+        <a id="btn-back" href="onboarding-household.html" class="w-10 h-10 rounded-full flex items-center justify-center border border-muted bg-surface-elevated">
+          <iconify-icon icon="lucide:chevron-left" class="text-xl text-brand"></iconify-icon>
+        </a>
+        <div class="flex flex-col items-center justify-center space-y-0.5">
+          <p class="text-[12px] font-bold uppercase tracking-[0.1em] text-muted">Step 4 of 6</p>
+          <h1 class="text-lg font-black text-brand tracking-tight">Mekasa</h1>
+        </div>
+        <div class="w-10"></div>
       </div>
     </header>
 
-    
+    <!-- Main Content Area with View Transition -->
     <main class="flex-1 overflow-y-auto px-6 pt-10 pb-32 z-10 flex flex-col" style="view-transition-name: main-content">
       
-      
+      <!-- Header Section -->
       <div class="mb-8">
         <h2 class="text-[32px] font-black text-brand leading-tight mb-3">Where do you shop?</h2>
         <p class="text-[16px] font-semibold text-muted">
@@ -101,55 +144,55 @@
         </p>
       </div>
 
-      
+      <!-- Search Field -->
       <div class="relative mb-6">
         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <iconify-icon icon="lucide:search" class="text-xl text-muted"></iconify-icon>
         </div>
         <input 
           type="text" 
           placeholder="Search for a store..."
           class="w-full h-[56px] pl-12 pr-4 bg-surface-elevated border border-muted rounded-[24px] text-[16px] font-semibold focus:outline-none focus:border-brand shadow-sm"
-         />
+        >
       </div>
 
-      
+      <!-- Store List Container -->
       <div class="bg-surface-elevated rounded-[40px] p-2 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] border border-muted flex-1 overflow-y-auto space-y-1">
         
-        
-        <label class="flex items-center justify-between p-4 rounded-[32px] bg-[#171e19] text-white cursor-pointer transition-colors">
+        <!-- Store Row: Selected -->
+        <label class="flex items-center justify-between p-4 rounded-[32px] bg-[#5d5652] text-white cursor-pointer transition-colors">
           <div class="flex items-center">
             <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center mr-4 shrink-0 overflow-hidden">
-               
+               <!-- Placeholder for store logo, using text for now -->
                <span class="text-brand font-black text-sm">H-E-B</span>
             </div>
             <div>
               <p class="font-extrabold text-[16px]">H-E-B</p>
-              <p class="text-[12px] font-bold text-[#b7c6c2] uppercase tracking-wider">0.8 mi</p>
+              <p class="text-[12px] font-bold text-[#5c6b54] uppercase tracking-wider">0.8 mi</p>
             </div>
           </div>
-          <div class="w-8 h-8 rounded-full bg-accent flex items-center justify-center">
-             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="m5 12 5 5L20 7"/></svg>
+          <div class="w-8 h-8 rounded-full bg-[#5a6f4f] flex items-center justify-center">
+             <iconify-icon icon="lucide:check" class="text-white"></iconify-icon>
           </div>
         </label>
 
-        
-        <label class="flex items-center justify-between p-4 rounded-[32px] bg-[#171e19] text-white cursor-pointer transition-colors">
+        <!-- Store Row: Selected -->
+        <label class="flex items-center justify-between p-4 rounded-[32px] bg-[#5d5652] text-white cursor-pointer transition-colors">
           <div class="flex items-center">
             <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center mr-4 shrink-0 overflow-hidden">
                <span class="text-brand font-black text-sm">Costco</span>
             </div>
             <div>
               <p class="font-extrabold text-[16px]">Costco</p>
-              <p class="text-[12px] font-bold text-[#b7c6c2] uppercase tracking-wider">4.2 mi</p>
+              <p class="text-[12px] font-bold text-[#5c6b54] uppercase tracking-wider">4.2 mi</p>
             </div>
           </div>
-          <div class="w-8 h-8 rounded-full bg-accent flex items-center justify-center">
-             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="m5 12 5 5L20 7"/></svg>
+          <div class="w-8 h-8 rounded-full bg-[#5a6f4f] flex items-center justify-center">
+             <iconify-icon icon="lucide:check" class="text-white"></iconify-icon>
           </div>
         </label>
 
-        
+        <!-- Store Row: Unselected -->
         <label class="flex items-center justify-between p-4 rounded-[32px] hover:bg-[#f8f9f8] cursor-pointer transition-colors">
           <div class="flex items-center">
             <div class="w-12 h-12 rounded-full bg-[#f1f4f3] flex items-center justify-center mr-4 shrink-0 overflow-hidden">
@@ -160,10 +203,10 @@
               <p class="text-[12px] font-bold text-muted uppercase tracking-wider">2.1 mi</p>
             </div>
           </div>
-          <input type="checkbox" class="store-checkbox" />
+          <input type="checkbox" class="store-checkbox">
         </label>
 
-        
+        <!-- Store Row: Unselected -->
         <label class="flex items-center justify-between p-4 rounded-[32px] hover:bg-[#f8f9f8] cursor-pointer transition-colors">
           <div class="flex items-center">
             <div class="w-12 h-12 rounded-full bg-[#f1f4f3] flex items-center justify-center mr-4 shrink-0 overflow-hidden">
@@ -174,10 +217,10 @@
               <p class="text-[12px] font-bold text-muted uppercase tracking-wider">6.7 mi</p>
             </div>
           </div>
-          <input type="checkbox" class="store-checkbox" />
+          <input type="checkbox" class="store-checkbox">
         </label>
 
-        
+        <!-- Store Row: Unselected -->
         <label class="flex items-center justify-between p-4 rounded-[32px] hover:bg-[#f8f9f8] cursor-pointer transition-colors">
           <div class="flex items-center">
             <div class="w-12 h-12 rounded-full bg-[#f1f4f3] flex items-center justify-center mr-4 shrink-0 overflow-hidden">
@@ -188,42 +231,40 @@
               <p class="text-[12px] font-bold text-muted uppercase tracking-wider">5.4 mi</p>
             </div>
           </div>
-          <input type="checkbox" class="store-checkbox" />
+          <input type="checkbox" class="store-checkbox">
         </label>
 
       </div>
     </main>
 
-    
-    <div class="absolute bottom-0 left-0 right-0 p-6 pt-4 bg-gradient-to-t from-[#eeebe3] via-[#eeebe3] to-transparent z-40">
-      <a href="#" 
-         
-         class="flex items-center justify-center w-full h-[56px] bg-accent text-white rounded-[24px] font-extrabold text-[18px] shadow-[0_8px_16px_rgba(202,0,19,0.2)] active:scale-[0.98] transition-transform">
+    <!-- Sticky Bottom CTA (No Tab Bar) -->
+    <div class="absolute bottom-0 left-0 right-0 p-6 pt-4 bg-gradient-to-t from-[#f0f3ed] via-[#f0f3ed] to-transparent z-40">
+      <a href="onboarding-household.html" 
+         id="btn-confirm-stores" 
+         class="flex items-center justify-center w-full h-[56px] bg-accent text-white rounded-[24px] font-extrabold text-[18px] shadow-[0_8px_16px_rgba(90,111,79,0.2)] active:scale-[0.98] transition-transform">
         Confirm stores
       </a>
       
-      
-      <div class="mt-6 w-full h-1 bg-[#d5ddd9] rounded-full overflow-hidden">
-         <div class="h-full bg-brand w-[66%]"></div>
+      <!-- Progress indicator track beneath CTA -->
+      <div class="mt-6 w-full h-[3px] bg-[#d5ddd9] rounded-full overflow-hidden">
+         <div class="h-full bg-brand w-[66.6%] transition-all duration-500"></div>
       </div>
     </div>
 
   </div>
-    
-  
-<nav class="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 pt-2 pointer-events-none">
-  <div class="pointer-events-auto mx-auto max-w-md flex gap-2 justify-center flex-wrap text-[11px] font-bold">
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="dashboard.html">Home</a>
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="onboarding-household.html">Onboard</a>
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="store-selection.html">Stores</a>
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="shopping-list.html">List</a>
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="add-items.html">Add</a>
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="trash-station.html">Trash</a>
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="spending-report.html">Spend</a>
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="family-members.html">Family</a>
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="../">Index</a>
+<nav class="fixed top-0 left-0 right-0 z-50 px-2 pt-1 pointer-events-none">
+  <div class="pointer-events-auto mx-auto max-w-md flex gap-1 flex-nowrap overflow-x-auto text-[12px] font-bold">
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="dashboard.html">Home</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="onboarding-household.html">Onboard</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="store-selection.html">Stores</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="shopping-list.html">List</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="add-items.html">Add</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="scan-receipt-results.html">Scan</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="trash-station.html">Trash</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="spending-report.html">Spend</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="family-members.html">Family</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="../">Index</a>
   </div>
 </nav>
-
 </body>
 </html>

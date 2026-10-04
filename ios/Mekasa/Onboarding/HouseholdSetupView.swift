@@ -21,7 +21,7 @@ struct HouseholdSetupView: View {
                     VStack(spacing: 32) {
                         Text("Name this house.")
                             .font(MekasaTheme.displayFont)
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                             .multilineTextAlignment(.center)
                             .padding(.top, 36)
 
@@ -35,10 +35,10 @@ struct HouseholdSetupView: View {
                                                 .strokeBorder(
                                                     style: StrokeStyle(lineWidth: 2, dash: [6])
                                                 )
-                                                .foregroundStyle(MekasaTheme.brandMuted)
+                                                .foregroundStyle(MekasaTheme.border)
                                         )
                                         .frame(width: 128, height: 128)
-                                        .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+                                        .shadow(color: MekasaTheme.shadow.opacity(0.06), radius: 8, y: 2)
 
                                     if let photoImage {
                                         Image(uiImage: photoImage)
@@ -56,7 +56,7 @@ struct HouseholdSetupView: View {
                                                 .textCase(.uppercase)
                                                 .foregroundStyle(MekasaTheme.textMuted)
                                         }
-                                        .foregroundStyle(MekasaTheme.brand)
+                                        .foregroundStyle(MekasaTheme.text)
                                     }
                                 }
                                 Circle()
@@ -65,7 +65,7 @@ struct HouseholdSetupView: View {
                                     .overlay(
                                         Image(systemName: "camera.fill")
                                             .font(.system(size: 12, weight: .bold))
-                                            .foregroundStyle(.white)
+                                            .foregroundStyle(MekasaTheme.onBrand)
                                     )
                                     .shadow(radius: 4, y: 2)
                             }

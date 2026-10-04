@@ -47,7 +47,7 @@ struct AvoidEditorView: View {
                             } label: {
                                 Text(option?.label ?? key)
                                     .font(.system(size: 14, weight: .bold, design: .rounded))
-                                    .foregroundStyle(isOn ? .white : MekasaTheme.brand)
+                                    .foregroundStyle(isOn ? MekasaTheme.onAccent : MekasaTheme.text)
                                     .padding(.horizontal, 14)
                                     .padding(.vertical, 9)
                                     .background(isOn ? MekasaTheme.accent : MekasaTheme.surfaceElevated)
@@ -102,7 +102,7 @@ struct AvoidEditorView: View {
                                                 .font(.system(size: 10, weight: .bold))
                                         }
                                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(MekasaTheme.onBrand)
                                         .padding(.horizontal, 14)
                                         .padding(.vertical, 9)
                                         .background(MekasaTheme.brand)
@@ -116,7 +116,7 @@ struct AvoidEditorView: View {
                         if let errorMessage {
                             Text(errorMessage)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.accent)
+                                .foregroundStyle(MekasaTheme.danger)
                         }
                     }
                     .padding(.horizontal, 24)

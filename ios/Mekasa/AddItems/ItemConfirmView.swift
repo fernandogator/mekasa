@@ -63,7 +63,7 @@ struct ProductMatchPickerView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .foregroundStyle(canSearch ? MekasaTheme.brand : MekasaTheme.textMuted)
+                            .foregroundStyle(canSearch ? MekasaTheme.text : MekasaTheme.textMuted)
                             .background(MekasaTheme.surfaceElevated)
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         }
@@ -149,7 +149,7 @@ struct ProductSearchHitRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(hit.name)
                     .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                     .multilineTextAlignment(.leading)
                 HStack(spacing: 6) {
                     Text(hit.category)
@@ -164,7 +164,7 @@ struct ProductSearchHitRow: View {
             Spacer(minLength: 0)
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(MekasaTheme.brandMuted)
+                .foregroundStyle(MekasaTheme.border)
         }
         .padding(12)
         .background(MekasaTheme.surfaceElevated)
@@ -181,7 +181,7 @@ struct AddFlowHeader: View {
             Button(action: onBack) {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(MekasaTheme.brand)
+                    .foregroundStyle(MekasaTheme.text)
                     .frame(width: 40, height: 40)
                     .background(MekasaTheme.surfaceElevated)
                     .clipShape(Circle())
@@ -194,7 +194,7 @@ struct AddFlowHeader: View {
 
             Text(title)
                 .font(.system(size: 16, weight: .heavy, design: .rounded))
-                .foregroundStyle(MekasaTheme.brand)
+                .foregroundStyle(MekasaTheme.text)
 
             Spacer()
 
@@ -287,8 +287,7 @@ struct ItemConfirmView: View {
             NavigationStack {
                 LocalItemCaptureView(
                     itemName: drafts.first(where: { $0.id == route.id })?.name ?? "",
-                    store: storeContext,
-                    storeItemID: storeContext?.storeItemIDs[route.id]
+                    store: storeContext
                 ) { result in
                     applyCapture(result, to: route.id)
                 }
@@ -311,7 +310,7 @@ struct ItemConfirmView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("\(identifiedCount) recognized · \(unidentifiedCount) need review")
                 .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundStyle(MekasaTheme.brand)
+                .foregroundStyle(MekasaTheme.text)
             if unidentifiedCount > 0 {
                 Text("Scan unmatched items and take a picture, or find them in the catalog.")
                 .font(MekasaTheme.bodyFont)
@@ -343,18 +342,18 @@ struct ItemConfirmView: View {
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                             .tracking(0.6)
                             .textCase(.uppercase)
-                            .foregroundStyle(MekasaTheme.accent)
+                            .foregroundStyle(MekasaTheme.warning)
                             .accessibilityIdentifier(TestIdentifiers.scanPromptLabel)
                     } else if capturedDraftIDs.contains(draft.wrappedValue.id) {
                         Text("Scanned in store")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                             .tracking(0.6)
                             .textCase(.uppercase)
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                     }
                     TextField("Name", text: draft.name)
                         .font(.system(size: 18, weight: .heavy, design: .rounded))
-                        .foregroundStyle(MekasaTheme.brand)
+                        .foregroundStyle(MekasaTheme.text)
                         .accessibilityIdentifier(TestIdentifiers.itemNameLabel)
                     Text(draft.wrappedValue.category)
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
@@ -390,7 +389,7 @@ struct ItemConfirmView: View {
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(MekasaTheme.textMuted)
                             .frame(width: 28, height: 28)
-                            .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                            .background(MekasaTheme.surfaceMuted)
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
@@ -414,7 +413,7 @@ struct ItemConfirmView: View {
                 } label: {
                     Label("Scan item & take picture", systemImage: "barcode.viewfinder")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MekasaTheme.onBrand)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .background(MekasaTheme.brand)
@@ -429,10 +428,10 @@ struct ItemConfirmView: View {
                     } label: {
                         Text("Find in catalog instead")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(MekasaTheme.brand)
+                            .foregroundStyle(MekasaTheme.text)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                            .background(MekasaTheme.surfaceMuted)
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     .buttonStyle(.plain)
@@ -460,7 +459,7 @@ struct ItemConfirmView: View {
                     Image(systemName: "minus")
                         .font(.system(size: 12, weight: .bold))
                         .frame(width: 32, height: 32)
-                        .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                        .background(MekasaTheme.surfaceMuted)
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
@@ -475,12 +474,12 @@ struct ItemConfirmView: View {
                     Image(systemName: "plus")
                         .font(.system(size: 12, weight: .bold))
                         .frame(width: 32, height: 32)
-                        .background(Color(red: 0xf1 / 255, green: 0xf4 / 255, blue: 0xf3 / 255))
+                        .background(MekasaTheme.surfaceMuted)
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
             }
-            .foregroundStyle(MekasaTheme.brand)
+            .foregroundStyle(MekasaTheme.text)
             .accessibilityIdentifier(TestIdentifiers.quantityControl)
 
             HStack {
@@ -507,7 +506,7 @@ struct ItemConfirmView: View {
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(MekasaTheme.brand)
+                .foregroundStyle(MekasaTheme.text)
                 .frame(maxWidth: 120)
                 .accessibilityIdentifier(TestIdentifiers.locationField)
             }
@@ -520,7 +519,7 @@ struct ItemConfirmView: View {
                 .stroke(
                     draft.wrappedValue.isIdentified
                         ? MekasaTheme.brandMuted.opacity(0.3)
-                        : MekasaTheme.accent.opacity(0.55),
+                        : MekasaTheme.warning,
                     lineWidth: 1
                 )
         )

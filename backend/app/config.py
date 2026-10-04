@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     # Server salt for household_hash = SHA-256(household_id + salt) (NFR-002 AC1).
     # Must be stable per environment; from Secret Manager in prod.
     catalog_household_salt: str = "mekasa-local-salt"
+    # Household-private item photos (REQ-INV-019). Cloud Storage bucket name
+    # (e.g. mekasa-item-photos-prod); unset → photos kept in memory.
+    item_photo_bucket: str | None = None
+    # Shared product photos from the capture flow (REQ-RCP-021), e.g.
+    # mekasa-product-photos-prod; unset → photos and ownership kept in memory.
+    product_photo_bucket: str | None = None
 
 
 @lru_cache
