@@ -100,6 +100,8 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction -f backend/postgres
 unset DATABASE_URL
 ```
 
+The salt for `household_hash` is a second secret, `mekasa-catalog-salt` (random 32 bytes, hex), injected as `CATALOG_HOUSEHOLD_SALT` (REQ-RCP-009 AC5). `provision-cloud-sql.sh` creates it once; never rotate it, because every stored hash would stop matching its household.
+
 `mekasa_api` owns the objects it creates, so no separate grant step is needed.
 Optional hardening later: IAM database authentication
 (`cloudsql.iam_authentication=on`, user type `CLOUD_IAM_SERVICE_ACCOUNT`)

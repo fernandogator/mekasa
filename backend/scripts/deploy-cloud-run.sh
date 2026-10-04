@@ -12,6 +12,7 @@ MIN_INSTANCES="${CLOUD_RUN_MIN_INSTANCES:-0}"
 # Shared Postgres (store item / UPC tables); create with provision-cloud-sql.sh.
 SQL_INSTANCE="${CLOUD_SQL_INSTANCE:-mekasa-pg}"
 DATABASE_URL_SECRET="${DATABASE_URL_SECRET:-mekasa-database-url}"
+CATALOG_SALT_SECRET="${CATALOG_SALT_SECRET:-mekasa-catalog-salt}"
 # Household-private item photos (REQ-INV-019). Private bucket, uniform access,
 # readable only by the runtime service account; created here if missing.
 ITEM_PHOTO_BUCKET="${ITEM_PHOTO_BUCKET:-mekasa-item-photos-prod}"
@@ -85,14 +86,24 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --quiet >/dev/null
 
 SQL_FLAGS=()
+SECRETS=()
 if gcloud secrets describe "$DATABASE_URL_SECRET" --project "$PROJECT_ID" >/dev/null 2>&1; then
-  SQL_FLAGS=(
-    --add-cloudsql-instances "${PROJECT_ID}:${REGION}:${SQL_INSTANCE}"
-    --set-secrets "DATABASE_URL=${DATABASE_URL_SECRET}:latest"
-  )
+  SQL_FLAGS=(--add-cloudsql-instances "${PROJECT_ID}:${REGION}:${SQL_INSTANCE}")
+  SECRETS+=("DATABASE_URL=${DATABASE_URL_SECRET}:latest")
 else
-  echo "WARNING: secret $DATABASE_URL_SECRET missing; store tables will be in memory."
+  echo "WARNING: secret $DATABASE_URL_SECRET missing; the catalog will be in memory."
   echo "         Run backend/scripts/provision-cloud-sql.sh first."
+fi
+# Without the salt, prod refuses catalog writes (503 catalog_unavailable) rather
+# than hashing households with the public development salt (REQ-RCP-009 AC5).
+if gcloud secrets describe "$CATALOG_SALT_SECRET" --project "$PROJECT_ID" >/dev/null 2>&1; then
+  SECRETS+=("CATALOG_HOUSEHOLD_SALT=${CATALOG_SALT_SECRET}:latest")
+else
+  echo "WARNING: secret $CATALOG_SALT_SECRET missing; catalog writes will return 503."
+  echo "         Run backend/scripts/provision-cloud-sql.sh first."
+fi
+if [ ${#SECRETS[@]} -gt 0 ]; then
+  SQL_FLAGS+=(--set-secrets "$(IFS=,; echo "${SECRETS[*]}")")
 fi
 
 gcloud run deploy "$SERVICE" \

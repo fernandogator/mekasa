@@ -14,6 +14,9 @@ TIER="${CLOUD_SQL_TIER:-db-f1-micro}"
 DB_NAME="${CLOUD_SQL_DB:-mekasa}"
 DB_USER="${CLOUD_SQL_USER:-mekasa_api}"
 SECRET="${DATABASE_URL_SECRET:-mekasa-database-url}"
+# Salt for catalog household hashes (REQ-RCP-009 AC5). Created once and never
+# rotated: changing it splits every household's confirmation history.
+SALT_SECRET="${CATALOG_SALT_SECRET:-mekasa-catalog-salt}"
 SERVICE_ACCOUNT="mekasa-api@${PROJECT_ID}.iam.gserviceaccount.com"
 
 echo "Project:  $PROJECT_ID"
@@ -49,6 +52,11 @@ if ! gcloud secrets describe "$SECRET" --project "$PROJECT_ID" >/dev/null 2>&1; 
     gcloud secrets create "$SECRET" --project "$PROJECT_ID" --data-file=-
 fi
 
+if ! gcloud secrets describe "$SALT_SECRET" --project "$PROJECT_ID" >/dev/null 2>&1; then
+  openssl rand -hex 32 | tr -d '\n' |
+    gcloud secrets create "$SALT_SECRET" --project "$PROJECT_ID" --data-file=-
+fi
+
 for ROLE in roles/cloudsql.client roles/secretmanager.secretAccessor; do
   gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     --member "serviceAccount:${SERVICE_ACCOUNT}" \
@@ -58,4 +66,4 @@ for ROLE in roles/cloudsql.client roles/secretmanager.secretAccessor; do
 done
 
 echo
-echo "Done. Next: backend/scripts/deploy-cloud-run.sh attaches $INSTANCE and $SECRET."
+echo "Done. Next: backend/scripts/deploy-cloud-run.sh attaches $INSTANCE, $SECRET and $SALT_SECRET."
