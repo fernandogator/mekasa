@@ -461,8 +461,11 @@ Then Firestore (outside the SQL transaction, idempotent on retry): line
 the user whether their photo became the catalog image, stayed on their line
 only, or was filed as a correction against a verified product.
 
-`capture_available` is computed on read (`barcode IS NULL OR
-resolution_status IN (needs_review, unresolved)`) so the confirm-haul screen
+`capture_available` is computed on read (`(barcode IS NULL OR
+resolution_status IN (needs_review, unresolved)) AND NOT no_barcode`, where
+`no_barcode` comes from the household's
+`households/{hid}/no_barcode_aliases/{chain}:{alias}` memory, REQ-RCP-020
+AC10) so the confirm-haul screen
 can render the "Scan product" affordance without a second call. The scanner
 is the existing barcode camera (Add Items / trash station); the photo step
 reuses the receipt camera with a square guide.
