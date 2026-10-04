@@ -7,8 +7,8 @@ if [[ ! -f "$SRC" ]]; then
   echo "Missing $SRC — drop your scanner beep there first." >&2
   exit 1
 fi
-mkdir -p "$ROOT/ios/Mekasa/Sounds" "$ROOT/android/app/src/main/res/raw"
+mkdir -p "$ROOT/ios/Mekasa/Sounds" "$ROOT/android-fable/app/src/main/res/raw"
 cp "$SRC" "$ROOT/ios/Mekasa/Sounds/scanner-beep.mp3"
 # Android resource names cannot contain hyphens.
-cp "$SRC" "$ROOT/android/app/src/main/res/raw/scanner_beep.mp3"
-echo "Synced scanner beep → ios/Mekasa/Sounds + android res/raw"
+cp "$SRC" "$ROOT/android-fable/app/src/main/res/raw/scanner_beep.mp3"
+echo "Synced scanner beep → ios/Mekasa/Sounds + android-fable res/raw"

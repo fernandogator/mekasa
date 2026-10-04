@@ -14,6 +14,7 @@ import logging
 from pydantic import BaseModel, Field
 
 from app.barcode_codes import digits_only
+from app.categories import CATEGORIES, normalize_category
 from app.category_icons import category_placeholder_url
 from app.config import Settings
 from app.models import ReceiptLineItem
@@ -21,16 +22,6 @@ from app.receipt_ocr import ReceiptParseResult, decode_image
 
 logger = logging.getLogger(__name__)
 
-CATEGORIES = (
-    "Produce",
-    "Dairy",
-    "Pantry",
-    "Meat",
-    "Frozen",
-    "Beverages",
-    "Household",
-    "Other",
-)
 
 _PROMPT = f"""You extract purchased items from a grocery or household store receipt.
 
@@ -81,7 +72,7 @@ def _to_line_item(extracted: _ExtractedItem) -> ReceiptLineItem | None:
     name = " ".join(extracted.name.split())[:120] or " ".join(extracted.receipt_text.split())[:120]
     if not name:
         return None
-    category = extracted.category if extracted.category in CATEGORIES else "Other"
+    category = normalize_category(extracted.category)
     price = extracted.price_paid if extracted.price_paid is not None and extracted.price_paid >= 0 else None
     code = digits_only(extracted.receipt_code)[:64] or None
     return ReceiptLineItem(

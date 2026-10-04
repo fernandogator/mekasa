@@ -7,10 +7,9 @@
 
 import XCTest
 
-/// Android Compose UI lives under `android/`. iOS structural coverage is UI-002+.
+/// Android Compose UI lives under `android-fable/`. iOS structural coverage is UI-002+.
 final class UI001StructureTests: XCTestCase {
     func testAndroidInterface_placeholderOnIOS() throws {
-        // TODO: Implement under android/src/test/ui/ when Jetpack Compose screens ship.
-        throw XCTSkip("UI-001 is Android-only — covered by android Compose UI tests")
+        throw XCTSkip("UI-001 is Android-only — covered by android-fable Compose UI tests")
     }
 }

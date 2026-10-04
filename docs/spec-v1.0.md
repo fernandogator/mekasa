@@ -343,7 +343,7 @@ Acceptance Criteria:
 Priority: P0
 Design Artifact: design/mockups/ (all screens)
 User Flow: design/user-flows.md
-Test File: android/src/test/ui/
+Test File: android-fable/app/src/test/java/app/mekasa/fable/ui/
 Acceptance Criteria:
 - AC1: Built entirely in Jetpack Compose, no XML layouts
 - AC2: Follows Material Design 3
@@ -363,7 +363,7 @@ Acceptance Criteria:
 Priority: P0
 Design Artifact: design/mockups/OnboardingStoreSelection.jsx
 User Flow: design/user-flows.md
-Test File: android/src/test/ui/OnboardingUITest.kt, ios/MekasaTests/UI/OnboardingUITest.swift
+Test File: android-fable/app/src/test/java/app/mekasa/fable/ui/OnboardingUITest.kt, ios/MekasaTests/UI/OnboardingUITest.swift
 Acceptance Criteria:
 - AC1: Follows sequence: signup → household name/photo → address
   confirmation → store selection → inventory scan → invite prompt
@@ -374,7 +374,7 @@ Acceptance Criteria:
 Priority: P0
 Design Artifact: design/mockups/Dashboard.jsx
 User Flow: design/user-flows.md
-Test File: android/src/test/ui/DashboardUITest.kt, ios/MekasaTests/UI/DashboardUITest.swift
+Test File: android-fable/app/src/test/java/app/mekasa/fable/ui/DashboardUITest.kt, ios/MekasaTests/UI/DashboardUITest.swift
 Acceptance Criteria:
 - AC1: Displays low-stock items prominently
 - AC2: Displays pending child requests for Owner users
@@ -387,7 +387,7 @@ Priority: P0
 Design Artifact: design/mockups/TrashStationMode.jsx
 User Flow: design/user-flows.md
 Test File: ios/Tests/UI/Structure/UI005StructureTests.swift,
-  android/app/src/test/java/app/mekasa/android/ui/TrashStationModeUITest.kt,
+  android-fable/app/src/test/java/app/mekasa/fable/ui/TrashStationModeUITest.kt,
   ios/MekasaTests/ScanFeedbackTests.swift, ios/MekasaTests/ScanCooldownTests.swift
 Acceptance Criteria:
 - AC1: Simplified single-purpose UI for scanning only
@@ -796,4 +796,5 @@ Acceptance Criteria:
 - AC4: A photo not referenced by any line item, inventory item, or product within 24 h is deleted by the daily cleanup job; referenced photos are retained while referenced
 - AC5: A photo referenced by a shared product (`image_source=user_photo`) stays available even if the uploading household deletes its inventory item; the household can request removal via `DELETE …/product-photos/{photo_id}`, which replaces the catalog image with the next-best source or a category placeholder
 - AC6: Photo bytes never appear in logs; uploads are rejected (`415 unsupported_media_type`, `413 payload_too_large`) rather than truncated
+- AC8: With `PRODUCT_PHOTO_BUCKET` unset (local, tests) the API keeps photos and ownership records in memory with the same endpoints and rules, and `GET /v1/product-photos/{photo_id}` serves the bytes (`200`) instead of redirecting
 - AC7: The capture screen's photo step states, before the photo is taken, that the picture will be shown with this product to other Mekasa households; the photo step stays optional (REQ-RCP-020 AC5). The first time a signed-in user reaches the photo step, a one-time sheet explains that product photos are shared with all Mekasa users while item-detail photos stay private to the household (REQ-INV-019), and asks them to keep people, faces and receipts out of the shot; it closes with "Got it", and that is remembered on the device per user. After that, the photo step shows only a short "Shared with all users" label with an info button that reopens the sheet. Copy never says the photo is shared only with the household. (Decided 2026-10-04.)

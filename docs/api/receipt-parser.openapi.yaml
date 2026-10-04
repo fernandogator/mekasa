@@ -840,6 +840,10 @@ paths:
           headers:
             Location: { schema: { type: string, format: uri } }
             Cache-Control: { schema: { type: string }, description: '`private, max-age=600`' }
+        '200':
+          description: Local / test mode only (`PRODUCT_PHOTO_BUCKET` unset, REQ-RCP-021 AC8) — the JPEG bytes
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
         '401': { description: Missing/invalid bearer token }
         '404': { $ref: '#/components/responses/NotFound' }
 
