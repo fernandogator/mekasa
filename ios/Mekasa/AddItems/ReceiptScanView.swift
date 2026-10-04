@@ -201,13 +201,7 @@ struct ReceiptScanView: View {
             )
             drafts = response.items.map { $0.toLocal() }
             engineLabel = response.engine
-            storeContext = response.storeId.map { storeID in
-                var ids: [String: String] = [:]
-                for (draft, line) in zip(drafts, response.items) {
-                    if let rowID = line.storeItemId { ids[draft.id] = rowID }
-                }
-                return ReceiptStoreContext(storeID: storeID, storeName: response.storeName, storeItemIDs: ids)
-            }
+            storeContext = response.storeName.map { ReceiptStoreContext(storeName: $0) }
             let unidentified = drafts.filter { !$0.isIdentified }.count
             if drafts.isEmpty {
                 statusMessage = "No line items found — try another photo or demo haul."
