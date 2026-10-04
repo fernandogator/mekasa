@@ -277,6 +277,7 @@ Acceptance Criteria:
 - AC1: Every item has an assigned category at time of entry
 - AC2: Spending reports can be filtered and grouped by category
 - AC3: User can manually recategorize an item
+- AC4: Categories are a fixed list of eight, in this order: Produce, Dairy, Pantry, Meat, Frozen, Beverages, Household, Other. Every category picker (manual add, receipt edit sheet, product capture new-product card) offers only these, and no other value is stored on inventory items, receipt lines or purchases. Any source that produces a finer category (receipt parser, UPC lookup, catalog) maps it before storage: Bakery and Snacks → Pantry, Seafood → Meat, Alcohol → Beverages, Personal Care, Baby and Pet → Household, anything unknown → Other. Design drafts follow the same list. (Decided 2026-10-04.)
 
 ### REQ-018: Spending History Reporting
 Priority: P1
