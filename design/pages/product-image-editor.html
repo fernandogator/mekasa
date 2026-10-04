@@ -6,14 +6,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
   <style>
     :root {
-      --color-brand: #171e19;
-      --color-brand-muted: #b7c6c2;
-      --color-surface: #eeebe3;
-      --color-surface-elevated: #ffffff;
-      --color-text: #171e19;
-      --color-text-muted: #6d7a76;
-      --color-accent: #ca0013;
-      --color-overlay: rgba(183, 198, 194, 0.20);
+      --color-brand: #5d5652;
+      --color-brand-muted: #8fa085;
+      --color-surface: #ede8e0;
+      --color-surface-elevated: #faf7f3;
+      --color-text: #5d5652;
+      --color-text-muted: #5c6b54;
+      --color-accent: #5a6f4f;
+      --color-overlay: rgba(143, 160, 133, 0.15);
     }
     body {
       font-family: 'Nunito', sans-serif;
@@ -40,7 +40,7 @@
       overflow: hidden;
       position: relative;
       background-color: var(--color-surface-elevated);
-      border: 1px solid rgba(183, 198, 194, 0.4);
+      border: 1px solid rgba(143, 160, 133, 0.3);
     }
     .crop-overlay {
       position: absolute;
@@ -48,7 +48,7 @@
       border: 3px solid var(--color-accent);
       border-radius: 40px;
       pointer-events: none;
-      box-shadow: 0 0 0 1000px rgba(23, 30, 25, 0.1);
+      box-shadow: 0 0 0 1000px rgba(93, 86, 82, 0.1);
     }
   </style>
 </head>
@@ -67,15 +67,15 @@
     <main class="flex-1 overflow-y-auto px-6 pt-8 z-10" data-sd-id="7">
       <!-- Product Name Input -->
       <div class="space-y-2 mb-8" data-sd-id="8">
-        <label class="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted ml-2" data-sd-id="9">Product name</label>
+        <label class="text-[12px] font-bold uppercase tracking-[0.12em] text-text-muted ml-2" data-sd-id="9">Product name</label>
         <div class="relative" data-sd-id="10">
-          <input type="text" class="w-full h-[56px] bg-white border border-[#b7c6c2]/40 rounded-[20px] px-5 text-[16px] font-semibold outline-none focus:border-accent transition-colors shadow-sm" placeholder="e.g. 2% Milk" value="2% Milk" data-sd-id="11">
+          <input type="text" class="w-full h-[56px] bg-[#faf7f3] border border-[#8fa085]/30 rounded-[20px] px-5 text-[16px] font-semibold outline-none focus:border-accent transition-colors shadow-sm" placeholder="e.g. 2% Milk" value="2% Milk" data-sd-id="11">
         </div>
       </div>
 
       <!-- Crop Frame Area -->
       <div class="space-y-4" data-sd-id="12">
-        <label class="text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted ml-2" data-sd-id="13">Framing</label>
+        <label class="text-[12px] font-bold uppercase tracking-[0.12em] text-text-muted ml-2" data-sd-id="13">Framing</label>
         <div class="photo-frame relative shadow-sm" data-sd-id="14">
           <img src="https://images.unsplash.com/photo-1550583760-704c9a42172c?auto=format&amp;fit=crop&amp;q=80&amp;w=800" class="w-full h-full object-cover" alt="Product preview" data-sd-id="15">
           <div class="crop-overlay" data-sd-id="16"></div>
@@ -90,11 +90,11 @@
 
       <!-- Capture Actions -->
       <div class="mt-10 space-y-3 pb-8" data-sd-id="19">
-        <button class="flex items-center justify-center w-full h-[56px] bg-accent text-white rounded-[24px] font-black text-[16px] shadow-[0_8px_16px_rgba(202,0,19,0.2)] active:scale-95 transition-transform" data-sd-id="20">
+        <button class="flex items-center justify-center w-full h-[56px] bg-accent text-white rounded-[24px] font-black text-[16px] shadow-[0_8px_16px_rgba(90,111,79,0.2)] active:scale-95 transition-transform" data-sd-id="20">
           <iconify-icon icon="lucide:camera" class="mr-2 text-xl"></iconify-icon>
           Take photo
         </button>
-        <button class="flex items-center justify-center w-full h-[56px] bg-white text-brand border border-[#b7c6c2] rounded-[24px] font-black text-[16px] active:scale-95 transition-transform" data-sd-id="21">
+        <button class="flex items-center justify-center w-full h-[56px] bg-white text-brand border border-[#b8d4a8] rounded-[24px] font-black text-[16px] active:scale-95 transition-transform" data-sd-id="21">
           <iconify-icon icon="lucide:image" class="mr-2 text-xl"></iconify-icon>
           Choose from Photos
         </button>
@@ -110,7 +110,7 @@
 
     <!-- Fixed Bottom Footer -->
     <footer class="shrink-0 px-6 pb-[34px] pt-4 z-10" data-sd-id="24">
-      <button id="btn-save-main" class="flex items-center justify-center w-full h-[56px] bg-accent text-white rounded-[24px] font-black text-[17px] shadow-[0_8px_20px_rgba(202,0,19,0.25)] active:scale-95 transition-transform" data-sd-id="25">
+      <button id="btn-save-main" class="flex items-center justify-center w-full h-[56px] bg-accent text-white rounded-[24px] font-black text-[17px] shadow-[0_8px_20px_rgba(90,111,79,0.25)] active:scale-95 transition-transform" data-sd-id="25">
         Save Product
       </button>
     </footer>

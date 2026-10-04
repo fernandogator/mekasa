@@ -1,88 +1,91 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <meta name="view-transition" content="same-origin" />
-  <title>Mekasa — Add items</title>
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="view-transition" content="same-origin">
+  <title>Mekasa Add Items</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
   <style>
-    body { margin: 0; background: #eeebe3; }
-    @view-transition { navigation: auto; }
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+    :root {
+      --color-brand: #5d5652;
+      --color-brand-muted: #8fa085;
+      --color-surface: #ede8e0;
+      --color-surface-elevated: #faf7f3;
+      --color-text: #5d5652;
+      --color-text-muted: #5c6b54;
+      --color-accent: #5a6f4f;
+      --color-danger: #5a6f4f;
+      --color-success: #5a6f4f;
+      --color-warning: #8b5c32;
+      --color-overlay: rgba(143, 160, 133, 0.20);
+    }
+    body {
+      font-family: 'Nunito', sans-serif;
+      background-color: var(--color-surface);
+      color: var(--color-text);
+      margin: 0;
+    }
+    .text-brand { color: var(--color-brand); }
+    .text-text { color: var(--color-text); }
+    .text-muted { color: var(--color-text-muted); }
+    .bg-brand { background-color: var(--color-brand); }
+    .bg-accent { background-color: var(--color-accent); }
+    .bg-surface-elevated { background-color: var(--color-surface-elevated); }
+    .border-muted { border-color: rgba(183, 198, 194, 0.3); }
+    .sage-blob {
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: var(--color-overlay);
+      filter: blur(40px);
+      z-index: 0;
+      pointer-events: none;
+    }
+    
+    html {
+        background-color: var(--color-surface);
+    }
+    @view-transition {
+        navigation: auto;
+    }
+    ::view-transition {
+        background-color: var(--color-surface);
+    }
+    ::view-transition-old(main-nav),
+    ::view-transition-new(main-nav) {
+        animation: none;
+        mix-blend-mode: normal;
+    }
+    ::view-transition-old(main-content) {
+        animation: 0.25s ease-out both fade-out;
+    }
+    ::view-transition-new(main-content) {
+        animation: 0.25s ease-in 0.1s both fade-in;
+    }
+    @keyframes fade-out {
+        from { opacity: 1; }
+        to { opacity: 0; }
+    }
+    @keyframes fade-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
+        mix-blend-mode: normal;
+    }
   </style>
 </head>
 <body>
-<style>  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
-  :root {
-    --color-brand: #171e19;
-    --color-brand-muted: #b7c6c2;
-    --color-surface: #eeebe3;
-    --color-surface-elevated: #ffffff;
-    --color-text: #171e19;
-    --color-text-muted: #6d7a76;
-    --color-accent: #ca0013;
-    --color-danger: #ca0013;
-    --color-success: #2f6b4f;
-    --color-warning: #c45c12;
-    --color-overlay: rgba(183, 198, 194, 0.20);
-  }
-  .mekasa-screen {
-    font-family: Nunito, sans-serif;
-    background-color: var(--color-surface);
-    color: var(--color-text);
-  }
-  .mekasa-screen .text-brand { color: var(--color-brand); }
-  .mekasa-screen .text-muted { color: var(--color-text-muted); }
-  .mekasa-screen .bg-brand { background-color: var(--color-brand); }
-  .mekasa-screen .bg-accent { background-color: var(--color-accent); }
-  .mekasa-screen .bg-surface-elevated { background-color: var(--color-surface-elevated); }
-  .mekasa-screen .border-muted { border-color: rgba(183, 198, 194, 0.3); }
-  .mekasa-screen .sage-blob {
-    position: absolute;
-    top: -50px;
-    right: -50px;
-    width: 300px;
-    height: 300px;
-    border-radius: 50%;
-    background: var(--color-overlay);
-    filter: blur(40px);
-    z-index: 0;
-    pointer-events: none;
-  }
-  .mekasa-screen .store-checkbox {
-    appearance: none;
-    width: 24px;
-    height: 24px;
-    border: 2px solid var(--color-brand-muted);
-    border-radius: 50%;
-    outline: none;
-    cursor: pointer;
-    position: relative;
-  }
-  .mekasa-screen .store-checkbox:checked {
-    background-color: var(--color-accent);
-    border-color: var(--color-accent);
-  }
-  .mekasa-screen .checkbox-custom {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 2px solid var(--color-brand-muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .mekasa-screen .checkbox-custom.checked {
-    background-color: var(--color-accent);
-    border-color: var(--color-accent);
-    color: white;
-  }</style>
-
-      <div class="mekasa-screen w-full h-screen flex flex-col relative overflow-hidden bg-[#eeebe3]">
+  <div class="w-full h-screen flex flex-col relative overflow-hidden bg-[#ede8e0]">
     <div class="sage-blob"></div>
     
-    
+    <!-- Main Content -->
     <main class="flex-1 overflow-y-auto px-6 pt-14 pb-32 z-10 space-y-6" style="view-transition-name: main-content">
       
       <div class="mb-8">
@@ -92,11 +95,11 @@
 
       <div class="space-y-4">
           
-          
-          <a href="#barcode-scanner" class="block bg-surface-elevated rounded-[24px] p-5 shadow-sm border border-muted hover:bg-[#f8f9f8] transition-colors">
+          <!-- Scan Barcode -->
+          <a id="method-barcode-link" href="#barcode-scanner" class="block bg-surface-elevated rounded-[24px] p-5 shadow-sm border border-muted hover:bg-[#ede8e0]/60 transition-colors">
               <div class="flex items-center space-x-4">
-                  <div class="w-14 h-14 rounded-full bg-[#f1f4f3] flex items-center justify-center shrink-0">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6"><path d="M4 7v10M7 4v16M10 7v10M13 4v16M16 7v10M20 7v10"/></svg>
+                  <div class="w-14 h-14 rounded-full bg-[#8fa085]/10 flex items-center justify-center shrink-0">
+                      <iconify-icon icon="lucide:barcode" class="text-2xl text-brand"></iconify-icon>
                   </div>
                   <div>
                       <h2 class="text-[18px] font-extrabold text-brand">Scan barcode</h2>
@@ -105,11 +108,11 @@
               </div>
           </a>
 
-          
-          <a href="#receipt-scanner" class="block bg-surface-elevated rounded-[24px] p-5 shadow-sm border border-muted hover:bg-[#f8f9f8] transition-colors">
+          <!-- Scan Receipt -->
+          <a id="method-receipt-link" href="#receipt-scanner" class="block bg-surface-elevated rounded-[24px] p-5 shadow-sm border border-muted hover:bg-[#ede8e0]/60 transition-colors">
               <div class="flex items-center space-x-4">
-                  <div class="w-14 h-14 rounded-full bg-[#f1f4f3] flex items-center justify-center shrink-0">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6"><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2z"/><path d="M8 10h8M8 14h5"/></svg>
+                  <div class="w-14 h-14 rounded-full bg-[#8fa085]/10 flex items-center justify-center shrink-0">
+                      <iconify-icon icon="lucide:receipt" class="text-2xl text-brand"></iconify-icon>
                   </div>
                   <div>
                       <h2 class="text-[18px] font-extrabold text-brand">Scan receipt</h2>
@@ -118,11 +121,11 @@
               </div>
           </a>
 
-          
-          <a href="#voice-input" class="block bg-surface-elevated rounded-[24px] p-5 shadow-sm border border-muted hover:bg-[#f8f9f8] transition-colors">
+          <!-- Say it out loud -->
+          <a id="method-voice-link" href="#voice-input" class="block bg-surface-elevated rounded-[24px] p-5 shadow-sm border border-muted hover:bg-[#ede8e0]/60 transition-colors">
               <div class="flex items-center space-x-4">
-                  <div class="w-14 h-14 rounded-full bg-[#f1f4f3] flex items-center justify-center shrink-0">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg>
+                  <div class="w-14 h-14 rounded-full bg-[#8fa085]/10 flex items-center justify-center shrink-0">
+                      <iconify-icon icon="lucide:mic" class="text-2xl text-brand"></iconify-icon>
                   </div>
                   <div>
                       <h2 class="text-[18px] font-extrabold text-brand">Say it out loud</h2>
@@ -131,11 +134,11 @@
               </div>
           </a>
 
-          
-          <a href="#manual-entry" class="block bg-surface-elevated rounded-[24px] p-5 shadow-sm border border-muted hover:bg-[#f8f9f8] transition-colors">
+          <!-- Type it in -->
+          <a id="method-manual-link" href="#manual-entry" class="block bg-surface-elevated rounded-[24px] p-5 shadow-sm border border-muted hover:bg-[#ede8e0]/60 transition-colors">
               <div class="flex items-center space-x-4">
-                  <div class="w-14 h-14 rounded-full bg-[#f1f4f3] flex items-center justify-center shrink-0">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
+                  <div class="w-14 h-14 rounded-full bg-[#8fa085]/10 flex items-center justify-center shrink-0">
+                      <iconify-icon icon="lucide:keyboard" class="text-2xl text-brand"></iconify-icon>
                   </div>
                   <div>
                       <h2 class="text-[18px] font-extrabold text-brand">Type it in</h2>
@@ -144,11 +147,11 @@
               </div>
           </a>
 
-          
-          <a href="#" class="block bg-surface-elevated rounded-[24px] p-5 shadow-sm border border-muted hover:bg-[#fce5e7] transition-colors">
+          <!-- Trash Station -->
+          <a id="method-trash-link" href="trash-station.html" class="block bg-surface-elevated rounded-[24px] p-5 shadow-sm border border-muted hover:bg-[#ede8e0]/60 transition-colors">
               <div class="flex items-center space-x-4">
-                  <div class="w-14 h-14 rounded-full bg-[#fce5e7] flex items-center justify-center shrink-0">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+                  <div class="w-14 h-14 rounded-full bg-[#8fa085]/10 flex items-center justify-center shrink-0">
+                      <iconify-icon icon="lucide:trash-2" class="text-2xl text-accent"></iconify-icon>
                   </div>
                   <div>
                       <h2 class="text-[18px] font-extrabold text-accent">Trash station</h2>
@@ -161,49 +164,47 @@
 
     </main>
 
-    
+    <!-- Bottom Navigation -->
     <div class="absolute bottom-8 left-6 right-6 z-40" style="view-transition-name: main-nav">
       <div class="bg-brand h-[64px] rounded-full flex items-center justify-between px-6 shadow-xl relative">
-        <a href="#" class="flex flex-col items-center justify-center text-[#b7c6c2] w-12 hover:text-white transition-colors">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+        <a id="nav-home-link" href="dashboard.html" class="flex flex-col items-center justify-center text-[#c9d6c0] w-12 hover:text-white transition-colors">
+          <iconify-icon icon="lucide:home" class="text-2xl mb-1"></iconify-icon>
         </a>
-        <a href="#" class="flex flex-col items-center justify-center text-[#b7c6c2] w-12 hover:text-white transition-colors">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6"><path d="M8 6h13M8 12h13M8 18h13"/><path d="m3 6 1 1 2-2M3 12l1 1 2-2M3 18l1 1 2-2"/></svg>
+        <a id="nav-list-link" href="shopping-list.html" class="flex flex-col items-center justify-center text-[#c9d6c0] w-12 hover:text-white transition-colors">
+          <iconify-icon icon="lucide:list-todo" class="text-2xl mb-1"></iconify-icon>
         </a>
         
-        
+        <!-- Spacer for FAB -->
         <div class="w-16"></div>
         
-        <a href="#" class="flex flex-col items-center justify-center text-[#b7c6c2] w-12 hover:text-white transition-colors">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+        <a id="nav-spend-link" href="spending-report.html" class="flex flex-col items-center justify-center text-white w-12 hover:text-white transition-colors">
+          <iconify-icon icon="lucide:pie-chart" class="text-2xl mb-1"></iconify-icon>
         </a>
-        <a href="#" class="flex flex-col items-center justify-center text-[#b7c6c2] w-12 hover:text-white transition-colors">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <a id="nav-people-link" href="family-members.html" class="flex flex-col items-center justify-center text-[#c9d6c0] w-12 hover:text-white transition-colors">
+          <iconify-icon icon="lucide:users" class="text-2xl mb-1"></iconify-icon>
         </a>
       </div>
       
-      
-      <button class="absolute left-1/2 -top-6 -translate-x-1/2 w-[56px] h-[56px] bg-accent rounded-full flex items-center justify-center text-white shadow-[0_8px_16px_rgba(202,0,19,0.3)] border-[4px] border-[#eeebe3] scale-105 transition-transform">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
+      <!-- Center Add FAB (Visually Active) -->
+      <a id="nav-add-items-close" href="dashboard.html" class="absolute left-1/2 -top-6 -translate-x-1/2 w-[56px] h-[56px] bg-accent rounded-full flex items-center justify-center text-white shadow-[0_8px_16px_rgba(122,155,94,0.3)] border-[4px] border-[#ede8e0] scale-105 transition-transform">
+        <iconify-icon icon="lucide:x" class="text-2xl"></iconify-icon>
+      </a>
     </div>
 
   </div>
-    
-  
-<nav class="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 pt-2 pointer-events-none">
-  <div class="pointer-events-auto mx-auto max-w-md flex gap-2 justify-center flex-wrap text-[11px] font-bold">
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="dashboard.html">Home</a>
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="onboarding-household.html">Onboard</a>
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="store-selection.html">Stores</a>
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="shopping-list.html">List</a>
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="add-items.html">Add</a>
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="trash-station.html">Trash</a>
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="spending-report.html">Spend</a>
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="family-members.html">Family</a>
-    <a class="px-3 py-2 rounded-full bg-white/90 border border-[rgba(183,198,194,0.4)]" href="../">Index</a>
+
+<nav class="fixed top-0 left-0 right-0 z-50 px-2 pt-1 pointer-events-none">
+  <div class="pointer-events-auto mx-auto max-w-md flex gap-1 flex-nowrap overflow-x-auto text-[12px] font-bold">
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="dashboard.html">Home</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="onboarding-household.html">Onboard</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="store-selection.html">Stores</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="shopping-list.html">List</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="add-items.html">Add</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="scan-receipt-results.html">Scan</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="trash-station.html">Trash</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="spending-report.html">Spend</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="family-members.html">Family</a>
+    <a class="shrink-0 px-2.5 py-1 inline-flex items-center rounded-full bg-[#faf7f3]/95 border border-[#76896b] text-[#5d5652]" href="../">Index</a>
   </div>
 </nav>
-
-</body>
-</html>
+</body></html>
