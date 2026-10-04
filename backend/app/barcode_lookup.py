@@ -113,11 +113,6 @@ _CATEGORY_MAP = (
 )
 
 
-def _humanize_tag(tag: str) -> str:
-    value = tag.removeprefix("en:").replace("-", " ").strip()
-    return value[:1].upper() + value[1:] if value else "Other"
-
-
 def _word_in(needle: str, haystack: str) -> bool:
     """
     Whole-word match with optional plural, so "cola" no longer hits "chocolate" and
@@ -138,8 +133,7 @@ def _map_category(tags: list[str] | None, categories: str | None) -> str:
     # Produce "fruit" only as a standalone tag token, not substring of "jus de fruit".
     if re.search(r"(?:^|[\s,:])fruit(?:s)?(?:$|[\s,:])", lowered):
         return "Produce"
-    if tags:
-        return _humanize_tag(tags[0])
+    # Unmatched tags fall back to Other rather than a raw Open Food Facts label (REQ-017 AC4).
     return "Other"
 
 
