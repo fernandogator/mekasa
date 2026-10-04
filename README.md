@@ -11,8 +11,7 @@ iOS (SwiftUI) clients backed by a GCP Cloud Run REST API.
 | `GUARDRAILS.md` | Non-negotiable project rules |
 | `docs/spec-v1.0.md` | Requirements |
 | `ios/README.md` | iOS XcodeGen + Firebase setup |
-| `android/README.md` | Android Gradle + Compose setup |
-| `android-fable/README.md` | Independent Android rebuild by Claude Fable 5.1 (for comparison with `android/`) |
+| `android-fable/README.md` | Android Gradle + Compose setup |
 | `backend/README.md` | Thin onboarding API |
 | `design/` | User flows, design system, Superdesign mockups |
 | `traceability/` | Requirement ↔ test matrix |
@@ -33,7 +32,7 @@ Approved React/Tailwind mockups land in `design/mockups/` and link to `UI-XXX` i
 ## Layout
 
 ```
-android/     # Jetpack Compose app (onboarding + main shell)
+android-fable/  # Jetpack Compose app
 ios/         # SwiftUI onboarding client (+ UI test stubs)
 backend/     # Cloud Run API (Python / FastAPI)
 design/      # Flows, tokens, mockups, baselines
@@ -46,4 +45,4 @@ traceability/
 
 - **Backend:** thin onboarding API on Cloud Run + Firestore household persistence (see `PROGRESS.md`).
 - **iOS:** onboarding flow scaffolded (Google + email auth, household, address, stores). Open `ios/README.md` to generate the Xcode project and add Firebase.
-- **Android:** Compose client — Firebase Auth (email/Google when configured), onboarding, MainShell, barcode Add flow; see `android/README.md`.
+- **Android:** Compose client — Firebase Auth (email/Google when configured), onboarding, MainShell, barcode Add flow; see `android-fable/README.md`.
