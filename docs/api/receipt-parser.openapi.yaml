@@ -691,13 +691,15 @@ paths:
     post:
       tags: [product-photos]
       operationId: uploadProductPhoto
-      summary: Upload a product photo taken by the user (Deferred — REQ-RCP-021)
+      summary: Upload a product photo taken during in-store capture (REQ-RCP-021)
       description: |
-        Satisfies: REQ-RCP-021 AC1/AC2/AC6 · Spec version: 1.0
+        Satisfies: REQ-RCP-021 AC1/AC2/AC6, REQ-RCP-020 AC5 · Spec version: 1.0
 
-        Deferred (2026-10-03): user photos are household-private by decision
-        (REQ-INV-019, `item-photos` above). This endpoint is the contract for
-        a future explicit "share this picture with the catalog" action.
+        Used only by the in-store capture flow: the returned `photo_id` is
+        sent with `…/capture` and the photo is shared with the scanned UPC
+        (visible to every signed-in household). Item-picture replacements
+        from item detail stay household-private and use `item-photos` above
+        (REQ-INV-019).
 
         Accepts JPEG/PNG/HEIC ≤ 8 MB as base64 JSON or multipart. The server
         re-encodes to JPEG, strips EXIF/GPS, limits the long edge to 1600 px and

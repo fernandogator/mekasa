@@ -531,10 +531,13 @@ Rules embedded in the decision:
   rows, filed as `product_conflicts` on `verified` rows (REQ-RCP-019).
   When no UPC is discovered the user scans the barcode and optionally
   photographs the product; the capture creates or re-keys the shared
-  row in one transaction (REQ-RCP-020). User photos are stored under a
-  random id (`/v1/product-photos/{uuid}`, EXIF stripped, auth-gated
-  redirect to a signed URL) so they can back a shared `image_url`
-  without leaking a household id (REQ-RCP-021; design §3.11).
+  row in one transaction (REQ-RCP-020). The capture photo is shared with
+  that UPC (decided 2026-10-04): it is stored under a random id
+  (`/v1/product-photos/{uuid}`, EXIF stripped, auth-gated redirect to a
+  signed URL) so it can back a shared `image_url` without leaking a
+  household id (REQ-RCP-021; design §3.11). Pictures a member sets from
+  item detail stay household-private (REQ-INV-019) and never reach the
+  catalog.
 - Enrichment order: official store API → Open Food Facts → UPCitemdb
   (discovery, stop at first UPC) → GS1 verification of any known UPC →
   crowdsourced pending (REQ-RCP-010), reusing the ADR-006 waterfall.
