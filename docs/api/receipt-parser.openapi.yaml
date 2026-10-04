@@ -292,7 +292,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ProductCaptureResponse' }
         '400':
-          description: '`invalid_upc`, `unknown_photo_id`'
+          description: '`invalid_upc`, `invalid_plu`, `exactly_one_code_required`, `unknown_photo_id`'
           content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -594,7 +594,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ProductCaptureResponse' }
         '400':
-          description: '`invalid_upc`, `unknown_photo_id`'
+          description: '`invalid_upc`, `invalid_plu`, `exactly_one_code_required`, `unknown_photo_id`'
           content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -1090,14 +1090,20 @@ components:
     ProductCaptureRequest:
       type: object
       additionalProperties: false
-      required: [upc]
+      oneOf:
+        - required: [upc]
+          not: { required: [plu_code] }
+        - required: [plu_code]
+          not: { required: [upc] }
       description: |
-        In-store capture (REQ-RCP-020 AC2): the scanned barcode plus an
-        optional photo and attribute overrides. Missing attributes fall back
-        to the line / inventory item (`name`, `category`) when a product has to
-        be created.
+        In-store capture (REQ-RCP-020 AC2/AC7): the scanned barcode, or the
+        PLU typed from a produce sticker, plus an optional photo and attribute
+        overrides. Missing attributes fall back to the line / inventory item
+        (`name`, `category`) when a product has to be created. A `plu_code`
+        capture links to or creates the shared product `plu:<code>`.
       properties:
         upc: { type: string, pattern: '^[0-9]{8,14}$' }
+        plu_code: { type: string, pattern: '^[0-9]{4,5}$' }
         photo_id: { type: [string, 'null'], format: uuid }
         name: { type: [string, 'null'], minLength: 1, maxLength: 120 }
         brand: { type: [string, 'null'], maxLength: 80 }
