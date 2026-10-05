@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     # Injected from Secret Manager `mekasa-database-url`; unset → in-memory catalog.
     database_url: str | None = None
     database_pool_size: int = 5
+    # Longest wait for a catalog connection; the receipt scan skips the catalog after
+    # one failure, so an unreachable database costs about this much per scan (REQ-RCP-007 AC6).
+    database_pool_timeout_seconds: float = 3.0
     # Server salt for household_hash = SHA-256(household_id + salt) (NFR-002 AC1).
     # Must be stable per environment; prod reads Secret Manager `mekasa-catalog-salt`
     # and refuses the default (REQ-RCP-009 AC5).

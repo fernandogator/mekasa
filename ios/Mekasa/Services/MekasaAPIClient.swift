@@ -287,6 +287,9 @@ actor MekasaAPIClient {
         )
     }
 
+    /// Gemini on a long receipt plus Open Food Facts can run close to the 60 s default (REQ-RCP-007 AC6).
+    static let receiptScanTimeout: TimeInterval = 120
+
     func scanReceipt(
         householdID: String,
         imageBase64: String? = nil,
@@ -301,7 +304,8 @@ actor MekasaAPIClient {
             path: "/v1/households/\(householdID)/receipts/scan",
             method: "POST",
             token: token,
-            body: Body(image_base64: imageBase64, raw_text: rawText)
+            body: Body(image_base64: imageBase64, raw_text: rawText),
+            timeout: Self.receiptScanTimeout
         )
     }
 
@@ -678,9 +682,10 @@ actor MekasaAPIClient {
         path: String,
         method: String,
         token: String?,
-        body: B? = nil
+        body: B? = nil,
+        timeout: TimeInterval? = nil
     ) async throws -> T {
-        let (data, _) = try await rawRequest(path: path, method: method, token: token, body: body)
+        let (data, _) = try await rawRequest(path: path, method: method, token: token, body: body, timeout: timeout)
         return try decoder.decode(T.self, from: data)
     }
 
@@ -693,13 +698,17 @@ actor MekasaAPIClient {
         path: String,
         method: String,
         token: String?,
-        body: B?
+        body: B?,
+        timeout: TimeInterval? = nil
     ) async throws -> (Data, HTTPURLResponse) {
         guard let url = URL(string: path, relativeTo: baseURL)?.absoluteURL else {
             throw APIError.invalidResponse
         }
         var request = URLRequest(url: url)
         request.httpMethod = method
+        if let timeout {
+            request.timeoutInterval = timeout
+        }
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

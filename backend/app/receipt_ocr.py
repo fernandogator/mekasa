@@ -294,24 +294,29 @@ async def enrich_receipt_items(
     store_chain_id: str = SHARED_CHAIN_ID,
 ) -> list[ReceiptLineItem]:
     """
-    Satisfies: REQ-005 AC4, AC5; REQ-RCP-007 AC5; REQ-RCP-022 AC5
+    Satisfies: REQ-005 AC4, AC5; REQ-RCP-007 AC5, AC6; REQ-RCP-022 AC5
     Spec version: 1.0
 
     Shared catalog first, then the standard produce list (REQ-RCP-022), and
     Open Food Facts only for lines neither knows; lines run in parallel with a
-    small concurrency limit. A catalog error never fails the scan.
+    small concurrency limit. A catalog error never fails the scan, and after
+    the first one the remaining lines skip the catalog (REQ-RCP-007 AC6).
     """
     if not items:
         return []
     semaphore = asyncio.Semaphore(_ENRICH_CONCURRENCY)
+    catalog_down = False
 
     async def _one(item: ReceiptLineItem) -> ReceiptLineItem:
+        nonlocal catalog_down
         async with semaphore:
-            if catalog is not None:
+            if catalog is not None and not catalog_down:
                 try:
                     hit = await asyncio.to_thread(match_catalog, catalog, item, store_chain_id)
                 except Exception:
-                    logger.warning("catalog match failed; using Open Food Facts", exc_info=True)
+                    if not catalog_down:
+                        logger.warning("catalog match failed; skipping the catalog for this scan", exc_info=True)
+                    catalog_down = True
                     hit = None
                 if hit is not None:
                     return hit

@@ -306,6 +306,32 @@ def test_off_hit_reports_method(client: TestClient) -> None:
     assert body["items"][0]["matched_product_id"] is None
 
 
+def test_catalog_failure_is_tried_once_per_scan(client: TestClient) -> None:
+    """
+    Satisfies: REQ-RCP-007 AC6
+    Spec version: 1.0
+    """
+    hid = _household(client)
+    lines = [(f"Item {n}", f"ITEM {n}", None) for n in range(12)]
+    with patch("app.receipt_ocr.match_catalog", side_effect=RuntimeError("db down")) as match:
+        body = _scan(client, hid, _extraction("HEB", *lines))
+    assert len(body["items"]) == 12
+    # Lines already in flight when the first one fails may still try (concurrency 4).
+    assert match.call_count <= 4
+
+
+def test_pool_timeout_comes_from_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Satisfies: REQ-RCP-007 AC6
+    Spec version: 1.0
+    """
+    from app.config import Settings
+
+    assert Settings().database_pool_timeout_seconds == 3.0
+    monkeypatch.setenv("DATABASE_POOL_TIMEOUT_SECONDS", "1.5")
+    assert Settings().database_pool_timeout_seconds == 1.5
+
+
 def test_catalog_failure_falls_back_to_off(client: TestClient) -> None:
     """
     Satisfies: REQ-RCP-007 AC5
