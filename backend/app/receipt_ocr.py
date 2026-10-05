@@ -19,6 +19,7 @@ from app.catalog_repository import (
 )
 from app.category_icons import category_placeholder_url
 from app.models import ReceiptLineItem
+from app.produce_plu import looks_like, produce_name
 
 logger = logging.getLogger(__name__)
 
@@ -221,6 +222,32 @@ def match_catalog(catalog: CatalogRepository, item: ReceiptLineItem, store_chain
     )
 
 
+def match_standard_plu(item: ReceiptLineItem) -> ReceiptLineItem | None:
+    """
+    Satisfies: REQ-RCP-022 AC4, AC6
+    Spec version: 1.0
+
+    A printed standard PLU the catalog does not know, on a line that is
+    produce (by category or a shared word with the list name).
+    """
+    name = produce_name(item.receipt_code)
+    if name is None:
+        return None
+    if item.category != "Produce" and not looks_like(name, item.receipt_text, item.name):
+        return None
+    return item.model_copy(
+        update={
+            "name": name,
+            "category": "Produce",
+            "barcode": None,
+            "image_url": category_placeholder_url("Produce"),
+            "identified": True,
+            "matched_product_id": None,
+            "match_method": "plu_standard",
+        }
+    )
+
+
 async def enrich_receipt_item(item: ReceiptLineItem) -> ReceiptLineItem:
     """
     Match a parsed line against Open Food Facts.
@@ -267,12 +294,12 @@ async def enrich_receipt_items(
     store_chain_id: str = SHARED_CHAIN_ID,
 ) -> list[ReceiptLineItem]:
     """
-    Satisfies: REQ-005 AC4, AC5; REQ-RCP-007 AC5
+    Satisfies: REQ-005 AC4, AC5; REQ-RCP-007 AC5; REQ-RCP-022 AC5
     Spec version: 1.0
 
-    Shared catalog first, Open Food Facts only for lines the catalog does not
-    know; lines run in parallel with a small concurrency limit. A catalog
-    error never fails the scan.
+    Shared catalog first, then the standard produce list (REQ-RCP-022), and
+    Open Food Facts only for lines neither knows; lines run in parallel with a
+    small concurrency limit. A catalog error never fails the scan.
     """
     if not items:
         return []
@@ -288,6 +315,9 @@ async def enrich_receipt_items(
                     hit = None
                 if hit is not None:
                     return hit
+            standard = match_standard_plu(item)
+            if standard is not None:
+                return standard
             return await enrich_receipt_item(item)
 
     return list(await asyncio.gather(*(_one(item) for item in items)))

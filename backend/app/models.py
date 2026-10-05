@@ -399,7 +399,7 @@ class ReceiptLineItem(BaseModel):
     receipt_code: str | None = Field(default=None, max_length=64)
     # Shared catalog product and how the line matched it (REQ-RCP-007 AC5).
     matched_product_id: str | None = Field(default=None, max_length=64)
-    match_method: Literal["upc", "plu", "alias", "open_food_facts"] | None = None
+    match_method: Literal["upc", "plu", "alias", "plu_standard", "open_food_facts"] | None = None
 
 
 class ReceiptScanRequest(BaseModel):

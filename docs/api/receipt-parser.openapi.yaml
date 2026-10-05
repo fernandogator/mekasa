@@ -1531,4 +1531,4 @@ components:
               matched_product_id: { type: [string, 'null'], description: 'Shared catalog product (REQ-RCP-007 AC5)' }
               match_method:
                 type: [string, 'null']
-                enum: [upc, plu, alias, open_food_facts, null]
+                enum: [upc, plu, alias, plu_standard, open_food_facts, null]

@@ -505,7 +505,7 @@ Acceptance Criteria:
 
 ---
 
-## Receipt Intelligence (Gemini parser) — REQ-RCP-001 … REQ-RCP-021
+## Receipt Intelligence (Gemini parser) — REQ-RCP-001 … REQ-RCP-022
 
 Status: **Draft — phase 1 review** (design: `docs/design/gemini-receipt-parser.md`;
 data model: `backend/firestore/migrations/0001_receipt_parser.md`; API:
@@ -603,7 +603,7 @@ Acceptance Criteria:
 - AC2: Alias and fuzzy lookups only consider products with the same `store_chain_id` (or `unknown`)
 - AC3: `match_confidence ≥ 0.85` → `resolution_status=auto_matched`; otherwise see REQ-RCP-012
 - AC4: A successful match upserts the normalized `raw_text` into `product_aliases (store_chain_id, alias) → product_id` (one product per alias per chain; an alias already mapped to a different product is never overwritten — handling is design open question §9.11)
-- AC5: Until receipts are persisted (REQ-RCP-006), `POST …/receipts/scan` matches each line against the shared catalog before Open Food Facts, in this order: the printed `receipt_code` as a UPC (8–14 digits) or PLU (4–5 digits, `plu:<code>`); then the normalized `receipt_text` in `product_aliases` for the detected chain; then the same text under `unknown`. The detected chain is `store_chain_id` on the response: the printed store name matched against the `store_chains` names and aliases, or `unknown`. A catalog hit returns the line `identified=true` with the product's name, category, UPC and image (a user capture photo is served as `/v1/product-photos/{photo_id}`), plus `matched_product_id` and `match_method` (`upc`, `plu`, `alias`); Open Food Facts hits carry `match_method=open_food_facts`. Only lines the catalog does not know go to Open Food Facts. The scan writes nothing to the catalog; aliases are written by capture (REQ-RCP-020 AC6) and confirmation (REQ-RCP-013). If the catalog is unavailable, the scan falls back to Open Food Facts alone. (Decided 2026-10-04.)
+- AC5: Until receipts are persisted (REQ-RCP-006), `POST …/receipts/scan` matches each line against the shared catalog before Open Food Facts, in this order: the printed `receipt_code` as a UPC (8–14 digits) or PLU (4–5 digits, `plu:<code>`); then the normalized `receipt_text` in `product_aliases` for the detected chain; then the same text under `unknown`. The detected chain is `store_chain_id` on the response: the printed store name matched against the `store_chains` names and aliases, or `unknown`. A catalog hit returns the line `identified=true` with the product's name, category, UPC and image (a user capture photo is served as `/v1/product-photos/{photo_id}`), plus `matched_product_id` and `match_method` (`upc`, `plu`, `alias`); Open Food Facts hits carry `match_method=open_food_facts`. Only lines the catalog does not know go to Open Food Facts. The scan writes nothing to the catalog; aliases are written by capture (REQ-RCP-020 AC6) and confirmation (REQ-RCP-013). If the catalog is unavailable, the scan falls back to Open Food Facts alone. (Decided 2026-10-04.) Lines the catalog does not know are checked against the standard produce list (REQ-RCP-022) before Open Food Facts. (Amended 2026-10-05.)
 
 ### REQ-RCP-008: Correlate Receipt Lines with Recent Scan Events
 Priority: P1
@@ -816,3 +816,22 @@ Acceptance Criteria:
 - AC6: Photo bytes never appear in logs; uploads are rejected (`415 unsupported_media_type`, `413 payload_too_large`) rather than truncated
 - AC8: With `PRODUCT_PHOTO_BUCKET` unset (local, tests) the API keeps photos and ownership records in memory with the same endpoints and rules, and `GET /v1/product-photos/{photo_id}` serves the bytes (`200`) instead of redirecting
 - AC7: The capture screen's photo step states, before the photo is taken, that the picture will be shown with this product to other Mekasa households; the photo step stays optional (REQ-RCP-020 AC5). The first time a signed-in user reaches the photo step, a one-time sheet explains that product photos are shared with all Mekasa users while item-detail photos stay private to the household (REQ-INV-019), and asks them to keep people, faces and receipts out of the shot; it closes with "Got it", and that is remembered on the device per user. After that, the photo step shows only a short "Shared with all users" label with an info button that reopens the sheet. Copy never says the photo is shared only with the household. (Decided 2026-10-04.)
+
+### REQ-RCP-022: Standard Produce PLU List
+Priority: P1
+Description: When a receipt line prints a standard produce PLU code that the
+shared catalog does not know yet, the system **shall** identify the line from
+a bundled list of standard IFPS PLU codes, so that common produce is
+recognized on the first scan without asking Open Food Facts, whose PLU
+entries are user-contributed and often in another language (checked
+2026-10-05: 94011 returns a Danish product with no English name).
+Design Artifact: n/a (backend only; the line shows as identified in the existing confirm-haul card)
+Test File: tests/backend/test_produce_plu.py
+Acceptance Criteria:
+- AC1: The list is bundled with the API (`backend/app/data/plu_codes.json`, the MIT-licensed IFPS-derived list from `github.com/ankane/plu`, with its license file) and loaded once per process; no network call is made. Entries named "Retailer Assigned…" are excluded, because stores reuse those codes for different products
+- AC2: A 4-digit code `3000`–`4999` uses its list entry. A 5-digit code starting with `9` is the organic version of its last four digits and its name is prefixed "Organic ". Other 5-digit codes (for example the reserved `8` prefix) are not identified
+- AC3: Display names drop parenthetical notes and repeated whitespace and are cut to 120 characters, e.g. 4048 "Regular (incl. Persian, Tahiti & Bearss) Limes" → "Regular Limes", 94011 → "Organic Bananas"
+- AC4: The list is used only when the parser's category for the line is Produce or the line's receipt text or name shares a word with the list name, so that a 4–5 digit store item number on a non-produce line is not taken for produce
+- AC5: Order within REQ-RCP-007 AC5: printed code in the catalog → alias for the chain → alias under `unknown` → this list → Open Food Facts. A catalog product for the same `plu:<code>` (for example one with a user photo from REQ-RCP-020) always wins over the list
+- AC6: A list hit returns the line `identified=true` with the list name, category Produce, no barcode, the Produce placeholder image, `match_method=plu_standard` and `matched_product_id=null` (nothing is written to the catalog). The list still applies when the catalog is unavailable
+- AC7: The parser prompt asks for produce PLU codes in `receipt_code` as well as UPCs and item numbers

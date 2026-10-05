@@ -490,7 +490,7 @@ struct ReceiptLineItemDTO: Codable, Equatable {
     let receiptCode: String?
     /// Shared catalog product the scan matched (REQ-RCP-007 AC5).
     let matchedProductId: String?
-    /// `upc`, `plu`, `alias` or `open_food_facts`.
+    /// `upc`, `plu`, `alias`, `plu_standard` or `open_food_facts`.
     let matchMethod: String?
 
     enum CodingKeys: String, CodingKey {

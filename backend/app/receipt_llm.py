@@ -32,8 +32,8 @@ Return one entry per purchased product line. Rules:
   brand when printed, e.g. "GV WHL MLK 1GAL" -> "Great Value Whole Milk 1 Gallon".
   Put the product text exactly as printed (without price or item code) in
   receipt_text.
-- receipt_code is the UPC / item number printed on the line, digits only,
-  or null when none is printed.
+- receipt_code is the UPC, item number or produce PLU (4-5 digits) printed on
+  the line, digits only, or null when none is printed.
 - quantity is the count purchased (weighed items count as 1).
 - price_paid is the line total actually paid, in the receipt currency, as a number.
 - category must be one of: {", ".join(CATEGORIES)}.
@@ -46,7 +46,7 @@ Return one entry per purchased product line. Rules:
 class _ExtractedItem(BaseModel):
     name: str = Field(description="Full product name, abbreviations expanded")
     receipt_text: str = Field(description="Product text exactly as printed")
-    receipt_code: str | None = Field(default=None, description="Printed UPC / item number")
+    receipt_code: str | None = Field(default=None, description="Printed UPC / item number / produce PLU")
     category: str
     quantity: int = 1
     price_paid: float | None = None
