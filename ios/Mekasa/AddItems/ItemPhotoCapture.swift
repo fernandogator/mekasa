@@ -2,22 +2,23 @@ import PhotosUI
 import SwiftUI
 
 /// Store brand printed on the receipt, used in the capture guidance copy
-/// ("We could not find the H-E-B Bananas…"). REQ-RCP-020 AC1. `storeChainId`
+/// ("This looks like a local H-E-B item…"). REQ-RCP-020 AC1. `storeChainId`
 /// scopes the alias a capture writes (REQ-RCP-020 AC6).
 struct ReceiptStoreContext: Equatable {
     let storeName: String?
     var storeChainId: String?
 }
 
-/// Copy for receipt lines Open Food Facts could not identify. Pure for unit tests.
+/// Copy for receipt lines the catalog could not identify. Pure for unit tests.
+/// Satisfies: REQ-RCP-020 AC1
 /// Spec version: 1.0
 enum CaptureGuidance {
-    static func message(itemName: String, storeName: String?) -> String {
-        let name = itemName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let store = storeName?.trimmingCharacters(in: .whitespacesAndNewlines), !store.isEmpty {
-            return "We could not find the \(store) \(name). Please scan the item and take a picture."
-        }
-        return "We could not find \(name) in the catalog. Please scan the item and take a picture."
+    static let actionTitle = "Scan & photograph"
+
+    static func message(storeName: String?) -> String {
+        let store = storeName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let item = store.isEmpty ? "a local item" : "a local \(store) item"
+        return "This looks like \(item). Scan its barcode and take a picture so Mekasa recognizes it next time."
     }
 
     /// Digits only; PLU stickers on produce are 4–5 digits, GTINs up to 14.
@@ -177,10 +178,15 @@ struct LocalItemCaptureView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        Text(CaptureGuidance.message(itemName: itemName, storeName: store?.storeName))
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundStyle(MekasaTheme.text)
-                            .accessibilityIdentifier(TestIdentifiers.captureGuidanceLabel)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(itemName)
+                                .font(.system(size: 20, weight: .heavy, design: .rounded))
+                                .foregroundStyle(MekasaTheme.text)
+                            Text(CaptureGuidance.message(storeName: store?.storeName))
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundStyle(MekasaTheme.textMuted)
+                                .accessibilityIdentifier(TestIdentifiers.captureGuidanceLabel)
+                        }
 
                         barcodeStep
                         photoStep

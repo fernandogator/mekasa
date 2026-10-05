@@ -405,7 +405,7 @@ struct ItemConfirmView: View {
             }
 
             if !draft.wrappedValue.isIdentified {
-                Text(CaptureGuidance.message(itemName: draft.wrappedValue.name, storeName: storeContext?.storeName))
+                Text(CaptureGuidance.message(storeName: storeContext?.storeName))
                     .font(MekasaTheme.bodyFont)
                     .foregroundStyle(MekasaTheme.textMuted)
                     .accessibilityIdentifier(TestIdentifiers.captureGuidanceLabel)
@@ -413,7 +413,7 @@ struct ItemConfirmView: View {
                 Button {
                     captureRoute = CatalogMatchRoute(id: draft.wrappedValue.id)
                 } label: {
-                    Label("Scan item & take picture", systemImage: "barcode.viewfinder")
+                    Label(CaptureGuidance.actionTitle, systemImage: "barcode.viewfinder")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(MekasaTheme.onBrand)
                         .frame(maxWidth: .infinity)
