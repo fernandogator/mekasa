@@ -224,6 +224,8 @@ struct ItemConfirmView: View {
     @State private var matchRoute: CatalogMatchRoute?
     @State private var captureRoute: CatalogMatchRoute?
     @State private var capturedDraftIDs: Set<String> = []
+    /// Shared-catalog captures sent after each draft is created (REQ-RCP-020 AC6).
+    @State private var catalogCaptures: [String: ProductCaptureRequestDTO] = [:]
 
     private var unidentifiedCount: Int {
         drafts.filter { !$0.isIdentified }.count
@@ -264,7 +266,7 @@ struct ItemConfirmView: View {
                         disabled: drafts.isEmpty
                     ) {
                         for draft in drafts {
-                            session.addInventoryItem(draft)
+                            session.addInventoryItem(draft, catalogCapture: catalogCaptures[draft.id])
                         }
                         saved = true
                     }
@@ -541,6 +543,13 @@ struct ItemConfirmView: View {
         drafts[idx].health = hit.health
         drafts[idx].isIdentified = true
         serverWarnings[draftID] = nil
+        catalogCaptures[draftID] = storeContext.flatMap { store in
+            CatalogCaptureCode(hit.barcode)?.request(
+                photoID: nil,
+                receiptText: drafts[idx].receiptText,
+                storeChainId: store.storeChainId
+            )
+        }
         matchRoute = nil
     }
 
@@ -551,7 +560,8 @@ struct ItemConfirmView: View {
         drafts[idx].imageURL = url
     }
 
-    /// In-store scan result: the user's photo wins; a barcode catalog hit fills the rest.
+    /// Capture result: the user's photo wins; a barcode catalog hit fills the rest.
+    /// A UPC / PLU also queues the shared-catalog capture with the receipt text.
     private func applyCapture(_ result: LocalItemCaptureResult, to draftID: String) {
         guard let idx = drafts.firstIndex(where: { $0.id == draftID }) else { return }
         if let code = result.barcode {
@@ -567,6 +577,11 @@ struct ItemConfirmView: View {
             drafts[idx].imageURL = url
         }
         drafts[idx].isIdentified = true
+        catalogCaptures[draftID] = CatalogCaptureCode(result.barcode)?.request(
+            photoID: result.productPhotoID,
+            receiptText: drafts[idx].receiptText,
+            storeChainId: storeContext?.storeChainId
+        )
         capturedDraftIDs.insert(draftID)
         captureRoute = nil
     }

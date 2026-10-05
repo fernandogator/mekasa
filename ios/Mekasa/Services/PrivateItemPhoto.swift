@@ -1,12 +1,19 @@
 import SwiftUI
 import UIKit
 
-/// Household-private item photos: recognise our own `…/item-photos/{id}` URLs and
-/// load them with the member's bearer token, which plain `AsyncImage` cannot send.
-/// Satisfies: REQ-INV-019 (Replace an Item Picture With a Private Photo)
-/// Acceptance criteria: AC3, AC8
+/// Household-private item photos and shared product photos: recognise our own
+/// `…/item-photos/{id}` and `/v1/product-photos/{id}` URLs and load them with the
+/// member's bearer token, which plain `AsyncImage` cannot send.
+/// Satisfies: REQ-INV-019 (Replace an Item Picture With a Private Photo) AC3, AC8;
+/// REQ-RCP-021 (Product Photo Upload and Storage) AC3
 /// Spec version: 1.0
 enum PrivateItemPhoto {
+    /// The API stores product photos as host-relative paths; anchor them on the API host.
+    static func resolve(_ url: URL, apiBaseURL: URL = MekasaAPIClient.shared.baseURL) -> URL {
+        guard url.scheme == nil, url.host == nil, url.relativeString.hasPrefix("/v1/") else { return url }
+        return URL(string: url.relativeString, relativeTo: apiBaseURL)?.absoluteURL ?? url
+    }
+
     /// `/v1/households/{hid}/item-photos/{photo_id}` on the API host.
     static func isPrivate(_ urlString: String?, apiBaseURL: URL = MekasaAPIClient.shared.baseURL) -> Bool {
         guard let urlString, let url = URL(string: urlString) else { return false }
@@ -14,14 +21,21 @@ enum PrivateItemPhoto {
     }
 
     static func isPrivate(_ url: URL, apiBaseURL: URL = MekasaAPIClient.shared.baseURL) -> Bool {
-        guard let host = url.host?.lowercased(), host == apiBaseURL.host?.lowercased() else { return false }
-        let parts = url.path.split(separator: "/").map(String.init)
+        let resolved = resolve(url, apiBaseURL: apiBaseURL)
+        guard let host = resolved.host?.lowercased(), host == apiBaseURL.host?.lowercased() else { return false }
+        let parts = resolved.path.split(separator: "/").map(String.init)
         // v1 / households / {hid} / item-photos / {photo_id}
-        return parts.count == 5
+        let itemPhoto = parts.count == 5
             && parts[0] == "v1"
             && parts[1] == "households"
             && parts[3] == "item-photos"
             && UUID(uuidString: parts[4]) != nil
+        // v1 / product-photos / {photo_id}
+        let productPhoto = parts.count == 3
+            && parts[0] == "v1"
+            && parts[1] == "product-photos"
+            && UUID(uuidString: parts[2]) != nil
+        return itemPhoto || productPhoto
     }
 
     /// GET request carrying the bearer token; nil when the user is signed out.
@@ -75,7 +89,7 @@ actor PrivateImageLoader {
             guard let request = PrivateItemPhoto.request(for: url, token: PrivateImageAuth.shared.token) else {
                 throw LoadError.signedOut
             }
-            let (data, response) = try await session.data(for: request)
+            let (data, response) = try await session.data(for: request, delegate: DropAuthorizationOnRedirect())
             guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
                 throw LoadError.badResponse((response as? HTTPURLResponse)?.statusCode ?? -1)
             }
@@ -94,8 +108,25 @@ actor PrivateImageLoader {
     }
 }
 
-/// Drop-in for `AsyncImage` that routes household-private photo URLs through
-/// `PrivateImageLoader`; everything else still uses `AsyncImage`.
+/// Product photos 302 to a signed Cloud Storage URL, which must not also carry
+/// the API bearer token.
+private final class DropAuthorizationOnRedirect: NSObject, URLSessionTaskDelegate {
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest
+    ) async -> URLRequest? {
+        var next = request
+        if next.url?.host?.lowercased() != task.originalRequest?.url?.host?.lowercased() {
+            next.setValue(nil, forHTTPHeaderField: "Authorization")
+        }
+        return next
+    }
+}
+
+/// Drop-in for `AsyncImage` that routes household-private and product photo URLs
+/// through `PrivateImageLoader`; everything else still uses `AsyncImage`.
 struct MekasaRemoteImage<Content: View>: View {
     let url: URL
     @ViewBuilder let content: (AsyncImagePhase) -> Content
@@ -103,19 +134,20 @@ struct MekasaRemoteImage<Content: View>: View {
     @State private var phase: AsyncImagePhase = .empty
 
     var body: some View {
-        if PrivateItemPhoto.isPrivate(url) {
+        let resolved = PrivateItemPhoto.resolve(url)
+        if PrivateItemPhoto.isPrivate(resolved) {
             content(phase)
-                .task(id: url) {
+                .task(id: resolved) {
                     phase = .empty
                     do {
-                        let image = try await PrivateImageLoader.shared.image(for: url)
+                        let image = try await PrivateImageLoader.shared.image(for: resolved)
                         phase = .success(Image(uiImage: image))
                     } catch {
                         phase = .failure(error)
                     }
                 }
         } else {
-            AsyncImage(url: url, content: content)
+            AsyncImage(url: resolved, content: content)
         }
     }
 }

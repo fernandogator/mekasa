@@ -17,6 +17,8 @@ struct InventoryItem: Identifiable, Equatable, Hashable {
     var health: ProductHealth?
     /// Catalog match from receipt / name search (UI only; not always persisted).
     var isIdentified: Bool
+    /// Receipt line text this draft came from (UI only); a capture sends it as the alias.
+    var receiptText: String?
     var updatedAt: Date
 
     var isLowStock: Bool { quantity <= lowStockThreshold }
@@ -33,6 +35,7 @@ struct InventoryItem: Identifiable, Equatable, Hashable {
         imageURL: String? = nil,
         health: ProductHealth? = nil,
         isIdentified: Bool = true,
+        receiptText: String? = nil,
         updatedAt: Date = Date()
     ) {
         self.id = id
@@ -46,6 +49,7 @@ struct InventoryItem: Identifiable, Equatable, Hashable {
         self.imageURL = imageURL
         self.health = health
         self.isIdentified = isIdentified
+        self.receiptText = receiptText
         self.updatedAt = updatedAt
     }
 }
