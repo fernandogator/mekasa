@@ -938,19 +938,20 @@ class _PostgresSession:
 class PostgresCatalogRepository(_BaseRepository):
     """Cloud SQL Postgres over the ``/cloudsql`` Unix socket (``DATABASE_URL``)."""
 
-    def __init__(self, database_url: str, pool_size: int = 5) -> None:
+    def __init__(self, database_url: str, pool_size: int = 5, pool_timeout: float = 3.0) -> None:
         from psycopg.rows import dict_row
         from psycopg_pool import ConnectionPool
 
         self._pool = ConnectionPool(
             conninfo=database_url, min_size=1, max_size=max(1, pool_size), open=True,
+            timeout=pool_timeout,
             kwargs={"row_factory": dict_row, "autocommit": False},
         )
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "PostgresCatalogRepository":
         assert settings.database_url, "DATABASE_URL is required for the Postgres catalog"
-        return cls(settings.database_url, settings.database_pool_size)
+        return cls(settings.database_url, settings.database_pool_size, settings.database_pool_timeout_seconds)
 
     @contextmanager
     def _session(self):
