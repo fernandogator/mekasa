@@ -8,4 +8,6 @@ __pycache__/
 # Schema / index / prompt-contract JSON only (never credentials — GUARDRAILS rule 4)
 !firestore/**/*.json
 !prompts/**/*.json
+# Bundled public reference data (REQ-RCP-022 produce PLU list)
+!app/data/*.json
 .Python
