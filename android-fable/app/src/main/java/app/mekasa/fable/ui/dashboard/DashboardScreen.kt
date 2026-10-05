@@ -56,7 +56,7 @@ fun DashboardScreen(
     session: SessionViewModel,
     contentPadding: PaddingValues,
     onOpenInventory: () -> Unit,
-    onOpenItem: (InventoryItem) -> Unit,
+    onOpenItem: (item: InventoryItem, listIds: List<String>) -> Unit,
     onOpenList: () -> Unit,
     onOpenSpending: () -> Unit,
     onEditHome: () -> Unit,
@@ -156,8 +156,10 @@ fun DashboardScreen(
                 }
             }
         } else {
-            items(lowStock.take(4), key = { "low-${it.id}" }) { item ->
-                InventoryRow(item = item, onClick = { onOpenItem(item) }, onConsume = { session.consume(item.id) })
+            val shownLow = lowStock.take(4)
+            val lowIds = shownLow.map { it.id }
+            items(shownLow, key = { "low-${it.id}" }) { item ->
+                InventoryRow(item = item, onClick = { onOpenItem(item, lowIds) }, onConsume = { session.consume(item.id) })
             }
         }
 
@@ -182,10 +184,11 @@ fun DashboardScreen(
         }
 
         val recent = data.inventory.take(5)
+        val recentIds = recent.map { it.id }
         if (recent.isNotEmpty()) {
             item { SectionHeading("Recently added") }
             items(recent, key = { "recent-${it.id}" }) { item ->
-                InventoryRow(item = item, onClick = { onOpenItem(item) }, onConsume = { session.consume(item.id) })
+                InventoryRow(item = item, onClick = { onOpenItem(item, recentIds) }, onConsume = { session.consume(item.id) })
             }
         }
     }

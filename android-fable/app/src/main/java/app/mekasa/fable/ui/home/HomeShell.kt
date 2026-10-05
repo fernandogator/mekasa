@@ -38,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,6 +53,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import app.mekasa.fable.data.model.InventoryItem
 import app.mekasa.fable.session.SessionState
 import app.mekasa.fable.session.SessionViewModel
 import app.mekasa.fable.ui.TestTags
@@ -62,6 +64,7 @@ import app.mekasa.fable.ui.dashboard.HomePhotoScreen
 import app.mekasa.fable.ui.family.FamilyScreen
 import app.mekasa.fable.ui.inventory.InventoryScreen
 import app.mekasa.fable.ui.inventory.ItemDetailScreen
+import app.mekasa.fable.ui.inventory.ItemPager
 import app.mekasa.fable.ui.shopping.ShoppingListScreen
 import app.mekasa.fable.ui.spending.SpendingScreen
 import app.mekasa.fable.ui.theme.MekasaTheme
@@ -103,6 +106,11 @@ fun HomeShell(
     val currentRoute = backStack?.destination?.route
     val showChrome = currentRoute in Routes.tabs
     var showAddSheet by rememberSaveable { mutableStateOf(false) }
+    var openedListIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    val openItem: (InventoryItem, List<String>) -> Unit = { item, ids ->
+        openedListIds = ids
+        navController.navigate(Routes.item(item.id))
+    }
 
     LaunchedEffect(state.household?.id) {
         if (!state.isDemo) session.refreshAll()
@@ -140,7 +148,7 @@ fun HomeShell(
                         session = session,
                         contentPadding = bottomInset,
                         onOpenInventory = { navController.navigate(Routes.INVENTORY) },
-                        onOpenItem = { navController.navigate(Routes.item(it.id)) },
+                        onOpenItem = openItem,
                         onOpenList = { navController.switchTab(Routes.LIST) },
                         onOpenSpending = { navController.switchTab(Routes.SPEND) },
                         onEditHome = { navController.navigate(Routes.HOME_PHOTO) },
@@ -168,17 +176,29 @@ fun HomeShell(
                         onConsume = { session.consume(it.id) },
                         onRemove = { session.removeInventoryItem(it.id) },
                         onUndoRemove = session::undoInventoryRemove,
-                        onOpenItem = { navController.navigate(Routes.item(it.id)) },
+                        onOpenItem = openItem,
                         onAdd = { showAddSheet = true },
                     )
                 }
                 composable(Routes.ITEM) { entry ->
-                    val itemId = entry.arguments?.getString("itemId")
-                    val item = state.data.inventory.firstOrNull { it.id == itemId }
+                    val openedId = entry.arguments?.getString("itemId")
+                    var currentId by rememberSaveable(openedId) { mutableStateOf(openedId) }
+                    val inventory = state.data.inventory
+                    val item = inventory.firstOrNull { it.id == currentId }
                     if (item == null) {
-                        LaunchedEffect(itemId) { navController.popBackStack() }
+                        LaunchedEffect(currentId) { navController.popBackStack() }
                     } else {
-                        ItemDetailScreen(item = item, session = session, onBack = { navController.popBackStack() })
+                        val pager = remember(openedListIds, inventory) {
+                            ItemPager(openedListIds).keeping(inventory.mapTo(HashSet()) { it.id })
+                        }
+                        ItemDetailScreen(
+                            item = item,
+                            session = session,
+                            onBack = { navController.popBackStack() },
+                            pager = pager,
+                            neighbor = { id -> inventory.firstOrNull { it.id == id } },
+                            onMove = { currentId = it },
+                        )
                     }
                 }
                 composable(Routes.HOME_PHOTO) {

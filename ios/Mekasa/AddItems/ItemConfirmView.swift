@@ -175,6 +175,8 @@ struct ProductSearchHitRow: View {
 struct AddFlowHeader: View {
     let title: String
     let onBack: () -> Void
+    /// Small capsule on the right, e.g. the item detail position "3 of 24" (REQ-INV-020 AC3).
+    var trailingLabel: String?
 
     var body: some View {
         HStack {
@@ -198,7 +200,18 @@ struct AddFlowHeader: View {
 
             Spacer()
 
-            Color.clear.frame(width: 40, height: 40)
+            if let trailingLabel {
+                Text(trailingLabel)
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(MekasaTheme.text)
+                    .padding(.horizontal, 10)
+                    .frame(minWidth: 40, minHeight: 28)
+                    .background(MekasaTheme.surfaceMuted)
+                    .clipShape(Capsule())
+                    .accessibilityIdentifier(TestIdentifiers.itemPagerPosition)
+            } else {
+                Color.clear.frame(width: 40, height: 40)
+            }
         }
         .padding(.horizontal, 24)
         .padding(.top, 16)

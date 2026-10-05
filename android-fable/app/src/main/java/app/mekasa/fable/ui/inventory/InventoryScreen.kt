@@ -65,7 +65,7 @@ fun InventoryScreen(
     items: List<InventoryItem>,
     onBack: () -> Unit,
     onConsume: (InventoryItem) -> Unit,
-    onOpenItem: (InventoryItem) -> Unit,
+    onOpenItem: (item: InventoryItem, listIds: List<String>) -> Unit,
     onAdd: () -> Unit,
     pendingRemoval: PendingRemoval? = null,
     onRemove: (InventoryItem) -> Unit = {},
@@ -75,6 +75,7 @@ fun InventoryScreen(
     var query by rememberSaveable { mutableStateOf("") }
     val filtered = items.filter { query.isBlank() || it.name.contains(query, true) || it.category.contains(query, true) }
     val grouped = filtered.groupBy { it.category }.toSortedMap()
+    val listIds = grouped.values.flatten().map { it.id }
 
     Backdrop(modifier = Modifier.testTag(TestTags.INVENTORY_LIST_VIEW)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -127,7 +128,7 @@ fun InventoryScreen(
                                 onConsume = { onConsume(item) },
                                 onRemove = { onRemove(item) },
                             ) {
-                                InventoryRow(item = item, onClick = { onOpenItem(item) }, onConsume = { onConsume(item) })
+                                InventoryRow(item = item, onClick = { onOpenItem(item, listIds) }, onConsume = { onConsume(item) })
                             }
                         }
                     }

@@ -1,0 +1,147 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mekasa - Item Detail</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-brand: #5d5652;
+      --color-brand-muted: #8fa085;
+      --color-surface: #ede8e0;
+      --color-surface-elevated: #faf7f3;
+      --color-text: #5d5652;
+      --color-text-muted: #5c6b54;
+      --color-accent: #5a6f4f;
+      --color-danger: #a44a3f;
+      --color-success: #5a6f4f;
+      --color-warning: #8b5c32;
+      --color-warning-tint: #f3e6d8;
+      --color-success-tint: #dce8d3;
+      --color-border: #76896b;
+      --color-surface-muted: #ece7df;
+      --color-progress-track: #d9d3c9;
+      --color-on-accent: #ffffff;
+      --color-grade-b: #6fa82f;
+    }
+    body {
+      font-family: 'Nunito', sans-serif;
+      background-color: var(--color-surface);
+      color: var(--color-text);
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="w-full h-screen flex flex-col relative overflow-hidden" data-sd-id="1">
+    <!-- Sage Atmosphere -->
+    <div class="absolute -top-[80px] right-[-80px] w-[300px] h-[300px] rounded-full bg-[rgba(143,160,133,0.15)] blur-[40px] pointer-events-none z-0" data-sd-id="2"></div>
+    
+    <!-- Header -->
+    <header class="shrink-0 pt-14 px-6 pb-2 flex items-center justify-between z-10" data-sd-id="3">
+      <button class="w-11 h-11 flex items-center justify-center rounded-full text-[#5d5652] bg-[#faf7f3] border border-[#76896b]/30 shadow-sm" data-sd-id="4">
+        <iconify-icon icon="lucide:chevron-left" class="text-xl"></iconify-icon>
+      </button>
+      <h1 class="text-[20px] font-[800] tracking-tight" data-sd-id="5">Item details</h1>
+      <div class="h-8 px-4 rounded-full bg-[#ece7df] flex items-center justify-center" data-sd-id="6">
+        <span class="text-[12px] font-[700] uppercase tracking-wider text-[#5c6b54]" data-sd-id="7">3 of 24</span>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto z-10 pb-12" data-sd-id="8">
+      <!-- Pager Hero -->
+      <div class="relative w-full h-[240px] mt-4 mb-6 overflow-hidden flex items-center justify-center" data-sd-id="9">
+        <!-- Prev Item Peek -->
+        <div class="absolute left-[-15%] w-[80%] h-[200px] rounded-[32px] bg-[#faf7f3] border border-[#8fa085]/20 shadow-md opacity-60 scale-90 blur-[2px] flex items-center justify-center" data-sd-id="10">
+          <div class="w-full h-full bg-cover bg-center rounded-[32px] opacity-40" style="background-image: url('https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/747347d9-34d0-43dd-a1c8-e170f34a7b5c/generated-images/generated-b4990631-3f37-4a3c-8db8-46174fd7fd83.png');" data-sd-id="11"></div>
+        </div>
+        
+        <!-- Current Hero Card -->
+        <div class="relative w-[85%] h-[240px] rounded-[40px] bg-[#faf7f3] border border-[#8fa085]/30 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] flex flex-col overflow-hidden z-20" data-sd-id="12">
+           <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/747347d9-34d0-43dd-a1c8-e170f34a7b5c/generated-images/generated-b4990631-3f37-4a3c-8db8-46174fd7fd83.png');" data-sd-id="13"></div>
+           <!-- Pager hints on hero -->
+           <div class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-[#1a1918]/20 backdrop-blur-md flex items-center justify-center text-[#faf7f3]" data-sd-id="14">
+             <iconify-icon icon="lucide:chevron-left" class="text-lg"></iconify-icon>
+           </div>
+           <div class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-[#1a1918]/20 backdrop-blur-md flex items-center justify-center text-[#faf7f3]" data-sd-id="15">
+             <iconify-icon icon="lucide:chevron-right" class="text-lg"></iconify-icon>
+           </div>
+        </div>
+
+        <!-- Next Item Peek -->
+        <div class="absolute right-[-15%] w-[80%] h-[200px] rounded-[32px] bg-[#faf7f3] border border-[#8fa085]/20 shadow-md opacity-60 scale-90 blur-[2px] flex items-center justify-center z-10" data-sd-id="16">
+          <div class="w-full h-full bg-cover bg-center rounded-[32px] opacity-40" style="background-image: url('https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/747347d9-34d0-43dd-a1c8-e170f34a7b5c/generated-images/generated-b4990631-3f37-4a3c-8db8-46174fd7fd83.png');" data-sd-id="17"></div>
+        </div>
+      </div>
+
+      <div class="px-6 space-y-6" data-sd-id="18">
+        <!-- Header Info -->
+        <div data-sd-id="19">
+          <h2 class="text-[28px] font-[900] tracking-tight leading-tight text-[#5d5652]" data-sd-id="20">Organic Whole Milk</h2>
+          <p class="text-[14px] font-[600] text-[#5c6b54] mt-1" data-sd-id="21">Dairy</p>
+          <p class="text-[13px] font-[700] text-[#5c6b54] mt-1 font-mono uppercase" data-sd-id="22">UPC 021130070512</p>
+        </div>
+
+        <!-- Health Grade Badge -->
+        <div class="bg-[#faf7f3] p-4 rounded-[24px] border border-[#8fa085]/20 flex items-center gap-3 shadow-sm" data-sd-id="23">
+           <div class="w-12 h-12 rounded-[16px] bg-[#6fa82f]/10 flex items-center justify-center" data-sd-id="24">
+              <span class="text-[24px] font-[900] text-[#6fa82f]" data-sd-id="25">B</span>
+           </div>
+           <div data-sd-id="26">
+              <p class="text-[14px] font-[800] text-[#5d5652]" data-sd-id="27">Good Nutritional Quality</p>
+              <p class="text-[12px] font-[600] text-[#5c6b54]" data-sd-id="28">Nutri-Score rating</p>
+           </div>
+        </div>
+
+        <!-- Quantity Stepper -->
+        <div class="bg-[#faf7f3] p-5 rounded-[24px] border border-[#8fa085]/20 shadow-sm" data-sd-id="29">
+          <p class="text-[13px] font-[700] text-[#5c6b54] mb-3 uppercase tracking-wider" data-sd-id="30">Quantity</p>
+          <div class="flex items-center justify-between" data-sd-id="31">
+            <button class="w-12 h-12 rounded-full bg-[#ece7df] flex items-center justify-center text-[#5d5652] hover:bg-[#d9d3c9] active:scale-95 transition-transform" data-sd-id="32">
+              <iconify-icon icon="lucide:minus" class="text-xl font-bold"></iconify-icon>
+            </button>
+            <span class="text-[32px] font-[900] text-[#5d5652]" data-sd-id="33">2</span>
+            <button class="w-12 h-12 rounded-full bg-[#ece7df] flex items-center justify-center text-[#5d5652] hover:bg-[#d9d3c9] active:scale-95 transition-transform" data-sd-id="34">
+              <iconify-icon icon="lucide:plus" class="text-xl font-bold"></iconify-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- Price / Threshold rows -->
+        <div class="space-y-4" data-sd-id="35">
+          <div class="flex justify-between items-center py-2 border-b border-[#76896b]/10" data-sd-id="36">
+            <span class="text-[16px] font-[600] text-[#5c6b54]" data-sd-id="37">Price Paid</span>
+            <span class="text-[16px] font-[800] text-[#5d5652]" data-sd-id="38">$4.99</span>
+          </div>
+          <div class="flex justify-between items-center py-2" data-sd-id="39">
+            <span class="text-[16px] font-[600] text-[#5c6b54]" data-sd-id="40">Low-stock threshold</span>
+            <span class="text-[16px] font-[800] text-[#5d5652]" data-sd-id="41">1</span>
+          </div>
+          <p class="text-[14px] font-[600] text-[#5c6b54] leading-relaxed" data-sd-id="42">
+            Raise or lower the threshold anytime. Default is 1.
+          </p>
+        </div>
+
+        <!-- Actions -->
+        <div class="space-y-3 pt-4" data-sd-id="43">
+          <button class="w-full h-[56px] bg-[#5a6f4f] text-white rounded-[24px] font-[800] text-[17px] shadow-[0_6px_12px_rgba(90,111,79,0.22)] active:scale-95 transition-transform flex items-center justify-center" data-sd-id="44">
+            Use 1
+          </button>
+          <button class="w-full h-[56px] bg-[#faf7f3] border border-[#76896b] text-[#5d5652] rounded-[24px] font-[800] text-[16px] active:scale-95 transition-transform flex items-center justify-center" data-sd-id="45">
+            Add to shopping list
+          </button>
+        </div>
+
+        <!-- Pager hint caption -->
+        <div class="flex items-center justify-center gap-2 pt-6 pb-8 text-[#5c6b54]" data-sd-id="46">
+          <iconify-icon icon="lucide:arrow-left-right" class="text-lg"></iconify-icon>
+          <p class="text-[12px] font-[700] uppercase tracking-wide" data-sd-id="47">Swipe left or right for next/prev</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+</body></html>

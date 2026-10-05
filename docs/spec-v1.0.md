@@ -193,6 +193,22 @@ Acceptance Criteria:
 - AC7: With `ITEM_PHOTO_BUCKET` unset (local, tests) the API keeps photos in memory with the same endpoints and rules
 - AC8: Both apps upload through AC1 and load private photo URLs with the bearer token (plain image loaders cannot fetch them); the iOS item detail hero, list thumbnails, and confirm-haul drafts offer "Take photo / Choose from library"; Android item detail offers the same
 
+### REQ-INV-020: Swipe Between Items in Item Detail
+Priority: P2
+Description: **While** an item detail is open from a list, a household
+member **shall** be able to swipe left for the next item and right for the
+previous item of that list, without going back to it.
+Design Artifact: design/pages/item-detail-swipe.html (Superdesign "Mekasa v1.0", draft "Item Detail Pager", 2026-10-05)
+Test File: ios/MekasaTests/ItemPagerTests.swift, android-fable/app/src/test/java/app/mekasa/fable/ui/ItemPagerTest.kt
+Acceptance Criteria:
+- AC1: The order is the list the detail was opened from, as shown at that moment: the Inventory list with its search and category grouping, or the Dashboard section (Low stock, or Recently added on Android). Items removed while the detail is open are skipped
+- AC2: A horizontal swipe (at least 60 pt/dp and clearly more horizontal than vertical) moves one item: left → next, right → previous. Vertical scrolling is unaffected; on iOS a swipe that starts at the left screen edge stays the system "back" gesture
+- AC3: The header shows the position ("3 of 24"); the hero shows chevrons at its edges for the previous and next item, which also move on tap, and a dimmed sliver of the neighbouring item's picture. The content slides in from the swipe direction with a light haptic
+- AC4: At the first or last item a swipe does not wrap: the content bounces back with a firmer haptic, and the chevron on that side is hidden
+- AC5: VoiceOver/TalkBack offer "Next item" and "Previous item" actions with the same result (NFR-005)
+- AC6: Opened without a list (e.g. a deep link or route straight to the item), the detail shows no position, chevrons or swipe
+- AC7: Moving to another item shows that item's own quantity, threshold, picture and status, and runs the same on-open refreshes (image, health) as opening it from the list
+
 ### REQ-010: Low Stock Threshold — Learned
 Priority: P2
 Description: System learns consumption rate and suggests threshold

@@ -46,7 +46,7 @@ struct DashboardView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(TestIdentifiers.dashboardView)
         .navigationDestination(item: $selectedItemID) { itemID in
-            ItemDetailView(itemID: itemID)
+            ItemDetailView(itemID: itemID, pager: ItemPager(ids: lowStockItems.map(\.id)))
         }
         .navigationDestination(isPresented: $showInventory) {
             InventoryListView()

@@ -71,7 +71,7 @@ struct InventoryListView: View {
         .accessibilityIdentifier(TestIdentifiers.inventoryListView)
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: String.self) { itemID in
-            ItemDetailView(itemID: itemID)
+            ItemDetailView(itemID: itemID, pager: ItemPager(ids: sections.flatMap { $0.items.map(\.id) }))
         }
         .sheet(isPresented: $showAddItems) {
             NavigationStack {
