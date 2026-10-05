@@ -2,20 +2,23 @@ import PhotosUI
 import SwiftUI
 
 /// Store brand printed on the receipt, used in the capture guidance copy
-/// ("We could not find the H-E-B Bananas…"). REQ-RCP-020 AC1.
+/// ("This looks like a local H-E-B item…"). REQ-RCP-020 AC1. `storeChainId`
+/// scopes the alias a capture writes (REQ-RCP-020 AC6).
 struct ReceiptStoreContext: Equatable {
     let storeName: String?
+    var storeChainId: String?
 }
 
-/// Copy for receipt lines Open Food Facts could not identify. Pure for unit tests.
+/// Copy for receipt lines the catalog could not identify. Pure for unit tests.
+/// Satisfies: REQ-RCP-020 AC1
 /// Spec version: 1.0
 enum CaptureGuidance {
-    static func message(itemName: String, storeName: String?) -> String {
-        let name = itemName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let store = storeName?.trimmingCharacters(in: .whitespacesAndNewlines), !store.isEmpty {
-            return "We could not find the \(store) \(name). Please scan the item and take a picture."
-        }
-        return "We could not find \(name) in the catalog. Please scan the item and take a picture."
+    static let actionTitle = "Scan & photograph"
+
+    static func message(storeName: String?) -> String {
+        let store = storeName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let item = store.isEmpty ? "a local item" : "a local \(store) item"
+        return "This looks like \(item). Scan its barcode and take a picture so Mekasa recognizes it next time."
     }
 
     /// Digits only; PLU stickers on produce are 4–5 digits, GTINs up to 14.
@@ -157,6 +160,12 @@ struct LocalItemCaptureView: View {
     @State private var libraryItem: PhotosPickerItem?
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @State private var showSharingSheet = false
+
+    /// A UPC / PLU sends the photo to the shared catalog (REQ-RCP-021 AC7).
+    private var photoIsShared: Bool {
+        CatalogCaptureCode(code) != nil
+    }
 
     private var canSave: Bool {
         !isSaving && (CaptureGuidance.isValidCode(code) || photo != nil)
@@ -169,10 +178,15 @@ struct LocalItemCaptureView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        Text(CaptureGuidance.message(itemName: itemName, storeName: store?.storeName))
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundStyle(MekasaTheme.text)
-                            .accessibilityIdentifier(TestIdentifiers.captureGuidanceLabel)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(itemName)
+                                .font(.system(size: 20, weight: .heavy, design: .rounded))
+                                .foregroundStyle(MekasaTheme.text)
+                            Text(CaptureGuidance.message(storeName: store?.storeName))
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundStyle(MekasaTheme.textMuted)
+                                .accessibilityIdentifier(TestIdentifiers.captureGuidanceLabel)
+                        }
 
                         barcodeStep
                         photoStep
@@ -209,6 +223,18 @@ struct LocalItemCaptureView: View {
                 }
                 libraryItem = nil
             }
+        }
+        .onChange(of: code) { _, _ in
+            if photoIsShared, !ProductPhotoSharingNotice.hasSeen(uid: session.userUID) {
+                showSharingSheet = true
+            }
+        }
+        .sheet(isPresented: $showSharingSheet) {
+            ProductPhotoSharingSheet {
+                ProductPhotoSharingNotice.markSeen(uid: session.userUID)
+                showSharingSheet = false
+            }
+            .presentationDetents([.medium])
         }
     }
 
@@ -273,6 +299,27 @@ struct LocalItemCaptureView: View {
     private var photoStep: some View {
         VStack(alignment: .leading, spacing: 12) {
             stepTitle("2. Take a picture")
+            if photoIsShared {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Label("Shared with all users", systemImage: "person.2.fill")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundStyle(MekasaTheme.text)
+                        Button {
+                            showSharingSheet = true
+                        } label: {
+                            Image(systemName: "info.circle")
+                                .foregroundStyle(MekasaTheme.textMuted)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("About shared product photos")
+                    }
+                    Text(ProductPhotoSharingNotice.stepCopy)
+                        .font(MekasaTheme.bodyFont)
+                        .foregroundStyle(MekasaTheme.textMuted)
+                }
+                .accessibilityIdentifier(TestIdentifiers.photoSharingLabel)
+            }
             if let photo {
                 Image(uiImage: photo)
                     .resizable()
@@ -324,5 +371,54 @@ struct LocalItemCaptureView: View {
         }
         onCaptured(result)
         dismiss()
+    }
+}
+
+// MARK: - Product photo sharing notice
+
+/// Copy and the once-per-user flag for the shared product photo notice.
+/// Satisfies: REQ-RCP-021 AC7
+/// Spec version: 1.0
+enum ProductPhotoSharingNotice {
+    static let stepCopy = "Your photo will be shown with this product to other Mekasa households. "
+        + "Keep people, faces and receipts out of the shot."
+    static let sheetTitle = "Product photos are shared"
+    static let sheetCopy = "Photos you take here are shown with this product to all Mekasa users. "
+        + "Item-detail photos stay private to your household. Keep people, faces and receipts out of the shot."
+
+    static func key(uid: String?) -> String {
+        "productPhotoSharingSeen.\(uid ?? "anonymous")"
+    }
+
+    static func hasSeen(uid: String?, defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: key(uid: uid))
+    }
+
+    static func markSeen(uid: String?, defaults: UserDefaults = .standard) {
+        defaults.set(true, forKey: key(uid: uid))
+    }
+}
+
+/// One-time explainer before a photo is shared with a product (design/pages/scan-flow-component-sheet.html).
+struct ProductPhotoSharingSheet: View {
+    let onDone: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Image(systemName: "person.2.fill")
+                .font(.system(size: 28, weight: .bold))
+                .foregroundStyle(MekasaTheme.text)
+            Text(ProductPhotoSharingNotice.sheetTitle)
+                .font(.system(size: 22, weight: .heavy, design: .rounded))
+                .foregroundStyle(MekasaTheme.text)
+            Text(ProductPhotoSharingNotice.sheetCopy)
+                .font(MekasaTheme.bodyFont)
+                .foregroundStyle(MekasaTheme.textMuted)
+            Spacer(minLength: 0)
+            PrimaryButton(title: "Got it", action: onDone)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(MekasaTheme.surface)
     }
 }

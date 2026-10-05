@@ -27,6 +27,7 @@ enum TestIdentifiers {
     static let captureCodeLabel = "CaptureCodeLabel"
     static let capturePhotoPreview = "CapturePhotoPreview"
     static let captureLibraryButton = "CaptureLibraryButton"
+    static let photoSharingLabel = "PhotoSharingLabel"
     static let captureSaveButton = "CaptureSaveButton"
 
     // MARK: - Inventory list / swipe (UI-006 · REQ-INV-014–018)

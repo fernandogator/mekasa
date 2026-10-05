@@ -5,8 +5,43 @@ struct LocalItemCaptureResult: Equatable {
     var barcode: String?
     /// Uploaded photo URL (nil when no photo was taken or the upload failed).
     var photoURL: String?
+    /// Set when the photo went to the shared product photos with a UPC / PLU
+    /// (REQ-RCP-021); otherwise the photo is household-private.
+    var productPhotoID: String?
     /// Catalog hit for the scanned barcode, when Open Food Facts knows it.
     var lookup: BarcodeLookupDTO?
+}
+
+/// A code the shared catalog accepts on capture: UPC (8–14 digits) or PLU (4–5).
+/// Satisfies: REQ-RCP-020 AC2, AC7
+/// Spec version: 1.0
+enum CatalogCaptureCode: Equatable {
+    case upc(String)
+    case plu(String)
+
+    init?(_ raw: String?) {
+        guard let raw, !raw.isEmpty, raw.allSatisfy({ $0.isASCII && $0.isNumber }) else { return nil }
+        switch raw.count {
+        case 4 ... 5: self = .plu(raw)
+        case 8 ... 14: self = .upc(raw)
+        default: return nil
+        }
+    }
+
+    /// Capture body for an inventory item created from a receipt line: the
+    /// receipt text and chain go with the code and photo so the next scan of
+    /// that text matches the product (REQ-RCP-020 AC6, REQ-RCP-007 AC5).
+    func request(photoID: String?, receiptText: String?, storeChainId: String?) -> ProductCaptureRequestDTO {
+        let alias = receiptText
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .flatMap { $0.isEmpty ? nil : String($0.prefix(200)) }
+        var body = ProductCaptureRequestDTO(photoId: photoID, receiptText: alias, storeChainId: storeChainId)
+        switch self {
+        case let .upc(code): body.upc = code
+        case let .plu(code): body.pluCode = code
+        }
+        return body
+    }
 }
 
 /// User item photos: replace any item picture and in-store captures (REQ-004 / REQ-005).
@@ -79,15 +114,21 @@ extension AppSession {
         }
     }
 
-    /// In-store capture for a receipt line the catalog could not identify: the
-    /// photo is stored as a household-private item photo (REQ-INV-019) and the
-    /// scanned barcode / PLU is looked up in case Open Food Facts knows it. The
-    /// shared-catalog write arrives with the REQ-RCP-020 `capture` endpoints.
+    /// In-store capture for a receipt line the catalog could not identify. With
+    /// a UPC / PLU the photo is uploaded to the shared product photos
+    /// (REQ-RCP-021) so the confirm step can send it with the code and receipt
+    /// text; without one it stays a household-private item photo (REQ-INV-019).
+    /// The scanned code is also looked up in case Open Food Facts knows it.
     func captureUnidentifiedItem(barcode: String?, image: UIImage?) async -> LocalItemCaptureResult? {
         let code = barcode.flatMap { $0.isEmpty ? nil : $0 }
         var result = LocalItemCaptureResult(barcode: code)
         if let image {
-            result.photoURL = await uploadItemPhoto(image)
+            if CatalogCaptureCode(code) != nil, let shared = await uploadProductPhoto(image) {
+                result.photoURL = shared.imageUrl
+                result.productPhotoID = shared.photoId
+            } else {
+                result.photoURL = await uploadItemPhoto(image)
+            }
             if result.photoURL == nil, code == nil {
                 return nil
             }
@@ -104,6 +145,27 @@ extension AppSession {
             if let hit, hit.found { result.lookup = hit }
         }
         return result
+    }
+
+    /// Upload a capture photo to the shared product photos (REQ-RCP-021 AC1).
+    /// Nil in preview / UI tests and when signed out, so callers fall back to a
+    /// private item photo.
+    func uploadProductPhoto(_ image: UIImage) async -> ProductPhotoUploadDTO? {
+        guard !isUIPreview, !isUITesting, let token = idToken, let householdID = household?.id,
+              let jpeg = ItemPhotoEncoding.jpegData(from: image)
+        else { return nil }
+        do {
+            return try await MekasaAPIClient.shared.uploadProductPhoto(
+                householdID: householdID,
+                imageData: jpeg,
+                token: token
+            )
+        } catch {
+            if SessionExpiry.isUnauthorized(error) {
+                handleAPIFailure(error)
+            }
+            return nil
+        }
     }
 }
 

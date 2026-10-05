@@ -5,22 +5,21 @@ import XCTest
 /// In-store capture copy + code checks for unidentified receipt lines (REQ-004 / REQ-005).
 final class CaptureGuidanceTests: XCTestCase {
 
-    func testMessage_namesTheStoreWhenKnown() {
+    func testMessage_asksForLocalStoreItem() {
         XCTAssertEqual(
-            CaptureGuidance.message(itemName: "Bananas", storeName: "HEB"),
-            "We could not find the HEB Bananas. Please scan the item and take a picture."
+            CaptureGuidance.message(storeName: " H-E-B "),
+            "This looks like a local H-E-B item. Scan its barcode and take a picture so Mekasa recognizes it next time."
         )
     }
 
     func testMessage_fallsBackWithoutStore() {
-        XCTAssertEqual(
-            CaptureGuidance.message(itemName: " Bananas ", storeName: "  "),
-            "We could not find Bananas in the catalog. Please scan the item and take a picture."
-        )
-        XCTAssertEqual(
-            CaptureGuidance.message(itemName: "Bananas", storeName: nil),
-            "We could not find Bananas in the catalog. Please scan the item and take a picture."
-        )
+        let expected = "This looks like a local item. Scan its barcode and take a picture so Mekasa recognizes it next time."
+        XCTAssertEqual(CaptureGuidance.message(storeName: "  "), expected)
+        XCTAssertEqual(CaptureGuidance.message(storeName: nil), expected)
+    }
+
+    func testActionTitle() {
+        XCTAssertEqual(CaptureGuidance.actionTitle, "Scan & photograph")
     }
 
     func testCodes_acceptPLUAndGTIN() {
@@ -79,8 +78,8 @@ final class CaptureGuidanceTests: XCTestCase {
     func testReceiptStoreContext_onlyCarriesStoreName() {
         let context = ReceiptStoreContext(storeName: "HEB")
         XCTAssertEqual(
-            CaptureGuidance.message(itemName: "Bananas", storeName: context.storeName),
-            "We could not find the HEB Bananas. Please scan the item and take a picture."
+            CaptureGuidance.message(storeName: context.storeName),
+            "This looks like a local HEB item. Scan its barcode and take a picture so Mekasa recognizes it next time."
         )
     }
 }

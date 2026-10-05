@@ -331,6 +331,32 @@ actor MekasaAPIClient {
         )
     }
 
+    /// Upload a capture photo that will be shared with the scanned code (REQ-RCP-021 AC1).
+    func uploadProductPhoto(householdID: String, imageData: Data, token: String) async throws -> ProductPhotoUploadDTO {
+        try await multipartRequest(
+            path: "/v1/households/\(householdID)/product-photos",
+            fields: [:],
+            file: MultipartFile(field: "file", filename: "product.jpg", mimeType: "image/jpeg", data: imageData),
+            token: token
+        )
+    }
+
+    /// Link an inventory item to the shared product for its code; `receipt_text`
+    /// becomes an alias for the next receipt scan (REQ-RCP-020 AC6).
+    func captureInventoryItemProduct(
+        householdID: String,
+        itemID: String,
+        capture: ProductCaptureRequestDTO,
+        token: String
+    ) async throws -> ProductCaptureResponseDTO {
+        try await request(
+            path: "/v1/households/\(householdID)/inventory/\(itemID)/capture",
+            method: "POST",
+            token: token,
+            body: capture
+        )
+    }
+
     /// Remove a private item photo (REQ-INV-019 AC5).
     func deleteItemPhoto(householdID: String, photoID: String, token: String) async throws {
         _ = try await rawRequest(

@@ -485,11 +485,22 @@ struct ReceiptLineItemDTO: Codable, Equatable {
     let barcode: String?
     let imageUrl: String?
     let identified: Bool
+    /// Line text as printed; sent back on capture so the next scan matches (REQ-RCP-020 AC6).
+    let receiptText: String?
+    let receiptCode: String?
+    /// Shared catalog product the scan matched (REQ-RCP-007 AC5).
+    let matchedProductId: String?
+    /// `upc`, `plu`, `alias` or `open_food_facts`.
+    let matchMethod: String?
 
     enum CodingKeys: String, CodingKey {
         case name, category, quantity, barcode, identified
         case pricePaid = "price_paid"
         case imageUrl = "image_url"
+        case receiptText = "receipt_text"
+        case receiptCode = "receipt_code"
+        case matchedProductId = "matched_product_id"
+        case matchMethod = "match_method"
     }
 
     init(
@@ -499,7 +510,11 @@ struct ReceiptLineItemDTO: Codable, Equatable {
         pricePaid: Double?,
         barcode: String? = nil,
         imageUrl: String? = nil,
-        identified: Bool = false
+        identified: Bool = false,
+        receiptText: String? = nil,
+        receiptCode: String? = nil,
+        matchedProductId: String? = nil,
+        matchMethod: String? = nil
     ) {
         self.name = name
         self.category = category
@@ -508,6 +523,10 @@ struct ReceiptLineItemDTO: Codable, Equatable {
         self.barcode = barcode
         self.imageUrl = imageUrl
         self.identified = identified
+        self.receiptText = receiptText
+        self.receiptCode = receiptCode
+        self.matchedProductId = matchedProductId
+        self.matchMethod = matchMethod
     }
 
     init(from decoder: Decoder) throws {
@@ -519,6 +538,10 @@ struct ReceiptLineItemDTO: Codable, Equatable {
         barcode = try container.decodeIfPresent(String.self, forKey: .barcode)
         imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
         identified = try container.decodeIfPresent(Bool.self, forKey: .identified) ?? false
+        receiptText = try container.decodeIfPresent(String.self, forKey: .receiptText)
+        receiptCode = try container.decodeIfPresent(String.self, forKey: .receiptCode)
+        matchedProductId = try container.decodeIfPresent(String.self, forKey: .matchedProductId)
+        matchMethod = try container.decodeIfPresent(String.self, forKey: .matchMethod)
     }
 
     func toLocal() -> InventoryItem {
@@ -530,7 +553,8 @@ struct ReceiptLineItemDTO: Codable, Equatable {
             barcode: barcode,
             source: .receipt,
             imageURL: imageUrl,
-            isIdentified: identified
+            isIdentified: identified,
+            receiptText: receiptText
         )
     }
 }
@@ -541,11 +565,56 @@ struct ReceiptScanResponseDTO: Codable, Equatable {
     let items: [ReceiptLineItemDTO]
     /// Store brand printed on the receipt (e.g. "H-E-B"); nil when unknown.
     let storeName: String?
+    /// `store_chains` id for `storeName` (`unknown` when not recognised).
+    let storeChainId: String?
 
     enum CodingKeys: String, CodingKey {
         case engine, items
         case householdId = "household_id"
         case storeName = "store_name"
+        case storeChainId = "store_chain_id"
+    }
+}
+
+/// A product photo shared with the scanned code (`POST …/product-photos`, REQ-RCP-021 AC1).
+struct ProductPhotoUploadDTO: Codable, Equatable {
+    let photoId: String
+    let imageUrl: String
+
+    enum CodingKeys: String, CodingKey {
+        case photoId = "photo_id"
+        case imageUrl = "image_url"
+    }
+}
+
+/// Body of `POST …/inventory/{item_id}/capture` (REQ-RCP-020 AC2, AC6, AC7).
+struct ProductCaptureRequestDTO: Encodable, Equatable {
+    var upc: String?
+    var pluCode: String?
+    var photoId: String?
+    var name: String?
+    var category: String?
+    var receiptText: String?
+    var storeChainId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case upc, name, category
+        case pluCode = "plu_code"
+        case photoId = "photo_id"
+        case receiptText = "receipt_text"
+        case storeChainId = "store_chain_id"
+    }
+}
+
+struct ProductCaptureResponseDTO: Decodable, Equatable {
+    let outcome: String
+    let photoAppliedAs: String?
+    let inventoryItem: InventoryItemDTO?
+
+    enum CodingKeys: String, CodingKey {
+        case outcome
+        case photoAppliedAs = "photo_applied_as"
+        case inventoryItem = "inventory_item"
     }
 }
 
