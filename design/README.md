@@ -42,6 +42,12 @@ Colors follow the Rich & Grounded palette in `design-system.md`. Dark-mode refer
 
 That copies to `ios/Mekasa/Sounds/scanner-beep.mp3` and `android-fable/app/src/main/res/raw/scanner_beep.mp3`. Unknown scans use a platform nack tone instead. Family → **Scan sounds** (default on) mutes beep + haptic/vibrate on that device. Quiet under UI tests.
 
+### 🏠 App icon
+
+`app-icon/mekasa-app-icon-1024.png` is the master: a sage house (`#5a6f4f`) with a barcode and a red scan line on cream (`#ede8e0`). Source: Superdesign project "Mekasa v1.0", Brand Asset `mekasa-app-icon` (image generation of 2026-10-04 16:44 UTC). The generation is a presentation sheet, so the master is its large 512×512 tile cropped out, with the rounded corners filled cream so the square is full-bleed (iOS and Android apply their own masks).
+
+It is copied, unchanged, to `ios/Mekasa/Assets.xcassets/AppIcon.appiconset/AppIcon.png` (1024), and resized to `android-fable/app/src/main/res/drawable/ic_launcher_full.png` (512) and every `mipmap-*/ic_launcher{,_round}.png` (48–192).
+
 ### 📚 Documentation
 
 - **DESIGN_SYSTEM.md** — Complete color palette, typography, spacing, component patterns, and design tokens
