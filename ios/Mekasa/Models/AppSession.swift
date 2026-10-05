@@ -589,12 +589,16 @@ final class AppSession: ObservableObject {
         }
     }
 
-    func addInventoryItem(_ item: InventoryItem) {
+    /// `catalogCapture` links the created item to the shared product for its
+    /// code and records its receipt text as an alias (REQ-RCP-020 AC6).
+    func addInventoryItem(_ item: InventoryItem, catalogCapture: ProductCaptureRequestDTO? = nil) {
         applyLocalAdd(item)
         guard canSyncInventory else { return }
         let key = Self.mergeKey(name: item.name, category: item.category)
         let task = Task<InventoryItemDTO?, Never> { [weak self] in
-            await self?.persistCreate(item)
+            guard let self, let remote = await self.persistCreate(item) else { return nil }
+            guard let catalogCapture else { return remote }
+            return await self.persistCatalogCapture(itemID: remote.id, name: remote.name, capture: catalogCapture) ?? remote
         }
         pendingCreates[key] = task
         Task {
@@ -969,6 +973,33 @@ final class AppSession: ObservableObject {
                 return nil
             }
             lastError = "Couldn’t sync \(item.name): \(error.localizedDescription)"
+            return nil
+        }
+    }
+
+    private func persistCatalogCapture(
+        itemID: String,
+        name: String,
+        capture: ProductCaptureRequestDTO
+    ) async -> InventoryItemDTO? {
+        guard let token = idToken, let householdID = household?.id else { return nil }
+        do {
+            let response = try await MekasaAPIClient.shared.captureInventoryItemProduct(
+                householdID: householdID,
+                itemID: itemID,
+                capture: capture,
+                token: token
+            )
+            if let remote = response.inventoryItem {
+                upsertRemote(remote)
+            }
+            return response.inventoryItem
+        } catch {
+            if SessionExpiry.isUnauthorized(error) {
+                handleAPIFailure(error)
+                return nil
+            }
+            lastError = "Saved \(name), but couldn’t add it to the shared catalog."
             return nil
         }
     }
