@@ -368,12 +368,12 @@ def _save_receipt_lines(session: _Session, store_chain_id: str, lines: list[Rece
 
 def _capture(
     session: _Session, *, store_chain_id: str, upc: str | None, plu_code: str | None, hh: str,
-    fallback_name: str, fallback_category: str, alias_text: str | None,
+    fallback_name: str, fallback_category: str, alias_text: str | None, alias_store_chain_id: str | None,
     name: str | None, brand: str | None, category: str | None, unit_size: str | None,
     photo_id: str | None, previous_product_id: str | None,
     receipt_id: str | None, line_item_id: str | None,
 ) -> CaptureResult:
-    """REQ-RCP-020 AC2–AC4, AC7 (design §3.11 step 2)."""
+    """REQ-RCP-020 AC2–AC4, AC6, AC7 (design §3.11 step 2). Aliases go under `alias_store_chain_id` when given."""
     if (upc is None) == (plu_code is None):
         raise ValueError("exactly_one_code_required")
     if upc is not None and not UPC_RE.match(upc):
@@ -436,7 +436,7 @@ def _capture(
     if alias_text:
         alias = normalize_name(alias_text)
         if alias:
-            session.upsert_alias(store_chain_id, alias[:120], product.id)
+            session.upsert_alias(alias_store_chain_id or store_chain_id, alias[:120], product.id)
     confirmed = _confirm(session, product, hh)
     return CaptureResult(
         outcome=outcome, product=confirmed.product, confirmation_counted=confirmed.confirmation_counted,
@@ -578,14 +578,16 @@ class _BaseRepository:
     def capture(
         self, *, store_chain_id: str, hh: str, fallback_name: str, fallback_category: str,
         upc: str | None = None, plu_code: str | None = None,
-        alias_text: str | None = None, name: str | None = None, brand: str | None = None,
+        alias_text: str | None = None, alias_store_chain_id: str | None = None,
+        name: str | None = None, brand: str | None = None,
         category: str | None = None, unit_size: str | None = None, photo_id: str | None = None,
         previous_product_id: str | None = None, receipt_id: str | None = None, line_item_id: str | None = None,
     ) -> CaptureResult:
         with self._session() as s:
             return _capture(
                 s, store_chain_id=store_chain_id, upc=upc, plu_code=plu_code, hh=hh, fallback_name=fallback_name,
-                fallback_category=fallback_category, alias_text=alias_text, name=name, brand=brand,
+                fallback_category=fallback_category, alias_text=alias_text,
+                alias_store_chain_id=alias_store_chain_id, name=name, brand=brand,
                 category=category, unit_size=unit_size, photo_id=photo_id,
                 previous_product_id=previous_product_id, receipt_id=receipt_id, line_item_id=line_item_id,
             )

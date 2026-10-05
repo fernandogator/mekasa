@@ -1182,6 +1182,14 @@ components:
         brand: { type: [string, 'null'], maxLength: 80 }
         category: { type: [string, 'null'], minLength: 1, maxLength: 60 }
         unit_size: { type: [string, 'null'], maxLength: 40 }
+        receipt_text:
+          type: [string, 'null']
+          maxLength: 200
+          description: 'Inventory variant: the receipt line text the item came from; upserted as an alias so the next scan matches (REQ-RCP-020 AC6).'
+        store_chain_id:
+          type: [string, 'null']
+          maxLength: 40
+          description: '`store_chain_id` from the scan response; unknown chains fall back to `unknown`.'
 
     ProductCaptureResponse:
       type: object
@@ -1500,6 +1508,11 @@ components:
         household_id: { type: string }
         engine: { type: string, examples: [gemini, text, vision, stub] }
         receipt_id: { type: [string, 'null'] }
+        store_name: { type: [string, 'null'] }
+        store_chain_id:
+          type: string
+          default: unknown
+          description: 'Chain matched from the printed store name (`store_chains`), or `unknown`. Send it back on capture (REQ-RCP-007 AC5, REQ-RCP-020 AC6).'
         items:
           type: array
           items:
@@ -1513,3 +1526,9 @@ components:
               barcode: { type: [string, 'null'] }
               image_url: { type: [string, 'null'] }
               identified: { type: boolean }
+              receipt_text: { type: [string, 'null'], maxLength: 200, description: Line text as printed }
+              receipt_code: { type: [string, 'null'], maxLength: 64, description: Item code printed on the line }
+              matched_product_id: { type: [string, 'null'], description: 'Shared catalog product (REQ-RCP-007 AC5)' }
+              match_method:
+                type: [string, 'null']
+                enum: [upc, plu, alias, open_food_facts, null]

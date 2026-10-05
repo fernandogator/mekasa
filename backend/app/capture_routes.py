@@ -27,6 +27,7 @@ from app.item_photos import ItemPhotoService, get_item_photo_service
 from app.models import InventoryItemResponse, ProductCaptureRequest, ProductCaptureResponse
 from app.product_photos import ProductPhotoService, get_product_photo_service
 from app.scan_events_repository import ScanEventsRepository, get_scan_events_repository, new_scan_event
+from app.store_chains import known_chain
 
 capture_router = APIRouter(prefix="/v1", tags=["inventory"])
 
@@ -67,7 +68,9 @@ def capture_inventory_item_product(
     creating it when the catalog does not know the code, and sets the item's
     `barcode` (UPCs only), `product_id` and `image_url`. A capture photo must
     come from this household's `POST …/product-photos`; it is shared with the
-    product under the REQ-RCP-020 AC5 rules.
+    product under the REQ-RCP-020 AC5 rules. `receipt_text` (with the scan's
+    `store_chain_id`) becomes an alias for the product, so the next receipt
+    scan with that text matches it (REQ-RCP-007 AC5).
     """
     if (payload.upc is None) == (payload.plu_code is None):
         raise _bad_request("exactly_one_code_required")
@@ -100,6 +103,8 @@ def capture_inventory_item_product(
             category=payload.category,
             unit_size=payload.unit_size,
             photo_id=photo_id,
+            alias_text=payload.receipt_text,
+            alias_store_chain_id=known_chain(payload.store_chain_id),
         )
     except ValueError as exc:
         raise _bad_request(str(exc)) from exc

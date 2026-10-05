@@ -73,6 +73,7 @@ from app.models import (
     UnknownBarcodeEvent,
     UserProfile,
 )
+from app.catalog_repository import CatalogRepository, get_catalog_repository
 from app.members_repository import MembersRepository, get_members_repository
 from app.places_lookup import fetch_nearby_stores
 from app.product_health import AVOIDANCES, member_warnings
@@ -85,6 +86,7 @@ from app.repository import (
     stub_nearby_stores,
 )
 from app.spending_repository import SpendingRepository, get_spending_repository
+from app.store_chains import resolve_store_chain
 from app.unknown_barcode_log import list_unknown_barcodes, log_unknown_barcode
 from app.shopping_list_repository import (
     ShoppingListRepository,
@@ -862,14 +864,17 @@ async def scan_receipt(
     user: AuthUser = Depends(verify_bearer_token),
     repo: HouseholdRepository = Depends(get_household_repository),
     settings: Settings = Depends(get_settings),
+    catalog: CatalogRepository = Depends(get_catalog_repository),
 ) -> ReceiptScanResponse:
     """
-    Satisfies: REQ-005
+    Satisfies: REQ-005, REQ-RCP-007 AC5
     Acceptance criteria: AC1, AC2
     Spec version: 1.0
 
     Gemini extracts line items (falling back to Vision OCR + regex), then each
-    line is matched against Open Food Facts for a product image / barcode.
+    line is matched against the shared catalog (printed code, then receipt
+    text alias for the detected chain or `unknown`) and, failing that, Open
+    Food Facts for a product image / barcode.
     Unmatched lines keep the parsed name and a category placeholder image
     with identified=false. `store_name` is the printed store brand, used by
     clients for in-store capture guidance (REQ-RCP-020 AC1).
@@ -892,12 +897,14 @@ async def scan_receipt(
         raw_text=payload.raw_text,
         allow_stub=True,
     )
-    items = await enrich_receipt_items(result.items)
+    store_chain_id = resolve_store_chain(result.store_name)
+    items = await enrich_receipt_items(result.items, catalog=catalog, store_chain_id=store_chain_id)
     return ReceiptScanResponse(
         household_id=household_id,
         engine=result.engine,
         items=items,
         store_name=result.store_name,
+        store_chain_id=store_chain_id,
     )
 
 
