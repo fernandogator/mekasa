@@ -38,9 +38,16 @@ struct RootView: View {
         .transition(.opacity.combined(with: .move(edge: .bottom)))
         .alert("Something went wrong", isPresented: Binding(
             get: { session.lastError != nil },
-            set: { if !$0 { session.lastError = nil } }
+            set: { isPresented in
+                guard !isPresented, let dismissed = session.lastError else { return }
+                // SwiftUI calls this mid view-update; publishing here directly triggers
+                // "Publishing changes from within view updates is not allowed".
+                Task { @MainActor in
+                    if session.lastError == dismissed { session.lastError = nil }
+                }
+            }
         )) {
-            Button("OK", role: .cancel) { session.lastError = nil }
+            Button("OK", role: .cancel) {}
         } message: {
             Text(session.lastError ?? "")
         }
