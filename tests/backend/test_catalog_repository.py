@@ -272,6 +272,26 @@ def test_capture_unknown_upc_creates_user_scan_product_with_photo_and_job(repo) 
     assert _alias_target(repo, "heb", "CAULIFLOWER") == "041220576037"
 
 
+def test_capture_alias_goes_under_alias_chain_and_is_found_by_lookup(repo) -> None:
+    """REQ-RCP-020 AC6, REQ-RCP-007 AC5: shared product, chain-scoped alias."""
+    result = repo.capture(
+        store_chain_id="unknown", upc="0070852993188", hh=HH_A, fallback_name="A2 Milk", fallback_category="Dairy",
+        alias_text="A2 MLK WHL 59OZ", alias_store_chain_id="heb", photo_id=PHOTO,
+    )
+    assert result.product.store_chain_id == "unknown"
+    assert _alias_target(repo, "heb", "A2 MLK WHL 59OZ") == "0070852993188"
+    assert _alias_target(repo, "unknown", "A2 MLK WHL 59OZ") is None
+    found = repo.lookup_alias("heb", "a2 mlk  whl 59oz")
+    assert found is not None and found.image_url == f"/v1/product-photos/{PHOTO}"
+    assert repo.lookup_alias("walmart", "A2 MLK WHL 59OZ") is None
+
+    repo.capture(
+        store_chain_id="unknown", plu_code="4011", hh=HH_A, fallback_name="Bananas", fallback_category="Produce",
+        alias_text="A2 MLK WHL 59OZ", alias_store_chain_id="heb",
+    )
+    assert _alias_target(repo, "heb", "A2 MLK WHL 59OZ") == "0070852993188"  # never re-pointed
+
+
 def test_capture_known_upc_links_and_counts(repo) -> None:
     repo.capture(store_chain_id="heb", upc="041220576037", hh=HH_A, fallback_name="Coke", fallback_category="Beverages")
     result = repo.capture(store_chain_id="heb", upc="041220576037", hh=HH_B, fallback_name="ignored", fallback_category="ignored", name="also ignored")

@@ -4,12 +4,23 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import logging
 import re
 from dataclasses import dataclass
 
 from app.barcode_lookup import search_products
+from app.catalog_repository import (
+    PLU_RE,
+    SHARED_CHAIN_ID,
+    UPC_RE,
+    CatalogProduct,
+    CatalogRepository,
+    plu_product_id,
+)
 from app.category_icons import category_placeholder_url
 from app.models import ReceiptLineItem
+
+logger = logging.getLogger(__name__)
 
 # Cap concurrent OFF lookups so a long receipt does not stampede the API.
 _ENRICH_CONCURRENCY = 4
@@ -172,6 +183,44 @@ def is_strong_match(ocr_name: str, hit_name: str) -> bool:
     return len(overlap) >= max(1, len(raw_ocr) // 2)
 
 
+def match_catalog(catalog: CatalogRepository, item: ReceiptLineItem, store_chain_id: str) -> ReceiptLineItem | None:
+    """
+    Satisfies: REQ-RCP-007 AC2, AC5
+    Spec version: 1.0
+
+    Printed code (UPC, then PLU), then the receipt text as an alias for the
+    chain, then under `unknown`. Read-only: aliases are written by capture.
+    """
+    code = item.receipt_code or ""
+    product: CatalogProduct | None = None
+    method = ""
+    if UPC_RE.match(code):
+        product, method = catalog.get_by_upc(code), "upc"
+    elif PLU_RE.match(code):
+        product, method = catalog.get_product(plu_product_id(code)), "plu"
+    if product is None:
+        text = item.receipt_text or item.name
+        for chain in dict.fromkeys((store_chain_id, SHARED_CHAIN_ID)):
+            product = catalog.lookup_alias(chain, text)
+            if product is not None:
+                method = "alias"
+                break
+    if product is None:
+        return None
+    category = product.category or item.category
+    return item.model_copy(
+        update={
+            "name": (product.name or item.name)[:120],
+            "category": category,
+            "barcode": product.upc or item.barcode,
+            "image_url": product.image_url or category_placeholder_url(category),
+            "identified": True,
+            "matched_product_id": product.id,
+            "match_method": method,
+        }
+    )
+
+
 async def enrich_receipt_item(item: ReceiptLineItem) -> ReceiptLineItem:
     """
     Match a parsed line against Open Food Facts.
@@ -200,6 +249,7 @@ async def enrich_receipt_item(item: ReceiptLineItem) -> ReceiptLineItem:
                 "barcode": hit.barcode,
                 "image_url": hit.image_url or placeholder,
                 "identified": True,
+                "match_method": "open_food_facts",
             }
         )
 
@@ -211,14 +261,33 @@ async def enrich_receipt_item(item: ReceiptLineItem) -> ReceiptLineItem:
     )
 
 
-async def enrich_receipt_items(items: list[ReceiptLineItem]) -> list[ReceiptLineItem]:
-    """Enrich lines in parallel with a small concurrency limit."""
+async def enrich_receipt_items(
+    items: list[ReceiptLineItem],
+    catalog: CatalogRepository | None = None,
+    store_chain_id: str = SHARED_CHAIN_ID,
+) -> list[ReceiptLineItem]:
+    """
+    Satisfies: REQ-005 AC4, AC5; REQ-RCP-007 AC5
+    Spec version: 1.0
+
+    Shared catalog first, Open Food Facts only for lines the catalog does not
+    know; lines run in parallel with a small concurrency limit. A catalog
+    error never fails the scan.
+    """
     if not items:
         return []
     semaphore = asyncio.Semaphore(_ENRICH_CONCURRENCY)
 
     async def _one(item: ReceiptLineItem) -> ReceiptLineItem:
         async with semaphore:
+            if catalog is not None:
+                try:
+                    hit = await asyncio.to_thread(match_catalog, catalog, item, store_chain_id)
+                except Exception:
+                    logger.warning("catalog match failed; using Open Food Facts", exc_info=True)
+                    hit = None
+                if hit is not None:
+                    return hit
             return await enrich_receipt_item(item)
 
     return list(await asyncio.gather(*(_one(item) for item in items)))

@@ -397,6 +397,9 @@ class ReceiptLineItem(BaseModel):
     # printed on the line; both feed the shared catalog's aliases (ADR-008).
     receipt_text: str | None = Field(default=None, max_length=200)
     receipt_code: str | None = Field(default=None, max_length=64)
+    # Shared catalog product and how the line matched it (REQ-RCP-007 AC5).
+    matched_product_id: str | None = Field(default=None, max_length=64)
+    match_method: Literal["upc", "plu", "alias", "open_food_facts"] | None = None
 
 
 class ReceiptScanRequest(BaseModel):
@@ -420,6 +423,8 @@ class ReceiptScanResponse(BaseModel):
     items: list[ReceiptLineItem]
     # Printed store brand ("Walmart #1234"); shown in capture guidance (REQ-RCP-020).
     store_name: str | None = None
+    # `store_chains.chain_id` for store_name; clients send it back on capture (REQ-RCP-007 AC5).
+    store_chain_id: str = "unknown"
 
 
 class ItemPhotoUploadResponse(BaseModel):
@@ -762,10 +767,13 @@ class ProductCaptureRequest(BaseModel):
     brand: str | None = Field(default=None, max_length=80)
     category: str | None = Field(default=None, min_length=1, max_length=60)
     unit_size: str | None = Field(default=None, max_length=40)
+    # Receipt line the item came from; written as an alias (REQ-RCP-020 AC6).
+    receipt_text: str | None = Field(default=None, max_length=200)
+    store_chain_id: str | None = Field(default=None, max_length=40)
 
     @model_validator(mode="after")
     def _strip(self) -> "ProductCaptureRequest":
-        for key in ("upc", "plu_code", "name", "brand", "unit_size"):
+        for key in ("upc", "plu_code", "name", "brand", "unit_size", "receipt_text", "store_chain_id"):
             value = getattr(self, key)
             if isinstance(value, str):
                 setattr(self, key, value.strip() or None)
