@@ -1,36 +1,55 @@
 import SwiftUI
+import UIKit
 
-/// Item detail: quantity + low-stock threshold (REQ-009).
+/// Item detail: quantity + low-stock threshold (REQ-009), and swiping to the
+/// previous / next item of the list it was opened from (REQ-INV-020).
 /// Spec version: 1.0
 struct ItemDetailView: View {
     @EnvironmentObject private var session: AppSession
     @Environment(\.dismiss) private var dismiss
 
-    let itemID: String
+    @State private var currentID: String
+    /// Frozen at open so the order is the list as the user saw it (REQ-INV-020 AC1).
+    @State private var openedPager: ItemPager
     @State private var threshold: Int = 1
     @State private var quantity: Int = 1
     @State private var useOneMessage: String?
+    @State private var dragOffset: CGFloat = 0
+    @State private var arrivalEdge: Edge = .trailing
+
+    init(itemID: String, pager: ItemPager? = nil) {
+        _currentID = State(initialValue: itemID)
+        _openedPager = State(initialValue: pager ?? ItemPager(ids: []))
+    }
 
     private var item: InventoryItem? {
-        session.inventory.first(where: { $0.id == itemID })
+        session.inventory.first(where: { $0.id == currentID })
+    }
+
+    private var pager: ItemPager {
+        openedPager.keeping(Set(session.inventory.map(\.id)))
     }
 
     var body: some View {
         MekasaScreen {
             VStack(spacing: 0) {
-                AddFlowHeader(title: "Item detail", onBack: { dismiss() })
+                AddFlowHeader(
+                    title: "Item detail",
+                    onBack: { dismiss() },
+                    trailingLabel: pager.positionLabel(for: currentID)
+                )
 
                 if let item {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 24) {
-                            ProductHeroImage(urlString: item.imageURL, title: item.name) { image in
-                                await session.replaceInventoryItemImage(itemID: item.id, image: image)
-                            }
+                            hero(item)
 
                             Text(item.name)
                                 .font(.system(size: 28, weight: .black, design: .rounded))
                                 .foregroundStyle(MekasaTheme.text)
                                 .accessibilityIdentifier(TestIdentifiers.itemNameLabel)
+                                .accessibilityAction(named: Text("Next item")) { move(.next) }
+                                .accessibilityAction(named: Text("Previous item")) { move(.previous) }
 
                             Text(item.category)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
@@ -81,12 +100,29 @@ struct ItemDetailView: View {
                                     .foregroundStyle(MekasaTheme.text)
                                     .accessibilityIdentifier(TestIdentifiers.itemDetailUseOneStatus)
                             }
+
+                            if pager.isActive {
+                                Label("Swipe left or right for the next or previous item", systemImage: "arrow.left.and.right")
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(MekasaTheme.textMuted)
+                                    .frame(maxWidth: .infinity)
+                                    .accessibilityHidden(true)
+                            }
                         }
                         .padding(.horizontal, 24)
                         .padding(.top, 12)
                         .padding(.bottom, 40)
                         .accessibilityIdentifier(TestIdentifiers.itemDetailView)
                     }
+                    .id(currentID)
+                    .transition(
+                        .asymmetric(
+                            insertion: .move(edge: arrivalEdge),
+                            removal: .move(edge: arrivalEdge == .trailing ? .leading : .trailing)
+                        )
+                    )
+                    .offset(x: dragOffset)
+                    .simultaneousGesture(swipe, including: pager.isActive ? .all : .subviews)
                 } else {
                     Text("Item not found")
                         .font(MekasaTheme.bodyFont)
@@ -94,17 +130,101 @@ struct ItemDetailView: View {
                         .padding(24)
                 }
             }
+            .clipped()
         }
         .navigationBarHidden(true)
-        .onAppear {
-            if let item {
-                threshold = item.lowStockThreshold
-                quantity = item.quantity
-            }
+        .onAppear(perform: loadEditableValues)
+        .onChange(of: currentID) { _, _ in
+            useOneMessage = nil
+            loadEditableValues()
         }
-        .task(id: itemID) {
+        .task(id: currentID) {
             await refetchMissingImageIfNeeded()
             await backfillHealthIfNeeded()
+        }
+    }
+
+    private func loadEditableValues() {
+        if let item {
+            threshold = item.lowStockThreshold
+            quantity = item.quantity
+        }
+    }
+
+    // MARK: - Swipe between items (REQ-INV-020)
+
+    private var swipe: some Gesture {
+        DragGesture(minimumDistance: 20)
+            .onChanged { value in
+                let dx = value.translation.width
+                guard abs(dx) > abs(value.translation.height) * 1.5 else { return }
+                if dx > 0, value.startLocation.x < ItemPager.backEdgeInset { return }
+                dragOffset = dx * 0.35
+            }
+            .onEnded { value in
+                if let step = ItemPager.step(translation: value.translation, startX: value.startLocation.x) {
+                    move(step)
+                } else {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { dragOffset = 0 }
+                }
+            }
+    }
+
+    private func move(_ step: ItemPager.Step) {
+        guard let target = pager.neighbor(of: currentID, step) else {
+            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { dragOffset = 0 }
+            return
+        }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        arrivalEdge = step == .next ? .trailing : .leading
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+            dragOffset = 0
+            currentID = target
+        }
+    }
+
+    private func hero(_ item: InventoryItem) -> some View {
+        ProductHeroImage(urlString: item.imageURL, title: item.name) { image in
+            await session.replaceInventoryItemImage(itemID: item.id, image: image)
+        }
+        .background(alignment: .leading) { neighborSliver(.previous) }
+        .background(alignment: .trailing) { neighborSliver(.next) }
+        .overlay(alignment: .leading) { chevron(.previous) }
+        .overlay(alignment: .trailing) { chevron(.next) }
+    }
+
+    /// Dimmed edge of the neighbouring item's picture, peeking from the side (AC3).
+    @ViewBuilder
+    private func neighborSliver(_ step: ItemPager.Step) -> some View {
+        if let id = pager.neighbor(of: currentID, step),
+           let neighbor = session.inventory.first(where: { $0.id == id }) {
+            ProductThumbnail(urlString: neighbor.imageURL, size: 120, cornerRadius: 20)
+                .frame(width: 14, alignment: step == .previous ? .trailing : .leading)
+                .clipped()
+                .opacity(0.45)
+                .offset(x: step == .previous ? -18 : 18)
+                .accessibilityHidden(true)
+        }
+    }
+
+    @ViewBuilder
+    private func chevron(_ step: ItemPager.Step) -> some View {
+        if pager.neighbor(of: currentID, step) != nil {
+            Button {
+                move(step)
+            } label: {
+                Image(systemName: step == .previous ? "chevron.left" : "chevron.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(MekasaTheme.text)
+                    .frame(width: 34, height: 34)
+                    .background(MekasaTheme.surfaceElevated.opacity(0.85))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .padding(8)
+            .accessibilityLabel(step == .previous ? "Previous item" : "Next item")
+            .accessibilityIdentifier(step == .previous ? TestIdentifiers.itemPagerPrevious : TestIdentifiers.itemPagerNext)
         }
     }
 
