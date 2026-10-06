@@ -108,6 +108,8 @@ struct InventoryItemDTO: Codable, Equatable, Identifiable {
     let pricePaid: Double?
     let barcode: String?
     let imageURL: String?
+    /// REQ-INV-021 AC2
+    let imageUpdatedAt: Date?
     /// Shared catalog product (UPC, `plu:` or `llm:`) linked by a capture (REQ-RCP-020 AC6, AC15).
     let productId: String?
     let source: String
@@ -125,6 +127,7 @@ struct InventoryItemDTO: Codable, Equatable, Identifiable {
         case lowStockThreshold = "low_stock_threshold"
         case pricePaid = "price_paid"
         case imageURL = "image_url"
+        case imageUpdatedAt = "image_updated_at"
         case productId = "product_id"
         case createdByUid = "created_by_uid"
         case updatedByUid = "updated_by_uid"
@@ -143,6 +146,7 @@ struct InventoryItemDTO: Codable, Equatable, Identifiable {
         pricePaid = try container.decodeIfPresent(Double.self, forKey: .pricePaid)
         barcode = try container.decodeIfPresent(String.self, forKey: .barcode)
         imageURL = try container.decodeIfPresent(String.self, forKey: .imageURL)
+        imageUpdatedAt = try container.decodeIfPresent(Date.self, forKey: .imageUpdatedAt)
         productId = try container.decodeIfPresent(String.self, forKey: .productId)
         source = try container.decodeIfPresent(String.self, forKey: .source) ?? "manual"
         createdByUid = try container.decodeIfPresent(String.self, forKey: .createdByUid)
@@ -166,6 +170,7 @@ struct InventoryItemDTO: Codable, Equatable, Identifiable {
             imageURL: imageURL,
             health: health,
             productId: productId,
+            imageUpdatedAt: imageUpdatedAt,
             updatedAt: updatedAt ?? Date()
         )
     }
@@ -620,6 +625,55 @@ struct ProductCaptureResponseDTO: Decodable, Equatable {
         case outcome
         case photoAppliedAs = "photo_applied_as"
         case inventoryItem = "inventory_item"
+    }
+}
+
+/// `GET …/inventory/duplicates` (REQ-INV-021 AC1, AC2).
+struct InventoryDuplicatesResponseDTO: Decodable, Equatable {
+    let householdId: String
+    let groups: [InventoryDuplicateGroupDTO]
+
+    enum CodingKeys: String, CodingKey {
+        case groups
+        case householdId = "household_id"
+    }
+}
+
+struct InventoryDuplicateGroupDTO: Decodable, Equatable {
+    let reason: DuplicateReason
+    let keepId: String
+    let items: [InventoryItemDTO]
+
+    enum CodingKeys: String, CodingKey {
+        case reason, items
+        case keepId = "keep_id"
+    }
+
+    func toLocal() -> DuplicateGroup {
+        DuplicateGroup(reason: reason, keepID: keepId, items: items.map { $0.toLocal() })
+    }
+}
+
+/// `POST …/inventory/merge` (REQ-INV-021 AC3).
+struct InventoryMergeResponseDTO: Decodable, Equatable {
+    let householdId: String
+    let item: InventoryItemDTO
+    let removedIds: [String]
+    let shoppingListItems: [ShoppingListItemDTO]
+
+    enum CodingKeys: String, CodingKey {
+        case item
+        case householdId = "household_id"
+        case removedIds = "removed_ids"
+        case shoppingListItems = "shopping_list_items"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        householdId = try container.decode(String.self, forKey: .householdId)
+        item = try container.decode(InventoryItemDTO.self, forKey: .item)
+        removedIds = try container.decodeIfPresent([String].self, forKey: .removedIds) ?? []
+        shoppingListItems = try container.decodeIfPresent([ShoppingListItemDTO].self, forKey: .shoppingListItems) ?? []
     }
 }
 

@@ -21,6 +21,8 @@ struct InventoryItem: Identifiable, Equatable, Hashable {
     var receiptText: String?
     /// Shared catalog product id (UPC, `plu:<code>` or `llm:<sha1>`); nil until a capture links one.
     var productId: String?
+    /// When `imageURL` last changed (REQ-INV-021 AC2); nil on older rows, which fall back to `updatedAt`.
+    var imageUpdatedAt: Date?
     var updatedAt: Date
 
     var isLowStock: Bool { quantity <= lowStockThreshold }
@@ -44,6 +46,7 @@ struct InventoryItem: Identifiable, Equatable, Hashable {
         isIdentified: Bool = true,
         receiptText: String? = nil,
         productId: String? = nil,
+        imageUpdatedAt: Date? = nil,
         updatedAt: Date = Date()
     ) {
         self.id = id
@@ -59,6 +62,7 @@ struct InventoryItem: Identifiable, Equatable, Hashable {
         self.isIdentified = isIdentified
         self.receiptText = receiptText
         self.productId = productId
+        self.imageUpdatedAt = imageUpdatedAt
         self.updatedAt = updatedAt
     }
 }

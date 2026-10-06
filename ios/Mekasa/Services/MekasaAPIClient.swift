@@ -361,6 +361,32 @@ actor MekasaAPIClient {
         )
     }
 
+    /// REQ-INV-021 AC1: duplicate groups in the household inventory.
+    func listInventoryDuplicates(householdID: String, token: String) async throws -> InventoryDuplicatesResponseDTO {
+        try await request(
+            path: "/v1/households/\(householdID)/inventory/duplicates",
+            method: "GET",
+            token: token
+        )
+    }
+
+    /// REQ-INV-021 AC3: merge one duplicate group into its survivor.
+    func mergeInventoryItems(
+        householdID: String,
+        itemIDs: [String],
+        token: String
+    ) async throws -> InventoryMergeResponseDTO {
+        struct Body: Encodable {
+            let item_ids: [String]
+        }
+        return try await request(
+            path: "/v1/households/\(householdID)/inventory/merge",
+            method: "POST",
+            token: token,
+            body: Body(item_ids: itemIDs)
+        )
+    }
+
     /// Remove a private item photo (REQ-INV-019 AC5).
     func deleteItemPhoto(householdID: String, photoID: String, token: String) async throws {
         _ = try await rawRequest(

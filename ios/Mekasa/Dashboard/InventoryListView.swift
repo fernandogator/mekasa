@@ -7,6 +7,7 @@ struct InventoryListView: View {
     @EnvironmentObject private var session: AppSession
     @State private var query = ""
     @State private var showAddItems = false
+    @State private var showDuplicates = false
 
     private var sections: [InventoryListModel.Section] {
         InventoryListModel.sections(session.inventory, query: query)
@@ -81,6 +82,14 @@ struct InventoryListView: View {
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $showDuplicates) {
+            NavigationStack {
+                InventoryDuplicatesView()
+            }
+            .environmentObject(session)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
         .task {
             guard !session.isUITesting else { return }
             await session.refreshInventory()
@@ -103,6 +112,19 @@ struct InventoryListView: View {
                     .accessibilityIdentifier(TestIdentifiers.inventorySummary)
             }
             Spacer()
+            if !session.inventory.isEmpty {
+                Button {
+                    showDuplicates = true
+                } label: {
+                    Image(systemName: "square.on.square")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(MekasaTheme.accent)
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Find duplicates")
+                .accessibilityIdentifier(TestIdentifiers.inventoryFindDuplicatesButton)
+            }
             Button {
                 showAddItems = true
             } label: {
