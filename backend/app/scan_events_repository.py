@@ -19,6 +19,7 @@ from uuid import uuid4
 from pydantic import BaseModel
 
 from app.config import Settings, get_settings
+from app.firestore_retry import STREAM_RETRY
 from app.repository import resolve_persistence_mode
 
 ScanContext = Literal["add_items", "trash_station", "manual_entry", "receipt_capture", "inventory_capture"]
@@ -96,7 +97,7 @@ class FirestoreScanEventsRepository:
     def list_events(self, household_id: str) -> list[ScanEvent]:
         return [
             ScanEvent(id=snap.id, household_id=household_id, **(snap.to_dict() or {}))
-            for snap in self._col(household_id).order_by("scanned_at").stream()
+            for snap in self._col(household_id).order_by("scanned_at").stream(retry=STREAM_RETRY)
         ]
 
 

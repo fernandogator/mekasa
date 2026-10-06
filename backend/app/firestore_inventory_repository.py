@@ -9,6 +9,7 @@ from uuid import uuid4
 from google.cloud import firestore
 
 from app.config import Settings
+from app.firestore_retry import STREAM_RETRY
 from app.models import (
     InventoryConsumeByBarcodeRequest,
     InventoryConsumeRequest,
@@ -101,7 +102,7 @@ class FirestoreInventoryRepository:
         self._require_owner(household_id, owner_uid)
         items = [
             _to_item(household_id, snap.id, data)
-            for snap in self._col(household_id).stream()
+            for snap in self._col(household_id).stream(retry=STREAM_RETRY)
             if _is_active(data := (snap.to_dict() or {}))
         ]
         return sorted(items, key=lambda item: item.updated_at, reverse=True)
@@ -294,7 +295,7 @@ class FirestoreInventoryRepository:
             self._col(household_id)
             .where("barcode", "==", payload.barcode)
             .limit(1)
-            .stream()
+            .stream(retry=STREAM_RETRY)
         )
         match = None
         for snap in query:
@@ -315,14 +316,14 @@ class FirestoreInventoryRepository:
     ) -> InventoryItemResponse | None:
         col = self._col(household_id)
         if payload.barcode:
-            for snap in col.where("barcode", "==", payload.barcode).limit(5).stream():
+            for snap in col.where("barcode", "==", payload.barcode).limit(5).stream(retry=STREAM_RETRY):
                 data = snap.to_dict() or {}
                 if _is_active(data):
                     return _to_item(household_id, snap.id, data)
         # Name+category merge scanned in-process (avoid composite index for v1).
         name = _norm(payload.name)
         category = _norm(payload.category)
-        for snap in col.stream():
+        for snap in col.stream(retry=STREAM_RETRY):
             data = snap.to_dict() or {}
             if not _is_active(data):
                 continue
