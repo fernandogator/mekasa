@@ -8,7 +8,9 @@ import app.mekasa.fable.data.model.Household
 import app.mekasa.fable.data.model.HouseholdInvite
 import app.mekasa.fable.data.model.HouseholdMember
 import app.mekasa.fable.data.model.InventoryItem
+import app.mekasa.fable.data.model.ProductCaptureRequest
 import app.mekasa.fable.data.model.ProductHit
+import app.mekasa.fable.data.model.ProductPhotoUpload
 import app.mekasa.fable.data.model.ReceiptLine
 import app.mekasa.fable.data.model.ReceiptScanResponse
 import app.mekasa.fable.data.model.ShoppingItem
@@ -195,6 +197,22 @@ class DemoBackend(
 
     override suspend fun unknownScans(householdId: String): List<UnknownBarcodeEvent> = lock.withLock { unknownRows.toList() }
 
+    override suspend fun uploadProductPhoto(householdId: String, jpeg: ByteArray): ProductPhotoUpload {
+        require(jpeg.isNotEmpty()) { "Empty photo" }
+        val encoded = java.util.Base64.getEncoder().encodeToString(jpeg)
+        return ProductPhotoUpload(photoId = java.util.UUID.randomUUID().toString(), imageUrl = "data:image/jpeg;base64,$encoded")
+    }
+
+    /** Offline preview: links the item to a code-keyed or receipt-text-keyed product id. */
+    override suspend fun captureProduct(householdId: String, itemId: String, request: ProductCaptureRequest): InventoryItem =
+        replaceInventory(itemId) { item ->
+            val productId = request.upc ?: request.pluCode?.let { "plu:$it" } ?: "llm:demo-${request.receiptText.orEmpty().lowercase()}"
+            item.copy(barcode = request.upc ?: item.barcode, productId = productId)
+        }
+
+    override suspend fun refreshHealth(householdId: String, itemId: String): InventoryItem =
+        replaceInventory(itemId) { it }
+
     override suspend fun softDeleteInventory(householdId: String, itemId: String) {
         replaceInventory(itemId) { it.copy(deleted = true) }
     }
@@ -329,7 +347,7 @@ class DemoBackend(
     }
 
     override suspend fun scanReceipt(householdId: String, rawText: String?, imageBase64: String?): ReceiptScanResponse =
-        ReceiptScanResponse(householdId = householdId, engine = "demo", items = DEMO_RECEIPT)
+        ReceiptScanResponse(householdId = householdId, engine = "demo", items = DEMO_RECEIPT, storeName = "Publix", storeChainId = "publix")
 
     companion object {
         const val DEMO_UID = "demo-owner"
@@ -367,7 +385,7 @@ TOTAL              9.77"""
         val DEMO_RECEIPT = listOf(
             ReceiptLine("Bananas", "Produce", 1, 1.29, identified = true),
             ReceiptLine("Whole Milk", "Dairy", 1, 3.49, barcode = "041900076543", identified = true),
-            ReceiptLine("Sourdough Loaf", "Bakery", 1, 4.99, identified = false),
+            ReceiptLine("Sourdough Loaf", "Bakery", 1, 4.99, identified = false, receiptText = "SOURDOUGH LOAF"),
         )
     }
 }
