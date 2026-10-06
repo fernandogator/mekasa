@@ -11,7 +11,9 @@ import app.mekasa.fable.data.model.InventoryItem
 import app.mekasa.fable.data.model.InventoryItemCreateRequest
 import app.mekasa.fable.data.model.InventoryItemPatch
 import app.mekasa.fable.data.model.InviteCreateRequest
+import app.mekasa.fable.data.model.ProductCaptureRequest
 import app.mekasa.fable.data.model.ProductHit
+import app.mekasa.fable.data.model.ProductPhotoUpload
 import app.mekasa.fable.data.model.ReceiptScanResponse
 import app.mekasa.fable.data.model.ShoppingItem
 import app.mekasa.fable.data.model.ShoppingItemCreateRequest
@@ -103,6 +105,17 @@ class RemoteBackend(
 
     override suspend fun unknownScans(householdId: String): List<UnknownBarcodeEvent> =
         api.listUnknownScans(token(), householdId)
+
+    override suspend fun uploadProductPhoto(householdId: String, jpeg: ByteArray): ProductPhotoUpload =
+        api.uploadProductPhoto(token(), householdId, jpeg)
+
+    override suspend fun captureProduct(householdId: String, itemId: String, request: ProductCaptureRequest): InventoryItem {
+        val response = api.captureInventoryItem(token(), householdId, itemId, request)
+        return response.inventoryItem ?: throw ApiException(500, "capture_returned_no_item")
+    }
+
+    override suspend fun refreshHealth(householdId: String, itemId: String): InventoryItem =
+        api.refreshInventoryHealth(token(), householdId, itemId)
 
     override suspend fun softDeleteInventory(householdId: String, itemId: String) =
         api.deleteInventoryItem(token(), householdId, itemId)

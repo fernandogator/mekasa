@@ -16,11 +16,14 @@ import app.mekasa.fable.data.model.HouseholdNameUpdateRequest
 import app.mekasa.fable.data.model.InventoryItem
 import app.mekasa.fable.data.model.InventoryItemCreateRequest
 import app.mekasa.fable.data.model.InventoryItemPatch
-import app.mekasa.fable.data.model.ItemPhotoUpload
 import app.mekasa.fable.data.model.InventoryListResponse
 import app.mekasa.fable.data.model.InviteAcceptRequest
 import app.mekasa.fable.data.model.InviteCreateRequest
+import app.mekasa.fable.data.model.ItemPhotoUpload
 import app.mekasa.fable.data.model.MemberRoleUpdateRequest
+import app.mekasa.fable.data.model.ProductCaptureRequest
+import app.mekasa.fable.data.model.ProductCaptureResponse
+import app.mekasa.fable.data.model.ProductPhotoUpload
 import app.mekasa.fable.data.model.ProductSearchResponse
 import app.mekasa.fable.data.model.ReceiptScanRequest
 import app.mekasa.fable.data.model.ReceiptScanResponse
@@ -193,6 +196,38 @@ class KtorMekasaApi(
 
     override suspend fun refreshInventoryImage(token: String, householdId: String, itemId: String): InventoryItem =
         call(HttpMethod.Post, "/v1/households/$householdId/inventory/$itemId/refresh-image", token)
+
+    override suspend fun refreshInventoryHealth(token: String, householdId: String, itemId: String): InventoryItem =
+        call(HttpMethod.Post, "/v1/households/$householdId/inventory/$itemId/refresh-health", token)
+
+    override suspend fun uploadProductPhoto(token: String, householdId: String, bytes: ByteArray): ProductPhotoUpload {
+        val response = client.request("$root/v1/households/$householdId/product-photos") {
+            method = HttpMethod.Post
+            bearerAuth(token)
+            setBody(
+                MultiPartFormDataContent(
+                    formData {
+                        append(
+                            key = "file",
+                            value = bytes,
+                            headers = Headers.build {
+                                append(HttpHeaders.ContentType, "image/jpeg")
+                                append(HttpHeaders.ContentDisposition, "filename=\"product.jpg\"")
+                            },
+                        )
+                    },
+                ),
+            )
+        }
+        return unwrap(response)
+    }
+
+    override suspend fun captureInventoryItem(
+        token: String,
+        householdId: String,
+        itemId: String,
+        body: ProductCaptureRequest,
+    ): ProductCaptureResponse = call(HttpMethod.Post, "/v1/households/$householdId/inventory/$itemId/capture", token, body)
 
     override suspend fun consumeInventoryItem(
         token: String,
