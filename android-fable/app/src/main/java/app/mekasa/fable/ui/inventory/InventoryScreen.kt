@@ -20,8 +20,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.FilterNone
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -70,6 +72,7 @@ fun InventoryScreen(
     pendingRemoval: PendingRemoval? = null,
     onRemove: (InventoryItem) -> Unit = {},
     onUndoRemove: () -> Unit = {},
+    onFindDuplicates: (() -> Unit)? = null,
 ) {
     val palette = MekasaTheme.palette
     var query by rememberSaveable { mutableStateOf("") }
@@ -83,7 +86,19 @@ fun InventoryScreen(
                 title = "Inventory",
                 eyebrow = "${items.size} items · ${items.count { it.isLowStock }} low",
                 onBack = onBack,
-                trailing = { LinkButton("Add", onClick = onAdd, modifier = Modifier.testTag(TestTags.INVENTORY_ADD_BUTTON)) },
+                trailing = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (onFindDuplicates != null && items.isNotEmpty()) {
+                            IconButton(
+                                onClick = onFindDuplicates,
+                                modifier = Modifier.testTag(TestTags.INVENTORY_FIND_DUPLICATES_BUTTON),
+                            ) {
+                                Icon(Icons.Outlined.FilterNone, contentDescription = "Find duplicates", tint = palette.accent)
+                            }
+                        }
+                        LinkButton("Add", onClick = onAdd, modifier = Modifier.testTag(TestTags.INVENTORY_ADD_BUTTON))
+                    }
+                },
             )
             if (items.isEmpty()) {
                 EmptyMessage(

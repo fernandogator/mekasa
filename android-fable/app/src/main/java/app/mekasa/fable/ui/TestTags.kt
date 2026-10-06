@@ -75,6 +75,19 @@ object TestTags {
     fun itemCell(id: String) = "ItemCell-$id"
     fun useOne(id: String) = "UseOne-$id"
 
+    // Inventory duplicates (REQ-INV-021)
+    const val INVENTORY_FIND_DUPLICATES_BUTTON = "InventoryFindDuplicatesButton"
+    const val DUPLICATES_VIEW = "DuplicatesView"
+    const val DUPLICATES_LOADING = "DuplicatesLoading"
+    const val DUPLICATES_EMPTY_STATE = "DuplicatesEmptyState"
+    const val DUPLICATES_MERGE_ALL_BUTTON = "DuplicatesMergeAllButton"
+    const val DUPLICATES_CONFIRMATION = "DuplicatesConfirmation"
+    const val DUPLICATES_ERROR = "DuplicatesError"
+    fun duplicatesGroup(id: String) = "DuplicatesGroup-$id"
+    fun duplicatesMerge(id: String) = "DuplicatesMerge-$id"
+    fun duplicatesDismiss(id: String) = "DuplicatesDismiss-$id"
+    fun duplicatesItem(id: String) = "DuplicatesItem-$id"
+
     // Item detail (UI-006)
     const val ITEM_DETAIL_VIEW = "ItemDetailView"
     const val ITEM_IMAGE = "ItemImage"

@@ -4,12 +4,15 @@ import app.mekasa.fable.data.HouseholdBackend
 import app.mekasa.fable.data.InventoryDraft
 import app.mekasa.fable.data.model.BarcodeLookup
 import app.mekasa.fable.data.model.ConsumeByBarcodeResult
+import app.mekasa.fable.data.model.DuplicateGroup
 import app.mekasa.fable.data.model.Household
 import app.mekasa.fable.data.model.HouseholdInvite
 import app.mekasa.fable.data.model.HouseholdMember
 import app.mekasa.fable.data.model.InventoryItem
 import app.mekasa.fable.data.model.InventoryItemCreateRequest
 import app.mekasa.fable.data.model.InventoryItemPatch
+import app.mekasa.fable.data.model.InventoryMergeRequest
+import app.mekasa.fable.data.model.InventoryMergeResponse
 import app.mekasa.fable.data.model.InviteCreateRequest
 import app.mekasa.fable.data.model.ProductCaptureRequest
 import app.mekasa.fable.data.model.ProductHit
@@ -125,6 +128,12 @@ class RemoteBackend(
 
     override suspend fun purgeInventory(householdId: String, itemId: String) =
         api.purgeInventoryItem(token(), householdId, itemId)
+
+    override suspend fun inventoryDuplicates(householdId: String): List<DuplicateGroup> =
+        api.listInventoryDuplicates(token(), householdId).groups
+
+    override suspend fun mergeInventory(householdId: String, itemIds: List<String>): InventoryMergeResponse =
+        api.mergeInventory(token(), householdId, InventoryMergeRequest(itemIds))
 
     override suspend fun shoppingList(householdId: String): List<ShoppingItem> =
         api.listShopping(token(), householdId).items

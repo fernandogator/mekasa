@@ -62,6 +62,7 @@ import app.mekasa.fable.ui.components.Backdrop
 import app.mekasa.fable.ui.dashboard.DashboardScreen
 import app.mekasa.fable.ui.dashboard.HomePhotoScreen
 import app.mekasa.fable.ui.family.FamilyScreen
+import app.mekasa.fable.ui.inventory.DuplicatesScreen
 import app.mekasa.fable.ui.inventory.InventoryScreen
 import app.mekasa.fable.ui.inventory.ItemDetailScreen
 import app.mekasa.fable.ui.inventory.ItemPager
@@ -79,6 +80,7 @@ object Routes {
     const val SPEND = "spend"
     const val FAMILY = "family"
     const val INVENTORY = "inventory"
+    const val DUPLICATES = "inventory/duplicates"
     const val HOME_PHOTO = "home-photo"
     const val TRASH = "trash"
     const val ITEM = "item/{itemId}"
@@ -178,7 +180,11 @@ fun HomeShell(
                         onUndoRemove = session::undoInventoryRemove,
                         onOpenItem = openItem,
                         onAdd = { showAddSheet = true },
+                        onFindDuplicates = { navController.navigate(Routes.DUPLICATES) },
                     )
+                }
+                composable(Routes.DUPLICATES) {
+                    DuplicatesScreen(state = state, session = session, onBack = { navController.popBackStack() })
                 }
                 composable(Routes.ITEM) { entry ->
                     val openedId = entry.arguments?.getString("itemId")

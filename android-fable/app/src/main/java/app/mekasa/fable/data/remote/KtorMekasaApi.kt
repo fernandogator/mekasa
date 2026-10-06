@@ -13,7 +13,10 @@ import app.mekasa.fable.data.model.HouseholdInvitesResponse
 import app.mekasa.fable.data.model.HouseholdMember
 import app.mekasa.fable.data.model.HouseholdMembersResponse
 import app.mekasa.fable.data.model.HouseholdNameUpdateRequest
+import app.mekasa.fable.data.model.InventoryDuplicatesResponse
 import app.mekasa.fable.data.model.InventoryItem
+import app.mekasa.fable.data.model.InventoryMergeRequest
+import app.mekasa.fable.data.model.InventoryMergeResponse
 import app.mekasa.fable.data.model.InventoryItemCreateRequest
 import app.mekasa.fable.data.model.InventoryItemPatch
 import app.mekasa.fable.data.model.InventoryListResponse
@@ -264,6 +267,12 @@ class KtorMekasaApi(
 
     override suspend fun purgeInventoryItem(token: String, householdId: String, itemId: String) =
         callNoContent(HttpMethod.Post, "/v1/households/$householdId/inventory/$itemId/purge", token)
+
+    override suspend fun listInventoryDuplicates(token: String, householdId: String): InventoryDuplicatesResponse =
+        call(HttpMethod.Get, "/v1/households/$householdId/inventory/duplicates", token)
+
+    override suspend fun mergeInventory(token: String, householdId: String, body: InventoryMergeRequest): InventoryMergeResponse =
+        call(HttpMethod.Post, "/v1/households/$householdId/inventory/merge", token, body)
 
     override suspend fun listShopping(token: String, householdId: String): ShoppingListResponse =
         call(HttpMethod.Get, "/v1/households/$householdId/shopping-list", token)

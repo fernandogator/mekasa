@@ -7,6 +7,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import app.mekasa.fable.data.InventoryDraft
 import app.mekasa.fable.support.UiHarness
 import app.mekasa.fable.support.UiHarness.awaitDisplayed
 import app.mekasa.fable.support.UiHarness.node
@@ -25,7 +26,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Verifies: UI-001, UI-003, UI-004, UI-005, UI-006 / Design: design/baselines/android/<Screen>_baseline.png
+ * Verifies: UI-001, UI-003, UI-004, UI-005, UI-006, REQ-INV-021 / Design: design/baselines/android/<Screen>_baseline.png
  *
  * Layer 2 snapshot baselines. Every screen state asserted structurally in the `*UITest`
  * files is rendered once here on a fixed Pixel-7-class device with the demo fixtures and
@@ -119,6 +120,18 @@ class ScreenSnapshotTest {
         compose.setApp(UiHarness.demoSession(), startRoute = Routes.INVENTORY)
         compose.awaitDisplayed(TestTags.ITEM_LIST)
         snapshot("InventoryList")
+    }
+
+    // ------------------------------------------------------------ REQ-INV-021
+
+    @Test
+    fun inventoryDuplicates() {
+        val session = UiHarness.demoSession()
+        session.addInventory(InventoryDraft(name = "Diet Cokes", category = "Beverages", quantity = 5))
+        compose.waitUntil(UiHarness.WAIT_MS) { session.state.value.data.inventory.size == 5 }
+        compose.setApp(session, startRoute = Routes.DUPLICATES)
+        compose.awaitDisplayed(TestTags.DUPLICATES_MERGE_ALL_BUTTON)
+        snapshot("InventoryDuplicates")
     }
 
     @Test

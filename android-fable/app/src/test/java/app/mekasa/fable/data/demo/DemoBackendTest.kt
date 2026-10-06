@@ -1,6 +1,7 @@
 package app.mekasa.fable.data.demo
 
 import app.mekasa.fable.data.InventoryDraft
+import app.mekasa.fable.data.remote.ApiException
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -126,6 +127,33 @@ class DemoBackendTest {
 
         val promoted = backend.updateMemberRole(id, "demo-kid", "owner")
         assertTrue(promoted.isOwner)
+    }
+
+    @Test
+    fun `merge keeps the newest photo, relinks the list and rejects non-duplicates`() = runTest {
+        var now = 1_800_000_000_000L
+        val backend = DemoBackend(clock = { now++ })
+        val coke = backend.inventory(id).first { it.name == "Diet Coke" }
+        val newer = backend.addInventory(id, InventoryDraft(name = "Diet Cokes", category = "Beverages", imageUrl = "https://x/new.jpg"))
+
+        val group = backend.inventoryDuplicates(id).single()
+        assertEquals(newer.id, group.keepId)
+        assertNotNull(newer.imageUpdatedAt)
+
+        val milk = backend.inventory(id).first { it.name == "Whole Milk" }
+        val notOneGroup = runCatching { backend.mergeInventory(id, listOf(coke.id, milk.id)) }.exceptionOrNull()
+        assertEquals(409, (notOneGroup as ApiException).status)
+        val unknown = runCatching { backend.mergeInventory(id, listOf(coke.id, "nope")) }.exceptionOrNull()
+        assertEquals(404, (unknown as ApiException).status)
+
+        val result = backend.mergeInventory(id, listOf(coke.id, newer.id))
+        assertEquals(newer.id, result.item.id)
+        assertEquals(listOf(coke.id), result.removedIds)
+        assertEquals(3, result.item.lowStockThreshold)
+        assertEquals(DemoBackend.DIET_COKE_UPC, result.item.barcode)
+        assertEquals(listOf(newer.id), result.shoppingListItems.map { it.inventoryItemId })
+        assertTrue(backend.inventory(id).none { it.id == coke.id })
+        assertTrue(backend.inventoryDuplicates(id).isEmpty())
     }
 
     @Test

@@ -9,10 +9,13 @@ import app.mekasa.fable.data.CatalogCapture
 import app.mekasa.fable.data.CatalogCode
 import app.mekasa.fable.data.HouseholdBackend
 import app.mekasa.fable.data.InventoryDraft
+import app.mekasa.fable.data.InventoryDuplicates
 import app.mekasa.fable.data.LineCapture
 import app.mekasa.fable.data.demo.DemoBackend
 import app.mekasa.fable.data.model.BarcodeLookup
+import app.mekasa.fable.data.model.DuplicateGroup
 import app.mekasa.fable.data.model.InventoryItem
+import app.mekasa.fable.data.model.InventoryMergeResponse
 import app.mekasa.fable.data.model.ProductHit
 import app.mekasa.fable.data.model.ReceiptScanResponse
 import app.mekasa.fable.data.model.ShoppingItem
@@ -482,6 +485,65 @@ class SessionViewModel(
         it.copy(data = it.data.copy(inventory = restored), pendingRemoval = null)
     }
 
+    /** REQ-INV-021 AC1: the API's duplicate groups (the demo backend runs the same rules locally). */
+    fun findDuplicates(onDone: (DuplicatesOutcome) -> Unit) {
+        viewModelScope.launch {
+            try {
+                onDone(DuplicatesOutcome(require().inventoryDuplicates(householdId()), null))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (e is ApiException && e.isUnauthorized && !current.isDemo) {
+                    endSession(notice = SESSION_EXPIRED)
+                    onDone(DuplicatesOutcome(null, null))
+                } else {
+                    onDone(DuplicatesOutcome(null, DUPLICATES_FAILED))
+                }
+            }
+        }
+    }
+
+    /**
+     * REQ-INV-021 AC3, AC6: merges each group in turn and updates inventory and the shopping
+     * list from each response, so no reload is needed. A group that fails is left for review.
+     */
+    fun mergeDuplicates(groups: List<DuplicateGroup>, onDone: (MergeOutcome) -> Unit) {
+        viewModelScope.launch {
+            val merged = mutableListOf<DuplicateGroup>()
+            var error: String? = null
+            for (group in groups) {
+                try {
+                    applyMerge(require().mergeInventory(householdId(), group.items.map { it.id }))
+                    merged += group
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    if (e is ApiException && e.isUnauthorized && !current.isDemo) {
+                        endSession(notice = SESSION_EXPIRED)
+                        onDone(MergeOutcome(merged, null, null))
+                        return@launch
+                    }
+                    error = if (e is ApiException && e.status in setOf(404, 409)) DUPLICATES_CHANGED else MERGE_FAILED
+                }
+            }
+            onDone(MergeOutcome(merged, InventoryDuplicates.bulkConfirmation(merged), error))
+        }
+    }
+
+    private fun applyMerge(response: InventoryMergeResponse) = _state.update {
+        val survivor = response.item
+        val removed = response.removedIds.toSet()
+        val rows = it.data.inventory
+        val position = rows.indexOfFirst { row -> row.id == survivor.id || row.id in removed }.coerceAtLeast(0)
+        val inventory = rows.filterNot { row -> row.id == survivor.id || row.id in removed }.toMutableList()
+        inventory.add(position.coerceAtMost(inventory.size), survivor)
+        val updatedRows = response.shoppingListItems.associateBy { row -> row.id }
+        val shopping = it.data.shopping.map { row ->
+            updatedRows[row.id] ?: if (row.inventoryItemId in removed) row.copy(inventoryItemId = survivor.id) else row
+        }
+        it.copy(data = it.data.copy(inventory = inventory, shopping = shopping))
+    }
+
     fun consumeByBarcode(barcode: String, amount: Int = 1, onResult: (ConsumeOutcome) -> Unit = {}) {
         val code = barcode.trim()
         if (code.isEmpty()) {
@@ -689,6 +751,9 @@ class SessionViewModel(
         const val SESSION_EXPIRED = "Your session expired. Please sign in again."
         const val OWNER_ONLY_PURCHASE = "Only household owners can mark items as purchased."
         const val OWNER_ONLY_PHOTO = "Only the household owner can change the home name or photo."
+        const val DUPLICATES_FAILED = "Couldn’t check for duplicates. Try again."
+        const val DUPLICATES_CHANGED = "Those items changed. Check for duplicates again."
+        const val MERGE_FAILED = "Couldn’t merge those items. Try again."
         private const val MAX_PHOTO_BYTES = 5_000_000
         private const val SCAN_FEED_LIMIT = 20
         const val UNDO_WINDOW_MILLIS = 5_000L
