@@ -108,6 +108,8 @@ struct InventoryItemDTO: Codable, Equatable, Identifiable {
     let pricePaid: Double?
     let barcode: String?
     let imageURL: String?
+    /// Shared catalog product (UPC, `plu:` or `llm:`) linked by a capture (REQ-RCP-020 AC6, AC15).
+    let productId: String?
     let source: String
     let createdByUid: String?
     let updatedByUid: String?
@@ -123,6 +125,7 @@ struct InventoryItemDTO: Codable, Equatable, Identifiable {
         case lowStockThreshold = "low_stock_threshold"
         case pricePaid = "price_paid"
         case imageURL = "image_url"
+        case productId = "product_id"
         case createdByUid = "created_by_uid"
         case updatedByUid = "updated_by_uid"
         case createdAt = "created_at"
@@ -140,6 +143,7 @@ struct InventoryItemDTO: Codable, Equatable, Identifiable {
         pricePaid = try container.decodeIfPresent(Double.self, forKey: .pricePaid)
         barcode = try container.decodeIfPresent(String.self, forKey: .barcode)
         imageURL = try container.decodeIfPresent(String.self, forKey: .imageURL)
+        productId = try container.decodeIfPresent(String.self, forKey: .productId)
         source = try container.decodeIfPresent(String.self, forKey: .source) ?? "manual"
         createdByUid = try container.decodeIfPresent(String.self, forKey: .createdByUid)
         updatedByUid = try container.decodeIfPresent(String.self, forKey: .updatedByUid)
@@ -161,6 +165,7 @@ struct InventoryItemDTO: Codable, Equatable, Identifiable {
             source: InventorySource(rawValue: source) ?? .manual,
             imageURL: imageURL,
             health: health,
+            productId: productId,
             updatedAt: updatedAt ?? Date()
         )
     }

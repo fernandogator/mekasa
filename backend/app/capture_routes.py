@@ -1,7 +1,7 @@
 """
 Product capture from inventory (OpenAPI `captureInventoryItemProduct`).
 
-Satisfies: REQ-RCP-020 AC2, AC4, AC5, AC6, AC7
+Satisfies: REQ-RCP-020 AC2, AC4, AC5, AC6, AC7, AC15
 Spec version: 1.0
 
 The receipt line-item variant (`…/line-items/{lid}/capture`) needs persisted
@@ -61,7 +61,7 @@ def capture_inventory_item_product(
     scan_events: ScanEventsRepository = Depends(get_scan_events_repository),
 ) -> ProductCaptureResponse:
     """
-    Satisfies: REQ-RCP-020 AC2, AC4, AC5, AC6, AC7
+    Satisfies: REQ-RCP-020 AC2, AC4, AC5, AC6, AC7, AC15
     Spec version: 1.0
 
     Links the item to the shared product for the scanned UPC or typed PLU,
@@ -72,7 +72,8 @@ def capture_inventory_item_product(
     `store_chain_id`) becomes an alias for the product, so the next receipt
     scan with that text matches it (REQ-RCP-007 AC5).
     """
-    if (payload.upc is None) == (payload.plu_code is None):
+    no_code = payload.upc is None and payload.plu_code is None
+    if (payload.upc is not None and payload.plu_code is not None) or (no_code and not payload.receipt_text):
         raise _bad_request("exactly_one_code_required")
     try:
         item = inventory.get(household_id, item_id, user.uid)
@@ -105,6 +106,7 @@ def capture_inventory_item_product(
             photo_id=photo_id,
             alias_text=payload.receipt_text,
             alias_store_chain_id=known_chain(payload.store_chain_id),
+            previous_product_id=item.product_id if (item.product_id or "").startswith("llm:") else None,
         )
     except ValueError as exc:
         raise _bad_request(str(exc)) from exc
