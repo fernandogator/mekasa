@@ -205,50 +205,94 @@ jobs:
           echo "Layer 3 vision gate is manual: Scripts/verify_ui_vision.py (--platform ios|android)"
           echo "Layer 1+2 run on the ios-ui macOS job and the android-fable JVM job."
 
-  deploy-dev:
-    name: deploy-dev
-    needs: visual-verify
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    environment: mekasa-dev
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy backend to Cloud Run (when GCP_SA_KEY is set)
-        env:
-          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
-        run: |
-          set -euo pipefail
-          if [ -z "${GCP_SA_KEY:-}" ]; then
-            echo "GCP_SA_KEY secret not configured — skip Cloud Run deploy."
-            echo "Use workflow Deploy backend (Cloud Run) or backend/scripts/deploy-cloud-run.sh locally."
-            exit 0
-          fi
-          printf '%s' "$GCP_SA_KEY" > "$RUNNER_TEMP/gcp-sa.json"
-          # Inline auth without composite action so missing secret stays a soft skip above.
-          curl -sS https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-linux-x86_64.tar.gz \
-            | tar -xz -C "$RUNNER_TEMP"
-          export PATH="$RUNNER_TEMP/google-cloud-sdk/bin:$PATH"
-          gcloud auth activate-service-account --key-file="$RUNNER_TEMP/gcp-sa.json"
-          chmod +x backend/scripts/deploy-cloud-run.sh
-          (cd backend && ./scripts/deploy-cloud-run.sh)
-
+  # There is one Cloud Run service (mekasa-api, ENVIRONMENT=prod), so every
+  # deploy is a production deploy and waits here. The wait only happens when
+  # the mekasa-prod-approval environment has required reviewers
+  # (docs/gcp-firebase-setup.md §4b).
   manual-approve:
     name: manual-approve
-    needs: deploy-dev
+    needs: visual-verify
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: mekasa-prod-approval
     steps:
       - name: Human approval required
-        run: echo "Production deploy gated on GitHub Environment approval"
+        run: echo "Approved deploy of ${GITHUB_SHA} to mekasa-api"
 
   deploy-prod:
     name: deploy-prod
     needs: manual-approve
     runs-on: ubuntu-latest
     environment: mekasa-prod
+    env:
+      PROJECT_ID: hackathon2025-472017
+      REGION: us-central1
+      SERVICE: mekasa-api
+      WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      DEPLOY_SA: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      HAS_SA_KEY: ${{ secrets.GCP_SA_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy to production after human approval
+
+      - name: Check deploy credentials
         run: |
-          echo "TODO: deploy Cloud Run service to mekasa-prod"
-          true
+          if [ -n "$WIF_PROVIDER" ] && [ -n "$DEPLOY_SA" ]; then
+            echo "Using Workload Identity Federation as $DEPLOY_SA"
+          elif [ "$HAS_SA_KEY" = "true" ]; then
+            echo "Using the GCP_SA_KEY service account key"
+          else
+            echo "::error::No deploy credentials. Set the GCP_WORKLOAD_IDENTITY_PROVIDER and GCP_DEPLOY_SERVICE_ACCOUNT variables, or the GCP_SA_KEY secret (docs/gcp-firebase-setup.md §4b)."
+            exit 1
+          fi
+
+      - name: Authenticate to Google Cloud (Workload Identity)
+        if: env.WIF_PROVIDER != '' && env.DEPLOY_SA != ''
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOY_SA }}
+
+      - name: Authenticate to Google Cloud (service account key)
+        if: env.WIF_PROVIDER == '' || env.DEPLOY_SA == ''
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy mekasa-api
+        working-directory: backend
+        env:
+          DEPLOY_ONLY: "1"
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          chmod +x scripts/deploy-cloud-run.sh
+          ./scripts/deploy-cloud-run.sh
+
+      - name: Smoke test the new revision
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${GITHUB_SHA:0:12}"
+          REVISION="$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT_ID" \
+            --format='value(status.latestReadyRevisionName)')"
+          LABEL="$(gcloud run revisions describe "$REVISION" --region "$REGION" --project "$PROJECT_ID" \
+            --format='value(metadata.labels.commit-sha)')"
+          echo "Latest ready revision: $REVISION (commit-sha=$LABEL)"
+          if [ "$LABEL" != "$SHORT_SHA" ]; then
+            echo "::error::Latest ready revision is for commit '$LABEL', expected $SHORT_SHA"
+            exit 1
+          fi
+          URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT_ID" \
+            --format='value(status.url)')"
+          for attempt in 1 2 3 4 5; do
+            if curl -fsS "$URL/health"; then
+              echo
+              echo "Deployed $SHORT_SHA to $URL"
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "::error::$URL/health did not answer after deploy"
+          exit 1

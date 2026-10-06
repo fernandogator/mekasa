@@ -105,6 +105,57 @@ chmod +x scripts/deploy-cloud-run.sh
 
 Paste the printed **Service URL** back into chat.
 
+Run it this way once whenever the APIs, buckets or runtime IAM change. CI
+deploys with `DEPLOY_ONLY=1`, which skips that setup.
+
+### 4b. Deploy from CI after approval
+
+Every push to `main` that passes CI waits at **manual-approve**. Once approved,
+**deploy-prod** deploys `mekasa-api`. It then checks two things: the latest
+ready revision carries the `commit-sha` label of the pushed commit, and
+`/health` answers. There is only one Cloud Run service, so there is no
+separate dev deploy. Setup, once:
+
+1. **Require approval.** GitHub → Settings → Environments → `mekasa-prod-approval`
+   → Required reviewers → add yourself. Without this, the approval step passes
+   immediately.
+2. **Deployer service account** (keyless, recommended):
+
+   ```bash
+   PROJECT=hackathon2025-472017
+   NUMBER=$(gcloud projects describe $PROJECT --format='value(projectNumber)')
+   gcloud iam service-accounts create mekasa-deployer --project $PROJECT
+   DEPLOYER=mekasa-deployer@$PROJECT.iam.gserviceaccount.com
+   for role in roles/run.sourceDeveloper roles/serviceusage.serviceUsageConsumer roles/secretmanager.viewer; do
+     gcloud projects add-iam-policy-binding $PROJECT --member serviceAccount:$DEPLOYER --role $role --condition=None
+   done
+   gcloud iam service-accounts add-iam-policy-binding mekasa-api@$PROJECT.iam.gserviceaccount.com \
+     --project $PROJECT --member serviceAccount:$DEPLOYER --role roles/iam.serviceAccountUser
+
+   gcloud iam workload-identity-pools create github --project $PROJECT --location global
+   gcloud iam workload-identity-pools providers create-oidc mekasa --project $PROJECT \
+     --location global --workload-identity-pool github \
+     --issuer-uri https://token.actions.githubusercontent.com \
+     --attribute-mapping google.subject=assertion.sub,attribute.repository=assertion.repository \
+     --attribute-condition "assertion.repository=='fernandogator/mekasa'"
+   gcloud iam service-accounts add-iam-policy-binding $DEPLOYER --project $PROJECT \
+     --role roles/iam.workloadIdentityUser \
+     --member "principalSet://iam.googleapis.com/projects/$NUMBER/locations/global/workloadIdentityPools/github/attribute.repository/fernandogator/mekasa"
+   ```
+
+3. **Tell CI who to be.** GitHub → Settings → Environments → `mekasa-prod` →
+   Environment variables (not secrets; these are not credentials):
+   - `GCP_WORKLOAD_IDENTITY_PROVIDER` =
+     `projects/<NUMBER>/locations/global/workloadIdentityPools/github/providers/mekasa`
+   - `GCP_DEPLOY_SERVICE_ACCOUNT` = `mekasa-deployer@hackathon2025-472017.iam.gserviceaccount.com`
+
+   Alternatively, add a JSON key as the `GCP_SA_KEY` environment secret on
+   `mekasa-prod`. CI uses it only when the two variables are unset.
+
+If a deploy fails with `PERMISSION_DENIED`, the log names the missing
+permission; grant it to the deployer, not to the runtime account. The manual
+**Deploy backend (Cloud Run)** workflow uses the same `mekasa-prod` credentials.
+
 ### 5. iOS app (after deploy)
 
 - Firebase → Project settings → Add iOS app → bundle id (e.g. `com.fernandogator.mekasa`)
