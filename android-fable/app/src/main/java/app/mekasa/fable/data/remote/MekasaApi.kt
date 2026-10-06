@@ -8,12 +8,15 @@ import app.mekasa.fable.data.model.HouseholdInvite
 import app.mekasa.fable.data.model.HouseholdInvitesResponse
 import app.mekasa.fable.data.model.HouseholdMember
 import app.mekasa.fable.data.model.HouseholdMembersResponse
-import app.mekasa.fable.data.model.ItemPhotoUpload
 import app.mekasa.fable.data.model.InventoryItem
 import app.mekasa.fable.data.model.InventoryItemCreateRequest
 import app.mekasa.fable.data.model.InventoryItemPatch
 import app.mekasa.fable.data.model.InventoryListResponse
 import app.mekasa.fable.data.model.InviteCreateRequest
+import app.mekasa.fable.data.model.ItemPhotoUpload
+import app.mekasa.fable.data.model.ProductCaptureRequest
+import app.mekasa.fable.data.model.ProductCaptureResponse
+import app.mekasa.fable.data.model.ProductPhotoUpload
 import app.mekasa.fable.data.model.ProductSearchResponse
 import app.mekasa.fable.data.model.ReceiptScanResponse
 import app.mekasa.fable.data.model.ShoppingItem
@@ -63,6 +66,18 @@ interface MekasaApi {
         filename: String,
     ): ItemPhotoUpload
     suspend fun refreshInventoryImage(token: String, householdId: String, itemId: String): InventoryItem
+    suspend fun refreshInventoryHealth(token: String, householdId: String, itemId: String): InventoryItem
+
+    /** REQ-RCP-021 AC1: upload a capture photo shared with the product. */
+    suspend fun uploadProductPhoto(token: String, householdId: String, bytes: ByteArray): ProductPhotoUpload
+
+    /** REQ-RCP-020 AC6, AC15 (`captureInventoryItemProduct`). */
+    suspend fun captureInventoryItem(
+        token: String,
+        householdId: String,
+        itemId: String,
+        body: ProductCaptureRequest,
+    ): ProductCaptureResponse
     suspend fun consumeInventoryItem(token: String, householdId: String, itemId: String, amount: Int): InventoryItem
     suspend fun consumeByBarcode(token: String, householdId: String, barcode: String, amount: Int): ConsumeByBarcodeResult
     suspend fun listUnknownScans(token: String, householdId: String): List<UnknownBarcodeEvent>

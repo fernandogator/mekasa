@@ -6,7 +6,9 @@ import app.mekasa.fable.data.model.Household
 import app.mekasa.fable.data.model.HouseholdInvite
 import app.mekasa.fable.data.model.HouseholdMember
 import app.mekasa.fable.data.model.InventoryItem
+import app.mekasa.fable.data.model.ProductCaptureRequest
 import app.mekasa.fable.data.model.ProductHit
+import app.mekasa.fable.data.model.ProductPhotoUpload
 import app.mekasa.fable.data.model.ReceiptScanResponse
 import app.mekasa.fable.data.model.ShoppingItem
 import app.mekasa.fable.data.model.SpendingReport
@@ -23,6 +25,8 @@ data class InventoryDraft(
     val imageUrl: String? = null,
     val source: String = "manual",
     val pricePaid: Double? = null,
+    /** Receipt line capture sent after the row is created (REQ-RCP-020 AC6, AC15). */
+    val capture: LineCapture? = null,
 )
 
 /**
@@ -56,6 +60,15 @@ interface HouseholdBackend {
      */
     suspend fun replaceItemPhoto(householdId: String, itemId: String, jpeg: ByteArray): InventoryItem
     suspend fun unknownScans(householdId: String): List<UnknownBarcodeEvent>
+
+    /** REQ-RCP-021 AC1: a capture photo shared with the product it is captured for. */
+    suspend fun uploadProductPhoto(householdId: String, jpeg: ByteArray): ProductPhotoUpload
+
+    /** REQ-RCP-020 AC6, AC15: link (or re-key) the item's shared product; returns the updated item. */
+    suspend fun captureProduct(householdId: String, itemId: String, request: ProductCaptureRequest): InventoryItem
+
+    /** REQ-021 AC4: fill the health grade for a barcoded item. */
+    suspend fun refreshHealth(householdId: String, itemId: String): InventoryItem
 
     /** REQ-INV-016: hide the row server-side but keep the document for [restoreInventory]. */
     suspend fun softDeleteInventory(householdId: String, itemId: String)

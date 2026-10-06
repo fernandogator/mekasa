@@ -89,11 +89,16 @@ data class InventoryItem(
     @SerialName("price_paid") val pricePaid: Double? = null,
     val barcode: String? = null,
     @SerialName("image_url") val imageUrl: String? = null,
+    /** Shared catalog product (UPC, `plu:<code>` or `llm:<sha1>`) linked by a capture (REQ-RCP-020 AC6, AC15). */
+    @SerialName("product_id") val productId: String? = null,
     val source: String = "manual",
     val deleted: Boolean = false,
 ) {
     val isLowStock: Boolean get() = quantity <= lowStockThreshold
     val hasImage: Boolean get() = !imageUrl.isNullOrBlank()
+
+    /** No code yet: a barcode or PLU can still be added from item detail (REQ-RCP-020 AC15). */
+    val canAddCode: Boolean get() = barcode.isNullOrBlank() && (productId == null || productId.startsWith("llm:"))
 }
 
 @Serializable
@@ -112,6 +117,30 @@ data class InventoryItemCreateRequest(
     val barcode: String? = null,
     @SerialName("image_url") val imageUrl: String? = null,
     val source: String = "manual",
+)
+
+/** `POST /v1/households/{id}/product-photos` result (REQ-RCP-021 AC1): shared with the captured product. */
+@Serializable
+data class ProductPhotoUpload(
+    @SerialName("photo_id") val photoId: String,
+    @SerialName("image_url") val imageUrl: String,
+)
+
+/** `POST …/inventory/{id}/capture` body (REQ-RCP-020 AC2, AC6, AC7, AC15). */
+@Serializable
+data class ProductCaptureRequest(
+    val upc: String? = null,
+    @SerialName("plu_code") val pluCode: String? = null,
+    @SerialName("photo_id") val photoId: String? = null,
+    @SerialName("receipt_text") val receiptText: String? = null,
+    @SerialName("store_chain_id") val storeChainId: String? = null,
+)
+
+@Serializable
+data class ProductCaptureResponse(
+    val outcome: String,
+    @SerialName("photo_applied_as") val photoAppliedAs: String? = null,
+    @SerialName("inventory_item") val inventoryItem: InventoryItem? = null,
 )
 
 /** `POST /v1/households/{id}/item-photos` result (REQ-INV-019 AC1). */
@@ -315,6 +344,8 @@ data class ReceiptLine(
     val barcode: String? = null,
     @SerialName("image_url") val imageUrl: String? = null,
     val identified: Boolean = false,
+    /** Line text as printed; a capture sends it as the alias (REQ-RCP-020 AC6). */
+    @SerialName("receipt_text") val receiptText: String? = null,
 )
 
 @Serializable
@@ -328,4 +359,7 @@ data class ReceiptScanResponse(
     @SerialName("household_id") val householdId: String? = null,
     val engine: String = "demo",
     val items: List<ReceiptLine> = emptyList(),
+    @SerialName("store_name") val storeName: String? = null,
+    /** Chain the printed store matched (REQ-RCP-007 AC5); scopes capture aliases. */
+    @SerialName("store_chain_id") val storeChainId: String? = null,
 )

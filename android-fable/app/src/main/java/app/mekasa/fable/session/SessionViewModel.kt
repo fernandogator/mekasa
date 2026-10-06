@@ -5,8 +5,11 @@ import androidx.lifecycle.viewModelScope
 import app.mekasa.fable.auth.AuthError
 import app.mekasa.fable.auth.AuthGateway
 import app.mekasa.fable.auth.SignedInUser
+import app.mekasa.fable.data.CatalogCapture
+import app.mekasa.fable.data.CatalogCode
 import app.mekasa.fable.data.HouseholdBackend
 import app.mekasa.fable.data.InventoryDraft
+import app.mekasa.fable.data.LineCapture
 import app.mekasa.fable.data.demo.DemoBackend
 import app.mekasa.fable.data.model.BarcodeLookup
 import app.mekasa.fable.data.model.InventoryItem
@@ -320,11 +323,75 @@ class SessionViewModel(
         guarded(busy = true) {
             val backend = require()
             val id = householdId()
+            var captureFailed: String? = null
             for (draft in drafts) {
-                val created = backend.addInventory(id, draft)
+                var created = backend.addInventory(id, draft)
+                draft.capture?.let { capture ->
+                    try {
+                        created = sendCapture(backend, id, created, capture)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        if (e is ApiException && e.isUnauthorized) throw e
+                        captureFailed = "Saved ${created.name}, but couldn't add it to the shared catalog."
+                    }
+                }
                 _state.update { it.copy(data = it.data.copy(inventory = it.data.inventory.upsert(created))) }
             }
+            captureFailed?.let(::fail)
             onDone()
+        }
+    }
+
+    /**
+     * REQ-RCP-020 AC6, AC15: upload the photo to the shared product photos when the
+     * capture shares it (a code, or receipt text with no code), then link the item.
+     */
+    private suspend fun sendCapture(
+        backend: HouseholdBackend,
+        householdId: String,
+        item: InventoryItem,
+        capture: LineCapture,
+    ): InventoryItem {
+        val photoId = capture.photoJpeg
+            ?.takeIf { capture.sharesPhoto && it.isNotEmpty() && it.size <= MAX_PHOTO_BYTES }
+            ?.let { backend.uploadProductPhoto(householdId, it).photoId }
+        val request = CatalogCapture.request(capture, photoId) ?: return item
+        return backend.captureProduct(householdId, item.id, request)
+    }
+
+    /**
+     * REQ-RCP-020 AC15: add a barcode or PLU to a saved item that has none. A UPC
+     * then refreshes the health grade (REQ-021 AC4). [onDone] gets an error to show
+     * inline, or null on success.
+     */
+    fun addCode(itemId: String, raw: String, onDone: (String?) -> Unit) {
+        val code = CatalogCode.parse(raw) ?: run {
+            onDone(CatalogCapture.errorMessage(if (raw.trim().length in 4..5) "invalid_plu" else "invalid_upc"))
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val backend = require()
+                val id = householdId()
+                var updated = backend.captureProduct(id, itemId, CatalogCapture.codeRequest(code))
+                if (code is CatalogCode.Upc) {
+                    updated = runCatching { backend.refreshHealth(id, itemId) }.getOrDefault(updated)
+                }
+                replaceInventory(updated)
+                onDone(null)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: ApiException) {
+                if (e.isUnauthorized && !current.isDemo) {
+                    endSession(notice = SESSION_EXPIRED)
+                    onDone(null)
+                } else {
+                    onDone(CatalogCapture.errorMessage(e.detail))
+                }
+            } catch (e: Exception) {
+                onDone(CatalogCapture.errorMessage(null))
+            }
         }
     }
 

@@ -70,7 +70,13 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import app.mekasa.fable.data.CatalogCapture
 import app.mekasa.fable.data.model.InventoryItem
+import app.mekasa.fable.ui.components.LabeledField
+import app.mekasa.fable.ui.components.PrimaryButton
+import app.mekasa.fable.ui.components.SecondaryButton
 import app.mekasa.fable.session.SessionViewModel
 import app.mekasa.fable.ui.TestTags
 import app.mekasa.fable.ui.components.Backdrop
@@ -107,6 +113,7 @@ fun ItemDetailScreen(
     val context = LocalContext.current
     var lightbox by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
+    var addingCode by remember(item.id) { mutableStateOf(false) }
 
     // REQ-INV-020: swipe / chevrons / TalkBack actions move within the list the detail came from.
     val haptics = LocalHapticFeedback.current
@@ -275,6 +282,27 @@ fun ItemDetailScreen(
                         Text(item.barcode, style = Type.mono, color = palette.text)
                     }
                 }
+                if (item.canAddCode) {
+                    if (addingCode) {
+                        AddCodeCard(
+                            onCancel = { addingCode = false },
+                            onSave = { code, onError ->
+                                session.addCode(item.id, code) { error ->
+                                    if (error == null) addingCode = false else onError(error)
+                                }
+                            },
+                        )
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(Space.xs)) {
+                            SecondaryButton(
+                                text = CatalogCapture.ADD_CODE_TITLE,
+                                onClick = { addingCode = true },
+                                modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_ITEM_CODE_BUTTON),
+                            )
+                            Text(CatalogCapture.ADD_CODE_HINT, style = Type.caption, color = palette.textMuted)
+                        }
+                    }
+                }
                 item.pricePaid?.let {
                     Column {
                         SectionLabel("Last price paid")
@@ -335,6 +363,53 @@ fun ItemDetailScreen(
                     shape = Shapes.card,
                 )
             }
+        }
+    }
+}
+
+/**
+ * Inline entry for a barcode or PLU on an item saved without one. The code re-keys the shared
+ * product and, for a UPC, brings in nutrition info.
+ * Satisfies: REQ-RCP-020 AC15
+ * Spec version: 1.0
+ */
+@Composable
+private fun AddCodeCard(
+    onCancel: () -> Unit,
+    onSave: (code: String, onError: (String) -> Unit) -> Unit,
+) {
+    val palette = MekasaTheme.palette
+    var code by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var saving by remember { mutableStateOf(false) }
+    Card {
+        Column(verticalArrangement = Arrangement.spacedBy(Space.md)) {
+            Text(CatalogCapture.ADD_CODE_TITLE, style = Type.subhead, color = palette.text)
+            LabeledField(
+                label = "Barcode or PLU",
+                value = code,
+                onValueChange = { code = it.filter(Char::isDigit).take(14); error = null },
+                placeholder = "012345678905",
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done,
+                testTag = TestTags.ADD_ITEM_CODE_FIELD,
+            )
+            Text(CatalogCapture.ADD_CODE_HINT, style = Type.caption, color = palette.textMuted)
+            error?.let { Text(it, style = Type.caption, color = palette.warning) }
+            PrimaryButton(
+                text = "Save",
+                onClick = {
+                    saving = true
+                    onSave(code) { message ->
+                        saving = false
+                        error = message
+                    }
+                },
+                enabled = code.isNotBlank() && !saving,
+                loading = saving,
+                modifier = Modifier.fillMaxWidth().testTag(TestTags.ADD_ITEM_CODE_SAVE),
+            )
+            LinkButton(text = "Cancel", onClick = onCancel, color = palette.textMuted)
         }
     }
 }

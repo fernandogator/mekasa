@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.mekasa.fable.data.demo.DemoBackend
 import app.mekasa.fable.support.UiHarness
@@ -67,6 +68,7 @@ class ItemDetailUITest {
         compose.node(TestTags.QUANTITY_CONTROL).performScrollTo().assertIsDisplayed()
         compose.node(TestTags.THRESHOLD_CONTROL).performScrollTo().assertIsDisplayed()
         compose.node(TestTags.ITEM_LIGHTBOX).assertDoesNotExist()
+        compose.node(TestTags.ADD_ITEM_CODE_BUTTON).assertDoesNotExist()
     }
 
     @Test
@@ -126,5 +128,19 @@ class ItemDetailUITest {
         compose.awaitDisplayed(TestTags.ITEM_LIGHTBOX)
         compose.node(TestTags.ITEM_LIGHTBOX).performClick()
         compose.awaitGone(TestTags.ITEM_LIGHTBOX)
+    }
+
+    /** REQ-RCP-020 AC15: an item saved without a code offers "Add barcode or PLU"; saving one shows the UPC. */
+    @Test
+    fun addCode_savesBarcodeOnItemWithoutOne() {
+        compose.setApp(UiHarness.demoSession(), startRoute = Routes.item(UiHarness.SOURDOUGH_ID))
+        compose.awaitDisplayed(TestTags.ITEM_DETAIL_VIEW)
+        compose.node(TestTags.ADD_ITEM_CODE_BUTTON).performScrollTo().performClick()
+        compose.node(TestTags.ADD_ITEM_CODE_FIELD).performScrollTo().performTextInput("012345678905")
+        compose.node(TestTags.ADD_ITEM_CODE_SAVE).performScrollTo().performClick()
+
+        compose.awaitGone(TestTags.ADD_ITEM_CODE_SAVE)
+        compose.onNodeWithText("012345678905").performScrollTo().assertIsDisplayed()
+        compose.node(TestTags.ADD_ITEM_CODE_BUTTON).assertDoesNotExist()
     }
 }
