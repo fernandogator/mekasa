@@ -15,9 +15,12 @@ import app.mekasa.fable.data.model.HouseholdMembersResponse
 import app.mekasa.fable.data.model.InventoryItem
 import app.mekasa.fable.data.model.InventoryItemCreateRequest
 import app.mekasa.fable.data.model.InventoryItemPatch
-import app.mekasa.fable.data.model.ItemPhotoUpload
 import app.mekasa.fable.data.model.InventoryListResponse
 import app.mekasa.fable.data.model.InviteCreateRequest
+import app.mekasa.fable.data.model.ItemPhotoUpload
+import app.mekasa.fable.data.model.ProductCaptureRequest
+import app.mekasa.fable.data.model.ProductCaptureResponse
+import app.mekasa.fable.data.model.ProductPhotoUpload
 import app.mekasa.fable.data.model.ProductSearchResponse
 import app.mekasa.fable.data.model.ReceiptScanResponse
 import app.mekasa.fable.data.model.ShoppingItem
@@ -170,6 +173,38 @@ open class FakeApi : MekasaApi {
     override suspend fun refreshInventoryImage(token: String, householdId: String, itemId: String): InventoryItem {
         record("refreshImage:$itemId")
         return inventory.first { it.id == itemId }.copy(imageUrl = "https://cdn/img.jpg")
+    }
+
+    override suspend fun refreshInventoryHealth(token: String, householdId: String, itemId: String): InventoryItem {
+        record("refreshHealth:$itemId")
+        return inventory.first { it.id == itemId }
+    }
+
+    val captures = mutableListOf<ProductCaptureRequest>()
+
+    override suspend fun uploadProductPhoto(token: String, householdId: String, bytes: ByteArray): ProductPhotoUpload {
+        record("uploadProductPhoto:${bytes.size}")
+        val id = "7a2b3c4d-1111-4c5d-9e7f-0a1b2c3d4e5f"
+        return ProductPhotoUpload(photoId = id, imageUrl = "/v1/product-photos/$id")
+    }
+
+    override suspend fun captureInventoryItem(
+        token: String,
+        householdId: String,
+        itemId: String,
+        body: ProductCaptureRequest,
+    ): ProductCaptureResponse {
+        record("capture:$itemId")
+        captures += body
+        val idx = inventory.indexOfFirst { it.id == itemId }
+        val productId = body.upc ?: body.pluCode?.let { "plu:$it" } ?: "llm:${"a".repeat(40)}"
+        val updated = inventory[idx].copy(
+            barcode = body.upc ?: inventory[idx].barcode,
+            productId = productId,
+            imageUrl = body.photoId?.let { "/v1/product-photos/$it" } ?: inventory[idx].imageUrl,
+        )
+        inventory[idx] = updated
+        return ProductCaptureResponse(outcome = "created", inventoryItem = updated)
     }
 
     override suspend fun consumeInventoryItem(token: String, householdId: String, itemId: String, amount: Int): InventoryItem {
