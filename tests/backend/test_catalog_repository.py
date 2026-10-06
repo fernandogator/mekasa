@@ -524,6 +524,37 @@ def test_upc_capture_rekeys_a_photo_only_product(repo) -> None:
     assert _alias_target(repo, "heb", "HEB DELI TRKY BRST") == "041220576037"
 
 
+def test_plu_capture_rekeys_a_photo_only_product(repo) -> None:
+    """REQ-RCP-020 AC15: a PLU typed later takes over the photo-only product, photo and alias."""
+    first = repo.capture(
+        store_chain_id="unknown", hh=HH_A, fallback_name="Honeycrisp", fallback_category="Produce",
+        alias_text="HONEYCRISP APL", alias_store_chain_id="heb", photo_id=PHOTO,
+    )
+    later = repo.capture(
+        store_chain_id="unknown", plu_code="3283", hh=HH_A, fallback_name="Honeycrisp",
+        fallback_category="Produce", previous_product_id=first.product.id,
+    )
+    assert later.outcome == "rekeyed" and later.product.id == "plu:3283"
+    assert later.product.code_kind == "plu" and later.product.store_chain_id == "unknown"
+    assert later.product.image_url == f"/v1/product-photos/{PHOTO}"
+    assert repo.get_product(first.product.id, follow_superseded=False).superseded_by == "plu:3283"
+    assert _alias_target(repo, "heb", "HONEYCRISP APL") == "plu:3283"
+
+
+def test_rekey_keeps_the_photo_when_the_code_product_has_none(repo) -> None:
+    repo.capture(store_chain_id="unknown", upc="041220576037", hh=HH_B, fallback_name="Turkey", fallback_category="Deli")
+    first = repo.capture(
+        store_chain_id="unknown", hh=HH_A, fallback_name="Deli Turkey", fallback_category="Deli",
+        alias_text="DELI TRKY", alias_store_chain_id="heb", photo_id=PHOTO,
+    )
+    later = repo.capture(
+        store_chain_id="unknown", upc="041220576037", hh=HH_A, fallback_name="Deli Turkey",
+        fallback_category="Deli", previous_product_id=first.product.id,
+    )
+    assert later.outcome == "rekeyed"
+    assert later.product.image_url == f"/v1/product-photos/{PHOTO}"
+
+
 def test_upc_capture_never_rekeys_a_plu_product(repo) -> None:
     repo.capture(store_chain_id="heb", plu_code="4011", hh=HH_A, fallback_name="Bananas", fallback_category="Produce")
     result = repo.capture(

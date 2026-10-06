@@ -315,14 +315,49 @@ def _rekey(
             target.normalized_name = normalize_name(target.name)
         session.insert(target)
     else:
-        target.sources_seen = sorted(set(target.sources_seen) | set(old.sources_seen) | {source})
-        target.dispute_count += old.dispute_count
-        target.last_seen_at = max(target.last_seen_at, old.last_seen_at)
-        for key, value in (overrides or {}).items():
-            if value is not None:
-                setattr(target, key, value)
-        if overrides and "name" in overrides and overrides["name"]:
+        _absorb(target, old, source, overrides)
+    return _finish_rekey(session, old, target, now)
+
+
+def _absorb(target: CatalogProduct, old: CatalogProduct, source: str, overrides: dict[str, str | None] | None) -> None:
+    target.sources_seen = sorted(set(target.sources_seen) | set(old.sources_seen) | {source})
+    target.dispute_count += old.dispute_count
+    target.last_seen_at = max(target.last_seen_at, old.last_seen_at)
+    if target.image_url is None and old.image_url:
+        target.image_url, target.image_source = old.image_url, old.image_source
+    for key, value in (overrides or {}).items():
+        if value is not None:
+            setattr(target, key, value)
+    if overrides and "name" in overrides and overrides["name"]:
+        target.normalized_name = normalize_name(target.name)
+
+
+def _rekey_to_plu(
+    session: _Session, old: CatalogProduct, plu_code: str, *, overrides: dict[str, str | None] | None = None,
+) -> CatalogProduct:
+    """REQ-RCP-020 AC15: a PLU typed later for a photo-only (``llm:``) product takes it over."""
+    target = _follow(session, session.get(plu_product_id(plu_code), for_update=True))
+    now = _utcnow()
+    if target is None:
+        target = old.model_copy(
+            update={
+                "id": plu_product_id(plu_code), "code_kind": "plu", "upc": None, "plu_code": plu_code,
+                "store_chain_id": SHARED_CHAIN_ID, "source": "user_scan",
+                "sources_seen": sorted(set(old.sources_seen) | {"user_scan"}),
+                "confidence_score": CAPTURE_CONFIDENCE, "superseded_by": None,
+                "status_changed_at": None, "first_seen_at": now, "last_seen_at": now,
+                **(overrides or {}),
+            }
+        )
+        if target.name != old.name:
             target.normalized_name = normalize_name(target.name)
+        session.insert(target)
+    else:
+        _absorb(target, old, "user_scan", overrides)
+    return _finish_rekey(session, old, target, now)
+
+
+def _finish_rekey(session: _Session, old: CatalogProduct, target: CatalogProduct, now: datetime) -> CatalogProduct:
     session.copy_confirmations(old.id, target.id)
     session.repoint_aliases(old.id, target.id)
     target.confirmation_count = session.count_confirmations(target.id)
@@ -447,7 +482,7 @@ def _capture(
     if plu_code is not None and not PLU_RE.match(plu_code):
         raise ValueError("invalid_plu")
     session.lock_chain(store_chain_id if upc else SHARED_CHAIN_ID)
-    previous = session.get(previous_product_id, for_update=True) if previous_product_id and upc else None
+    previous = session.get(previous_product_id, for_update=True) if previous_product_id else None
     if previous is not None and (previous.superseded_by or previous.code_kind != "llm"):
         previous = None  # already re-keyed, or a UPC/PLU row — PLU products are never re-keyed (AC7)
 
@@ -462,9 +497,12 @@ def _capture(
     fallback_category = normalize_category(fallback_category)
     overrides = {k: v for k, v in {"name": name, "brand": brand, "category": category, "unit_size": unit_size}.items() if v}
 
-    if previous is not None:
-        product = _rekey(session, previous, upc, "user_scan", CAPTURE_CONFIDENCE, overrides=overrides)
+    if previous is not None and plu_code:
+        product = _rekey_to_plu(session, previous, plu_code, overrides=overrides)
         outcome: str = "rekeyed"
+    elif previous is not None:
+        product = _rekey(session, previous, upc or "", "user_scan", CAPTURE_CONFIDENCE, overrides=overrides)
+        outcome = "rekeyed"
         enrichment_job_id = session.queue_enrichment(product.id, "user_capture", CAPTURE_ENRICHMENT_CHAIN)
     elif existing is not None:
         product, outcome = existing, "linked"
