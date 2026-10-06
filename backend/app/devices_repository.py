@@ -7,6 +7,7 @@ from typing import Protocol
 from uuid import uuid4
 
 from app.config import Settings
+from app.firestore_retry import STREAM_RETRY
 from app.models import DeviceRegistrationRequest, DeviceRegistrationResponse
 
 
@@ -139,7 +140,7 @@ class FirestoreDevicesRepository:
     def list_tokens_for_uids(self, uids: list[str]) -> list[str]:
         tokens: list[str] = []
         for uid in uids:
-            for snap in self._col(uid).stream():
+            for snap in self._col(uid).stream(retry=STREAM_RETRY):
                 data = snap.to_dict() or {}
                 token = data.get("fcm_token")
                 if isinstance(token, str) and token:

@@ -9,6 +9,7 @@ from uuid import uuid4
 from google.cloud import firestore
 
 from app.config import Settings
+from app.firestore_retry import STREAM_RETRY
 from app.household_access import assert_household_member
 from app.models import (
     PurchaseEventCreateRequest,
@@ -126,7 +127,7 @@ class FirestoreSpendingRepository:
         category_filter = category.strip().casefold() if category else None
         query = self._col(household_id).where("purchased_at", ">=", start)
         filtered: list[PurchaseEventResponse] = []
-        for snap in query.stream():
+        for snap in query.stream(retry=STREAM_RETRY):
             event = _to_event(household_id, snap.id, dict(snap.to_dict() or {}))
             if category_filter and event.category.strip().casefold() != category_filter:
                 continue

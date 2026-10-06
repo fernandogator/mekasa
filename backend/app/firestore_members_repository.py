@@ -9,6 +9,7 @@ from uuid import uuid4
 from google.cloud import firestore
 
 from app.config import Settings
+from app.firestore_retry import STREAM_RETRY
 from app.models import (
     HouseholdInviteCreateRequest,
     HouseholdInviteResponse,
@@ -147,7 +148,7 @@ class FirestoreMembersRepository:
         self._require_member_or_owner(household_id, actor_uid)
         members = [
             _member_from(household_id, snap.id, dict(snap.to_dict() or {}))
-            for snap in self._members_col(household_id).stream()
+            for snap in self._members_col(household_id).stream(retry=STREAM_RETRY)
         ]
         return sorted(
             members,
@@ -188,7 +189,7 @@ class FirestoreMembersRepository:
         self._require_owner(household_id, actor_uid)
         invites = [
             _invite_from(household_id, snap.id, dict(snap.to_dict() or {}))
-            for snap in self._invites_col(household_id).stream()
+            for snap in self._invites_col(household_id).stream(retry=STREAM_RETRY)
         ]
         return sorted(invites, key=lambda item: item.created_at, reverse=True)
 
@@ -319,7 +320,7 @@ class FirestoreMembersRepository:
             self._db.collection(USER_MEMBERSHIPS)
             .document(actor_uid)
             .collection(HOUSEHOLDS)
-            .stream()
+            .stream(retry=STREAM_RETRY)
         )
         for snap in snaps:
             data = snap.to_dict() or {}
