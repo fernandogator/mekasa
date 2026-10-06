@@ -517,6 +517,46 @@ Acceptance Criteria:
 - AC4: Tap targets are at least 44×44 pt on iOS and 48×48 dp on Android, including chips, the photo thumbnail and "Scan →"
 - AC5: Colors come from theme roles (`MekasaTheme` on iOS and Android), not hardcoded values; any new or changed color scheme is adopted only after every role pair it defines (text on surface, text on brand, text on warning/success, light text on the dark camera surface) passes AC2 in every appearance the app supports
 
+### NFR-006: Request Tracing and Diagnostic Logs
+Priority: P1
+Description: The Cloud Run API writes structured logs that show what happened on every request, and a correlation ID ties together all the calls of one user flow (for example a receipt scan and the captures and saves that follow it), so one search in Cloud Logging shows the whole story. (Decided 2026-10-06.)
+Design Artifact: N/A (backend logging and client headers)
+Test File: tests/backend/test_request_tracing.py, ios/MekasaTests/RequestTracingTests.swift, android-fable/app/src/test/java/app/mekasa/fable/data/remote/RequestTracingTest.kt
+Acceptance Criteria:
+- AC1: **IDs.** Every request has a request ID and a correlation ID:
+  - **Request ID:** taken from the `X-Request-ID` header, or generated when it is missing or invalid.
+  - **Correlation ID:** taken from `X-Correlation-ID`, or set to the request ID.
+  - **Valid IDs:** 8–128 characters from `A–Z a–z 0–9 . _ : -`.
+  - **Echoed:** both are returned in the response headers.
+- AC2: **JSON logs.** Every backend log line, including library and server logs, is one JSON object on stdout that Cloud Logging reads:
+  - **Standard fields:** `severity`, `message`, `time` and `logger`.
+  - **Request fields:** `request_id`, `correlation_id`, `household_id` (when the path has one) and `user_ref`.
+  - **Trace:** `logging.googleapis.com/trace` when Cloud Run sends a trace header.
+  - **Event name:** structured events add `event` plus their own fields.
+  - **Settings:** `LOG_LEVEL` sets the level; `LOG_FORMAT=text` gives plain lines for local runs.
+- AC3: **Request summary.** Each request ends with one `http.request` event:
+  - **Fields:** method, route template, status and duration in ms.
+  - **Severity:** `INFO` below 400, `WARNING` for 4xx, `ERROR` for 5xx.
+  - **Crashes:** an unhandled error also logs `http.exception` with its stack trace.
+  - **No duplicates:** the server's own access log is off, so each request is logged once.
+- AC4: **Change events.** Every successful write (`POST`, `PUT`, `PATCH`, `DELETE`) logs one `change` event:
+  - **Fields:** `action` (the route's handler name, e.g. `update_inventory_item`), the route template, the ids in the path, the cleaned request body (`changes`) and the id of the written record (`result_id`).
+  - **Skipped:** multipart uploads log only the file size.
+- AC5: **Receipt scan story.** A receipt scan logs these events in order:
+  - `receipt.scan.started`: input type, image size or text line count.
+  - `receipt.llm.finished`: model, outcome (`ok`, `disabled`, `timeout`, `error`, `empty`), item count, duration.
+  - `receipt.ocr.finished`: only when the fallback ran, with engine and item count.
+  - `receipt.store.resolved`: printed store name and chain.
+  - One `receipt.line` per line: index, receipt text, printed code, final name, category, `match_method`, `matched_product_id` and `identified`.
+  - `receipt.scan.finished`: engine, line count, identified and unidentified counts, counts per match method, total duration.
+- AC6: **Privacy (NFR-002 AC3).** Logs never contain:
+  - **Credentials:** bearer tokens or Authorization headers.
+  - **Personal details:** email addresses, street addresses, or household and person names.
+  - **Raw receipt input:** the receipt image or pasted text, logged only as sizes.
+
+  These keys are replaced with `[redacted]` wherever they appear, and email addresses in messages are masked. The user is logged only as `user_ref`, a short SHA-256 hash of the Firebase uid. Product and item names, receipt line text and barcodes are logged as-is.
+- AC7: **App headers.** iOS and Android send a new `X-Request-ID` on every API call. They send `X-Correlation-ID` on every call of a receipt flow: the ID is created when the scan starts and reused for that flow's item saves, photo uploads and catalog captures. Calls outside a flow send no correlation ID.
+
 ### REQ-022: Expired Session Auto Sign-Out
 Priority: P0
 Description: When the GCP / Firebase authenticated session expires
