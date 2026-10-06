@@ -460,6 +460,70 @@ def test_capture_requires_exactly_one_valid_code(repo) -> None:
         repo.capture(store_chain_id="heb", plu_code="401", hh=HH_A, fallback_name="x", fallback_category="Produce")
 
 
+def test_capture_without_code_creates_the_chain_product_with_the_photo(repo) -> None:
+    """REQ-RCP-020 AC15: receipt text + photo, no UPC/PLU."""
+    result = repo.capture(
+        store_chain_id="unknown", hh=HH_A, fallback_name="Deli Turkey", fallback_category="Deli",
+        alias_text="HEB DELI TRKY BRST", alias_store_chain_id="heb", photo_id=PHOTO,
+    )
+    product = result.product
+    assert result.outcome == "created" and result.photo_applied_as == "product_image"
+    assert product.id == llm_product_id("heb", "deli turkey") and product.code_kind == "llm"
+    assert (product.store_chain_id, product.upc, product.plu_code) == ("heb", None, None)
+    assert (product.source, product.confidence_score) == ("user_scan", CAPTURE_CONFIDENCE)
+    assert product.image_url == f"/v1/product-photos/{PHOTO}" and product.image_source == "user_photo"
+    assert result.enrichment_job_id is None and _jobs(repo) == []
+    assert _alias_target(repo, "heb", "HEB DELI TRKY BRST") == product.id
+    assert _alias_target(repo, "unknown", "HEB DELI TRKY BRST") is None
+    assert repo.lookup_alias("heb", "heb deli trky brst").id == product.id
+
+
+def test_capture_without_code_links_the_existing_alias(repo) -> None:
+    """REQ-RCP-020 AC15: a second household links the same product; its photo is only the line image."""
+    first = repo.capture(
+        store_chain_id="unknown", hh=HH_A, fallback_name="Deli Turkey", fallback_category="Deli",
+        alias_text="HEB DELI TRKY BRST", alias_store_chain_id="heb", photo_id=PHOTO,
+    )
+    second = repo.capture(
+        store_chain_id="unknown", hh=HH_B, fallback_name="Turkey breast", fallback_category="Deli",
+        alias_text="heb deli trky brst", alias_store_chain_id="heb",
+        photo_id="7a2b3c4d-1111-4c5d-9e7f-0a1b2c3d4e5f",
+    )
+    assert second.outcome == "linked" and second.product.id == first.product.id
+    assert second.photo_applied_as == "line_image"
+    assert second.product.image_url == f"/v1/product-photos/{PHOTO}"
+    assert second.product.confirmation_count == 2
+
+
+def test_capture_without_code_is_per_chain(repo) -> None:
+    heb = repo.capture(
+        store_chain_id="unknown", hh=HH_A, fallback_name="Deli Turkey", fallback_category="Deli",
+        alias_text="DELI TRKY", alias_store_chain_id="heb",
+    )
+    walmart = repo.capture(
+        store_chain_id="unknown", hh=HH_A, fallback_name="Deli Turkey", fallback_category="Deli",
+        alias_text="DELI TRKY", alias_store_chain_id="walmart",
+    )
+    assert heb.product.id != walmart.product.id
+    assert walmart.product.store_chain_id == "walmart"
+
+
+def test_upc_capture_rekeys_a_photo_only_product(repo) -> None:
+    """REQ-RCP-020 AC15 + AC3: the later barcode re-keys the llm product and its alias."""
+    first = repo.capture(
+        store_chain_id="unknown", hh=HH_A, fallback_name="Deli Turkey", fallback_category="Deli",
+        alias_text="HEB DELI TRKY BRST", alias_store_chain_id="heb", photo_id=PHOTO,
+    )
+    later = repo.capture(
+        store_chain_id="unknown", upc="041220576037", hh=HH_A, fallback_name="Deli Turkey",
+        fallback_category="Deli", previous_product_id=first.product.id,
+    )
+    assert later.outcome == "rekeyed" and later.product.id == "041220576037"
+    assert later.product.image_url == f"/v1/product-photos/{PHOTO}"
+    assert repo.get_product(first.product.id, follow_superseded=False).superseded_by == "041220576037"
+    assert _alias_target(repo, "heb", "HEB DELI TRKY BRST") == "041220576037"
+
+
 def test_upc_capture_never_rekeys_a_plu_product(repo) -> None:
     repo.capture(store_chain_id="heb", plu_code="4011", hh=HH_A, fallback_name="Bananas", fallback_category="Produce")
     result = repo.capture(

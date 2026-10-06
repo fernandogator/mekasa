@@ -3,7 +3,7 @@ Receipt scan matches the shared catalog before Open Food Facts, and inventory
 capture writes the receipt text as an alias.
 
 Satisfies: REQ-RCP-007 (Match Lines Against the Product Database) AC2, AC5;
-REQ-RCP-020 (Scan and Photograph a Product When the UPC Is Not Discovered) AC6
+REQ-RCP-020 (Scan and Photograph a Product When the UPC Is Not Discovered) AC6, AC15
 Spec version: 1.0
 """
 
@@ -342,3 +342,73 @@ def test_catalog_failure_falls_back_to_off(client: TestClient) -> None:
         body = _scan(client, hid, _extraction("HEB", ("A2 Milk Whole", "A2 MLK WHL", None)))
     assert body["items"][0]["identified"] is False
     assert body["items"][0]["image_url"]
+
+
+# --- photo-only capture (REQ-RCP-020 AC15) -----------------------------------
+
+
+def _scan_events(hid: str):
+    from app.scan_events_repository import get_scan_events_repository
+
+    return get_scan_events_repository().list_events(hid)
+
+
+def test_photo_only_capture_matches_next_scan_with_the_photo(client: TestClient) -> None:
+    hid = _household(client)
+    receipt = _extraction("H-E-B #412", ("Deli Turkey", "HEB DELI TRKY BRST", None))
+    [line] = _scan(client, hid, receipt)["items"]
+    assert line["identified"] is False
+
+    item = _item(client, hid, name="Deli Turkey", category="Deli")
+    photo_id = _product_photo(client, hid)
+    captured = _capture(
+        client, hid, item["id"], photo_id=photo_id,
+        receipt_text=line["receipt_text"], store_chain_id="heb",
+    )
+    assert captured.status_code == 200, captured.text
+    body = captured.json()
+    assert body["outcome"] == "created" and body["photo_applied_as"] == "product_image"
+    assert body["product"]["code_kind"] == "llm" and body["product"]["store_chain_id"] == "heb"
+    assert body["enrichment_job_id"] is None
+    assert body["inventory_item"]["product_id"] == body["product"]["id"]
+    assert body["inventory_item"]["barcode"] is None
+    assert body["inventory_item"]["image_url"] == f"/v1/product-photos/{photo_id}"
+    [event] = _scan_events(hid)
+    assert (event.upc, event.plu_code, event.product_id) == (None, None, body["product"]["id"])
+
+    other = _household(client, "owner-2")
+    off = AsyncMock()
+    [matched] = _scan(client, other, receipt, uid="owner-2", off=off)["items"]
+    assert matched["identified"] is True and matched["match_method"] == "alias"
+    assert matched["matched_product_id"] == body["product"]["id"]
+    assert matched["image_url"] == f"/v1/product-photos/{photo_id}"
+    assert matched["name"] == "Deli Turkey" and matched["barcode"] is None
+    off.assert_not_awaited()
+
+
+def test_later_barcode_rekeys_the_photo_only_product(client: TestClient) -> None:
+    hid = _household(client)
+    item = _item(client, hid, name="Deli Turkey", category="Deli")
+    photo_id = _product_photo(client, hid)
+    first = _capture(
+        client, hid, item["id"], photo_id=photo_id, receipt_text="HEB DELI TRKY BRST", store_chain_id="heb",
+    ).json()
+
+    later = _capture(client, hid, item["id"], upc="041220576037")
+    assert later.status_code == 200, later.text
+    assert later.json()["outcome"] == "rekeyed"
+    assert later.json()["inventory_item"]["product_id"] == "041220576037"
+
+    [matched] = _scan(client, hid, _extraction("HEB", ("Deli Turkey", "HEB DELI TRKY BRST", None)))["items"]
+    assert matched["matched_product_id"] == "041220576037"
+    assert matched["barcode"] == "041220576037"
+    assert matched["image_url"] == f"/v1/product-photos/{photo_id}"
+    assert first["product"]["id"].startswith("llm:")
+
+
+def test_no_code_and_no_receipt_text_is_still_rejected(client: TestClient) -> None:
+    hid = _household(client)
+    item = _item(client, hid)
+    response = _capture(client, hid, item["id"], photo_id=_product_photo(client, hid), receipt_text="   ")
+    assert response.status_code == 400 and response.json()["detail"] == "exactly_one_code_required"
+    assert _scan_events(hid) == []
