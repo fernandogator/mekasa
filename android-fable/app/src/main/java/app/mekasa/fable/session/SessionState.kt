@@ -1,5 +1,6 @@
 package app.mekasa.fable.session
 
+import app.mekasa.fable.data.model.DuplicateGroup
 import app.mekasa.fable.data.model.Household
 import app.mekasa.fable.data.model.HouseholdInvite
 import app.mekasa.fable.data.model.HouseholdMember
@@ -74,6 +75,15 @@ sealed interface ConsumeOutcome {
     data class Unknown(val barcode: String) : ConsumeOutcome
     data class Failed(val message: String) : ConsumeOutcome
 }
+
+/**
+ * REQ-INV-021: result of "Find duplicates". [groups] is null when the check failed;
+ * [error] is null when there is nothing to show (including a session that just expired).
+ */
+data class DuplicatesOutcome(val groups: List<DuplicateGroup>?, val error: String?)
+
+/** REQ-INV-021: the groups that merged, the "Merged N items into …" line, and any error. */
+data class MergeOutcome(val merged: List<DuplicateGroup>, val confirmation: String?, val error: String?)
 
 /** Everything fetched for the current household. Kept separate so refreshes replace it wholesale. */
 data class HouseholdData(

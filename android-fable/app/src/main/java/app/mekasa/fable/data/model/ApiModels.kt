@@ -93,6 +93,9 @@ data class InventoryItem(
     @SerialName("product_id") val productId: String? = null,
     val source: String = "manual",
     val deleted: Boolean = false,
+    /** When `image_url` last changed (REQ-INV-021 AC2); null on older rows, which fall back to [updatedAt]. */
+    @SerialName("image_updated_at") val imageUpdatedAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null,
 ) {
     val isLowStock: Boolean get() = quantity <= lowStockThreshold
     val hasImage: Boolean get() = !imageUrl.isNullOrBlank()
@@ -105,6 +108,48 @@ data class InventoryItem(
 data class InventoryListResponse(
     @SerialName("household_id") val householdId: String? = null,
     val items: List<InventoryItem> = emptyList(),
+)
+
+/** Why items were grouped as duplicates, strongest first (REQ-INV-021 AC1). */
+@Serializable
+enum class DuplicateReason(val label: String) {
+    @SerialName("same_barcode") SameBarcode("Same barcode"),
+    @SerialName("same_product") SameProduct("Same product"),
+    @SerialName("same_name") SameName("Same name"),
+}
+
+/** One duplicate group; [keepId] survives a merge (REQ-INV-021 AC2). */
+@Serializable
+data class DuplicateGroup(
+    val reason: DuplicateReason,
+    @SerialName("keep_id") val keepId: String,
+    val items: List<InventoryItem>,
+) {
+    val id: String get() = items.map { it.id }.sorted().joinToString("|")
+    val survivor: InventoryItem? get() = items.firstOrNull { it.id == keepId }
+    val others: List<InventoryItem> get() = items.filter { it.id != keepId }
+
+    /** Changes whenever any item in the group changes, so "Not duplicates" lapses (AC5). */
+    val signature: String get() = items.map { "${it.id}@${it.updatedAt.orEmpty()}" }.sorted().joinToString("|")
+}
+
+/** `GET /v1/households/{id}/inventory/duplicates` (REQ-INV-021 AC1). */
+@Serializable
+data class InventoryDuplicatesResponse(
+    @SerialName("household_id") val householdId: String? = null,
+    val groups: List<DuplicateGroup> = emptyList(),
+)
+
+@Serializable
+data class InventoryMergeRequest(@SerialName("item_ids") val itemIds: List<String>)
+
+/** `POST /v1/households/{id}/inventory/merge` (REQ-INV-021 AC3). */
+@Serializable
+data class InventoryMergeResponse(
+    @SerialName("household_id") val householdId: String? = null,
+    val item: InventoryItem,
+    @SerialName("removed_ids") val removedIds: List<String> = emptyList(),
+    @SerialName("shopping_list_items") val shoppingListItems: List<ShoppingItem> = emptyList(),
 )
 
 @Serializable

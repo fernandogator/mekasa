@@ -4,7 +4,10 @@ import app.mekasa.fable.data.InventoryDraft
 import app.mekasa.fable.data.demo.DemoBackend
 import app.mekasa.fable.data.model.Household
 import app.mekasa.fable.data.model.HouseholdMember
+import app.mekasa.fable.data.model.DuplicateGroup
+import app.mekasa.fable.data.model.DuplicateReason
 import app.mekasa.fable.data.model.InventoryItem
+import app.mekasa.fable.data.model.ShoppingItem
 import app.mekasa.fable.data.remote.ApiException
 import app.mekasa.fable.support.FakeApi
 import app.mekasa.fable.support.FakeAuthGateway
@@ -273,6 +276,47 @@ class SessionViewModelTest {
         assertTrue(done)
         assertEquals("Oat Milk", vm.s.data.inventory.first().name)
         assertTrue(api.calls.contains("createInventory:Oat Milk:voice"))
+    }
+
+    @Test
+    fun `find and merge duplicates updates inventory and relinks the shopping list`() {
+        api.inventory += InventoryItem(id = "i2", householdId = "hh-1", name = "Milk", quantity = 4, lowStockThreshold = 2)
+        api.shopping += ShoppingItem(id = "s2", householdId = "hh-1", name = "Milk", inventoryItemId = "i2", kind = "auto")
+        val vm = viewModel()
+        vm.signInWithEmail("ana@example.com", "secret", createAccount = false)
+
+        var found: DuplicatesOutcome? = null
+        vm.findDuplicates { found = it }
+        val group = found!!.groups!!.single()
+        assertEquals(setOf("i1", "i2"), group.items.map { it.id }.toSet())
+
+        var outcome: MergeOutcome? = null
+        vm.mergeDuplicates(listOf(group)) { outcome = it }
+        assertEquals("Merged 2 items into Milk", outcome!!.confirmation)
+        assertNull(outcome!!.error)
+        val survivor = vm.s.data.inventory.single()
+        assertEquals(4, survivor.quantity)
+        assertEquals(2, survivor.lowStockThreshold)
+        assertEquals(survivor.id, vm.s.data.shopping.first { it.id == "s2" }.inventoryItemId)
+        assertTrue(api.calls.any { it.startsWith("mergeInventory:") })
+    }
+
+    @Test
+    fun `merge conflict asks for a fresh check and keeps the group`() {
+        val vm = viewModel()
+        vm.signInWithEmail("ana@example.com", "secret", createAccount = false)
+        val stale = DuplicateGroup(
+            DuplicateReason.SameName,
+            keepId = "i1",
+            items = listOf(api.inventory.first(), InventoryItem(id = "gone", householdId = "hh-1", name = "Milk")),
+        )
+
+        var outcome: MergeOutcome? = null
+        vm.mergeDuplicates(listOf(stale)) { outcome = it }
+        assertTrue(outcome!!.merged.isEmpty())
+        assertNull(outcome!!.confirmation)
+        assertEquals(SessionViewModel.DUPLICATES_CHANGED, outcome!!.error)
+        assertEquals(1, vm.s.data.inventory.size)
     }
 
     @Test

@@ -55,6 +55,19 @@ enum TestIdentifiers {
     static let inventorySearchClear = "InventorySearchClear"
     static let inventorySectionHeader = "InventorySectionHeader"
     static let inventoryNoMatches = "InventoryNoMatches"
+    static let inventoryFindDuplicatesButton = "InventoryFindDuplicatesButton"
+
+    // MARK: - Inventory duplicates (REQ-INV-021)
+    static let duplicatesView = "DuplicatesView"
+    static let duplicatesGroupCard = "DuplicatesGroupCard"
+    static let duplicatesKeepsBadge = "DuplicatesKeepsBadge"
+    static let duplicatesMergeButton = "DuplicatesMergeButton"
+    static let duplicatesDismissButton = "DuplicatesDismissButton"
+    static let duplicatesMergeAllButton = "DuplicatesMergeAllButton"
+    static let duplicatesDoneButton = "DuplicatesDoneButton"
+    static let duplicatesConfirmation = "DuplicatesConfirmation"
+    static let duplicatesError = "DuplicatesError"
+    static let duplicatesEmptyState = "DuplicatesEmptyState"
 
     // MARK: - Item Detail
     static let itemDetailView = "ItemDetailView"

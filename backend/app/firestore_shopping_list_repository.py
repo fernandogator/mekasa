@@ -247,6 +247,23 @@ class FirestoreShoppingListRepository:
         items = sorted([*updated.values(), *added], key=lambda item: item.updated_at, reverse=True)
         return added, items
 
+    def relink_inventory(
+        self, household_id: str, actor_uid: str, from_ids: list[str], to_id: str
+    ) -> list[ShoppingListItemResponse]:
+        """REQ-INV-021 AC3: one read of the list, one batched write."""
+        self._require_member(household_id, actor_uid)
+        sources = set(from_ids)
+        rows = [row for row in self.list_items(household_id, actor_uid) if row.inventory_item_id in sources]
+        if not rows:
+            return []
+        patch = {"inventory_item_id": to_id, "updated_by_uid": actor_uid, "updated_at": _utcnow()}
+        for start in range(0, len(rows), _BATCH_LIMIT):
+            batch = self._db.batch()
+            for row in rows[start : start + _BATCH_LIMIT]:
+                batch.update(self._col(household_id).document(row.id), patch)
+            batch.commit()
+        return [row.model_copy(update=patch) for row in rows]
+
     def _find_open(
         self,
         household_id: str,

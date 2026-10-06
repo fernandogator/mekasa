@@ -2,10 +2,12 @@ package app.mekasa.fable.data
 
 import app.mekasa.fable.data.model.BarcodeLookup
 import app.mekasa.fable.data.model.ConsumeByBarcodeResult
+import app.mekasa.fable.data.model.DuplicateGroup
 import app.mekasa.fable.data.model.Household
 import app.mekasa.fable.data.model.HouseholdInvite
 import app.mekasa.fable.data.model.HouseholdMember
 import app.mekasa.fable.data.model.InventoryItem
+import app.mekasa.fable.data.model.InventoryMergeResponse
 import app.mekasa.fable.data.model.ProductCaptureRequest
 import app.mekasa.fable.data.model.ProductHit
 import app.mekasa.fable.data.model.ProductPhotoUpload
@@ -78,6 +80,12 @@ interface HouseholdBackend {
 
     /** REQ-INV-018: hard-delete once the undo window has passed. */
     suspend fun purgeInventory(householdId: String, itemId: String)
+
+    /** REQ-INV-021 AC1–AC2: groups of duplicate items, each naming its survivor. */
+    suspend fun inventoryDuplicates(householdId: String): List<DuplicateGroup>
+
+    /** REQ-INV-021 AC3–AC4: merge one group into its survivor and relink the shopping list. */
+    suspend fun mergeInventory(householdId: String, itemIds: List<String>): InventoryMergeResponse
 
     suspend fun shoppingList(householdId: String): List<ShoppingItem>
     suspend fun addShoppingItem(householdId: String, name: String, quantity: Int): ShoppingItem

@@ -8,7 +8,10 @@ import app.mekasa.fable.data.model.HouseholdInvite
 import app.mekasa.fable.data.model.HouseholdInvitesResponse
 import app.mekasa.fable.data.model.HouseholdMember
 import app.mekasa.fable.data.model.HouseholdMembersResponse
+import app.mekasa.fable.data.model.InventoryDuplicatesResponse
 import app.mekasa.fable.data.model.InventoryItem
+import app.mekasa.fable.data.model.InventoryMergeRequest
+import app.mekasa.fable.data.model.InventoryMergeResponse
 import app.mekasa.fable.data.model.InventoryItemCreateRequest
 import app.mekasa.fable.data.model.InventoryItemPatch
 import app.mekasa.fable.data.model.InventoryListResponse
@@ -86,6 +89,10 @@ interface MekasaApi {
     suspend fun deleteInventoryItem(token: String, householdId: String, itemId: String)
     suspend fun restoreInventoryItem(token: String, householdId: String, itemId: String): InventoryItem
     suspend fun purgeInventoryItem(token: String, householdId: String, itemId: String)
+
+    // REQ-INV-021: find and merge duplicates
+    suspend fun listInventoryDuplicates(token: String, householdId: String): InventoryDuplicatesResponse
+    suspend fun mergeInventory(token: String, householdId: String, body: InventoryMergeRequest): InventoryMergeResponse
 
     // Shopping list
     suspend fun listShopping(token: String, householdId: String): ShoppingListResponse

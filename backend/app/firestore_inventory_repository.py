@@ -43,6 +43,7 @@ def _to_item(household_id: str, doc_id: str, data: dict[str, Any]) -> InventoryI
         price_paid=data.get("price_paid"),
         barcode=data.get("barcode"),
         image_url=data.get("image_url"),
+        image_updated_at=data.get("image_updated_at"),
         product_id=data.get("product_id"),
         source=data.get("source") or "manual",
         created_by_uid=str(data["created_by_uid"]),
@@ -137,6 +138,8 @@ class FirestoreInventoryRepository:
                 updates["barcode"] = payload.barcode
             if payload.image_url:
                 updates["image_url"] = payload.image_url
+                if payload.image_url != existing.image_url:
+                    updates["image_updated_at"] = updates["updated_at"]
             if payload.health is not None:
                 updates["health"] = payload.health.model_dump(mode="json")
             self._col(household_id).document(existing.id).update(updates)
@@ -155,6 +158,7 @@ class FirestoreInventoryRepository:
             "price_paid": payload.price_paid,
             "barcode": payload.barcode,
             "image_url": payload.image_url,
+            "image_updated_at": now if payload.image_url else None,
             "source": payload.source,
             "health": payload.health.model_dump(mode="json") if payload.health else None,
             "created_by_uid": owner_uid,
@@ -183,6 +187,8 @@ class FirestoreInventoryRepository:
             data["category"] = data["category"].strip()
         data["updated_by_uid"] = owner_uid
         data["updated_at"] = _utcnow()
+        if "image_url" in data and data["image_url"] != item.image_url:
+            data["image_updated_at"] = data["updated_at"]
         self._col(household_id).document(item_id).update(data)
         if "health" in data:
             data["health"] = payload.health
@@ -209,8 +215,41 @@ class FirestoreInventoryRepository:
             "updated_by_uid": actor_uid,
             "updated_at": _utcnow(),
         }
+        if image_url != item.image_url:
+            data["image_updated_at"] = data["updated_at"]
         self._col(household_id).document(item_id).update(data)
         return item.model_copy(update=data)
+
+    def merge(
+        self,
+        household_id: str,
+        actor_uid: str,
+        *,
+        keep_id: str,
+        remove_ids: list[str],
+        updates: dict,
+    ) -> InventoryItemResponse:
+        """REQ-INV-021 AC3: one batch updates the survivor and deletes the others."""
+        self._require_owner(household_id, actor_uid)
+        col = self._col(household_id)
+        refs = [col.document(item_id) for item_id in (keep_id, *remove_ids)]
+        snaps = {snap.id: snap for snap in self._db.get_all(refs)}
+        for item_id in (keep_id, *remove_ids):
+            snap = snaps.get(item_id)
+            if snap is None or not snap.exists or not _is_active(snap.to_dict() or {}):
+                raise KeyError(item_id)
+        data = dict(updates)
+        if data.get("health") is not None and not isinstance(data["health"], dict):
+            data["health"] = data["health"].model_dump(mode="json")
+        data["updated_by_uid"] = actor_uid
+        data["updated_at"] = _utcnow()
+        batch = self._db.batch()
+        batch.update(col.document(keep_id), data)
+        for item_id in remove_ids:
+            batch.delete(col.document(item_id))
+        batch.commit()
+        merged = {**(snaps[keep_id].to_dict() or {}), **data}
+        return _to_item(household_id, keep_id, merged)
 
     def delete(self, household_id: str, item_id: str, owner_uid: str) -> None:
         """Soft-delete (REQ-INV-016)."""

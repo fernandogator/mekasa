@@ -2,12 +2,16 @@ package app.mekasa.fable.data.demo
 
 import app.mekasa.fable.data.HouseholdBackend
 import app.mekasa.fable.data.InventoryDraft
+import app.mekasa.fable.data.InventoryDuplicates
 import app.mekasa.fable.data.model.BarcodeLookup
 import app.mekasa.fable.data.model.ConsumeByBarcodeResult
+import app.mekasa.fable.data.model.DuplicateGroup
 import app.mekasa.fable.data.model.Household
 import app.mekasa.fable.data.model.HouseholdInvite
 import app.mekasa.fable.data.model.HouseholdMember
 import app.mekasa.fable.data.model.InventoryItem
+import app.mekasa.fable.data.model.InventoryMergeResponse
+import app.mekasa.fable.data.remote.ApiException
 import app.mekasa.fable.data.model.ProductCaptureRequest
 import app.mekasa.fable.data.model.ProductHit
 import app.mekasa.fable.data.model.ProductPhotoUpload
@@ -50,6 +54,15 @@ class DemoBackend(
 
     private fun nextId(prefix: String): String = "$prefix-${seq++}"
 
+    private fun now(): String = java.time.Instant.ofEpochMilli(clock()).toString()
+
+    /** Mirrors the server: every write bumps `updated_at`, and a new `image_url` bumps `image_updated_at`. */
+    private fun stamped(before: InventoryItem?, after: InventoryItem): InventoryItem {
+        val time = now()
+        val imageChanged = after.imageUrl != null && after.imageUrl != before?.imageUrl
+        return after.copy(updatedAt = time, imageUpdatedAt = if (imageChanged) time else after.imageUpdatedAt)
+    }
+
     private fun seedSampleHousehold() {
         household = Household(
             id = HOUSEHOLD_ID,
@@ -76,7 +89,7 @@ class DemoBackend(
                 id = nextId("inv"), householdId = HOUSEHOLD_ID, name = "Paper Towels", category = "Household",
                 quantity = 6, lowStockThreshold = 2, barcode = "030772034828",
             ),
-        )
+        ).map { stamped(null, it) }
         shoppingRows += listOf(
             ShoppingItem(
                 id = nextId("shop"), householdId = HOUSEHOLD_ID, name = "Diet Coke", quantity = 1,
@@ -135,7 +148,7 @@ class DemoBackend(
     override suspend fun inventory(householdId: String): List<InventoryItem> = lock.withLock { inventoryRows.filterNot { it.deleted } }
 
     override suspend fun addInventory(householdId: String, draft: InventoryDraft): InventoryItem = lock.withLock {
-        InventoryItem(
+        val created = InventoryItem(
             id = nextId("inv"),
             householdId = householdId,
             name = draft.name,
@@ -145,7 +158,8 @@ class DemoBackend(
             imageUrl = draft.imageUrl,
             source = draft.source,
             pricePaid = draft.pricePaid,
-        ).also { inventoryRows.add(0, it) }
+        )
+        stamped(null, created).also { inventoryRows.add(0, it) }
     }
 
     override suspend fun replaceItemPhoto(householdId: String, itemId: String, jpeg: ByteArray): InventoryItem {
@@ -184,7 +198,7 @@ class DemoBackend(
                 ConsumeByBarcodeResult(found = false, unknownEvent = event)
             } else {
                 val updated = inventoryRows[index].let {
-                    it.copy(quantity = (it.quantity - amount).coerceAtLeast(0))
+                    stamped(it, it.copy(quantity = (it.quantity - amount).coerceAtLeast(0)))
                 }
                 inventoryRows[index] = updated
                 ConsumeByBarcodeResult(found = true, item = updated)
@@ -228,8 +242,35 @@ class DemoBackend(
         lock.withLock {
             val index = inventoryRows.indexOfFirst { it.id == itemId }
             require(index >= 0) { "Item not found" }
-            transform(inventoryRows[index]).also { inventoryRows[index] = it }
+            val before = inventoryRows[index]
+            stamped(before, transform(before)).also { inventoryRows[index] = it }
         }
+
+    override suspend fun inventoryDuplicates(householdId: String): List<DuplicateGroup> = lock.withLock {
+        InventoryDuplicates.findGroups(inventoryRows.filterNot { it.deleted })
+    }
+
+    /** Same checks as the API: unknown or deleted ids are 404, anything but one group is 409. */
+    override suspend fun mergeInventory(householdId: String, itemIds: List<String>): InventoryMergeResponse = lock.withLock {
+        val visible = inventoryRows.filterNot { it.deleted }.associateBy { it.id }
+        val ids = itemIds.distinct()
+        if (ids.any { it !in visible }) throw ApiException(404, "not_found")
+        val selected = ids.map { visible.getValue(it) }
+        if (!InventoryDuplicates.isOneGroup(selected)) throw ApiException(409, "not_duplicates")
+
+        val group = InventoryDuplicates.findGroups(selected).single()
+        val survivor = stamped(group.survivor, InventoryDuplicates.merged(group) ?: error("No survivor"))
+        val removed = group.others.map { it.id }.toSet()
+        val index = inventoryRows.indexOfFirst { it.id == survivor.id }
+        inventoryRows[index] = survivor
+        inventoryRows.removeAll { it.id in removed }
+
+        val relinked = mutableListOf<ShoppingItem>()
+        shoppingRows.replaceAll { row ->
+            if (row.inventoryItemId in removed) row.copy(inventoryItemId = survivor.id).also { relinked += it } else row
+        }
+        InventoryMergeResponse(householdId, survivor, removed.toList(), relinked)
+    }
 
     // ------------------------------------------------------ shopping list
 

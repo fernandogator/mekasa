@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import app.mekasa.fable.auth.AuthGateway
 import app.mekasa.fable.auth.SignedInUser
+import app.mekasa.fable.data.InventoryDuplicates
 import app.mekasa.fable.data.model.BarcodeLookup
 import app.mekasa.fable.data.model.ConsumeByBarcodeResult
 import app.mekasa.fable.data.model.HealthResponse
@@ -12,10 +13,13 @@ import app.mekasa.fable.data.model.HouseholdInvite
 import app.mekasa.fable.data.model.HouseholdInvitesResponse
 import app.mekasa.fable.data.model.HouseholdMember
 import app.mekasa.fable.data.model.HouseholdMembersResponse
+import app.mekasa.fable.data.model.InventoryDuplicatesResponse
 import app.mekasa.fable.data.model.InventoryItem
 import app.mekasa.fable.data.model.InventoryItemCreateRequest
 import app.mekasa.fable.data.model.InventoryItemPatch
 import app.mekasa.fable.data.model.InventoryListResponse
+import app.mekasa.fable.data.model.InventoryMergeRequest
+import app.mekasa.fable.data.model.InventoryMergeResponse
 import app.mekasa.fable.data.model.InviteCreateRequest
 import app.mekasa.fable.data.model.ItemPhotoUpload
 import app.mekasa.fable.data.model.ProductCaptureRequest
@@ -249,6 +253,24 @@ open class FakeApi : MekasaApi {
     override suspend fun purgeInventoryItem(token: String, householdId: String, itemId: String) {
         record("purgeInventory:$itemId")
         inventory.removeAll { it.id == itemId }
+    }
+
+    override suspend fun listInventoryDuplicates(token: String, householdId: String): InventoryDuplicatesResponse {
+        record("listDuplicates")
+        return InventoryDuplicatesResponse(householdId, InventoryDuplicates.findGroups(inventory.filterNot { it.deleted }))
+    }
+
+    override suspend fun mergeInventory(token: String, householdId: String, body: InventoryMergeRequest): InventoryMergeResponse {
+        record("mergeInventory:${body.itemIds.joinToString(",")}")
+        val selected = body.itemIds.map { id -> inventory.firstOrNull { it.id == id } ?: throw ApiException(404, "not_found") }
+        val group = InventoryDuplicates.findGroups(selected).singleOrNull() ?: throw ApiException(409, "not_duplicates")
+        val survivor = InventoryDuplicates.merged(group)!!
+        val removed = group.others.map { it.id }
+        inventory.replaceAll { if (it.id == survivor.id) survivor else it }
+        inventory.removeAll { it.id in removed }
+        val relinked = shopping.filter { it.inventoryItemId in removed }.map { it.copy(inventoryItemId = survivor.id) }
+        shopping.replaceAll { row -> relinked.firstOrNull { it.id == row.id } ?: row }
+        return InventoryMergeResponse(householdId, survivor, removed, relinked)
     }
 
     override suspend fun listShopping(token: String, householdId: String): ShoppingListResponse {

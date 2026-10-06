@@ -130,6 +130,11 @@ class ShoppingListRepository(Protocol):
     ) -> tuple[list[ShoppingListItemResponse], list[ShoppingListItemResponse]]:
         """Auto-add low-stock inventory items (REQ-011). Returns (added, all)."""
 
+    def relink_inventory(
+        self, household_id: str, actor_uid: str, from_ids: list[str], to_id: str
+    ) -> list[ShoppingListItemResponse]:
+        """Point rows linked to `from_ids` at `to_id` (REQ-INV-021 AC3). Returns the changed rows."""
+
 
 class InMemoryShoppingListRepository:
     """
@@ -284,6 +289,23 @@ class InMemoryShoppingListRepository:
                 bucket[item.id] = item
                 added.append(item)
         return added, self.list_items(household_id, owner_uid)
+
+    def relink_inventory(
+        self, household_id: str, actor_uid: str, from_ids: list[str], to_id: str
+    ) -> list[ShoppingListItemResponse]:
+        self._require_member(household_id, actor_uid)
+        sources = set(from_ids)
+        changed: list[ShoppingListItemResponse] = []
+        with self._lock:
+            bucket = self._items.get(household_id, {})
+            now = _utcnow()
+            for row_id, row in list(bucket.items()):
+                if row.inventory_item_id in sources:
+                    bucket[row_id] = row.model_copy(
+                        update={"inventory_item_id": to_id, "updated_by_uid": actor_uid, "updated_at": now}
+                    )
+                    changed.append(bucket[row_id])
+        return changed
 
     def _require_member(self, household_id: str, owner_uid: str) -> None:
         from app.household_access import assert_household_member

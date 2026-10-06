@@ -218,6 +218,8 @@ class InventoryItemResponse(BaseModel):
     price_paid: float | None = None
     barcode: str | None = None
     image_url: str | None = None
+    # When image_url last changed (REQ-INV-021 AC2); older rows have none and fall back to updated_at.
+    image_updated_at: datetime | None = None
     # Shared catalog product linked by a product capture (REQ-RCP-020 AC6): UPC or plu:<code>.
     product_id: str | None = None
     source: InventorySource
@@ -332,6 +334,42 @@ class ShoppingListSyncResponse(BaseModel):
     household_id: str
     added: list[ShoppingListItemResponse]
     items: list[ShoppingListItemResponse]
+
+
+DuplicateReason = Literal["same_barcode", "same_product", "same_name"]
+
+
+class InventoryDuplicateGroup(BaseModel):
+    """
+    Satisfies: REQ-INV-021 AC1, AC2
+    Spec version: 1.0
+
+    Items that look like the same product; `keep_id` survives a merge.
+    """
+
+    reason: DuplicateReason
+    keep_id: str
+    items: list[InventoryItemResponse]
+
+
+class InventoryDuplicatesResponse(BaseModel):
+    household_id: str
+    groups: list[InventoryDuplicateGroup]
+
+
+class InventoryMergeRequest(BaseModel):
+    """REQ-INV-021 AC3: ids of one duplicate group."""
+
+    model_config = {"extra": "forbid"}
+
+    item_ids: list[str] = Field(min_length=2, max_length=20)
+
+
+class InventoryMergeResponse(BaseModel):
+    household_id: str
+    item: InventoryItemResponse
+    removed_ids: list[str]
+    shopping_list_items: list[ShoppingListItemResponse] = Field(default_factory=list)
 
 
 class BarcodeLookupResponse(BaseModel):
