@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.mekasa.fable.data.remote.ImageAuth
 import app.mekasa.fable.data.remote.PrivateItemPhoto
+import app.mekasa.fable.data.remote.RequestTracing
 import app.mekasa.fable.ui.theme.MekasaTheme
 import app.mekasa.fable.ui.theme.Shapes
 import app.mekasa.fable.ui.theme.Type
@@ -65,6 +66,7 @@ private fun coilModel(model: Any?): Any? {
         ImageRequest.Builder(context)
             .data(model.url)
             .apply { model.headers.forEach { (name, value) -> addHeader(name, value) } }
+            .addHeader(RequestTracing.REQUEST_ID_HEADER, RequestTracing.newId())
             .build()
     }
 }

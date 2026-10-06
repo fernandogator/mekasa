@@ -20,9 +20,11 @@ import app.mekasa.fable.data.model.ProductHit
 import app.mekasa.fable.data.model.ReceiptScanResponse
 import app.mekasa.fable.data.model.ShoppingItem
 import app.mekasa.fable.data.remote.ApiException
+import app.mekasa.fable.data.remote.CorrelationId
 import app.mekasa.fable.data.remote.ImageAuth
 import app.mekasa.fable.data.remote.MekasaApi
 import app.mekasa.fable.data.remote.RemoteBackend
+import app.mekasa.fable.data.remote.RequestTracing
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -31,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Single source of truth for auth, onboarding routing, and household data.
@@ -70,6 +73,9 @@ class SessionViewModel(
     private var backend: HouseholdBackend? = null
     private var authWatcher: Job? = null
     private var purgeJob: Job? = null
+    /** Correlation id of the latest receipt scan (NFR-006 AC7). */
+    internal var receiptFlowId: String? = null
+        private set
 
     private val current: SessionState get() = _state.value
 
@@ -323,23 +329,26 @@ class SessionViewModel(
             onDone()
             return
         }
+        val flowId = receiptFlowId?.takeIf { drafts.any { it.source == "receipt" } }
         guarded(busy = true) {
             val backend = require()
             val id = householdId()
             var captureFailed: String? = null
-            for (draft in drafts) {
-                var created = backend.addInventory(id, draft)
-                draft.capture?.let { capture ->
-                    try {
-                        created = sendCapture(backend, id, created, capture)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        if (e is ApiException && e.isUnauthorized) throw e
-                        captureFailed = "Saved ${created.name}, but couldn't add it to the shared catalog."
+            inReceiptFlow(flowId) {
+                for (draft in drafts) {
+                    var created = backend.addInventory(id, draft)
+                    draft.capture?.let { capture ->
+                        try {
+                            created = sendCapture(backend, id, created, capture)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            if (e is ApiException && e.isUnauthorized) throw e
+                            captureFailed = "Saved ${created.name}, but couldn't add it to the shared catalog."
+                        }
                     }
+                    _state.update { it.copy(data = it.data.copy(inventory = it.data.inventory.upsert(created))) }
                 }
-                _state.update { it.copy(data = it.data.copy(inventory = it.data.inventory.upsert(created))) }
             }
             captureFailed?.let(::fail)
             onDone()
@@ -681,10 +690,17 @@ class SessionViewModel(
 
     // ------------------------------------------------------------ receipts
 
-    fun scanReceipt(rawText: String? = null, imageBase64: String? = null, onResult: (ReceiptScanResponse) -> Unit) =
-        guarded(busy = true) {
-            onResult(require().scanReceipt(householdId(), rawText, imageBase64))
+    /** Each scan starts a receipt flow; its saves and captures reuse the id (NFR-006 AC7). */
+    fun scanReceipt(rawText: String? = null, imageBase64: String? = null, onResult: (ReceiptScanResponse) -> Unit): Job {
+        val flowId = RequestTracing.newId().also { receiptFlowId = it }
+        return guarded(busy = true) {
+            val response = inReceiptFlow(flowId) { require().scanReceipt(householdId(), rawText, imageBase64) }
+            onResult(response)
         }
+    }
+
+    private suspend fun <T> inReceiptFlow(flowId: String?, block: suspend () -> T): T =
+        if (flowId == null) block() else withContext(CorrelationId(flowId)) { block() }
 
     // ------------------------------------------------------------ feedback
 

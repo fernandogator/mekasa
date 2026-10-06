@@ -37,7 +37,9 @@ import app.mekasa.fable.data.model.StoreSearchResponse
 import app.mekasa.fable.data.model.UnknownBarcodeEvent
 import app.mekasa.fable.data.model.UserProfile
 import app.mekasa.fable.data.remote.ApiException
+import app.mekasa.fable.data.remote.CorrelationId
 import app.mekasa.fable.data.remote.MekasaApi
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 
@@ -93,9 +95,12 @@ open class FakeApi : MekasaApi {
         HouseholdMember(uid = "uid-1", householdId = "hh-1", name = "Ana", role = "owner"),
     )
     var closed = false
+    /** The receipt flow each call ran in, in call order (NFR-006 AC7). */
+    val correlations = mutableListOf<Pair<String, String?>>()
 
-    private fun record(name: String) {
+    private suspend fun record(name: String) {
         calls += name
+        correlations += name to currentCoroutineContext()[CorrelationId]?.value
         failWith?.let {
             failWith = null
             throw it
