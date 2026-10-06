@@ -139,6 +139,16 @@ extension AppSession {
         image: UIImage?,
         shareWithoutCode: Bool = false
     ) async -> LocalItemCaptureResult? {
+        await RequestTracing.$correlationID.withValue(receiptFlowID) { () async -> LocalItemCaptureResult? in
+            await performCapture(barcode: barcode, image: image, shareWithoutCode: shareWithoutCode)
+        }
+    }
+
+    private func performCapture(
+        barcode: String?,
+        image: UIImage?,
+        shareWithoutCode: Bool
+    ) async -> LocalItemCaptureResult? {
         let code = barcode.flatMap { $0.isEmpty ? nil : $0 }
         var result = LocalItemCaptureResult(barcode: code)
         if let image {

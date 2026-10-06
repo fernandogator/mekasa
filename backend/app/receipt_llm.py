@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 
 from pydantic import BaseModel, Field
 
@@ -18,6 +19,7 @@ from app.categories import CATEGORIES, normalize_category
 from app.category_icons import category_placeholder_url
 from app.config import Settings
 from app.models import ReceiptLineItem
+from app.observability import log_event
 from app.receipt_ocr import ReceiptParseResult, decode_image
 
 logger = logging.getLogger(__name__)
@@ -123,7 +125,22 @@ async def parse_receipt_llm(
 
     Returns None when Gemini is disabled, errors, times out, or finds no items.
     """
+    started = time.perf_counter()
+    model = settings.gemini_receipt_model
+
+    def finished(outcome: str, level: int = logging.INFO, **fields) -> None:
+        log_event(
+            logger,
+            "receipt.llm.finished",
+            level,
+            model=model,
+            outcome=outcome,
+            duration_ms=round((time.perf_counter() - started) * 1000, 1),
+            **fields,
+        )
+
     if not settings.receipt_llm_enabled or not settings.gcp_project_id:
+        finished("disabled")
         return None
 
     from google.genai import types  # type: ignore
@@ -134,12 +151,14 @@ async def parse_receipt_llm(
         try:
             image_bytes = decode_image(image_base64)
         except Exception:
+            finished("error", logging.WARNING, reason="image_decode_failed")
             return None
         contents = [
             types.Part.from_bytes(data=image_bytes, mime_type=_image_mime(image_bytes)),
             _PROMPT,
         ]
     else:
+        finished("disabled", reason="no_input")
         return None
 
     try:
@@ -147,13 +166,24 @@ async def parse_receipt_llm(
             _generate(settings, contents),
             timeout=settings.gemini_timeout_seconds,
         )
-    except Exception:
+    except TimeoutError:
+        finished("timeout", logging.WARNING, timeout_seconds=settings.gemini_timeout_seconds)
+        return None
+    except Exception as exc:
         logger.warning("Gemini receipt extraction failed; falling back to OCR", exc_info=True)
+        finished("error", logging.WARNING, error=type(exc).__name__)
         return None
 
     items = [item for item in map(_to_line_item, extraction.items) if item is not None]
     if not items:
+        finished("empty", returned_lines=len(extraction.items))
         return None
+    finished(
+        "ok",
+        items=len(items),
+        returned_lines=len(extraction.items),
+        store_name=(extraction.store_name or "").strip() or None,
+    )
     return ReceiptParseResult(
         items=items,
         engine="gemini",

@@ -63,6 +63,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.currentCoroutineContext
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -126,7 +127,7 @@ class KtorMekasaApi(
         mimeType: String,
         filename: String,
     ): Household {
-        val response = client.request("$root/v1/households/$householdId/photo") {
+        val response = send("$root/v1/households/$householdId/photo") {
             method = HttpMethod.Post
             bearerAuth(token)
             setBody(
@@ -176,7 +177,7 @@ class KtorMekasaApi(
         mimeType: String,
         filename: String,
     ): ItemPhotoUpload {
-        val response = client.request("$root/v1/households/$householdId/item-photos") {
+        val response = send("$root/v1/households/$householdId/item-photos") {
             method = HttpMethod.Post
             bearerAuth(token)
             setBody(
@@ -204,7 +205,7 @@ class KtorMekasaApi(
         call(HttpMethod.Post, "/v1/households/$householdId/inventory/$itemId/refresh-health", token)
 
     override suspend fun uploadProductPhoto(token: String, householdId: String, bytes: ByteArray): ProductPhotoUpload {
-        val response = client.request("$root/v1/households/$householdId/product-photos") {
+        val response = send("$root/v1/households/$householdId/product-photos") {
             method = HttpMethod.Post
             bearerAuth(token)
             setBody(
@@ -291,7 +292,7 @@ class KtorMekasaApi(
     ): ShoppingItem = call(HttpMethod.Patch, "/v1/households/$householdId/shopping-list/$itemId", token, patch)
 
     override suspend fun deleteShoppingItem(token: String, householdId: String, itemId: String) {
-        val response = client.request("$root/v1/households/$householdId/shopping-list/$itemId") {
+        val response = send("$root/v1/households/$householdId/shopping-list/$itemId") {
             method = HttpMethod.Delete
             bearerAuth(token)
         }
@@ -363,6 +364,15 @@ class KtorMekasaApi(
 
     // ------------------------------------------------------------ plumbing
 
+    /** Every request carries a new request id and the caller's receipt flow, if any (NFR-006 AC7). */
+    private suspend fun send(url: String, block: HttpRequestBuilder.() -> Unit): HttpResponse {
+        val correlationId = currentCoroutineContext()[CorrelationId]?.value
+        return client.request(url) {
+            RequestTracing.headers(correlationId).forEach { (name, value) -> headers.append(name, value) }
+            block()
+        }
+    }
+
     private suspend inline fun <reified T> call(
         method: HttpMethod,
         path: String,
@@ -370,7 +380,7 @@ class KtorMekasaApi(
         body: Any? = null,
         noinline extra: HttpRequestBuilder.() -> Unit = {},
     ): T {
-        val response = client.request(root + path) {
+        val response = send(root + path) {
             this.method = method
             if (token != null) bearerAuth(token)
             if (body != null) {
@@ -384,7 +394,7 @@ class KtorMekasaApi(
 
     /** For 204 routes (soft delete, purge): success is the status alone. */
     private suspend fun callNoContent(method: HttpMethod, path: String, token: String) {
-        val response = client.request(root + path) {
+        val response = send(root + path) {
             this.method = method
             bearerAuth(token)
         }

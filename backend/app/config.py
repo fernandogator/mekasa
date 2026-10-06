@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     # Shared product photos from the capture flow (REQ-RCP-021), e.g.
     # mekasa-product-photos-prod; unset → photos and ownership kept in memory.
     product_photo_bucket: str | None = None
+    # NFR-006: JSON lines for Cloud Logging; LOG_FORMAT=text for readable local output.
+    log_level: str = "INFO"
+    log_format: str = "json"
 
 
 @lru_cache

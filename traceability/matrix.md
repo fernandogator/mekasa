@@ -60,3 +60,4 @@ Last updated: 2026-09-26
 | NFR-002 | Data Privacy | — | pending | pending | not tested | — |
 | NFR-003 | Offline Resilience | — | pending | pending | not tested | — |
 | NFR-004 | Secrets Management | — | pending | pending | not tested | — |
+| NFR-006 | Request Tracing and Diagnostic Logs | — | test_request_tracing; RequestTracingTests (iOS); RequestTracingTest (Android) | tests/backend/test_request_tracing.py; ios/MekasaTests/RequestTracingTests.swift; android-fable/app/src/test/java/app/mekasa/fable/data/remote/RequestTracingTest.kt | tested (backend unit + API; Android unit; iOS unit pending CI) | 2026-10-06 |

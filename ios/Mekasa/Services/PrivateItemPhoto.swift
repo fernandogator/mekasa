@@ -45,6 +45,7 @@ enum PrivateItemPhoto {
         request.httpMethod = "GET"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("image/jpeg", forHTTPHeaderField: "Accept")
+        RequestTracing.apply(to: &request)
         request.cachePolicy = .returnCacheDataElseLoad
         return request
     }
