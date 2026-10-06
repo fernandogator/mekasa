@@ -9,6 +9,7 @@ from uuid import uuid4
 from google.cloud import firestore
 
 from app.config import Settings
+from app.firestore_retry import STREAM_RETRY
 from app.models import (
     AddressUpdateRequest,
     HouseholdCreateRequest,
@@ -93,7 +94,7 @@ class FirestoreHouseholdRepository:
         return _to_household(snap.id, snap.to_dict() or {})
 
     def get_for_owner(self, owner_uid: str) -> HouseholdResponse | None:
-        query = self._col.where("owner_uid", "==", owner_uid).limit(1).stream()
+        query = self._col.where("owner_uid", "==", owner_uid).limit(1).stream(retry=STREAM_RETRY)
         for snap in query:
             return _to_household(snap.id, snap.to_dict() or {})
         return None

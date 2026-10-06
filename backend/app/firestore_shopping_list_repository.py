@@ -9,6 +9,7 @@ from uuid import uuid4
 from google.cloud import firestore
 
 from app.config import Settings
+from app.firestore_retry import STREAM_RETRY
 from app.inventory_repository import InventoryRepository
 from app.models import (
     ShoppingListItemCreateRequest,
@@ -16,9 +17,12 @@ from app.models import (
     ShoppingListItemUpdateRequest,
 )
 from app.repository import HouseholdRepository
+from app.shopping_list_repository import actor_is_owner, as_member_request, plan_low_stock_rows
 
 HOUSEHOLDS = "households"
 SHOPPING = "shopping_list_items"
+# Firestore allows at most 500 writes per batch.
+_BATCH_LIMIT = 400
 
 
 def _utcnow() -> datetime:
@@ -82,7 +86,7 @@ class FirestoreShoppingListRepository:
         self._require_member(household_id, owner_uid)
         items = [
             _to_item(household_id, snap.id, snap.to_dict() or {})
-            for snap in self._col(household_id).stream()
+            for snap in self._col(household_id).stream(retry=STREAM_RETRY)
         ]
         return sorted(items, key=lambda item: item.updated_at, reverse=True)
 
@@ -188,26 +192,60 @@ class FirestoreShoppingListRepository:
     def sync_from_inventory(
         self, household_id: str, owner_uid: str, inventory: InventoryRepository
     ) -> tuple[list[ShoppingListItemResponse], list[ShoppingListItemResponse]]:
+        """
+        Satisfies: REQ-011 AC1, AC2
+        Spec version: 1.0
+
+        One read of the inventory and of the list, one batched write: the old
+        per-item create re-read the whole list twice per low-stock item, which
+        on a 40-item haul ran past Firestore's deadline mid-stream.
+        """
         self._require_member(household_id, owner_uid)
+        inventory_items = inventory.list_items(household_id, owner_uid)
+        current = self.list_items(household_id, owner_uid)
+        creates, links = plan_low_stock_rows(
+            inventory_items, current, actor_is_owner=actor_is_owner(household_id, owner_uid)
+        )
+        if not creates and not links:
+            return [], current
+
+        now = _utcnow()
+        writes: list[tuple[Any, dict[str, Any], bool]] = []
+        updated = {row.id: row for row in current}
+        for row_id, inventory_item_id in links:
+            patch = {"inventory_item_id": inventory_item_id, "updated_by_uid": owner_uid, "updated_at": now}
+            writes.append((self._col(household_id).document(row_id), patch, False))
+            updated[row_id] = updated[row_id].model_copy(update=patch)
         added: list[ShoppingListItemResponse] = []
-        for inv in inventory.list_items(household_id, owner_uid):
-            if inv.quantity > inv.low_stock_threshold:
-                continue
-            needed = max(1, inv.low_stock_threshold - inv.quantity + 1)
-            before_ids = {item.id for item in self.list_items(household_id, owner_uid)}
-            row = self.create(
-                household_id,
-                owner_uid,
-                ShoppingListItemCreateRequest(
-                    name=inv.name,
-                    quantity=needed,
-                    inventory_item_id=inv.id,
-                    kind="auto",
-                ),
-            )
-            if row.id not in before_ids:
-                added.append(row)
-        return added, self.list_items(household_id, owner_uid)
+        for payload in creates:
+            item_id = str(uuid4())
+            data = {
+                "name": payload.name.strip(),
+                "quantity": payload.quantity,
+                "quantity_label": payload.quantity_label,
+                "is_checked": False,
+                "needs_approval": payload.needs_approval,
+                "requested_by": payload.requested_by,
+                "inventory_item_id": payload.inventory_item_id,
+                "kind": payload.kind,
+                "created_by_uid": owner_uid,
+                "updated_by_uid": owner_uid,
+                "created_at": now,
+                "updated_at": now,
+            }
+            writes.append((self._col(household_id).document(item_id), data, True))
+            added.append(_to_item(household_id, item_id, data))
+
+        for start in range(0, len(writes), _BATCH_LIMIT):
+            batch = self._db.batch()
+            for ref, data, is_new in writes[start : start + _BATCH_LIMIT]:
+                if is_new:
+                    batch.set(ref, data)
+                else:
+                    batch.update(ref, data)
+            batch.commit()
+        items = sorted([*updated.values(), *added], key=lambda item: item.updated_at, reverse=True)
+        return added, items
 
     def _find_open(
         self,
@@ -237,18 +275,4 @@ class FirestoreShoppingListRepository:
         actor_uid: str,
         payload: ShoppingListItemCreateRequest,
     ) -> ShoppingListItemCreateRequest:
-        from app.household_access import get_household_or_404, is_household_owner
-
-        household = get_household_or_404(household_id)
-        if is_household_owner(household, actor_uid):
-            return payload
-        if payload.needs_approval and payload.kind == "request":
-            return payload
-        return payload.model_copy(
-            update={
-                "needs_approval": True,
-                "kind": "request",
-                "requested_by": payload.requested_by or "Member",
-                "is_checked": False,
-            }
-        )
+        return payload if actor_is_owner(household_id, actor_uid) else as_member_request(payload)

@@ -10,6 +10,7 @@ from uuid import uuid4
 from app.config import Settings, get_settings
 from app.inventory_repository import InventoryRepository
 from app.models import (
+    InventoryItemResponse,
     ShoppingListItemCreateRequest,
     ShoppingListItemResponse,
     ShoppingListItemUpdateRequest,
@@ -23,6 +24,69 @@ def _utcnow() -> datetime:
 
 def _norm(value: str) -> str:
     return value.strip().casefold()
+
+
+def as_member_request(payload: ShoppingListItemCreateRequest) -> ShoppingListItemCreateRequest:
+    """Non-owners may only add requests (REQ-012 / REQ-014)."""
+    if payload.needs_approval and payload.kind == "request":
+        return payload
+    return payload.model_copy(
+        update={
+            "needs_approval": True,
+            "kind": "request",
+            "requested_by": payload.requested_by or "Member",
+            "is_checked": False,
+        }
+    )
+
+
+def plan_low_stock_rows(
+    inventory_items: list[InventoryItemResponse],
+    current: list[ShoppingListItemResponse],
+    *,
+    actor_is_owner: bool,
+) -> tuple[list[ShoppingListItemCreateRequest], list[tuple[str, str]]]:
+    """
+    Satisfies: REQ-011 AC1, AC2
+    Spec version: 1.0
+
+    Rows to create for low-stock items, and `(row_id, inventory_item_id)`
+    links for unchecked rows that already cover an item by name. An item that
+    is already on the list (open or awaiting approval) is left as it is, so
+    repeated syncs never grow quantities or duplicate rows.
+    """
+    unchecked = [row for row in current if not row.is_checked]
+    by_item = {row.inventory_item_id: row for row in unchecked if row.inventory_item_id}
+    by_name = {_norm(row.name): row for row in unchecked}
+    creates: list[ShoppingListItemCreateRequest] = []
+    links: list[tuple[str, str]] = []
+    planned: set[str] = set()
+    for inv in inventory_items:
+        if inv.quantity > inv.low_stock_threshold:
+            continue
+        name = _norm(inv.name)
+        if inv.id in by_item or name in planned:
+            continue
+        existing = by_name.get(name)
+        if existing is not None:
+            if not existing.inventory_item_id:
+                links.append((existing.id, inv.id))
+            continue
+        payload = ShoppingListItemCreateRequest(
+            name=inv.name,
+            quantity=max(1, inv.low_stock_threshold - inv.quantity + 1),
+            inventory_item_id=inv.id,
+            kind="auto",
+        )
+        creates.append(payload if actor_is_owner else as_member_request(payload))
+        planned.add(name)
+    return creates, links
+
+
+def actor_is_owner(household_id: str, actor_uid: str) -> bool:
+    from app.household_access import get_household_or_404, is_household_owner
+
+    return is_household_owner(get_household_or_404(household_id), actor_uid)
 
 
 class ShoppingListRepository(Protocol):
@@ -189,24 +253,36 @@ class InMemoryShoppingListRepository:
         self, household_id: str, owner_uid: str, inventory: InventoryRepository
     ) -> tuple[list[ShoppingListItemResponse], list[ShoppingListItemResponse]]:
         self._require_member(household_id, owner_uid)
+        inventory_items = inventory.list_items(household_id, owner_uid)
+        is_owner = actor_is_owner(household_id, owner_uid)
         added: list[ShoppingListItemResponse] = []
-        for inv in inventory.list_items(household_id, owner_uid):
-            if inv.quantity > inv.low_stock_threshold:
-                continue
-            needed = max(1, inv.low_stock_threshold - inv.quantity + 1)
-            before = {item.id for item in self.list_items(household_id, owner_uid)}
-            row = self.create(
-                household_id,
-                owner_uid,
-                ShoppingListItemCreateRequest(
-                    name=inv.name,
-                    quantity=needed,
-                    inventory_item_id=inv.id,
-                    kind="auto",
-                ),
-            )
-            if row.id not in before:
-                added.append(row)
+        with self._lock:
+            bucket = self._items.setdefault(household_id, {})
+            creates, links = plan_low_stock_rows(inventory_items, list(bucket.values()), actor_is_owner=is_owner)
+            now = _utcnow()
+            for row_id, inventory_item_id in links:
+                bucket[row_id] = bucket[row_id].model_copy(
+                    update={"inventory_item_id": inventory_item_id, "updated_by_uid": owner_uid, "updated_at": now}
+                )
+            for payload in creates:
+                item = ShoppingListItemResponse(
+                    id=str(uuid4()),
+                    household_id=household_id,
+                    name=payload.name.strip(),
+                    quantity=payload.quantity,
+                    quantity_label=payload.quantity_label,
+                    is_checked=False,
+                    needs_approval=payload.needs_approval,
+                    requested_by=payload.requested_by,
+                    inventory_item_id=payload.inventory_item_id,
+                    kind=payload.kind,
+                    created_by_uid=owner_uid,
+                    updated_by_uid=owner_uid,
+                    created_at=now,
+                    updated_at=now,
+                )
+                bucket[item.id] = item
+                added.append(item)
         return added, self.list_items(household_id, owner_uid)
 
     def _require_member(self, household_id: str, owner_uid: str) -> None:
@@ -221,21 +297,7 @@ class InMemoryShoppingListRepository:
         payload: ShoppingListItemCreateRequest,
     ) -> ShoppingListItemCreateRequest:
         """Non-owners may only add requests (REQ-012 / REQ-014)."""
-        from app.household_access import get_household_or_404, is_household_owner
-
-        household = get_household_or_404(household_id)
-        if is_household_owner(household, actor_uid):
-            return payload
-        if payload.needs_approval and payload.kind == "request":
-            return payload
-        return payload.model_copy(
-            update={
-                "needs_approval": True,
-                "kind": "request",
-                "requested_by": payload.requested_by or "Member",
-                "is_checked": False,
-            }
-        )
+        return payload if actor_is_owner(household_id, actor_uid) else as_member_request(payload)
 
     @staticmethod
     def _find_open(
