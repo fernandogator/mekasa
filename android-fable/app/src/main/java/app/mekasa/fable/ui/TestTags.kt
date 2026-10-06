@@ -86,6 +86,9 @@ object TestTags {
     const val ITEM_PHOTO_LIBRARY_BUTTON = "ItemPhotoLibraryButton"
     const val QUANTITY_CONTROL = "QuantityControl"
     const val THRESHOLD_CONTROL = "ThresholdControl"
+    const val ADD_ITEM_CODE_BUTTON = "AddItemCodeButton"
+    const val ADD_ITEM_CODE_FIELD = "AddItemCodeField"
+    const val ADD_ITEM_CODE_SAVE = "AddItemCodeSave"
 
     // Shopping list (REQ-011–014)
     const val SHOPPING_LIST_VIEW = "ShoppingListView"
@@ -168,4 +171,14 @@ object TestTags {
 
     fun result(name: String) = "Result-$name"
     fun receiptLine(index: Int) = "ReceiptLine-$index"
+    fun receiptLineCapture(index: Int) = "ReceiptLineCapture-$index"
+
+    // Receipt line capture (REQ-RCP-020 AC6, AC15)
+    const val CAPTURE_CODE_FIELD = "CaptureCodeField"
+    const val CAPTURE_TAKE_PHOTO = "CaptureTakePhoto"
+    const val CAPTURE_CHOOSE_PHOTO = "CaptureChoosePhoto"
+    const val CAPTURE_NO_CODE_LABEL = "CaptureNoCodeLabel"
+    const val CAPTURE_SAVE = "CaptureSave"
+    const val CAPTURE_SHARED_NOTICE = "CaptureSharedNotice"
+    const val SHARED_PHOTO_LABEL = "SharedPhotoLabel"
 }
