@@ -10,8 +10,17 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import app.mekasa.fable.data.CatalogCapture
+import app.mekasa.fable.data.CatalogCode
+import app.mekasa.fable.data.LineCapture
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -102,7 +111,12 @@ private sealed interface AddStep {
     data object Voice : AddStep
     data object Receipt : AddStep
     data class Confirm(val draft: InventoryDraft, val back: AddStep) : AddStep
-    data class ReceiptConfirm(val lines: List<ReceiptLine>, val engine: String) : AddStep
+    data class ReceiptConfirm(
+        val lines: List<ReceiptLine>,
+        val engine: String,
+        val storeName: String? = null,
+        val storeChainId: String? = null,
+    ) : AddStep
 
     val depth: Int
         get() = when (this) {
@@ -180,7 +194,7 @@ fun AddItemsSheet(
                         session = session,
                         busy = state.busy,
                         isDemo = state.isDemo,
-                        onScanned = { step = AddStep.ReceiptConfirm(it.items, it.engine) },
+                        onScanned = { step = AddStep.ReceiptConfirm(it.items, it.engine, it.storeName, it.storeChainId) },
                     )
                     is AddStep.Confirm -> ConfirmStep(
                         draft = current.draft,
@@ -190,6 +204,9 @@ fun AddItemsSheet(
                     is AddStep.ReceiptConfirm -> ReceiptConfirmStep(
                         lines = current.lines,
                         engine = current.engine,
+                        storeName = current.storeName,
+                        storeChainId = current.storeChainId,
+                        uid = state.account?.uid,
                         busy = state.busy,
                         onSave = { drafts -> session.addInventory(drafts) { onDismiss() } },
                     )
@@ -709,12 +726,36 @@ private fun ReceiptStep(
 private fun ReceiptConfirmStep(
     lines: List<ReceiptLine>,
     engine: String,
+    storeName: String?,
+    storeChainId: String?,
+    uid: String?,
     busy: Boolean,
     onSave: (List<InventoryDraft>) -> Unit,
 ) {
     val palette = MekasaTheme.palette
     val selected = remember(lines) { mutableStateOf(lines.indices.toSet()) }
     val picked = selected.value
+    val captures = remember(lines) { mutableStateMapOf<Int, LineCapture>() }
+    val previews = remember(lines) { mutableStateMapOf<Int, ImageBitmap>() }
+    var capturing by remember(lines) { mutableStateOf<Int?>(null) }
+
+    capturing?.let { index ->
+        LineCapturePanel(
+            line = lines[index],
+            storeName = storeName,
+            storeChainId = storeChainId,
+            uid = uid,
+            initial = captures[index],
+            initialPreview = previews[index],
+            onCancel = { capturing = null },
+            onSave = { capture, preview ->
+                captures[index] = capture
+                if (preview != null) previews[index] = preview else previews.remove(index)
+                capturing = null
+            },
+        )
+        return
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(Space.base)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -727,12 +768,13 @@ private fun ReceiptConfirmStep(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height((lines.size.coerceAtMost(5) * 68).dp)
+                    .heightIn(max = 360.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(Space.sm),
             ) {
                 lines.forEachIndexed { index, line ->
                     val checked = index in picked
+                    val capture = captures[index]
                     Card(
                         onClick = {
                             selected.value = if (checked) picked - index else picked + index
@@ -747,7 +789,17 @@ private fun ReceiptConfirmStep(
                                 colors = CheckboxDefaults.colors(checkedColor = palette.accent),
                             )
                             Spacer(Modifier.width(Space.sm))
-                            ProductThumbnail(imageUrl = line.imageUrl, name = line.name, size = 40.dp)
+                            val preview = previews[index]
+                            if (preview != null) {
+                                Image(
+                                    bitmap = preview,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.size(40.dp).clip(Shapes.card),
+                                )
+                            } else {
+                                ProductThumbnail(imageUrl = line.imageUrl, name = line.name, size = 40.dp)
+                            }
                             Spacer(Modifier.width(Space.md))
                             Column(Modifier.weight(1f)) {
                                 Text(line.name, style = Type.body, color = palette.text)
@@ -755,12 +807,30 @@ private fun ReceiptConfirmStep(
                                     buildString {
                                         append("×${line.quantity} · ${line.category}")
                                         line.pricePaid?.let { append(" · ${money(it)}") }
+                                        CatalogCode.parse(capture?.code)?.let { append(" · ${it.value}") }
                                     },
                                     style = Type.caption,
                                     color = palette.textMuted,
                                 )
+                                if (capture?.isPhotoOnly == true) {
+                                    Text(CatalogCapture.SAVED_CARD_NOTE, style = Type.caption, color = palette.textMuted)
+                                }
+                                if (!line.identified) {
+                                    LinkButton(
+                                        text = if (capture == null) "Add photo or code" else "Edit photo or code",
+                                        onClick = { capturing = index },
+                                        modifier = Modifier.testTag(TestTags.receiptLineCapture(index)),
+                                    )
+                                }
                             }
-                            if (!line.identified) Chip("Unmatched", palette.warning)
+                            when {
+                                capture?.photoJpeg != null && capture.sharesPhoto -> Chip(
+                                    CatalogCapture.SHARED_PHOTO_LABEL,
+                                    palette.success,
+                                    modifier = Modifier.testTag(TestTags.SHARED_PHOTO_LABEL),
+                                )
+                                !line.identified && capture == null -> Chip("Unmatched", palette.warning)
+                            }
                         }
                     }
                 }
@@ -770,16 +840,8 @@ private fun ReceiptConfirmStep(
             text = "Add ${picked.size} to inventory",
             onClick = {
                 onSave(
-                    lines.filterIndexed { index, _ -> index in picked }.map { line ->
-                        InventoryDraft(
-                            name = line.name,
-                            category = line.category,
-                            quantity = line.quantity.coerceAtLeast(1),
-                            barcode = line.barcode,
-                            imageUrl = line.imageUrl,
-                            source = "receipt",
-                            pricePaid = line.pricePaid,
-                        )
+                    lines.mapIndexedNotNull { index, line ->
+                        if (index in picked) CatalogCapture.receiptDraft(line, captures[index]) else null
                     },
                 )
             },
