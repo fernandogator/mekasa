@@ -541,7 +541,7 @@ Acceptance Criteria:
   - **No duplicates:** the server's own access log is off, so each request is logged once.
 - AC4: **Change events.** Every successful write (`POST`, `PUT`, `PATCH`, `DELETE`) logs one `change` event:
   - **Fields:** `action` (the route's handler name, e.g. `update_inventory_item`), the route template, the ids in the path, the cleaned request body (`changes`) and the id of the written record (`result_id`).
-  - **Skipped:** multipart uploads log only the file size.
+  - **Skipped:** multipart uploads log only the file size. `POST …/receipts/scan` writes nothing, so it logs no `change` event; AC5 covers it.
 - AC5: **Receipt scan story.** A receipt scan logs these events in order:
   - `receipt.scan.started`: input type, image size or text line count.
   - `receipt.llm.finished`: model, outcome (`ok`, `disabled`, `timeout`, `error`, `empty`), item count, duration.
