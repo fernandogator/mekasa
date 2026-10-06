@@ -366,6 +366,66 @@ def _save_receipt_lines(session: _Session, store_chain_id: str, lines: list[Rece
     return ids
 
 
+def _apply_photo(
+    session: _Session, product: CatalogProduct, photo_id: str, hh: str,
+    receipt_id: str | None, line_item_id: str | None,
+) -> tuple[str, CatalogConflict | None]:
+    """REQ-RCP-020 AC5 photo rules for a product that already exists."""
+    if product.image_url is None:
+        product.image_url, product.image_source = photo_image_url(photo_id), "user_photo"
+        return "product_image", None
+    if product.status == "verified":
+        conflict = session.add_conflict(
+            product.id, hh, receipt_id or "none", line_item_id or "none",
+            "image_url", product.image_url, photo_image_url(photo_id),
+        )
+        return "correction_proposed", conflict
+    return "line_image", None
+
+
+def _capture_without_code(
+    session: _Session, *, chain: str, alias: str, hh: str, name: str, brand: str | None, category: str,
+    unit_size: str | None, photo_id: str | None, receipt_id: str | None, line_item_id: str | None,
+) -> CaptureResult:
+    """
+    REQ-RCP-020 AC15: no UPC/PLU, so the receipt text identifies the product
+    within its chain. An alias already recorded for the text wins; otherwise
+    the chain's ``llm:`` product for the name is linked or created.
+    """
+    session.lock_chain(chain)
+    known = session.find_alias(chain, alias)
+    product = _follow(session, session.get(known, for_update=True)) if known else None
+    display_name = name.strip()[:120]
+    normalized = normalize_name(display_name)[:120] or alias
+    if product is None:
+        product = _follow(session, session.get(llm_product_id(chain, normalized), for_update=True))
+    photo_applied, conflict = "none", None
+    if product is not None:
+        outcome = "linked"
+        product.sources_seen = sorted(set(product.sources_seen) | {"user_scan"})
+        if photo_id:
+            photo_applied, conflict = _apply_photo(session, product, photo_id, hh, receipt_id, line_item_id)
+    else:
+        outcome = "created"
+        product = CatalogProduct(
+            id=llm_product_id(chain, normalized), code_kind="llm", store_chain_id=chain,
+            name=display_name or alias, normalized_name=normalized, brand=brand, category=category[:60],
+            unit_size=unit_size,
+            image_url=photo_image_url(photo_id) if photo_id else None,
+            image_source="user_photo" if photo_id else None,
+            source="user_scan", sources_seen=["user_scan"], confidence_score=CAPTURE_CONFIDENCE,
+        )
+        session.insert(product)
+        if photo_id:
+            photo_applied = "product_image"
+    session.upsert_alias(chain, alias, product.id)
+    confirmed = _confirm(session, product, hh)
+    return CaptureResult(
+        outcome=outcome, product=confirmed.product, confirmation_counted=confirmed.confirmation_counted,
+        photo_applied_as=photo_applied, conflict=conflict,
+    )
+
+
 def _capture(
     session: _Session, *, store_chain_id: str, upc: str | None, plu_code: str | None, hh: str,
     fallback_name: str, fallback_category: str, alias_text: str | None, alias_store_chain_id: str | None,
@@ -373,7 +433,13 @@ def _capture(
     photo_id: str | None, previous_product_id: str | None,
     receipt_id: str | None, line_item_id: str | None,
 ) -> CaptureResult:
-    """REQ-RCP-020 AC2–AC4, AC6, AC7 (design §3.11 step 2). Aliases go under `alias_store_chain_id` when given."""
+    """REQ-RCP-020 AC2–AC4, AC6, AC7, AC15 (design §3.11 step 2). Aliases go under `alias_store_chain_id` when given."""
+    if upc is None and plu_code is None and normalize_name(alias_text or ""):
+        return _capture_without_code(
+            session, chain=alias_store_chain_id or store_chain_id, alias=normalize_name(alias_text or "")[:120],
+            hh=hh, name=name or fallback_name, brand=brand, category=normalize_category(category or fallback_category),
+            unit_size=unit_size, photo_id=photo_id, receipt_id=receipt_id, line_item_id=line_item_id,
+        )
     if (upc is None) == (plu_code is None):
         raise ValueError("exactly_one_code_required")
     if upc is not None and not UPC_RE.match(upc):
@@ -421,17 +487,7 @@ def _capture(
             enrichment_job_id = session.queue_enrichment(product.id, "user_capture", CAPTURE_ENRICHMENT_CHAIN)
 
     if photo_id and photo_applied == "none":
-        if product.image_url is None:
-            product.image_url, product.image_source = photo_image_url(photo_id), "user_photo"
-            photo_applied = "product_image"
-        elif product.status == "verified":
-            conflict = session.add_conflict(
-                product.id, hh, receipt_id or "none", line_item_id or "none",
-                "image_url", product.image_url, photo_image_url(photo_id),
-            )
-            photo_applied = "correction_proposed"
-        else:
-            photo_applied = "line_image"
+        photo_applied, conflict = _apply_photo(session, product, photo_id, hh, receipt_id, line_item_id)
 
     if alias_text:
         alias = normalize_name(alias_text)
