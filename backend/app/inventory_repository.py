@@ -89,6 +89,17 @@ class InventoryRepository(Protocol):
     ) -> InventoryItemResponse:
         """Link the item to a captured product (REQ-RCP-020 AC6); KeyError if missing."""
 
+    def merge(
+        self,
+        household_id: str,
+        actor_uid: str,
+        *,
+        keep_id: str,
+        remove_ids: list[str],
+        updates: dict,
+    ) -> InventoryItemResponse:
+        """Apply `updates` to the survivor and hard-delete the others in one write (REQ-INV-021 AC3)."""
+
 
 class InMemoryInventoryRepository:
     """
@@ -142,6 +153,8 @@ class InMemoryInventoryRepository:
                     updates["barcode"] = payload.barcode
                 if payload.image_url:
                     updates["image_url"] = payload.image_url
+                    if payload.image_url != existing.image_url:
+                        updates["image_updated_at"] = updates["updated_at"]
                 if payload.health is not None:
                     updates["health"] = payload.health
                 merged = existing.model_copy(update=updates)
@@ -159,6 +172,7 @@ class InMemoryInventoryRepository:
                 price_paid=payload.price_paid,
                 barcode=payload.barcode,
                 image_url=payload.image_url,
+                image_updated_at=now if payload.image_url else None,
                 source=payload.source,
                 health=payload.health,
                 created_by_uid=owner_uid,
@@ -191,6 +205,8 @@ class InMemoryInventoryRepository:
                 data["health"] = payload.health
             data["updated_by_uid"] = owner_uid
             data["updated_at"] = _utcnow()
+            if "image_url" in data and data["image_url"] != item.image_url:
+                data["image_updated_at"] = data["updated_at"]
             updated = item.model_copy(update=data)
             self._items[household_id][item_id] = updated
             return updated
@@ -210,17 +226,42 @@ class InMemoryInventoryRepository:
             item = self._items.get(household_id, {}).get(item_id)
             if item is None or item.deleted:
                 raise KeyError(item_id)
-            updated = item.model_copy(
-                update={
-                    "barcode": barcode,
-                    "product_id": product_id,
-                    "image_url": image_url,
-                    "updated_by_uid": actor_uid,
-                    "updated_at": _utcnow(),
-                }
-            )
+            now = _utcnow()
+            update = {
+                "barcode": barcode,
+                "product_id": product_id,
+                "image_url": image_url,
+                "updated_by_uid": actor_uid,
+                "updated_at": now,
+            }
+            if image_url != item.image_url:
+                update["image_updated_at"] = now
+            updated = item.model_copy(update=update)
             self._items[household_id][item_id] = updated
             return updated
+
+    def merge(
+        self,
+        household_id: str,
+        actor_uid: str,
+        *,
+        keep_id: str,
+        remove_ids: list[str],
+        updates: dict,
+    ) -> InventoryItemResponse:
+        self._require_owner(household_id, actor_uid)
+        with self._lock:
+            bucket = self._items.get(household_id, {})
+            for item_id in (keep_id, *remove_ids):
+                if item_id not in bucket or bucket[item_id].deleted:
+                    raise KeyError(item_id)
+            merged = bucket[keep_id].model_copy(
+                update={**updates, "updated_by_uid": actor_uid, "updated_at": _utcnow()}
+            )
+            bucket[keep_id] = merged
+            for item_id in remove_ids:
+                del bucket[item_id]
+            return merged
 
     def delete(self, household_id: str, item_id: str, owner_uid: str) -> None:
         """Soft-delete (REQ-INV-016)."""

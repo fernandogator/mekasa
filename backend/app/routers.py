@@ -19,6 +19,7 @@ from app.barcode_lookup import ProductLookupUnavailableError, lookup_barcode, se
 from app.config import Settings, get_settings
 from app.devices_repository import DevicesRepository, get_devices_repository
 from app.household_access import assert_household_member, assert_household_owner
+from app.inventory_dedupe import find_groups, is_one_group, merge_updates, pick_survivor
 from app.inventory_image import refresh_item_health, refresh_item_image
 from app.inventory_repository import InventoryRepository, get_inventory_repository
 from app.item_photos import (
@@ -49,10 +50,13 @@ from app.models import (
     InventoryConsumeByBarcodeRequest,
     InventoryConsumeByBarcodeResult,
     InventoryConsumeRequest,
+    InventoryDuplicatesResponse,
     InventoryItemCreateRequest,
     InventoryItemResponse,
     InventoryItemUpdateRequest,
     InventoryListResponse,
+    InventoryMergeRequest,
+    InventoryMergeResponse,
     ItemPhotoUploadResponse,
     MemberAvoidUpdateRequest,
     ProductSearchResponse,
@@ -360,6 +364,87 @@ def create_inventory_item(
             # Spending is additive; inventory create must still succeed.
             pass
     return _with_warnings(item, _household_members_for_warnings(household_id, user.uid))
+
+
+@inventory_router.get(
+    "/households/{household_id}/inventory/duplicates",
+    response_model=InventoryDuplicatesResponse,
+)
+def list_inventory_duplicates(
+    household_id: str,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: InventoryRepository = Depends(get_inventory_repository),
+) -> InventoryDuplicatesResponse:
+    """
+    Satisfies: REQ-INV-021 AC1, AC2
+    Spec version: 1.0
+    """
+    try:
+        items = repo.list_items(household_id, user.uid)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+    return InventoryDuplicatesResponse(household_id=household_id, groups=find_groups(items))
+
+
+@inventory_router.post(
+    "/households/{household_id}/inventory/merge",
+    response_model=InventoryMergeResponse,
+)
+def merge_inventory_items(
+    household_id: str,
+    payload: InventoryMergeRequest,
+    user: AuthUser = Depends(verify_bearer_token),
+    repo: InventoryRepository = Depends(get_inventory_repository),
+    shopping: ShoppingListRepository = Depends(get_shopping_list_repository),
+    photos: ItemPhotoService = Depends(get_item_photo_service),
+) -> InventoryMergeResponse:
+    """
+    Satisfies: REQ-INV-021 AC3, AC4
+    Spec version: 1.0
+
+    Merges one duplicate group into the item with the newest picture. Unknown or
+    deleted ids are 404; ids that are not one group are 409 and nothing changes.
+    """
+    try:
+        items = repo.list_items(household_id, user.uid)
+    except (KeyError, PermissionError) as exc:
+        raise _map_inventory_errors(exc) from exc
+    by_id = {item.id: item for item in items}
+    ids = list(dict.fromkeys(payload.item_ids))
+    if any(item_id not in by_id for item_id in ids):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
+    selected = [by_id[item_id] for item_id in ids]
+    if len(selected) < 2 or not is_one_group(selected):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="not_duplicates")
+
+    survivor = pick_survivor(selected)
+    others = [item for item in selected if item.id != survivor.id]
+    removed_ids = [item.id for item in others]
+    try:
+        merged = repo.merge(
+            household_id,
+            user.uid,
+            keep_id=survivor.id,
+            remove_ids=removed_ids,
+            updates=merge_updates(survivor, others),
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found") from exc
+    except PermissionError as exc:
+        raise _map_inventory_errors(exc) from exc
+
+    relinked = shopping.relink_inventory(household_id, user.uid, removed_ids, merged.id)
+    still_used = {item.image_url for item in items if item.id not in removed_ids}
+    still_used.add(merged.image_url)
+    for item in others:
+        if item.image_url and item.image_url not in still_used:
+            photos.delete_if_owned(household_id, item.image_url)
+    return InventoryMergeResponse(
+        household_id=household_id,
+        item=_with_warnings(merged, _household_members_for_warnings(household_id, user.uid)),
+        removed_ids=removed_ids,
+        shopping_list_items=relinked,
+    )
 
 
 @inventory_router.get(

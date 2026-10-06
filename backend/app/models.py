@@ -246,7 +246,6 @@ class InventoryListResponse(BaseModel):
     items: list[InventoryItemResponse]
 
 
-
 class InventoryConsumeRequest(BaseModel):
     """
     Satisfies: REQ-008
