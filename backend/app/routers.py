@@ -1,6 +1,8 @@
 """HTTP routers for health, onboarding, and inventory."""
 
 import logging
+import time
+from collections import Counter
 
 from fastapi import (
     APIRouter,
@@ -82,6 +84,7 @@ from app.members_repository import MembersRepository, get_members_repository
 from app.places_lookup import fetch_nearby_stores
 from app.product_health import AVOIDANCES, member_warnings
 from app.push_notify import notify_invite_accepted, notify_invite_created
+from app.observability import log_event
 from app.receipt_llm import parse_receipt_llm
 from app.receipt_ocr import enrich_receipt_items, parse_receipt_image
 from app.repository import (
@@ -952,10 +955,11 @@ async def scan_receipt(
     catalog: CatalogRepository = Depends(get_catalog_repository),
 ) -> ReceiptScanResponse:
     """
-    Satisfies: REQ-005, REQ-RCP-007 AC5
+    Satisfies: REQ-005, REQ-RCP-007 AC5, NFR-006 AC5
     Acceptance criteria: AC1, AC2
     Spec version: 1.0
 
+    Every step is logged under the request's correlation id (NFR-006 AC5).
     Gemini extracts line items (falling back to Vision OCR + regex), then each
     line is matched against the shared catalog (printed code, then receipt
     text alias for the detected chain or `unknown`) and, failing that, Open
@@ -973,17 +977,66 @@ async def scan_receipt(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
     if not payload.image_base64 and not payload.raw_text:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="image_or_text_required")
+    started = time.perf_counter()
+    has_text = bool(payload.raw_text and payload.raw_text.strip())
+    log_event(
+        logger,
+        "receipt.scan.started",
+        input="text" if has_text else "image",
+        image_bytes=len(payload.image_base64) * 3 // 4 if payload.image_base64 else None,
+        text_lines=len(payload.raw_text.splitlines()) if has_text else None,
+    )
     result = await parse_receipt_llm(
         settings,
         image_base64=payload.image_base64,
         raw_text=payload.raw_text,
-    ) or parse_receipt_image(
-        image_base64=payload.image_base64,
-        raw_text=payload.raw_text,
-        allow_stub=True,
     )
+    if result is None:
+        ocr_started = time.perf_counter()
+        result = parse_receipt_image(
+            image_base64=payload.image_base64,
+            raw_text=payload.raw_text,
+            allow_stub=True,
+        )
+        log_event(
+            logger,
+            "receipt.ocr.finished",
+            logging.WARNING if result.engine == "stub" else logging.INFO,
+            engine=result.engine,
+            items=len(result.items),
+            duration_ms=round((time.perf_counter() - ocr_started) * 1000, 1),
+        )
     store_chain_id = resolve_store_chain(result.store_name)
+    log_event(logger, "receipt.store.resolved", store_name=result.store_name, store_chain_id=store_chain_id)
     items = await enrich_receipt_items(result.items, catalog=catalog, store_chain_id=store_chain_id)
+    for index, item in enumerate(items):
+        log_event(
+            logger,
+            "receipt.line",
+            index=index,
+            receipt_text=item.receipt_text,
+            receipt_code=item.receipt_code,
+            name=item.name,
+            category=item.category,
+            quantity=item.quantity,
+            price_paid=item.price_paid,
+            barcode=item.barcode,
+            match_method=item.match_method,
+            matched_product_id=item.matched_product_id,
+            identified=item.identified,
+        )
+    identified = sum(1 for item in items if item.identified)
+    log_event(
+        logger,
+        "receipt.scan.finished",
+        engine=result.engine,
+        lines=len(items),
+        identified=identified,
+        unidentified=len(items) - identified,
+        match_methods=dict(Counter(item.match_method or "none" for item in items)),
+        store_chain_id=store_chain_id,
+        duration_ms=round((time.perf_counter() - started) * 1000, 1),
+    )
     return ReceiptScanResponse(
         household_id=household_id,
         engine=result.engine,

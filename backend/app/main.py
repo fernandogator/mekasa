@@ -10,6 +10,7 @@ from app.capture_routes import capture_router
 from app.catalog_repository import CatalogSaltMissing
 from app.catalog_routes import products_router
 from app.config import get_settings
+from app.observability import RequestTracingMiddleware, configure_logging
 from app.product_photo_routes import product_photos_router
 from app.routers import (
     api_router,
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 def create_app() -> FastAPI:
     """Build the FastAPI application."""
     settings = get_settings()
+    configure_logging(settings.log_level, settings.log_format, settings.gcp_project_id)
     clear_lookup_cache()
     application = FastAPI(
         title="Mekasa API",
@@ -46,6 +48,7 @@ def create_app() -> FastAPI:
     application.include_router(product_photos_router)
     application.include_router(capture_router)
     application.add_exception_handler(CatalogSaltMissing, _catalog_salt_missing)
+    application.add_middleware(RequestTracingMiddleware)
     application.state.settings = settings  # type: ignore[attr-defined]
     return application
 

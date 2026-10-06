@@ -7,6 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import Settings, get_settings
 from app.firebase_app import ensure_firebase_app
+from app.observability import bind_user
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -41,6 +42,7 @@ def verify_bearer_token(
     token = credentials.credentials
     if settings.allow_test_auth and token.startswith("test:"):
         uid = token.removeprefix("test:").strip() or "test-user"
+        bind_user(uid)
         return AuthUser(uid=uid, email=f"{uid}@example.com", name="Test User")
 
     project_id = settings.firebase_project_id or settings.gcp_project_id
@@ -65,6 +67,7 @@ def verify_bearer_token(
             detail="Invalid or expired Firebase ID token",
         ) from exc
 
+    bind_user(str(decoded["uid"]))
     return AuthUser(
         uid=str(decoded["uid"]),
         email=decoded.get("email"),
