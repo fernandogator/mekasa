@@ -209,6 +209,39 @@ Acceptance Criteria:
 - AC6: Opened without a list (e.g. a deep link or route straight to the item), the detail shows no position, chevrons or swipe
 - AC7: Moving to another item shows that item's own quantity, threshold, picture and status, and runs the same on-open refreshes (image, health) as opening it from the list
 
+### REQ-INV-021: Find and Merge Duplicate Items
+Priority: P2
+Description: A household member **shall** be able to ask the app to find
+inventory items that are the same product listed more than once, review
+each group, and merge it into one item that keeps the newest picture.
+Nothing merges without the member's confirmation.
+Design Artifact: design/pages/inventory-duplicates.html (Superdesign "Mekasa v1.0", draft "Duplicates Review", 2026-10-06)
+Test File: tests/backend/test_inventory_duplicates.py, ios/MekasaTests/InventoryDuplicatesTests.swift, android-fable/app/src/test/java/app/mekasa/fable/ui/InventoryDuplicatesTest.kt
+Acceptance Criteria:
+- AC1: `GET /v1/households/{hid}/inventory/duplicates` (household member) returns groups of two or more visible (not soft-deleted) items that share any of the following:
+  - the same non-empty `barcode` (reason `same_barcode`);
+  - the same catalog `product_id` (reason `same_product`);
+  - the same category and the same normalized name (reason `same_name`). Names are normalized by ignoring case, accents, punctuation and repeated spaces, and by reducing simple plurals to their singular ("Bananas" → "banana", "Berries" → "berry", "Boxes" → "box").
+  Items linked through any chain of these rules form one group. A group's reason is the strongest rule that links it (barcode, then product, then name).
+- AC2: Each group names the item that survives: the item whose picture changed most recently. A real picture always wins over a category placeholder or no picture. When no item has a picture, the most recently updated item survives. Each item exposes `image_updated_at`, set whenever its `image_url` changes; items saved before this field existed fall back to `updated_at`.
+- AC3: `POST /v1/households/{hid}/inventory/merge` with `item_ids` (2–20 ids that AC1 places in one group) merges them in one write:
+  - **Survivor fields:** the survivor keeps its id, name, category and picture.
+  - **Higher values:** `quantity` and `low_stock_threshold` become the highest value in the group. Quantities are not added together.
+  - **Gap filling:** an empty `barcode`, `product_id`, `price_paid` or `health` on the survivor is filled from the most recently updated other item.
+  - **Removed items:** the other items are deleted permanently (not moved to the REQ-INV-016 undo window).
+  - **Shopping list:** rows that pointed at a removed item point at the survivor.
+  - **Photos:** a household-private photo (REQ-INV-019) used only by a removed item is deleted.
+  - **Response:** returns the merged item and the removed ids.
+- AC4: Ids that are unknown, already deleted, or not one duplicate group are rejected (`404 not_found`, or `409 not_duplicates`), and nothing changes.
+- AC5: Both apps offer "Find duplicates" on the inventory screen. It opens the Duplicates review:
+  - **Group cards:** one card per group, with the reason chip ("Same barcode", "Same product", "Same name") and each item's picture, name, category, quantity and photo age. The survivor is marked "Keeps this photo", above a one-line preview of the result ("Merges into Bananas · keeps qty 3 (higher) · newest photo").
+  - **Card actions:** "Merge" merges that group. "Not duplicates" hides the group on this device for this household until the items change.
+  - **Bulk action:** a bottom button "Merge all N" merges every group shown.
+  - **Confirmation:** a merge is confirmed with "Merged N items into {name}".
+  - **Empty state:** when there are no groups, the screen shows "No duplicates found · Your inventory is tidy."
+- AC6: The local inventory and shopping list update from the merge response without a full reload. Signed-out and preview sessions find and merge duplicates locally with the same rules (AC1–AC3).
+- AC7: Group cards, the survivor badge and the actions are announced by VoiceOver/TalkBack (for example "Organic Bananas, keeps this photo"), and the screen follows NFR-005.
+
 ### REQ-010: Low Stock Threshold — Learned
 Priority: P2
 Description: System learns consumption rate and suggests threshold
