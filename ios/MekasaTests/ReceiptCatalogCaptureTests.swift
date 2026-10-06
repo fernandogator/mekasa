@@ -3,7 +3,7 @@ import XCTest
 
 /// Receipt lines resolved by a capture go back to the shared catalog with their
 /// receipt text, so the next scan of the same receipt matches them.
-/// Satisfies: REQ-RCP-007 AC5, REQ-RCP-020 AC6/AC7, REQ-RCP-021 AC3/AC7
+/// Satisfies: REQ-RCP-007 AC5, REQ-RCP-020 AC6/AC7/AC15, REQ-RCP-021 AC3/AC7
 /// Spec version: 1.0
 final class ReceiptCatalogCaptureTests: XCTestCase {
     private let api = URL(string: "https://mekasa-api.example.run.app")!
@@ -128,5 +128,76 @@ final class ReceiptCatalogCaptureTests: XCTestCase {
         XCTAssertTrue(ProductPhotoSharingNotice.hasSeen(uid: "u1", defaults: defaults))
         XCTAssertFalse(ProductPhotoSharingNotice.hasSeen(uid: "u2", defaults: defaults))
         XCTAssertFalse(ProductPhotoSharingNotice.sheetCopy.contains("only"), "copy never says household-only")
+    }
+
+    // MARK: - Photo-only capture (REQ-RCP-020 AC15)
+
+    func testPhotoOnlyCaptureSendsPhotoReceiptTextAndChainWithoutCode() throws {
+        let result = LocalItemCaptureResult(barcode: nil, photoURL: "/v1/product-photos/\(photoID)", productPhotoID: photoID)
+        let body = try XCTUnwrap(
+            ItemConfirmView.catalogCapture(for: result, receiptText: " HEB DELI TRKY BRST ", storeChainId: "heb")
+        )
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(body)) as? [String: String]
+        )
+        XCTAssertEqual(object, [
+            "photo_id": photoID,
+            "receipt_text": "HEB DELI TRKY BRST",
+            "store_chain_id": "heb",
+        ])
+    }
+
+    func testPhotoOnlyCaptureNeedsASharedPhotoAndReceiptText() {
+        let shared = LocalItemCaptureResult(barcode: nil, photoURL: "/v1/product-photos/\(photoID)", productPhotoID: photoID)
+        XCTAssertNil(ItemConfirmView.catalogCapture(for: shared, receiptText: "   ", storeChainId: "heb"))
+        let privatePhoto = LocalItemCaptureResult(barcode: nil, photoURL: "/v1/households/h/item-photos/x", productPhotoID: nil)
+        XCTAssertNil(ItemConfirmView.catalogCapture(for: privatePhoto, receiptText: "DELI TRKY", storeChainId: "heb"))
+        let oddCode = LocalItemCaptureResult(barcode: "123456", photoURL: nil, productPhotoID: photoID)
+        XCTAssertNil(
+            ItemConfirmView.catalogCapture(for: oddCode, receiptText: "DELI TRKY", storeChainId: "heb"),
+            "a 6-digit code is neither UPC nor PLU, and the line is not photo-only"
+        )
+    }
+
+    func testCodeCaptureStillWinsOverPhotoOnly() throws {
+        let result = LocalItemCaptureResult(barcode: "4011", photoURL: nil, productPhotoID: photoID)
+        let body = try XCTUnwrap(ItemConfirmView.catalogCapture(for: result, receiptText: "BANANAS", storeChainId: "heb"))
+        XCTAssertEqual(body.pluCode, "4011")
+        XCTAssertEqual(body.photoId, photoID)
+    }
+
+    func testPhotoOnlyCopy() {
+        XCTAssertEqual(
+            PhotoOnlyCapture.noCodeMessage(storeName: "H-E-B"),
+            "No barcode scanned — the photo and name are shared for H-E-B receipts"
+        )
+        XCTAssertEqual(
+            PhotoOnlyCapture.noCodeMessage(storeName: "  "),
+            "No barcode scanned — the photo and name are shared for these receipts"
+        )
+        XCTAssertEqual(
+            PhotoOnlyCapture.errorMessage(for: APIError.server(status: 400, detail: "{\"detail\":\"invalid_plu\"}")),
+            "That PLU isn’t valid. Produce PLUs have 4 or 5 digits."
+        )
+    }
+
+    func testItemCanAddCodeOnlyWithoutOne() {
+        XCTAssertTrue(InventoryItem(name: "Deli Turkey", category: "Deli", source: .receipt).canAddCode)
+        XCTAssertTrue(
+            InventoryItem(name: "Deli Turkey", category: "Deli", source: .receipt, productId: "llm:\(String(repeating: "a", count: 40))")
+                .canAddCode
+        )
+        XCTAssertFalse(InventoryItem(name: "Milk", category: "Dairy", barcode: "0070852993188", source: .barcode).canAddCode)
+        XCTAssertFalse(InventoryItem(name: "Bananas", category: "Produce", source: .receipt, productId: "plu:4011").canAddCode)
+    }
+
+    func testInventoryItemDecodesProductId() throws {
+        let json = Data("""
+        {"id": "item_1", "household_id": "hh_1", "name": "Deli Turkey", "category": "Deli", "quantity": 1,
+         "product_id": "plu:3283", "source": "receipt"}
+        """.utf8)
+        let dto = try JSONDecoder().decode(InventoryItemDTO.self, from: json)
+        XCTAssertEqual(dto.productId, "plu:3283")
+        XCTAssertEqual(dto.toLocal().productId, "plu:3283")
     }
 }

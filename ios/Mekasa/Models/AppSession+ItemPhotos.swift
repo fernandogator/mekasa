@@ -32,15 +32,29 @@ enum CatalogCaptureCode: Equatable {
     /// receipt text and chain go with the code and photo so the next scan of
     /// that text matches the product (REQ-RCP-020 AC6, REQ-RCP-007 AC5).
     func request(photoID: String?, receiptText: String?, storeChainId: String?) -> ProductCaptureRequestDTO {
-        let alias = receiptText
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .flatMap { $0.isEmpty ? nil : String($0.prefix(200)) }
-        var body = ProductCaptureRequestDTO(photoId: photoID, receiptText: alias, storeChainId: storeChainId)
+        var body = ProductCaptureRequestDTO(
+            photoId: photoID,
+            receiptText: Self.trimmedAlias(receiptText),
+            storeChainId: storeChainId
+        )
         switch self {
         case let .upc(code): body.upc = code
         case let .plu(code): body.pluCode = code
         }
         return body
+    }
+
+    /// Photo-only capture: no code, so the receipt text names the product
+    /// for its chain (REQ-RCP-020 AC15). Nil without a shared photo or text.
+    static func photoOnlyRequest(photoID: String?, receiptText: String?, storeChainId: String?) -> ProductCaptureRequestDTO? {
+        guard let photoID, let alias = trimmedAlias(receiptText) else { return nil }
+        return ProductCaptureRequestDTO(photoId: photoID, receiptText: alias, storeChainId: storeChainId)
+    }
+
+    static func trimmedAlias(_ receiptText: String?) -> String? {
+        receiptText
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .flatMap { $0.isEmpty ? nil : String($0.prefix(200)) }
     }
 }
 
@@ -115,15 +129,21 @@ extension AppSession {
     }
 
     /// In-store capture for a receipt line the catalog could not identify. With
-    /// a UPC / PLU the photo is uploaded to the shared product photos
-    /// (REQ-RCP-021) so the confirm step can send it with the code and receipt
-    /// text; without one it stays a household-private item photo (REQ-INV-019).
-    /// The scanned code is also looked up in case Open Food Facts knows it.
-    func captureUnidentifiedItem(barcode: String?, image: UIImage?) async -> LocalItemCaptureResult? {
+    /// a UPC / PLU, or with no code when `shareWithoutCode` (the line has
+    /// receipt text, REQ-RCP-020 AC15), the photo is uploaded to the shared
+    /// product photos (REQ-RCP-021) so the confirm step can send it with the
+    /// receipt text; otherwise it stays a household-private item photo
+    /// (REQ-INV-019). The scanned code is also looked up in case Open Food Facts knows it.
+    func captureUnidentifiedItem(
+        barcode: String?,
+        image: UIImage?,
+        shareWithoutCode: Bool = false
+    ) async -> LocalItemCaptureResult? {
         let code = barcode.flatMap { $0.isEmpty ? nil : $0 }
         var result = LocalItemCaptureResult(barcode: code)
         if let image {
-            if CatalogCaptureCode(code) != nil, let shared = await uploadProductPhoto(image) {
+            let shares = CatalogCaptureCode(code) != nil || (code == nil && shareWithoutCode)
+            if shares, let shared = await uploadProductPhoto(image) {
                 result.photoURL = shared.imageUrl
                 result.productPhotoID = shared.photoId
             } else {
@@ -145,6 +165,49 @@ extension AppSession {
             if let hit, hit.found { result.lookup = hit }
         }
         return result
+    }
+
+    /// Add a barcode or PLU to a saved item that has none (REQ-RCP-020 AC15):
+    /// the capture links or re-keys its shared product, then a UPC refreshes
+    /// the health grade right away (REQ-021 AC4). PLU produce has no nutrition source.
+    /// Returns an error message to show inline, or nil on success.
+    func addCodeToInventoryItem(itemID: String, code: CatalogCaptureCode) async -> String? {
+        guard canSyncInventory, let token = idToken, let householdID = household?.id else {
+            return "Sign in to your household to add a barcode."
+        }
+        var body = ProductCaptureRequestDTO()
+        switch code {
+        case let .upc(value): body.upc = value
+        case let .plu(value): body.pluCode = value
+        }
+        do {
+            let response = try await MekasaAPIClient.shared.captureInventoryItemProduct(
+                householdID: householdID,
+                itemID: itemID,
+                capture: body,
+                token: token
+            )
+            guard var remote = response.inventoryItem else { return nil }
+            if case .upc = code, remote.health == nil,
+               let refreshed = try? await MekasaAPIClient.shared.refreshInventoryItemHealth(
+                   householdID: householdID,
+                   itemID: itemID,
+                   token: token
+               ) {
+                remote = refreshed
+            }
+            if let idx = inventory.firstIndex(where: { $0.id == remote.id }) {
+                inventory[idx] = remote.toLocal()
+            }
+            logActivity("Added code to \(remote.name)", kind: .success)
+            return nil
+        } catch {
+            if SessionExpiry.isUnauthorized(error) {
+                handleAPIFailure(error)
+                return nil
+            }
+            return PhotoOnlyCapture.errorMessage(for: error)
+        }
     }
 
     /// Upload a capture photo to the shared product photos (REQ-RCP-021 AC1).

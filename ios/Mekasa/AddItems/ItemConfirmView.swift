@@ -237,6 +237,8 @@ struct ItemConfirmView: View {
     @State private var matchRoute: CatalogMatchRoute?
     @State private var captureRoute: CatalogMatchRoute?
     @State private var capturedDraftIDs: Set<String> = []
+    /// Drafts whose photo goes to the catalog without a code (REQ-RCP-020 AC15).
+    @State private var sharedPhotoDraftIDs: Set<String> = []
     /// Shared-catalog captures sent after each draft is created (REQ-RCP-020 AC6).
     @State private var catalogCaptures: [String: ProductCaptureRequestDTO] = [:]
 
@@ -302,7 +304,9 @@ struct ItemConfirmView: View {
             NavigationStack {
                 LocalItemCaptureView(
                     itemName: drafts.first(where: { $0.id == route.id })?.name ?? "",
-                    store: storeContext
+                    store: storeContext,
+                    shareWithoutCode: session.canSyncInventory
+                        && CatalogCaptureCode.trimmedAlias(drafts.first(where: { $0.id == route.id })?.receiptText) != nil
                 ) { result in
                     applyCapture(result, to: route.id)
                 }
@@ -359,6 +363,13 @@ struct ItemConfirmView: View {
                             .textCase(.uppercase)
                             .foregroundStyle(MekasaTheme.warning)
                             .accessibilityIdentifier(TestIdentifiers.scanPromptLabel)
+                    } else if sharedPhotoDraftIDs.contains(draft.wrappedValue.id) {
+                        Label(PhotoOnlyCapture.sharedPhotoLabel, systemImage: "person.2.fill")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .tracking(0.6)
+                            .textCase(.uppercase)
+                            .foregroundStyle(MekasaTheme.text)
+                            .accessibilityIdentifier(TestIdentifiers.sharedPhotoLabel)
                     } else if capturedDraftIDs.contains(draft.wrappedValue.id) {
                         Text("Scanned in store")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
@@ -378,6 +389,10 @@ struct ItemConfirmView: View {
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundStyle(MekasaTheme.textMuted)
                             .accessibilityIdentifier(TestIdentifiers.itemBarcodeLabel)
+                    } else if sharedPhotoDraftIDs.contains(draft.wrappedValue.id) {
+                        Text(PhotoOnlyCapture.savedCardNote)
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(MekasaTheme.textMuted)
                     }
                     if let health = draft.wrappedValue.health, health.hasGrade {
                         HStack(spacing: 8) {
@@ -556,6 +571,7 @@ struct ItemConfirmView: View {
         drafts[idx].health = hit.health
         drafts[idx].isIdentified = true
         serverWarnings[draftID] = nil
+        sharedPhotoDraftIDs.remove(draftID)
         catalogCaptures[draftID] = storeContext.flatMap { store in
             CatalogCaptureCode(hit.barcode)?.request(
                 photoID: nil,
@@ -571,6 +587,23 @@ struct ItemConfirmView: View {
               let idx = drafts.firstIndex(where: { $0.id == draftID })
         else { return }
         drafts[idx].imageURL = url
+    }
+
+    /// A UPC / PLU capture, or a photo-only capture keyed by the receipt text (REQ-RCP-020 AC6, AC15).
+    static func catalogCapture(
+        for result: LocalItemCaptureResult,
+        receiptText: String?,
+        storeChainId: String?
+    ) -> ProductCaptureRequestDTO? {
+        if let code = CatalogCaptureCode(result.barcode) {
+            return code.request(photoID: result.productPhotoID, receiptText: receiptText, storeChainId: storeChainId)
+        }
+        guard result.barcode == nil else { return nil }
+        return CatalogCaptureCode.photoOnlyRequest(
+            photoID: result.productPhotoID,
+            receiptText: receiptText,
+            storeChainId: storeChainId
+        )
     }
 
     /// Capture result: the user's photo wins; a barcode catalog hit fills the rest.
@@ -590,11 +623,16 @@ struct ItemConfirmView: View {
             drafts[idx].imageURL = url
         }
         drafts[idx].isIdentified = true
-        catalogCaptures[draftID] = CatalogCaptureCode(result.barcode)?.request(
-            photoID: result.productPhotoID,
+        catalogCaptures[draftID] = Self.catalogCapture(
+            for: result,
             receiptText: drafts[idx].receiptText,
             storeChainId: storeContext?.storeChainId
         )
+        if result.barcode == nil, catalogCaptures[draftID] != nil {
+            sharedPhotoDraftIDs.insert(draftID)
+        } else {
+            sharedPhotoDraftIDs.remove(draftID)
+        }
         capturedDraftIDs.insert(draftID)
         captureRoute = nil
     }

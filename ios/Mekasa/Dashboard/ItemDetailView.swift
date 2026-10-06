@@ -16,6 +16,7 @@ struct ItemDetailView: View {
     @State private var useOneMessage: String?
     @State private var dragOffset: CGFloat = 0
     @State private var arrivalEdge: Edge = .trailing
+    @State private var addCodeItem: InventoryItem?
 
     init(itemID: String, pager: ItemPager? = nil) {
         _currentID = State(initialValue: itemID)
@@ -60,6 +61,19 @@ struct ItemDetailView: View {
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .foregroundStyle(MekasaTheme.textMuted)
                                     .accessibilityIdentifier(TestIdentifiers.itemBarcodeLabel)
+                            }
+
+                            // REQ-RCP-020 AC15: a code added later unlocks nutrition (REQ-021).
+                            if item.canAddCode, session.canSyncInventory {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    SecondaryButton(title: PhotoOnlyCapture.addCodeTitle) {
+                                        addCodeItem = item
+                                    }
+                                    .accessibilityIdentifier(TestIdentifiers.addItemCodeButton)
+                                    Text(PhotoOnlyCapture.addCodeHint)
+                                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                        .foregroundStyle(MekasaTheme.textMuted)
+                                }
                             }
 
                             // REQ-021: who in the house should steer clear, then the grade breakdown.
@@ -133,6 +147,12 @@ struct ItemDetailView: View {
             .clipped()
         }
         .navigationBarHidden(true)
+        .sheet(item: $addCodeItem) { target in
+            NavigationStack {
+                AddItemCodeView(itemID: target.id, itemName: target.name)
+            }
+            .environmentObject(session)
+        }
         .onAppear(perform: loadEditableValues)
         .onChange(of: currentID) { _, _ in
             useOneMessage = nil

@@ -19,9 +19,16 @@ struct InventoryItem: Identifiable, Equatable, Hashable {
     var isIdentified: Bool
     /// Receipt line text this draft came from (UI only); a capture sends it as the alias.
     var receiptText: String?
+    /// Shared catalog product id (UPC, `plu:<code>` or `llm:<sha1>`); nil until a capture links one.
+    var productId: String?
     var updatedAt: Date
 
     var isLowStock: Bool { quantity <= lowStockThreshold }
+
+    /// No code yet: a barcode or PLU can still be added from item detail (REQ-RCP-020 AC15).
+    var canAddCode: Bool {
+        (barcode ?? "").isEmpty && (productId?.hasPrefix("llm:") ?? true)
+    }
 
     init(
         id: String = UUID().uuidString,
@@ -36,6 +43,7 @@ struct InventoryItem: Identifiable, Equatable, Hashable {
         health: ProductHealth? = nil,
         isIdentified: Bool = true,
         receiptText: String? = nil,
+        productId: String? = nil,
         updatedAt: Date = Date()
     ) {
         self.id = id
@@ -50,6 +58,7 @@ struct InventoryItem: Identifiable, Equatable, Hashable {
         self.health = health
         self.isIdentified = isIdentified
         self.receiptText = receiptText
+        self.productId = productId
         self.updatedAt = updatedAt
     }
 }

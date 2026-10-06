@@ -315,14 +315,49 @@ def _rekey(
             target.normalized_name = normalize_name(target.name)
         session.insert(target)
     else:
-        target.sources_seen = sorted(set(target.sources_seen) | set(old.sources_seen) | {source})
-        target.dispute_count += old.dispute_count
-        target.last_seen_at = max(target.last_seen_at, old.last_seen_at)
-        for key, value in (overrides or {}).items():
-            if value is not None:
-                setattr(target, key, value)
-        if overrides and "name" in overrides and overrides["name"]:
+        _absorb(target, old, source, overrides)
+    return _finish_rekey(session, old, target, now)
+
+
+def _absorb(target: CatalogProduct, old: CatalogProduct, source: str, overrides: dict[str, str | None] | None) -> None:
+    target.sources_seen = sorted(set(target.sources_seen) | set(old.sources_seen) | {source})
+    target.dispute_count += old.dispute_count
+    target.last_seen_at = max(target.last_seen_at, old.last_seen_at)
+    if target.image_url is None and old.image_url:
+        target.image_url, target.image_source = old.image_url, old.image_source
+    for key, value in (overrides or {}).items():
+        if value is not None:
+            setattr(target, key, value)
+    if overrides and "name" in overrides and overrides["name"]:
+        target.normalized_name = normalize_name(target.name)
+
+
+def _rekey_to_plu(
+    session: _Session, old: CatalogProduct, plu_code: str, *, overrides: dict[str, str | None] | None = None,
+) -> CatalogProduct:
+    """REQ-RCP-020 AC15: a PLU typed later for a photo-only (``llm:``) product takes it over."""
+    target = _follow(session, session.get(plu_product_id(plu_code), for_update=True))
+    now = _utcnow()
+    if target is None:
+        target = old.model_copy(
+            update={
+                "id": plu_product_id(plu_code), "code_kind": "plu", "upc": None, "plu_code": plu_code,
+                "store_chain_id": SHARED_CHAIN_ID, "source": "user_scan",
+                "sources_seen": sorted(set(old.sources_seen) | {"user_scan"}),
+                "confidence_score": CAPTURE_CONFIDENCE, "superseded_by": None,
+                "status_changed_at": None, "first_seen_at": now, "last_seen_at": now,
+                **(overrides or {}),
+            }
+        )
+        if target.name != old.name:
             target.normalized_name = normalize_name(target.name)
+        session.insert(target)
+    else:
+        _absorb(target, old, "user_scan", overrides)
+    return _finish_rekey(session, old, target, now)
+
+
+def _finish_rekey(session: _Session, old: CatalogProduct, target: CatalogProduct, now: datetime) -> CatalogProduct:
     session.copy_confirmations(old.id, target.id)
     session.repoint_aliases(old.id, target.id)
     target.confirmation_count = session.count_confirmations(target.id)
@@ -366,6 +401,66 @@ def _save_receipt_lines(session: _Session, store_chain_id: str, lines: list[Rece
     return ids
 
 
+def _apply_photo(
+    session: _Session, product: CatalogProduct, photo_id: str, hh: str,
+    receipt_id: str | None, line_item_id: str | None,
+) -> tuple[str, CatalogConflict | None]:
+    """REQ-RCP-020 AC5 photo rules for a product that already exists."""
+    if product.image_url is None:
+        product.image_url, product.image_source = photo_image_url(photo_id), "user_photo"
+        return "product_image", None
+    if product.status == "verified":
+        conflict = session.add_conflict(
+            product.id, hh, receipt_id or "none", line_item_id or "none",
+            "image_url", product.image_url, photo_image_url(photo_id),
+        )
+        return "correction_proposed", conflict
+    return "line_image", None
+
+
+def _capture_without_code(
+    session: _Session, *, chain: str, alias: str, hh: str, name: str, brand: str | None, category: str,
+    unit_size: str | None, photo_id: str | None, receipt_id: str | None, line_item_id: str | None,
+) -> CaptureResult:
+    """
+    REQ-RCP-020 AC15: no UPC/PLU, so the receipt text identifies the product
+    within its chain. An alias already recorded for the text wins; otherwise
+    the chain's ``llm:`` product for the name is linked or created.
+    """
+    session.lock_chain(chain)
+    known = session.find_alias(chain, alias)
+    product = _follow(session, session.get(known, for_update=True)) if known else None
+    display_name = name.strip()[:120]
+    normalized = normalize_name(display_name)[:120] or alias
+    if product is None:
+        product = _follow(session, session.get(llm_product_id(chain, normalized), for_update=True))
+    photo_applied, conflict = "none", None
+    if product is not None:
+        outcome = "linked"
+        product.sources_seen = sorted(set(product.sources_seen) | {"user_scan"})
+        if photo_id:
+            photo_applied, conflict = _apply_photo(session, product, photo_id, hh, receipt_id, line_item_id)
+    else:
+        outcome = "created"
+        product = CatalogProduct(
+            id=llm_product_id(chain, normalized), code_kind="llm", store_chain_id=chain,
+            name=display_name or alias, normalized_name=normalized, brand=brand, category=category[:60],
+            unit_size=unit_size,
+            image_url=photo_image_url(photo_id) if photo_id else None,
+            image_source="user_photo" if photo_id else None,
+            source="user_scan", sources_seen=["user_scan"], confidence_score=CAPTURE_CONFIDENCE,
+        )
+        session.insert(product)
+        if photo_id:
+            photo_applied = "product_image"
+    session.upsert_alias(chain, alias, product.id)
+    confirmed = _confirm(session, product, hh)
+    return CaptureResult(
+        outcome=outcome, product=confirmed.product, confirmation_counted=confirmed.confirmation_counted,
+        photo_applied_as=photo_applied, conflict=conflict,
+    )
+
+
 def _capture(
     session: _Session, *, store_chain_id: str, upc: str | None, plu_code: str | None, hh: str,
     fallback_name: str, fallback_category: str, alias_text: str | None, alias_store_chain_id: str | None,
@@ -373,7 +468,13 @@ def _capture(
     photo_id: str | None, previous_product_id: str | None,
     receipt_id: str | None, line_item_id: str | None,
 ) -> CaptureResult:
-    """REQ-RCP-020 AC2–AC4, AC6, AC7 (design §3.11 step 2). Aliases go under `alias_store_chain_id` when given."""
+    """REQ-RCP-020 AC2–AC4, AC6, AC7, AC15 (design §3.11 step 2). Aliases go under `alias_store_chain_id` when given."""
+    if upc is None and plu_code is None and normalize_name(alias_text or ""):
+        return _capture_without_code(
+            session, chain=alias_store_chain_id or store_chain_id, alias=normalize_name(alias_text or "")[:120],
+            hh=hh, name=name or fallback_name, brand=brand, category=normalize_category(category or fallback_category),
+            unit_size=unit_size, photo_id=photo_id, receipt_id=receipt_id, line_item_id=line_item_id,
+        )
     if (upc is None) == (plu_code is None):
         raise ValueError("exactly_one_code_required")
     if upc is not None and not UPC_RE.match(upc):
@@ -381,7 +482,7 @@ def _capture(
     if plu_code is not None and not PLU_RE.match(plu_code):
         raise ValueError("invalid_plu")
     session.lock_chain(store_chain_id if upc else SHARED_CHAIN_ID)
-    previous = session.get(previous_product_id, for_update=True) if previous_product_id and upc else None
+    previous = session.get(previous_product_id, for_update=True) if previous_product_id else None
     if previous is not None and (previous.superseded_by or previous.code_kind != "llm"):
         previous = None  # already re-keyed, or a UPC/PLU row — PLU products are never re-keyed (AC7)
 
@@ -396,9 +497,12 @@ def _capture(
     fallback_category = normalize_category(fallback_category)
     overrides = {k: v for k, v in {"name": name, "brand": brand, "category": category, "unit_size": unit_size}.items() if v}
 
-    if previous is not None:
-        product = _rekey(session, previous, upc, "user_scan", CAPTURE_CONFIDENCE, overrides=overrides)
+    if previous is not None and plu_code:
+        product = _rekey_to_plu(session, previous, plu_code, overrides=overrides)
         outcome: str = "rekeyed"
+    elif previous is not None:
+        product = _rekey(session, previous, upc or "", "user_scan", CAPTURE_CONFIDENCE, overrides=overrides)
+        outcome = "rekeyed"
         enrichment_job_id = session.queue_enrichment(product.id, "user_capture", CAPTURE_ENRICHMENT_CHAIN)
     elif existing is not None:
         product, outcome = existing, "linked"
@@ -421,17 +525,7 @@ def _capture(
             enrichment_job_id = session.queue_enrichment(product.id, "user_capture", CAPTURE_ENRICHMENT_CHAIN)
 
     if photo_id and photo_applied == "none":
-        if product.image_url is None:
-            product.image_url, product.image_source = photo_image_url(photo_id), "user_photo"
-            photo_applied = "product_image"
-        elif product.status == "verified":
-            conflict = session.add_conflict(
-                product.id, hh, receipt_id or "none", line_item_id or "none",
-                "image_url", product.image_url, photo_image_url(photo_id),
-            )
-            photo_applied = "correction_proposed"
-        else:
-            photo_applied = "line_image"
+        photo_applied, conflict = _apply_photo(session, product, photo_id, hh, receipt_id, line_item_id)
 
     if alias_text:
         alias = normalize_name(alias_text)
