@@ -150,6 +150,8 @@ struct LocalItemCaptureView: View {
 
     let itemName: String
     let store: ReceiptStoreContext?
+    /// The line has receipt text, so a photo without a code is still shared (REQ-RCP-020 AC15).
+    var shareWithoutCode = false
     let onCaptured: (LocalItemCaptureResult) -> Void
 
     @State private var code = ""
@@ -161,10 +163,16 @@ struct LocalItemCaptureView: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var showSharingSheet = false
+    @State private var showScanner = false
 
-    /// A UPC / PLU sends the photo to the shared catalog (REQ-RCP-021 AC7).
+    /// A UPC / PLU, or no code on a line with receipt text, sends the photo to
+    /// the shared catalog (REQ-RCP-021 AC7, REQ-RCP-020 AC15).
     private var photoIsShared: Bool {
-        CatalogCaptureCode(code) != nil
+        CatalogCaptureCode(code) != nil || (shareWithoutCode && code.isEmpty)
+    }
+
+    private var showsNoCodeLine: Bool {
+        shareWithoutCode && code.isEmpty && photo != nil && !showScanner
     }
 
     private var canSave: Bool {
@@ -225,10 +233,9 @@ struct LocalItemCaptureView: View {
             }
         }
         .onChange(of: code) { _, _ in
-            if photoIsShared, !ProductPhotoSharingNotice.hasSeen(uid: session.userUID) {
-                showSharingSheet = true
-            }
+            presentSharingSheetIfNeeded()
         }
+        .onAppear(perform: presentSharingSheetIfNeeded)
         .sheet(isPresented: $showSharingSheet) {
             ProductPhotoSharingSheet {
                 ProductPhotoSharingNotice.markSeen(uid: session.userUID)
@@ -238,10 +245,26 @@ struct LocalItemCaptureView: View {
         }
     }
 
+    private func presentSharingSheetIfNeeded() {
+        if photoIsShared, !ProductPhotoSharingNotice.hasSeen(uid: session.userUID) {
+            showSharingSheet = true
+        }
+    }
+
     private var barcodeStep: some View {
         VStack(alignment: .leading, spacing: 12) {
             stepTitle("1. Scan the barcode")
-            if CaptureGuidance.isValidCode(code) {
+            if showsNoCodeLine {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(PhotoOnlyCapture.noCodeMessage(storeName: store?.storeName))
+                        .font(MekasaTheme.bodyFont)
+                        .foregroundStyle(MekasaTheme.textMuted)
+                        .accessibilityIdentifier(TestIdentifiers.captureNoCodeLabel)
+                    Button("Scan a barcode instead") { showScanner = true }
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(MekasaTheme.text)
+                }
+            } else if CaptureGuidance.isValidCode(code) {
                 HStack {
                     Label("Code \(code)", systemImage: "barcode")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
@@ -363,7 +386,8 @@ struct LocalItemCaptureView: View {
         defer { isSaving = false }
         let result = await session.captureUnidentifiedItem(
             barcode: CaptureGuidance.isValidCode(code) ? code : nil,
-            image: photo
+            image: photo,
+            shareWithoutCode: shareWithoutCode
         )
         guard let result else {
             errorMessage = session.lastError ?? "Couldn’t save the scan."
