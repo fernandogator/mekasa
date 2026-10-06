@@ -583,7 +583,11 @@ struct ItemConfirmView: View {
     }
 
     private func replaceDraftImage(_ image: UIImage, draftID: String) async {
-        guard let url = await session.uploadItemPhoto(image),
+        let fromReceipt = drafts.first(where: { $0.id == draftID })?.source == .receipt
+        let uploaded = await RequestTracing.$correlationID.withValue(fromReceipt ? session.receiptFlowID : nil) {
+            await session.uploadItemPhoto(image)
+        }
+        guard let url = uploaded,
               let idx = drafts.firstIndex(where: { $0.id == draftID })
         else { return }
         drafts[idx].imageURL = url

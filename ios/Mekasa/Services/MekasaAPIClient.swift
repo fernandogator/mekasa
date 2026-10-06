@@ -437,6 +437,7 @@ actor MekasaAPIClient {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        RequestTracing.apply(to: &request)
         request.httpBody = body
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
@@ -736,6 +737,7 @@ actor MekasaAPIClient {
             request.timeoutInterval = timeout
         }
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        RequestTracing.apply(to: &request)
         if let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }

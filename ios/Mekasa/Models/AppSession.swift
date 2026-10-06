@@ -56,6 +56,9 @@ final class AppSession: ObservableObject {
     private static let pendingInviteTokenKey = "mekasa.pendingInviteToken"
     /// In-flight creates keyed by name|category so consume can wait for server ids.
     private var pendingCreates: [String: Task<InventoryItemDTO?, Never>] = [:]
+    /// Correlation id of the latest receipt scan, sent with that receipt's saves,
+    /// photo uploads and captures (NFR-006 AC7).
+    private(set) var receiptFlowID: String?
     private var unauthorizedObserver: NSObjectProtocol?
     private var authStateHandle: AuthStateDidChangeListenerHandle?
     private var isHandlingSessionExpiry = false
@@ -589,16 +592,29 @@ final class AppSession: ObservableObject {
         }
     }
 
+    /// Start a receipt flow: a new correlation id for the scan and everything saved from it.
+    @discardableResult
+    func beginReceiptFlow() -> String {
+        let id = RequestTracing.newID()
+        receiptFlowID = id
+        return id
+    }
+
     /// `catalogCapture` links the created item to the shared product for its
     /// code and records its receipt text as an alias (REQ-RCP-020 AC6).
     func addInventoryItem(_ item: InventoryItem, catalogCapture: ProductCaptureRequestDTO? = nil) {
         applyLocalAdd(item)
         guard canSyncInventory else { return }
         let key = Self.mergeKey(name: item.name, category: item.category)
+        let flowID = item.source == .receipt ? receiptFlowID : nil
         let task = Task<InventoryItemDTO?, Never> { [weak self] in
-            guard let self, let remote = await self.persistCreate(item) else { return nil }
-            guard let catalogCapture else { return remote }
-            return await self.persistCatalogCapture(itemID: remote.id, name: remote.name, capture: catalogCapture) ?? remote
+            guard let self else { return nil }
+            return await RequestTracing.$correlationID.withValue(flowID) { () async -> InventoryItemDTO? in
+                guard let remote = await self.persistCreate(item) else { return nil }
+                guard let catalogCapture else { return remote }
+                return await self.persistCatalogCapture(itemID: remote.id, name: remote.name, capture: catalogCapture)
+                    ?? remote
+            }
         }
         pendingCreates[key] = task
         Task {
