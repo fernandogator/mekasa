@@ -16,6 +16,8 @@ struct FamilyMembersView: View {
     /// REQ-021: member whose avoid list is being edited.
     @State private var avoidEditing: HouseholdMemberDTO?
     @State private var scanSoundsEnabled = ScanFeedback.soundsEnabled
+    @State private var isSendingDiagnostics = false
+    @State private var diagnosticsStatus: String?
 
     var body: some View {
         ScrollView {
@@ -31,6 +33,7 @@ struct FamilyMembersView: View {
                 inviteSection
                 scanSoundsSection
                 trashKioskSection
+                helpSection
 
                 if let pending = session.pendingInviteToken, !pending.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
@@ -301,6 +304,57 @@ struct FamilyMembersView: View {
                 session.isTrashKioskMode = true
             }
         }
+    }
+
+    /// NFR-007 AC5 (design/pages/family-members.html, Help card).
+    private var helpSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Help")
+                .font(.system(size: 18, weight: .heavy, design: .rounded))
+                .foregroundStyle(MekasaTheme.text)
+            HStack(spacing: 14) {
+                Image(systemName: "lifepreserver")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(MekasaTheme.brand)
+                    .frame(width: 44, height: 44)
+                    .background(MekasaTheme.surface)
+                    .clipShape(Circle())
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Send diagnostics")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(MekasaTheme.text)
+                    Text("Sends this phone's recent app log to Mekasa support.")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(MekasaTheme.textMuted)
+                }
+            }
+            SecondaryButton(
+                title: "Send diagnostics",
+                disabled: isSendingDiagnostics || !session.canSendDiagnostics,
+                isLoading: isSendingDiagnostics
+            ) {
+                Task {
+                    isSendingDiagnostics = true
+                    diagnosticsStatus = nil
+                    diagnosticsStatus = await session.sendDiagnostics()
+                    isSendingDiagnostics = false
+                }
+            }
+            .accessibilityIdentifier(TestIdentifiers.sendDiagnosticsButton)
+            if let diagnosticsStatus {
+                Text(diagnosticsStatus)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(
+                        diagnosticsStatus == AppSession.diagnosticsFailed ? MekasaTheme.danger : MekasaTheme.brand
+                    )
+                    .accessibilityIdentifier(TestIdentifiers.diagnosticsStatus)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(MekasaTheme.surfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private func refresh() async {

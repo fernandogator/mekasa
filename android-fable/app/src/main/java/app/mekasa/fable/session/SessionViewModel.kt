@@ -25,6 +25,11 @@ import app.mekasa.fable.data.remote.ImageAuth
 import app.mekasa.fable.data.remote.MekasaApi
 import app.mekasa.fable.data.remote.RemoteBackend
 import app.mekasa.fable.data.remote.RequestTracing
+import app.mekasa.fable.diagnostics.AppLog
+import app.mekasa.fable.diagnostics.ClientDiagnosticsUpload
+import app.mekasa.fable.diagnostics.CrashReporting
+import app.mekasa.fable.diagnostics.ErrorReporter
+import app.mekasa.fable.diagnostics.userRef
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -113,6 +118,8 @@ class SessionViewModel(
     fun completeExternalSignIn(user: SignedInUser) = guarded(busy = true) { enterSignedIn(user) }
 
     fun browseOffline() {
+        AppLog.info("session", "Preview started")
+        ErrorReporter.setUploader(null)
         val demo = demoBackendFactory()
         idToken = null
         backend = demo
@@ -138,6 +145,9 @@ class SessionViewModel(
     fun signOut() = endSession(notice = null)
 
     private fun endSession(notice: String?) {
+        AppLog.info("auth", "Signed out", mapOf("reason" to if (notice == SESSION_EXPIRED) "session_expired" else "user"))
+        ErrorReporter.setUploader(null)
+        CrashReporting.setUser(null)
         authWatcher?.cancel()
         authWatcher = null
         purgeJob?.cancel()
@@ -160,6 +170,9 @@ class SessionViewModel(
         idToken = user.idToken
         val remote = RemoteBackend(api) { idToken ?: user.idToken }
         backend = remote
+        AppLog.info("auth", "Signed in", mapOf("user_ref" to userRef(user.uid)))
+        CrashReporting.setUser(user.uid)
+        ErrorReporter.setUploader { batch -> remote.reportClientErrors(batch) }
 
         val profile = runCatching { remote.profile() }.getOrNull()
         val household = remote.currentHousehold()
@@ -344,13 +357,20 @@ class SessionViewModel(
                             throw e
                         } catch (e: Exception) {
                             if (e is ApiException && e.isUnauthorized) throw e
+                            AppLog.error("receipt.capture", e, category = "receipt", correlationId = flowId)
                             captureFailed = "Saved ${created.name}, but couldn't add it to the shared catalog."
                         }
                     }
                     _state.update { it.copy(data = it.data.copy(inventory = it.data.inventory.upsert(created))) }
                 }
             }
-            captureFailed?.let(::fail)
+            AppLog.info(
+                if (flowId != null) "receipt" else "session",
+                "Saved ${drafts.size} item(s)",
+                mapOf("source" to drafts.map { it.source }.distinct().joinToString(","), "captures" to drafts.count { it.capture != null }),
+                correlationId = flowId,
+            )
+            captureFailed?.let { message -> _state.update { it.copy(busy = false, error = message) } }
             onDone()
         }
     }
@@ -399,9 +419,11 @@ class SessionViewModel(
                     endSession(notice = SESSION_EXPIRED)
                     onDone(null)
                 } else {
+                    AppLog.error("session.addCode", e, category = "scanner")
                     onDone(CatalogCapture.errorMessage(e.detail))
                 }
             } catch (e: Exception) {
+                AppLog.error("session.addCode", e, category = "scanner")
                 onDone(CatalogCapture.errorMessage(null))
             }
         }
@@ -506,6 +528,7 @@ class SessionViewModel(
                     endSession(notice = SESSION_EXPIRED)
                     onDone(DuplicatesOutcome(null, null))
                 } else {
+                    AppLog.error("session.findDuplicates", e, category = "session")
                     onDone(DuplicatesOutcome(null, DUPLICATES_FAILED))
                 }
             }
@@ -532,6 +555,7 @@ class SessionViewModel(
                         onDone(MergeOutcome(merged, null, null))
                         return@launch
                     }
+                    AppLog.error("session.mergeDuplicates", e, category = "session")
                     error = if (e is ApiException && e.status in setOf(404, 409)) DUPLICATES_CHANGED else MERGE_FAILED
                 }
             }
@@ -693,8 +717,24 @@ class SessionViewModel(
     /** Each scan starts a receipt flow; its saves and captures reuse the id (NFR-006 AC7). */
     fun scanReceipt(rawText: String? = null, imageBase64: String? = null, onResult: (ReceiptScanResponse) -> Unit): Job {
         val flowId = RequestTracing.newId().also { receiptFlowId = it }
-        return guarded(busy = true) {
+        AppLog.info(
+            "receipt",
+            "Receipt scan started",
+            mapOf("has_image" to (imageBase64 != null), "has_text" to !rawText.isNullOrBlank()),
+            correlationId = flowId,
+        )
+        return guarded(busy = true, where = "receipt.scan", category = "receipt", correlationId = flowId) {
             val response = inReceiptFlow(flowId) { require().scanReceipt(householdId(), rawText, imageBase64) }
+            AppLog.info(
+                "receipt",
+                "Receipt scan finished",
+                mapOf(
+                    "engine" to response.engine,
+                    "lines" to response.items.size,
+                    "unidentified" to response.items.count { !it.identified },
+                ),
+                correlationId = flowId,
+            )
             onResult(response)
         }
     }
@@ -708,9 +748,72 @@ class SessionViewModel(
 
     fun dismissNotice() = _state.update { it.copy(notice = null) }
 
-    fun fail(message: String?) = _state.update { it.copy(busy = false, error = message) }
+    /** Shows [message]; every error shown is also an app-log error (NFR-007 AC1). */
+    fun fail(message: String?) {
+        if (message != null) {
+            val where = actionName()
+            AppLog.error(where, message = message, category = categoryOf(where))
+        }
+        _state.update { it.copy(busy = false, error = message) }
+    }
+
+    // ------------------------------------------------------------ diagnostics
+
+    /**
+     * NFR-007 AC5: upload the on-device log; [onDone] gets the line to show.
+     * Not available in the offline preview.
+     */
+    fun sendDiagnostics(onDone: (String) -> Unit) {
+        val remote = backend?.takeIf { !it.isDemo } ?: run {
+            onDone(DIAGNOSTICS_FAILED)
+            return
+        }
+        viewModelScope.launch {
+            AppLog.info("app", "Send diagnostics tapped")
+            try {
+                val response = remote.uploadDiagnostics(
+                    ClientDiagnosticsUpload(app = ErrorReporter.app, entries = AppLog.snapshot()),
+                )
+                AppLog.info("app", "Diagnostics sent", mapOf("reference" to response.reference, "entries" to response.entries))
+                onDone(diagnosticsSent(response.reference))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLog.warning("app", "Diagnostics upload failed", mapOf("error_type" to e::class.simpleName, "status" to (e as? ApiException)?.status))
+                onDone(DIAGNOSTICS_FAILED)
+            }
+        }
+    }
 
     // ------------------------------------------------------------ plumbing
+
+    /**
+     * `session.<action>` for the public action on the current call stack, e.g.
+     * `session.consume`. Works for direct calls and for lambdas inside an action.
+     */
+    private fun actionName(): String {
+        val owner = SessionViewModel::class.java.name
+        for (frame in Throwable().stackTrace) {
+            val name = when {
+                frame.className == owner -> frame.methodName.substringBefore('$')
+                frame.className.startsWith("$owner\$") -> frame.className.removePrefix("$owner\$").substringBefore('$')
+                else -> continue
+            }
+            if (name.isNotEmpty() && name !in PLUMBING) return "session.$name"
+        }
+        return "session"
+    }
+
+    private fun categoryOf(where: String): String {
+        val action = where.substringAfter('.').lowercase()
+        return when {
+            "signin" in action -> "auth"
+            "receipt" in action -> "receipt"
+            "photo" in action || "homedetails" in action -> "photos"
+            "barcode" in action || "consume" in action -> "scanner"
+            else -> "session"
+        }
+    }
 
     private fun require(): HouseholdBackend = backend ?: throw IllegalStateException("Not signed in")
 
@@ -724,8 +827,16 @@ class SessionViewModel(
         busy: Boolean = false,
         swallowForbidden: Boolean = false,
         onFailure: (String) -> Unit = {},
+        where: String = actionName(),
+        category: String = categoryOf(where),
+        correlationId: String? = null,
         block: suspend () -> Unit,
     ): Job = viewModelScope.launch {
+        fun show(error: Throwable, message: String) {
+            AppLog.error(where, error, message, category, correlationId)
+            _state.update { it.copy(busy = false, error = message) }
+            onFailure(message)
+        }
         if (busy) _state.update { it.copy(busy = true, error = null) }
         try {
             try {
@@ -742,19 +853,18 @@ class SessionViewModel(
             throw e
         } catch (e: ApiException) {
             when {
-                e.isUnauthorized && !current.isDemo -> endSession(notice = SESSION_EXPIRED)
-                e.isForbidden && swallowForbidden -> _state.update { it.copy(busy = false) }
-                else -> {
-                    fail(e.userMessage)
-                    onFailure(e.userMessage)
+                e.isUnauthorized && !current.isDemo -> {
+                    AppLog.warning("auth", "$where: session expired", mapOf("path" to e.path), e.requestId, e.correlationId)
+                    endSession(notice = SESSION_EXPIRED)
                 }
+                e.isForbidden && swallowForbidden -> _state.update { it.copy(busy = false) }
+                else -> show(e, e.userMessage)
             }
         } catch (e: AuthError.Cancelled) {
+            AppLog.info("auth", "$where cancelled")
             _state.update { it.copy(busy = false) }
         } catch (e: Exception) {
-            val message = e.message?.takeIf { it.isNotBlank() } ?: "Something went wrong"
-            fail(message)
-            onFailure(message)
+            show(e, e.message?.takeIf { it.isNotBlank() } ?: "Something went wrong")
         }
     }
 
@@ -770,6 +880,9 @@ class SessionViewModel(
         const val DUPLICATES_FAILED = "Couldn’t check for duplicates. Try again."
         const val DUPLICATES_CHANGED = "Those items changed. Check for duplicates again."
         const val MERGE_FAILED = "Couldn’t merge those items. Try again."
+        const val DIAGNOSTICS_FAILED = "Couldn't send diagnostics. Try again."
+        fun diagnosticsSent(reference: String) = "Sent. Reference $reference"
+        private val PLUMBING = setOf("guarded", "fail", "actionName", "categoryOf", "Companion")
         private const val MAX_PHOTO_BYTES = 5_000_000
         private const val SCAN_FEED_LIMIT = 20
         const val UNDO_WINDOW_MILLIS = 5_000L

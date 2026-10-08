@@ -194,6 +194,7 @@ struct WelcomeView: View {
         session.email = email
         session.displayName = name
         session.userUID = AuthService.shared.currentUserUID
+        AppLog.shared.info("auth", "Signed in", fields: ["user_ref": session.userUID.map(CrashReporting.userRef)])
         session.rememberSignedInEmail(email ?? self.email)
         await session.acceptPendingInviteIfNeeded()
         if session.onboardingStep == .done, session.household != nil {
@@ -234,7 +235,7 @@ struct WelcomeView: View {
             print("[Mekasa] submitEmail done step=\(session.onboardingStep)")
         } catch {
             print("[Mekasa] submitEmail ERROR: \(error)")
-            session.lastError = error.localizedDescription
+            session.showError(error.localizedDescription, error: error)
         }
     }
 
@@ -253,7 +254,7 @@ struct WelcomeView: View {
                 + "Setting a password there also works for accounts that signed up with Google."
         } catch {
             print("[Mekasa] submitPasswordReset ERROR: \(error)")
-            session.lastError = error.localizedDescription
+            session.showError(error.localizedDescription, error: error)
         }
     }
 
@@ -263,18 +264,18 @@ struct WelcomeView: View {
         print("[Mekasa] submitGoogle start")
         do {
             guard FirebaseAppHelper.googleClientID != nil else {
-                session.lastError = AuthServiceError.missingGoogleClientID.localizedDescription
+                session.showError(AuthServiceError.missingGoogleClientID.localizedDescription)
                 return
             }
             guard let presenter = TopViewController.shared else {
-                session.lastError = "Could not find a window to present Google Sign-In."
+                session.showError("Could not find a window to present Google Sign-In.")
                 return
             }
             let result = try await AuthService.shared.signInWithGoogle(presenting: presenter)
             await applyAuth(token: result.token, email: result.email, name: result.name)
         } catch {
             print("[Mekasa] submitGoogle ERROR: \(error)")
-            session.lastError = error.localizedDescription
+            session.showError(error.localizedDescription, error: error)
         }
     }
 }

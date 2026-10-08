@@ -17,6 +17,9 @@ import app.mekasa.fable.data.model.SpendingReport
 import app.mekasa.fable.data.model.Store
 import app.mekasa.fable.data.model.UnknownBarcodeEvent
 import app.mekasa.fable.data.model.UserProfile
+import app.mekasa.fable.diagnostics.ClientDiagnosticsResponse
+import app.mekasa.fable.diagnostics.ClientDiagnosticsUpload
+import app.mekasa.fable.diagnostics.ClientErrorBatch
 
 /** What the UI collects before an inventory row is created (scan, search, voice, receipt). */
 data class InventoryDraft(
@@ -106,4 +109,10 @@ interface HouseholdBackend {
     suspend fun lookupBarcode(code: String): BarcodeLookup
     suspend fun searchProducts(query: String): List<ProductHit>
     suspend fun scanReceipt(householdId: String, rawText: String?, imageBase64: String?): ReceiptScanResponse
+
+    /** NFR-007 AC2–AC3: queued error reports. */
+    suspend fun reportClientErrors(batch: ClientErrorBatch)
+
+    /** NFR-007 AC4–AC5: the recent app log; returns the support reference. */
+    suspend fun uploadDiagnostics(upload: ClientDiagnosticsUpload): ClientDiagnosticsResponse
 }

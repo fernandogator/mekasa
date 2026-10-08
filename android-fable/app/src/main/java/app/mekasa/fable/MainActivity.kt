@@ -12,6 +12,7 @@ import app.mekasa.fable.auth.FirebaseAuthGateway
 import app.mekasa.fable.auth.FirebaseGate
 import app.mekasa.fable.data.remote.ImageAuth
 import app.mekasa.fable.data.remote.KtorMekasaApi
+import app.mekasa.fable.diagnostics.ErrorReporter
 import app.mekasa.fable.session.PrefsEmailMemory
 import app.mekasa.fable.session.SessionViewModel
 import app.mekasa.fable.ui.MekasaRoot
@@ -44,6 +45,12 @@ class MainActivity : ComponentActivity() {
                 MekasaRoot(session = session)
             }
         }
+    }
+
+    /** NFR-007 AC2: queued error reports go out when the app comes back to the foreground. */
+    override fun onStart() {
+        super.onStart()
+        ErrorReporter.flushSoon(0)
     }
 
     override fun onNewIntent(intent: Intent) {

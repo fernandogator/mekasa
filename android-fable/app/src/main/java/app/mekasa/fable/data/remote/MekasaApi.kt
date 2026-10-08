@@ -31,6 +31,10 @@ import app.mekasa.fable.data.model.SpendingReport
 import app.mekasa.fable.data.model.StoreSearchResponse
 import app.mekasa.fable.data.model.UnknownBarcodeEvent
 import app.mekasa.fable.data.model.UserProfile
+import app.mekasa.fable.diagnostics.ClientDiagnosticsResponse
+import app.mekasa.fable.diagnostics.ClientDiagnosticsUpload
+import app.mekasa.fable.diagnostics.ClientErrorBatch
+import app.mekasa.fable.diagnostics.ClientErrorBatchResponse
 
 /**
  * One method per Cloud Run route. Every authenticated call takes the Firebase
@@ -117,6 +121,10 @@ interface MekasaApi {
     suspend fun lookupBarcode(token: String, code: String): BarcodeLookup
     suspend fun searchProducts(token: String, query: String, limit: Int = 8): ProductSearchResponse
     suspend fun scanReceipt(token: String, householdId: String, rawText: String?, imageBase64: String?): ReceiptScanResponse
+
+    // Diagnostics (NFR-007 AC3, AC4)
+    suspend fun reportClientErrors(token: String, batch: ClientErrorBatch): ClientErrorBatchResponse
+    suspend fun uploadDiagnostics(token: String, upload: ClientDiagnosticsUpload): ClientDiagnosticsResponse
 
     fun close()
 }

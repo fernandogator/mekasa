@@ -39,6 +39,10 @@ import app.mekasa.fable.data.model.UserProfile
 import app.mekasa.fable.data.remote.ApiException
 import app.mekasa.fable.data.remote.CorrelationId
 import app.mekasa.fable.data.remote.MekasaApi
+import app.mekasa.fable.diagnostics.ClientDiagnosticsResponse
+import app.mekasa.fable.diagnostics.ClientDiagnosticsUpload
+import app.mekasa.fable.diagnostics.ClientErrorBatch
+import app.mekasa.fable.diagnostics.ClientErrorBatchResponse
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -360,6 +364,21 @@ open class FakeApi : MekasaApi {
     override suspend fun scanReceipt(token: String, householdId: String, rawText: String?, imageBase64: String?): ReceiptScanResponse {
         record("scanReceipt")
         return ReceiptScanResponse(householdId = householdId)
+    }
+
+    val errorBatches = mutableListOf<ClientErrorBatch>()
+    val diagnosticsUploads = mutableListOf<ClientDiagnosticsUpload>()
+
+    override suspend fun reportClientErrors(token: String, batch: ClientErrorBatch): ClientErrorBatchResponse {
+        record("reportClientErrors")
+        errorBatches += batch
+        return ClientErrorBatchResponse(accepted = batch.reports.size)
+    }
+
+    override suspend fun uploadDiagnostics(token: String, upload: ClientDiagnosticsUpload): ClientDiagnosticsResponse {
+        record("uploadDiagnostics")
+        diagnosticsUploads += upload
+        return ClientDiagnosticsResponse(diagnosticsId = "3f9a12c7deadbeef", reference = "3F9A12C7", entries = upload.entries.size)
     }
 
     override fun close() {

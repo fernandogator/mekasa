@@ -15,9 +15,10 @@ import sys
 import time
 import traceback
 import uuid
-from collections.abc import Awaitable, Callable, MutableMapping
+from collections.abc import Awaitable, Callable, Iterator, MutableMapping
+from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Any
 
@@ -54,8 +55,8 @@ _SIZE_ONLY_KEYS = frozenset({"image_base64", "raw_text"})
 # On these routes `name` is a household or person name, not an item.
 _PERSON_NAME_ROUTE_PARTS = ("/invites", "/members", "/households/{household_id}/name")
 _PERSON_NAME_ROUTES = frozenset({"/v1/households"})
-# POST handlers that read only; their story is told by their own events.
-_READ_ONLY_ACTIONS = frozenset({"scan_receipt"})
+# POST handlers that change no data; their story is told by their own events.
+_READ_ONLY_ACTIONS = frozenset({"scan_receipt", "report_client_errors", "upload_client_diagnostics"})
 
 _MAX_BODY_BYTES = 64 * 1024
 _MAX_STRING = 500
@@ -238,6 +239,24 @@ def configure_logging(level: str = "INFO", fmt: str = "json", project_id: str | 
 def log_event(target: logging.Logger, event: str, level: int = logging.INFO, **fields: Any) -> None:
     """Structured event: `event` plus its fields as top-level JSON keys."""
     target.log(level, event, extra={"event": event, "fields": fields})
+
+
+@contextmanager
+def correlated(correlation_id: str | None) -> Iterator[None]:
+    """
+    Log lines inside the block carry `correlation_id` instead of the request's own,
+    so an app report lands next to the API calls it describes (NFR-007 AC3, AC4).
+    """
+    context = _context.get()
+    accepted = valid_id(correlation_id)
+    if context is None or accepted is None:
+        yield
+        return
+    token = _context.set(replace(context, correlation_id=accepted))
+    try:
+        yield
+    finally:
+        _context.reset(token)
 
 
 # --------------------------------------------------------------------- middleware

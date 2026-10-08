@@ -135,6 +135,8 @@ object TestTags {
     const val OPEN_KIOSK = "OpenKiosk"
     const val OPEN_TRASH = "OpenTrash"
     const val SIGN_OUT = "SignOut"
+    const val SEND_DIAGNOSTICS = "SendDiagnostics"
+    const val DIAGNOSTICS_STATUS = "DiagnosticsStatus"
 
     fun member(uid: String) = "Member-$uid"
 

@@ -439,8 +439,7 @@ actor MekasaAPIClient {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         RequestTracing.apply(to: &request)
         request.httpBody = body
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+        let (data, http) = try await send(request)
         guard (200 ..< 300).contains(http.statusCode) else {
             let detail = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
             let error = APIError.from(status: http.statusCode, detail: detail)
@@ -746,10 +745,7 @@ actor MekasaAPIClient {
             request.httpBody = try encoder.encode(body)
         }
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw APIError.invalidResponse
-        }
+        let (data, http) = try await send(request)
         guard (200 ..< 300).contains(http.statusCode) else {
             let detail = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
             let error = APIError.from(status: http.statusCode, detail: detail)
@@ -761,6 +757,68 @@ actor MekasaAPIClient {
             throw error
         }
         return (data, http)
+    }
+
+    /// Sends a traced request and leaves one app-log entry per call (NFR-007 AC1).
+    /// Failed responses are remembered so the error log can name the call.
+    private func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        let method = request.httpMethod ?? "GET"
+        let path = request.url?.path ?? ""
+        let requestID = request.value(forHTTPHeaderField: RequestTracing.requestIDHeader)
+        let correlationID = request.value(forHTTPHeaderField: RequestTracing.correlationIDHeader)
+        let started = Date()
+        func elapsedMillis() -> Int { Int(Date().timeIntervalSince(started) * 1000) }
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+            let fields: [String: Any?] = [
+                "method": method, "path": path, "status": http.statusCode, "duration_ms": elapsedMillis(),
+            ]
+            let message = "\(method) \(path) \(http.statusCode)"
+            if (200 ..< 300).contains(http.statusCode) {
+                AppLog.shared.info("api", message, fields: fields, requestID: requestID, correlationID: correlationID)
+            } else {
+                let body = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
+                AppLog.shared.recordFailedCall(
+                    FailedCall(
+                        status: http.statusCode,
+                        detail: body,
+                        path: path,
+                        requestID: requestID,
+                        correlationID: correlationID
+                    )
+                )
+                var failed = fields
+                failed["detail"] = AppLog.apiDetail(body)
+                AppLog.shared.warning("api", message, fields: failed, requestID: requestID, correlationID: correlationID)
+            }
+            return (data, http)
+        } catch {
+            AppLog.shared.warning(
+                "api",
+                "\(method) \(path) failed: \(String(describing: type(of: error)))",
+                fields: [
+                    "method": method,
+                    "path": path,
+                    "duration_ms": elapsedMillis(),
+                    "error_type": String(describing: type(of: error)),
+                    "error_code": (error as? URLError)?.code.rawValue,
+                ],
+                requestID: requestID,
+                correlationID: correlationID
+            )
+            throw error
+        }
+    }
+
+    // MARK: - Diagnostics (NFR-007 AC3, AC4)
+
+    func reportClientErrors(_ batch: ClientErrorBatch, token: String) async throws {
+        _ = try await rawRequest(path: "/v1/client-errors", method: "POST", token: token, body: batch)
+    }
+
+    func uploadDiagnostics(_ upload: ClientDiagnosticsUpload, token: String) async throws -> ClientDiagnosticsResponse {
+        try await request(path: "/v1/client-diagnostics", method: "POST", token: token, body: upload, timeout: 60)
     }
 }
 

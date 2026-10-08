@@ -9,6 +9,7 @@ from app.barcode_lookup import clear_lookup_cache
 from app.capture_routes import capture_router
 from app.catalog_repository import CatalogSaltMissing
 from app.catalog_routes import products_router
+from app.client_diagnostics import diagnostics_router
 from app.config import get_settings
 from app.observability import RequestTracingMiddleware, configure_logging
 from app.product_photo_routes import product_photos_router
@@ -47,6 +48,7 @@ def create_app() -> FastAPI:
     application.include_router(products_router)
     application.include_router(product_photos_router)
     application.include_router(capture_router)
+    application.include_router(diagnostics_router)
     application.add_exception_handler(CatalogSaltMissing, _catalog_salt_missing)
     application.add_middleware(RequestTracingMiddleware)
     application.state.settings = settings  # type: ignore[attr-defined]

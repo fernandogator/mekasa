@@ -181,6 +181,24 @@
 
       </div>
 
+      <!-- Help (NFR-007 AC5) -->
+      <div id="card-help" class="bg-white rounded-[24px] p-4 space-y-3">
+        <p class="font-bold text-[18px]">Help</p>
+        <div class="flex items-center">
+          <div class="w-12 h-12 rounded-full bg-[#f1f4f3] flex items-center justify-center mr-4 shrink-0">
+            <iconify-icon icon="lucide:life-buoy" class="text-xl text-brand"></iconify-icon>
+          </div>
+          <div class="flex-1">
+            <p class="font-bold text-[16px]">Send diagnostics</p>
+            <p class="text-[13px] font-semibold text-[#5d5652]">Sends this phone's recent app log to Mekasa support.</p>
+          </div>
+        </div>
+        <button id="btn-send-diagnostics" class="w-full h-[48px] bg-white border border-muted text-brand font-bold rounded-full active:scale-95 transition-transform">
+          Send diagnostics
+        </button>
+        <p id="text-diagnostics-status" class="text-[14px] font-semibold text-brand">Sent. Reference 3F9A12C7</p>
+      </div>
+
       <!-- Actions -->
       <div class="space-y-4 pt-4">
         <button id="btn-invite-member" class="w-full h-[56px] bg-accent text-white font-bold rounded-full shadow-[0_8px_16px_rgba(93,86,82,0.12)] active:scale-95 transition-transform flex items-center justify-center space-x-2">
