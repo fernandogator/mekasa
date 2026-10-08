@@ -217,7 +217,7 @@ struct BarcodeScanView: View {
                    status == 503 {
                     statusMessage = "Product database is busy — scan again in a moment"
                 } else {
-                    session.lastError = error.localizedDescription
+                    session.showError(error.localizedDescription, error: error)
                     statusMessage = "Lookup failed — try again or enter manually"
                 }
                 return

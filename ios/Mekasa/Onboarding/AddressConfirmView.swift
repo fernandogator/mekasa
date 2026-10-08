@@ -84,13 +84,13 @@ struct AddressConfirmView: View {
             longitude = result.longitude
             didDetect = true
         } catch {
-            session.lastError = "Location unavailable. Enter your address manually. (\(error.localizedDescription))"
+            session.showError("Location unavailable. Enter your address manually. (\(error.localizedDescription))", error: error)
         }
     }
 
     private func save() async {
         guard var household = session.household else {
-            session.lastError = "Missing household."
+            session.showError("Missing household.")
             return
         }
         let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -103,7 +103,7 @@ struct AddressConfirmView: View {
             return
         }
         guard let token = session.idToken else {
-            session.lastError = "Not signed in."
+            session.showError("Not signed in.")
             return
         }
         session.isBusy = true
@@ -119,7 +119,7 @@ struct AddressConfirmView: View {
             session.household = updated
             withAnimation { session.onboardingStep = .stores }
         } catch {
-            session.lastError = error.localizedDescription
+            session.showError(error.localizedDescription, error: error)
         }
     }
 }

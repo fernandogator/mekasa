@@ -85,6 +85,17 @@ targets:
           if [ -f "${WRAPPER_PLIST}" ]; then
             /bin/bash "${SRCROOT}/scripts/ensure_google_url_scheme.sh" "${WRAPPER_PLIST}"
           fi
+      # NFR-007 AC6: Release builds with the real Firebase plist upload dSYMs.
+      - name: Upload dSYMs to Crashlytics
+        basedOnDependencyAnalysis: false
+        inputFiles:
+          - ${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}
+          - ${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}
+          - ${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist
+          - $(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)
+        script: |
+          /bin/bash "${SRCROOT}/scripts/upload_crashlytics_dsyms.sh"
     dependencies:
       - package: Firebase
         product: FirebaseCore
@@ -94,6 +105,8 @@ targets:
         product: FirebaseFirestore
       - package: Firebase
         product: FirebaseMessaging
+      - package: Firebase
+        product: FirebaseCrashlytics
       - package: GoogleSignIn
         product: GoogleSignIn
     info:
@@ -104,6 +117,8 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         UIBackgroundModes:
           - remote-notification
+        # NFR-007 AC6: CrashReporting turns collection on for release builds only.
+        FirebaseCrashlyticsCollectionEnabled: false
         NSCameraUsageDescription: Mekasa uses the camera to scan barcodes and receipts, and to take a home photo for your dashboard.
         NSMicrophoneUsageDescription: Mekasa uses the microphone so you can add items by voice.
         NSSpeechRecognitionUsageDescription: Mekasa uses speech recognition to turn what you say into grocery items.

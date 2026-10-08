@@ -153,5 +153,8 @@ enum TestIdentifiers {
     static let familyHouseholdAddress = "FamilyHouseholdAddress"
     static let familyMemberSubtitle = "FamilyMemberSubtitle"
     static let familyRefreshButton = "FamilyRefreshButton"
+    /// NFR-007 AC5: Family → Help.
+    static let sendDiagnosticsButton = "SendDiagnosticsButton"
+    static let diagnosticsStatus = "DiagnosticsStatus"
     static let scanSoundsToggle = "ScanSoundsToggle"
 }

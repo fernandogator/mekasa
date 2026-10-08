@@ -37,6 +37,8 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>FirebaseCrashlyticsCollectionEnabled</key>
+	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Mekasa uses the camera to scan barcodes and receipts, and to take a home photo for your dashboard.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

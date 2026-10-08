@@ -68,14 +68,14 @@ extension AppSession {
     /// members (REQ-INV-019). Preview / UI-test sessions return a local data URL.
     func uploadItemPhoto(_ image: UIImage) async -> String? {
         guard let jpeg = ItemPhotoEncoding.jpegData(from: image) else {
-            lastError = "Couldn’t encode that photo."
+            showError("Couldn’t encode that photo.")
             return nil
         }
         if isUIPreview || isUITesting {
             return "data:image/jpeg;base64,\(jpeg.base64EncodedString())"
         }
         guard let token = idToken, let householdID = household?.id else {
-            lastError = "Sign in to your household to use your own photos."
+            showError("Sign in to your household to use your own photos.")
             return nil
         }
         do {
@@ -89,7 +89,7 @@ extension AppSession {
             if SessionExpiry.isUnauthorized(error) {
                 handleAPIFailure(error)
             } else {
-                lastError = "Couldn’t upload that photo."
+                showError("Couldn’t upload that photo.", error: error)
             }
             return nil
         }
@@ -122,7 +122,7 @@ extension AppSession {
             if SessionExpiry.isUnauthorized(error) {
                 handleAPIFailure(error)
             } else {
-                lastError = "Couldn’t save the new photo."
+                showError("Couldn’t save the new photo.", error: error)
             }
             return false
         }

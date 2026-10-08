@@ -49,6 +49,7 @@ final class HouseholdSyncService: ObservableObject {
         inventoryListener = inventoryPath.addSnapshotListener { snapshot, error in
             Task { @MainActor in
                 if let error {
+                    AppLog.shared.warning("session", "Realtime inventory listener failed", fields: ["error_type": String(describing: type(of: error)), "code": (error as NSError).code])
                     self.lastError = error.localizedDescription
                     return
                 }
@@ -66,6 +67,7 @@ final class HouseholdSyncService: ObservableObject {
         shoppingListener = shoppingPath.addSnapshotListener { snapshot, error in
             Task { @MainActor in
                 if let error {
+                    AppLog.shared.warning("session", "Realtime shopping listener failed", fields: ["error_type": String(describing: type(of: error)), "code": (error as NSError).code])
                     self.lastError = error.localizedDescription
                     return
                 }

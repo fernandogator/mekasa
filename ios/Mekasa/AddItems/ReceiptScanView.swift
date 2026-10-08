@@ -193,6 +193,12 @@ struct ReceiptScanView: View {
 
         guard let token = session.idToken, let householdID = session.household?.id else { return }
         let flowID = session.beginReceiptFlow()
+        AppLog.shared.info(
+            "receipt",
+            "Receipt scan started",
+            fields: ["has_image": imageBase64 != nil, "has_text": !(rawText ?? "").isEmpty],
+            correlationID: flowID
+        )
         do {
             let response = try await RequestTracing.$correlationID.withValue(flowID) {
                 try await MekasaAPIClient.shared.scanReceipt(
@@ -203,6 +209,16 @@ struct ReceiptScanView: View {
                 )
             }
             drafts = response.items.map { $0.toLocal() }
+            AppLog.shared.info(
+                "receipt",
+                "Receipt scan finished",
+                fields: [
+                    "engine": response.engine,
+                    "lines": drafts.count,
+                    "unidentified": drafts.filter { !$0.isIdentified }.count,
+                ],
+                correlationID: flowID
+            )
             engineLabel = response.engine
             storeContext = ReceiptStoreContext(storeName: response.storeName, storeChainId: response.storeChainId)
             let unidentified = drafts.filter { !$0.isIdentified }.count

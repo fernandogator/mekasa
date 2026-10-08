@@ -132,7 +132,7 @@ struct HouseholdSetupView: View {
             return
         }
         guard let token = session.idToken else {
-            session.lastError = "Not signed in."
+            session.showError("Not signed in.")
             return
         }
         session.isBusy = true
@@ -173,7 +173,7 @@ struct HouseholdSetupView: View {
                 }
                 withAnimation { session.onboardingStep = .address }
             } else {
-                session.lastError = error.localizedDescription
+                session.showError(error.localizedDescription, error: error)
             }
         }
     }

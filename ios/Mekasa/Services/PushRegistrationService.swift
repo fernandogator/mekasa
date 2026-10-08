@@ -72,6 +72,7 @@ final class PushRegistrationService: NSObject, ObservableObject {
             )
             lastError = nil
         } catch {
+            AppLog.shared.warning("app", "Device registration failed", fields: ["error_type": String(describing: type(of: error))])
             lastError = error.localizedDescription
         }
     }

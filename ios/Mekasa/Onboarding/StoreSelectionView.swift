@@ -121,7 +121,7 @@ struct StoreSelectionView: View {
             selected = Set(household.storeIDs)
             loaded = true
         } catch {
-            session.lastError = error.localizedDescription
+            session.showError(error.localizedDescription, error: error)
         }
     }
 
@@ -145,7 +145,7 @@ struct StoreSelectionView: View {
             session.household = updated
             withAnimation { session.onboardingStep = .initialScan }
         } catch {
-            session.lastError = error.localizedDescription
+            session.showError(error.localizedDescription, error: error)
         }
     }
 }

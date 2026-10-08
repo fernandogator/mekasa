@@ -9,13 +9,21 @@ import FirebaseAuth
 @MainActor
 final class AppSession: ObservableObject {
     @Published var idToken: String? {
-        // REQ-INV-019 AC8: private item photos are fetched with this token.
-        didSet { PrivateImageAuth.shared.token = idToken }
+        didSet {
+            // REQ-INV-019 AC8: private item photos are fetched with this token.
+            PrivateImageAuth.shared.token = idToken
+            updateErrorUploader()
+        }
     }
     @Published var displayName: String?
     @Published var email: String?
     /// Firebase Auth uid for the signed-in user (nil in pure preview until set).
-    @Published var userUID: String?
+    @Published var userUID: String? {
+        didSet {
+            guard userUID != oldValue else { return }
+            CrashReporting.setUser(uid: isUIPreview || isUITesting ? nil : userUID)
+        }
+    }
     /// Role from members API (`owner` / `member`); used with household.ownerUID.
     @Published var myMemberRole: String?
     /// Extra capabilities from members API (REQ-014 AC3, e.g. `buyer`).
@@ -185,6 +193,9 @@ final class AppSession: ObservableObject {
     }
 
     func signOut(expiredSessionMessage: String? = nil) {
+        if idToken != nil {
+            AppLog.shared.info("auth", "Signed out", fields: ["reason": expiredSessionMessage == nil ? "user" : "session_expired"])
+        }
         // Keep lastSignedInEmail so Welcome can prefill the username field.
         if let email, !email.isEmpty {
             rememberSignedInEmail(email)
@@ -370,12 +381,122 @@ final class AppSession: ObservableObject {
     }
 
     /// Shared API failure path: expired sessions → Welcome; other errors → banner.
-    func handleAPIFailure(_ error: Error) {
+    /// The caller's name becomes the error's `where` (NFR-007 AC1).
+    func handleAPIFailure(_ error: Error, function: String = #function, file: String = #fileID) {
         if SessionExpiry.isUnauthorized(error) {
+            let call = AppLog.shared.failedCall(for: error)
+            AppLog.shared.warning(
+                "auth",
+                "\(Self.whereName(function: function, file: file)): session expired",
+                fields: ["path": call?.path],
+                requestID: call?.requestID,
+                correlationID: call?.correlationID
+            )
             Task { await handleUnauthorizedAPIResponse() }
             return
         }
-        lastError = error.localizedDescription
+        showError(error.localizedDescription, error: error, function: function, file: file)
+    }
+
+    /// Shows `message` in the error banner and logs it as an app error, which also
+    /// queues an error report (NFR-007 AC1, AC2).
+    func showError(
+        _ message: String,
+        error: Error? = nil,
+        correlationID: String? = nil,
+        function: String = #function,
+        file: String = #fileID
+    ) {
+        let whereName = Self.whereName(function: function, file: file)
+        AppLog.shared.error(
+            at: whereName,
+            error: error,
+            message: message,
+            category: Self.category(for: whereName),
+            correlationID: correlationID
+        )
+        lastError = message
+    }
+
+    /// `session.scanReceipt` for `AppSession` methods, `receiptScan.scan` for `ReceiptScanView.scan()`.
+    nonisolated static func whereName(function: String, file: String) -> String {
+        let base = (file.split(separator: "/").last.map(String.init) ?? file)
+            .replacingOccurrences(of: ".swift", with: "")
+        let type = base.split(separator: "+").first.map(String.init) ?? base
+        let owner: String
+        if type == "AppSession" {
+            owner = "session"
+        } else {
+            let trimmed = type.hasSuffix("View") ? String(type.dropLast(4)) : type
+            owner = trimmed.prefix(1).lowercased() + trimmed.dropFirst()
+        }
+        let action = function.split(separator: "(").first.map(String.init) ?? function
+        return action.isEmpty ? owner : "\(owner).\(action)"
+    }
+
+    nonisolated static func category(for whereName: String) -> String {
+        let name = whereName.lowercased()
+        if name.contains("receipt") { return "receipt" }
+        if name.contains("photo") { return "photos" }
+        if name.contains("barcode") || name.contains("scan") || name.contains("trash") || name.contains("consume") {
+            return "scanner"
+        }
+        if name.contains("welcome") || name.contains("signin") || name.contains("auth") { return "auth" }
+        return "session"
+    }
+
+    // MARK: - Diagnostics (NFR-007)
+
+    static let diagnosticsFailed = "Couldn't send diagnostics. Try again."
+
+    static func diagnosticsSent(reference: String) -> String {
+        "Sent. Reference \(reference)"
+    }
+
+    /// True for a real signed-in account (not the offline preview or UI tests).
+    var canSendDiagnostics: Bool {
+        guard let idToken, idToken != "preview", idToken != "uitesting" else { return false }
+        return !isUIPreview && !isUITesting
+    }
+
+    /// NFR-007 AC5: upload the on-device log; returns the line to show.
+    func sendDiagnostics() async -> String {
+        guard canSendDiagnostics, let token = idToken else { return Self.diagnosticsFailed }
+        AppLog.shared.info("app", "Send diagnostics tapped")
+        do {
+            let response = try await MekasaAPIClient.shared.uploadDiagnostics(
+                ClientDiagnosticsUpload(app: ErrorReporter.shared.app, note: nil, entries: AppLog.shared.snapshot()),
+                token: token
+            )
+            AppLog.shared.info("app", "Diagnostics sent", fields: ["reference": response.reference, "entries": response.entries])
+            return Self.diagnosticsSent(reference: response.reference)
+        } catch {
+            AppLog.shared.warning(
+                "app",
+                "Diagnostics upload failed",
+                fields: [
+                    "error_type": String(describing: type(of: error)),
+                    "status": AppLog.shared.failedCall(for: error)?.status,
+                ]
+            )
+            return Self.diagnosticsFailed
+        }
+    }
+
+    /// NFR-007 AC2: error reports go out only while a real account is signed in.
+    private func updateErrorUploader() {
+        guard canSendDiagnostics else {
+            ErrorReporter.shared.setUploader(nil)
+            return
+        }
+        ErrorReporter.shared.setUploader { [weak self] batch in
+            guard let token = await self?.uploadToken() else { throw APIError.invalidResponse }
+            try await MekasaAPIClient.shared.reportClientErrors(batch, token: token)
+        }
+    }
+
+    private func uploadToken() -> String? {
+        canSendDiagnostics ? idToken : nil
     }
 
     /// On HTTP 401: try one Firebase token refresh; if that fails, force sign-out to Welcome.
@@ -607,6 +728,12 @@ final class AppSession: ObservableObject {
         guard canSyncInventory else { return }
         let key = Self.mergeKey(name: item.name, category: item.category)
         let flowID = item.source == .receipt ? receiptFlowID : nil
+        AppLog.shared.info(
+            flowID == nil ? "session" : "receipt",
+            "Saving \(item.name)",
+            fields: ["source": item.source.rawValue, "capture": catalogCapture != nil],
+            correlationID: flowID
+        )
         let task = Task<InventoryItemDTO?, Never> { [weak self] in
             guard let self else { return nil }
             return await RequestTracing.$correlationID.withValue(flowID) { () async -> InventoryItemDTO? in
@@ -827,7 +954,7 @@ final class AppSession: ObservableObject {
 
     func toggleShoppingItemChecked(id: String) {
         guard canMarkShoppingPurchased else {
-            lastError = "Only household owners can mark items purchased."
+            showError("Only household owners can mark items purchased.")
             return
         }
         guard let idx = shoppingList.firstIndex(where: { $0.id == id }) else { return }
@@ -862,7 +989,7 @@ final class AppSession: ObservableObject {
 
     func approveShoppingRequest(id: String) {
         guard isHouseholdOwner else {
-            lastError = "Only household owners can approve requests."
+            showError("Only household owners can approve requests.")
             return
         }
         guard let idx = shoppingList.firstIndex(where: { $0.id == id }) else { return }
@@ -875,7 +1002,7 @@ final class AppSession: ObservableObject {
 
     func rejectShoppingRequest(id: String) {
         guard isHouseholdOwner else {
-            lastError = "Only household owners can deny requests."
+            showError("Only household owners can deny requests.")
             return
         }
         guard let idx = shoppingList.firstIndex(where: { $0.id == id }) else { return }
@@ -988,7 +1115,7 @@ final class AppSession: ObservableObject {
                 handleAPIFailure(error)
                 return nil
             }
-            lastError = "Couldn’t sync \(item.name): \(error.localizedDescription)"
+            showError("Couldn’t sync \(item.name): \(error.localizedDescription)", error: error)
             return nil
         }
     }
@@ -1015,7 +1142,7 @@ final class AppSession: ObservableObject {
                 handleAPIFailure(error)
                 return nil
             }
-            lastError = "Saved \(name), but couldn’t add it to the shared catalog."
+            showError("Saved \(name), but couldn’t add it to the shared catalog.", error: error)
             return nil
         }
     }
@@ -1072,11 +1199,11 @@ final class AppSession: ObservableObject {
                         handleAPIFailure(error)
                         return
                     }
-                    lastError = "Couldn’t sync consume: \(error.localizedDescription)"
+                    showError("Couldn’t sync consume: \(error.localizedDescription)", error: error)
                     return
                 }
             }
-            lastError = "Couldn’t sync consume: \(error.localizedDescription)"
+            showError("Couldn’t sync consume: \(error.localizedDescription)", error: error)
         }
     }
 
@@ -1151,7 +1278,7 @@ final class AppSession: ObservableObject {
                 handleAPIFailure(error)
                 return
             }
-            lastError = "Couldn’t sync list item: \(error.localizedDescription)"
+            showError("Couldn’t sync list item: \(error.localizedDescription)", error: error)
         }
     }
 
@@ -1170,7 +1297,7 @@ final class AppSession: ObservableObject {
                 handleAPIFailure(error)
                 return
             }
-            lastError = "Couldn’t sync purchase: \(error.localizedDescription)"
+            showError("Couldn’t sync purchase: \(error.localizedDescription)", error: error)
             await refreshShoppingList()
         }
     }
@@ -1189,7 +1316,7 @@ final class AppSession: ObservableObject {
                 handleAPIFailure(error)
                 return
             }
-            lastError = "Couldn’t sync approval: \(error.localizedDescription)"
+            showError("Couldn’t sync approval: \(error.localizedDescription)", error: error)
         }
     }
 
@@ -1206,7 +1333,7 @@ final class AppSession: ObservableObject {
                 handleAPIFailure(error)
                 return
             }
-            lastError = "Couldn’t remove that item: \(error.localizedDescription)"
+            showError("Couldn’t remove that item: \(error.localizedDescription)", error: error)
             await refreshShoppingList()
         }
     }
@@ -1224,7 +1351,7 @@ final class AppSession: ObservableObject {
                 handleAPIFailure(error)
                 return
             }
-            lastError = "Couldn’t sync denial: \(error.localizedDescription)"
+            showError("Couldn’t sync denial: \(error.localizedDescription)", error: error)
             await refreshShoppingList()
         }
     }
@@ -1233,7 +1360,7 @@ final class AppSession: ObservableObject {
     @discardableResult
     func uploadHouseholdHomePhoto(_ image: UIImage, compressionQuality: CGFloat = 0.82) async -> Bool {
         guard let jpeg = image.jpegData(compressionQuality: compressionQuality) else {
-            lastError = "Couldn’t encode that photo."
+            showError("Couldn’t encode that photo.")
             return false
         }
         if isUIPreview || isUITesting {
@@ -1249,11 +1376,11 @@ final class AppSession: ObservableObject {
             return true
         }
         guard isHouseholdOwner else {
-            lastError = "Only household owners can change the home photo."
+            showError("Only household owners can change the home photo.")
             return false
         }
         guard let token = idToken, let householdID = household?.id else {
-            lastError = "Not signed in to a household."
+            showError("Not signed in to a household.")
             return false
         }
         isBusy = true
@@ -1273,7 +1400,7 @@ final class AppSession: ObservableObject {
                 handleAPIFailure(error)
                 return false
             }
-            lastError = error.localizedDescription
+            showError(error.localizedDescription, error: error)
             return false
         }
     }
@@ -1307,11 +1434,11 @@ final class AppSession: ObservableObject {
             return true
         }
         guard isHouseholdOwner else {
-            lastError = "Only household owners can update the home photo."
+            showError("Only household owners can update the home photo.")
             return false
         }
         guard let token = idToken, let householdID = household?.id else {
-            lastError = "Not signed in to a household."
+            showError("Not signed in to a household.")
             return false
         }
         isBusy = true
@@ -1328,7 +1455,7 @@ final class AppSession: ObservableObject {
             }
             if imageChanged, let image {
                 guard let jpeg = image.jpegData(compressionQuality: 0.82) else {
-                    lastError = "Couldn’t encode that photo."
+                    showError("Couldn’t encode that photo.")
                     return false
                 }
                 household = try await MekasaAPIClient.shared.uploadHouseholdPhoto(
@@ -1347,7 +1474,7 @@ final class AppSession: ObservableObject {
                 handleAPIFailure(error)
                 return false
             }
-            lastError = error.localizedDescription
+            showError(error.localizedDescription, error: error)
             return false
         }
     }
