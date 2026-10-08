@@ -567,6 +567,7 @@ Acceptance Criteria:
   - **Entry:** time, level (`debug`, `info`, `warning`, `error`), category (`api`, `session`, `receipt`, `photos`, `scanner`, `auth`, `app`), message, optional `request_id` / `correlation_id`, and a few named fields.
   - **API calls:** one entry per call with method, path, status (or the network error), duration and both ids (NFR-006 AC7).
   - **Errors:** one `error` entry wherever the app shows an error or gives up on a call, naming the place (e.g. `receipt.scan`), the error type and its message.
+  - **Cancelled requests:** a call cancelled because its screen went away (e.g. leaving the Inventory list while it loads) is not an error: the app shows nothing, queues no report, and logs one `info` entry "`<place>` cancelled". (Decided 2026-10-08.)
   - **Breadcrumbs:** key actions such as receipt scan started / finished, items saved, sign-in and sign-out.
 - AC2: **Automatic error reports.** Every `error` entry becomes a report: the entry, the HTTP status, path and ids of the failed call when there is one, and the 20 entries before it.
   - **Queue:** reports are kept in a file (at most 50; the oldest are dropped) and sent in batches of up to 20 to `POST /v1/client-errors` while signed in, shortly after an error and when the app returns to the foreground. A report is removed once the server accepts it.
