@@ -557,6 +557,32 @@ Acceptance Criteria:
   These keys are replaced with `[redacted]` wherever they appear, and email addresses in messages are masked. The user is logged only as `user_ref`, a short SHA-256 hash of the Firebase uid. Product and item names, receipt line text and barcodes are logged as-is.
 - AC7: **App headers.** iOS and Android send a new `X-Request-ID` on every API call. They send `X-Correlation-ID` on every call of a receipt flow: the ID is created when the scan starts and reused for that flow's item saves, photo uploads and catalog captures. Calls outside a flow send no correlation ID.
 
+### NFR-007: App Error Reports and Diagnostics
+Priority: P1
+Description: When something goes wrong in the iOS or Android app, enough detail reaches Cloud Logging to see what happened on the phone next to what the API did, crashes reach Firebase Crashlytics, and a user can send the app's recent log with one tap. (Decided 2026-10-08.)
+Design Artifact: design/pages/family-members.html (Help card, AC5)
+Test File: tests/backend/test_client_diagnostics.py, ios/MekasaTests/AppDiagnosticsTests.swift, android-fable/app/src/test/java/app/mekasa/fable/diagnostics/AppDiagnosticsTest.kt
+Acceptance Criteria:
+- AC1: **On-device log.** Each app keeps its last 500 log entries in a file on the device, and also writes them to the system log (iOS `os.Logger`, subsystem `app.mekasa`; Android Logcat, tag `Mekasa`):
+  - **Entry:** time, level (`debug`, `info`, `warning`, `error`), category (`api`, `session`, `receipt`, `photos`, `scanner`, `auth`, `app`), message, optional `request_id` / `correlation_id`, and a few named fields.
+  - **API calls:** one entry per call with method, path, status (or the network error), duration and both ids (NFR-006 AC7).
+  - **Errors:** one `error` entry wherever the app shows an error or gives up on a call, naming the place (e.g. `receipt.scan`), the error type and its message.
+  - **Breadcrumbs:** key actions such as receipt scan started / finished, items saved, sign-in and sign-out.
+- AC2: **Automatic error reports.** Every `error` entry becomes a report: the entry, the HTTP status, path and ids of the failed call when there is one, and the 20 entries before it.
+  - **Queue:** reports are kept in a file (at most 50; the oldest are dropped) and sent in batches of up to 20 to `POST /v1/client-errors` while signed in, shortly after an error and when the app returns to the foreground. A report is removed once the server accepts it.
+  - **No loops:** a failed report upload is retried later and never creates a report itself.
+  - **Off in tests:** preview, UI-test and unit-test runs never upload.
+- AC3: **Error report API.** `POST /v1/client-errors` (bearer token) takes `{app, reports}`: `app` is the platform, app version, build, OS version and device model; up to 20 reports with up to 30 breadcrumbs each.
+  - **Logs:** one `client.error` WARNING per report with the app fields, `report_id`, `where`, `error_type`, `error_message`, `status`, `path`, `app_request_id` and the breadcrumbs. The line's `correlation_id` is the failed call's correlation ID when the report has one, so one Cloud Logging search shows the app's and the API's side together.
+  - **Limits:** at most 120 reports per user per hour; the rest are dropped. The response is `202` with `accepted` and `dropped` counts.
+- AC4: **Diagnostics API.** `POST /v1/client-diagnostics` (bearer token) takes `{app, note, entries}` with up to 500 entries:
+  - **Logs:** one `client.diagnostics` INFO line (app fields, entry count, note) and one `client.log` line per entry (`diagnostics_id`, `seq`, `client_level`, category, message, fields), each with the entry's correlation ID when it has one.
+  - **Reference:** the response is `201` with `diagnostics_id` (the upload's request ID) and `reference`, its first 8 characters.
+  - **Limits:** at most 10 uploads per user per hour; more return `429`.
+- AC5: **Send diagnostics.** Family → Help shows "Send diagnostics" with the line "Sends this phone's recent app log to Mekasa support." Tapping it uploads the on-device log (AC4) and then shows "Sent. Reference ABCD1234", or "Couldn't send diagnostics. Try again." on failure. It is disabled while sending and in the offline preview.
+- AC6: **Crashes.** Both apps report crashes to Firebase Crashlytics with the last on-device log entries attached as Crashlytics logs and the user identified only by `user_ref` (NFR-006 AC6). Collection is off in debug builds, previews, UI tests and when Firebase is not configured. The iOS build uploads dSYMs when the real `GoogleService-Info.plist` is present.
+- AC7: **Privacy (NFR-002 AC3).** Apps never log bearer tokens, passwords, email addresses (masked in messages), street addresses, phone numbers, or household and person names; item names, receipt line text and barcodes are allowed. The server applies NFR-006 AC6 scrubbing again before logging.
+
 ### REQ-022: Expired Session Auto Sign-Out
 Priority: P0
 Description: When the GCP / Firebase authenticated session expires
