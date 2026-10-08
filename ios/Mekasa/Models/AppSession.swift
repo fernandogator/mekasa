@@ -383,6 +383,10 @@ final class AppSession: ObservableObject {
     /// Shared API failure path: expired sessions → Welcome; other errors → banner.
     /// The caller's name becomes the error's `where` (NFR-007 AC1).
     func handleAPIFailure(_ error: Error, function: String = #function, file: String = #fileID) {
+        if Self.isCancellation(error) {
+            logCancellation(error, function: function, file: file)
+            return
+        }
         if SessionExpiry.isUnauthorized(error) {
             let call = AppLog.shared.failedCall(for: error)
             AppLog.shared.warning(
@@ -407,6 +411,10 @@ final class AppSession: ObservableObject {
         function: String = #function,
         file: String = #fileID
     ) {
+        if let error, Self.isCancellation(error) {
+            logCancellation(error, function: function, file: file)
+            return
+        }
         let whereName = Self.whereName(function: function, file: file)
         AppLog.shared.error(
             at: whereName,
@@ -416,6 +424,23 @@ final class AppSession: ObservableObject {
             correlationID: correlationID
         )
         lastError = message
+    }
+
+    /// A request cut off because its screen went away (SwiftUI cancels a view's
+    /// `.task` when it disappears). Nothing failed, so nothing is shown or reported.
+    nonisolated static func isCancellation(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+        if let urlError = error as? URLError, urlError.code == .cancelled { return true }
+        return false
+    }
+
+    private func logCancellation(_ error: Error, function: String, file: String) {
+        let whereName = Self.whereName(function: function, file: file)
+        AppLog.shared.info(
+            Self.category(for: whereName),
+            "\(whereName) cancelled",
+            fields: ["error_type": String(describing: type(of: error))]
+        )
     }
 
     /// `session.scanReceipt` for `AppSession` methods, `receiptScan.scan` for `ReceiptScanView.scan()`.

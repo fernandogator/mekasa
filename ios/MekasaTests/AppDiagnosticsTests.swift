@@ -192,6 +192,33 @@ final class AppDiagnosticsTests: XCTestCase {
         XCTAssertEqual(ErrorReporter.shared.queued().last?.whereName, "session.uploadHouseholdHomePhoto")
     }
 
+    @MainActor
+    func testACancelledRequestShowsNothingAndQueuesNoReport() {
+        ErrorReporter.shared.isEnabled = true
+        let session = AppSession()
+
+        session.handleAPIFailure(URLError(.cancelled))
+        session.handleAPIFailure(CancellationError())
+        session.showError("Couldn’t sync consume: cancelled", error: URLError(.cancelled))
+
+        XCTAssertNil(session.lastError)
+        XCTAssertTrue(ErrorReporter.shared.queued().isEmpty)
+        let last = AppLog.shared.snapshot().last
+        XCTAssertEqual(last?.level, .info)
+        XCTAssertEqual(last?.message, "appDiagnosticsTests.testACancelledRequestShowsNothingAndQueuesNoReport cancelled")
+    }
+
+    @MainActor
+    func testOtherNetworkErrorsAreStillShown() {
+        ErrorReporter.shared.isEnabled = true
+        let session = AppSession()
+
+        session.handleAPIFailure(URLError(.notConnectedToInternet))
+
+        XCTAssertNotNil(session.lastError)
+        XCTAssertEqual(ErrorReporter.shared.queued().count, 1)
+    }
+
     // MARK: - AC5
 
     @MainActor
