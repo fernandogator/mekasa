@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.SupportAgent
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,6 +61,8 @@ fun FamilyScreen(
     var inviteName by rememberSaveable { mutableStateOf("") }
     var inviteEmail by rememberSaveable { mutableStateOf("") }
     var inviteRole by rememberSaveable { mutableStateOf("member") }
+    var sendingDiagnostics by rememberSaveable { mutableStateOf(false) }
+    var diagnosticsStatus by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(state.household?.id) {
         if (!state.isDemo) session.refreshFamily()
@@ -199,6 +202,40 @@ fun FamilyScreen(
                 modifier = Modifier.testTag(TestTags.OPEN_KIOSK),
             )
             SecondaryButton("Dispose one item", onClick = onOpenTrash, icon = Icons.Outlined.Share, modifier = Modifier.testTag(TestTags.OPEN_TRASH))
+
+            SectionHeading("Help")
+            Card {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.md)) {
+                    IconWell(Icons.Outlined.SupportAgent, tint = palette.brand, background = palette.overlay, size = 44.dp)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Send diagnostics", style = Type.subhead, color = palette.text)
+                        Text("Sends this phone's recent app log to Mekasa support.", style = Type.caption, color = palette.textMuted)
+                    }
+                }
+                Spacer(Modifier.height(Space.sm))
+                SecondaryButton(
+                    "Send diagnostics",
+                    onClick = {
+                        sendingDiagnostics = true
+                        diagnosticsStatus = null
+                        session.sendDiagnostics { result ->
+                            sendingDiagnostics = false
+                            diagnosticsStatus = result
+                        }
+                    },
+                    enabled = !sendingDiagnostics && !state.isDemo,
+                    modifier = Modifier.fillMaxWidth().testTag(TestTags.SEND_DIAGNOSTICS),
+                )
+                diagnosticsStatus?.let { status ->
+                    Spacer(Modifier.height(Space.sm))
+                    Text(
+                        status,
+                        style = Type.caption,
+                        color = if (status == SessionViewModel.DIAGNOSTICS_FAILED) palette.danger else palette.brand,
+                        modifier = Modifier.testTag(TestTags.DIAGNOSTICS_STATUS),
+                    )
+                }
+            }
 
             SectionHeading("Account")
             SecondaryButton("Refresh everything", onClick = { session.refreshAll() })

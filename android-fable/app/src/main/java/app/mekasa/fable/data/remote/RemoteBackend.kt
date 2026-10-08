@@ -25,6 +25,9 @@ import app.mekasa.fable.data.model.SpendingReport
 import app.mekasa.fable.data.model.Store
 import app.mekasa.fable.data.model.UnknownBarcodeEvent
 import app.mekasa.fable.data.model.UserProfile
+import app.mekasa.fable.diagnostics.ClientDiagnosticsResponse
+import app.mekasa.fable.diagnostics.ClientDiagnosticsUpload
+import app.mekasa.fable.diagnostics.ClientErrorBatch
 
 /**
  * [HouseholdBackend] over the Cloud Run API. [token] is read on every call so a
@@ -180,4 +183,11 @@ class RemoteBackend(
 
     override suspend fun scanReceipt(householdId: String, rawText: String?, imageBase64: String?): ReceiptScanResponse =
         api.scanReceipt(token(), householdId, rawText, imageBase64)
+
+    override suspend fun reportClientErrors(batch: ClientErrorBatch) {
+        api.reportClientErrors(token(), batch)
+    }
+
+    override suspend fun uploadDiagnostics(upload: ClientDiagnosticsUpload): ClientDiagnosticsResponse =
+        api.uploadDiagnostics(token(), upload)
 }

@@ -1,10 +1,15 @@
 package app.mekasa.fable.data.remote
 
+import app.mekasa.fable.diagnostics.FailedCall
+
 /** Non-2xx response from the Mekasa API. [detail] is the FastAPI `detail` when present. */
 class ApiException(
-    val status: Int,
-    val detail: String,
-) : Exception("HTTP $status: $detail") {
+    override val status: Int,
+    override val detail: String,
+    override val path: String? = null,
+    override val requestId: String? = null,
+    override val correlationId: String? = null,
+) : Exception("HTTP $status: $detail"), FailedCall {
     val isUnauthorized: Boolean get() = status == 401
     val isForbidden: Boolean get() = status == 403
     val isNotFound: Boolean get() = status == 404

@@ -27,6 +27,11 @@
         android:usesCleartextTraffic="false"
         tools:targetApi="34">
 
+        <!-- NFR-007 AC6: MekasaFableApp turns collection on for release builds with real Firebase. -->
+        <meta-data
+            android:name="firebase_crashlytics_collection_enabled"
+            android:value="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

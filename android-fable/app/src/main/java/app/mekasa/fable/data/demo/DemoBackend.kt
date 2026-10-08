@@ -23,6 +23,9 @@ import app.mekasa.fable.data.model.SpendingReport
 import app.mekasa.fable.data.model.Store
 import app.mekasa.fable.data.model.UnknownBarcodeEvent
 import app.mekasa.fable.data.model.UserProfile
+import app.mekasa.fable.diagnostics.ClientDiagnosticsResponse
+import app.mekasa.fable.diagnostics.ClientDiagnosticsUpload
+import app.mekasa.fable.diagnostics.ClientErrorBatch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -389,6 +392,13 @@ class DemoBackend(
 
     override suspend fun scanReceipt(householdId: String, rawText: String?, imageBase64: String?): ReceiptScanResponse =
         ReceiptScanResponse(householdId = householdId, engine = "demo", items = DEMO_RECEIPT, storeName = "Publix", storeChainId = "publix")
+
+    /** The preview never reports errors (NFR-007 AC2). */
+    override suspend fun reportClientErrors(batch: ClientErrorBatch) = Unit
+
+    /** NFR-007 AC5: Send diagnostics is disabled in the preview; nothing to upload to. */
+    override suspend fun uploadDiagnostics(upload: ClientDiagnosticsUpload): ClientDiagnosticsResponse =
+        throw ApiException(503, "diagnostics_unavailable_in_preview")
 
     companion object {
         const val DEMO_UID = "demo-owner"

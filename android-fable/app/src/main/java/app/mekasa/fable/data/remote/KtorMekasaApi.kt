@@ -57,12 +57,20 @@ import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import io.ktor.client.statement.request
+import io.ktor.http.encodedPath
 import io.ktor.http.ContentType
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import app.mekasa.fable.diagnostics.AppLog
+import app.mekasa.fable.diagnostics.ClientDiagnosticsResponse
+import app.mekasa.fable.diagnostics.ClientDiagnosticsUpload
+import app.mekasa.fable.diagnostics.ClientErrorBatch
+import app.mekasa.fable.diagnostics.ClientErrorBatchResponse
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
@@ -358,18 +366,65 @@ class KtorMekasaApi(
         ReceiptScanRequest(imageBase64 = imageBase64, rawText = rawText),
     )
 
+    override suspend fun reportClientErrors(token: String, batch: ClientErrorBatch): ClientErrorBatchResponse =
+        call(HttpMethod.Post, "/v1/client-errors", token, batch)
+
+    override suspend fun uploadDiagnostics(token: String, upload: ClientDiagnosticsUpload): ClientDiagnosticsResponse =
+        call(HttpMethod.Post, "/v1/client-diagnostics", token, upload)
+
     override fun close() {
         runCatching { client.close() }
     }
 
     // ------------------------------------------------------------ plumbing
 
-    /** Every request carries a new request id and the caller's receipt flow, if any (NFR-006 AC7). */
+    /**
+     * Every request carries a new request id and the caller's receipt flow, if any
+     * (NFR-006 AC7), and leaves one entry in the app log (NFR-007 AC1).
+     */
     private suspend fun send(url: String, block: HttpRequestBuilder.() -> Unit): HttpResponse {
         val correlationId = currentCoroutineContext()[CorrelationId]?.value
-        return client.request(url) {
-            RequestTracing.headers(correlationId).forEach { (name, value) -> headers.append(name, value) }
-            block()
+        val tracing = RequestTracing.headers(correlationId)
+        val requestId = tracing.getValue(RequestTracing.REQUEST_ID_HEADER)
+        val started = System.nanoTime()
+        var method = HttpMethod.Get
+        var path = url.removePrefix(root).substringBefore('?')
+        try {
+            val response = client.request(url) {
+                tracing.forEach { (name, value) -> headers.append(name, value) }
+                block()
+                method = this.method
+                path = this.url.encodedPath
+            }
+            val fields = mapOf(
+                "method" to method.value,
+                "path" to path,
+                "status" to response.status.value,
+                "duration_ms" to (System.nanoTime() - started) / 1_000_000,
+            )
+            val message = "${method.value} $path ${response.status.value}"
+            if (response.status.isSuccess()) {
+                AppLog.info("api", message, fields, requestId, correlationId)
+            } else {
+                AppLog.warning("api", message, fields, requestId, correlationId)
+            }
+            return response
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLog.warning(
+                "api",
+                "${method.value} $path failed: ${e::class.simpleName}",
+                mapOf(
+                    "method" to method.value,
+                    "path" to path,
+                    "duration_ms" to (System.nanoTime() - started) / 1_000_000,
+                    "error_type" to e::class.simpleName,
+                ),
+                requestId,
+                correlationId,
+            )
+            throw e
         }
     }
 
@@ -409,7 +464,13 @@ class KtorMekasaApi(
 
     private suspend fun HttpResponse.toApiException(): ApiException {
         val text = runCatching { bodyAsText() }.getOrDefault("")
-        return ApiException(status.value, extractDetail(text) ?: text.ifBlank { status.description })
+        return ApiException(
+            status = status.value,
+            detail = extractDetail(text) ?: text.ifBlank { status.description },
+            path = request.url.encodedPath,
+            requestId = request.headers[RequestTracing.REQUEST_ID_HEADER],
+            correlationId = request.headers[RequestTracing.CORRELATION_ID_HEADER],
+        )
     }
 
     /** FastAPI reports errors as `{"detail": "..."}` or `{"detail": [validation...]}`. */
