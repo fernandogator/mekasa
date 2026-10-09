@@ -1,6 +1,7 @@
 # Manual Cloud Run redeploy for the Mekasa API (mekasa-api).
-# Requires a GitHub Actions secret GCP_SA_KEY = JSON key for a principal that can
-# deploy Cloud Run in project hackathon2025-472017 (e.g. mekasa-api or a deployer SA).
+# Uses the mekasa-prod environment's deploy credentials, the same as CI's
+# deploy-prod job (docs/gcp-firebase-setup.md §4b). Like CI, it deploys only;
+# API, bucket and IAM setup stay with a local run of the deploy script.
 #
 # Run: Actions → Deploy backend (Cloud Run) → Run workflow
 
@@ -22,13 +23,21 @@ jobs:
   deploy:
     name: deploy-cloud-run
     runs-on: ubuntu-latest
-    environment: mekasa-dev
+    environment: mekasa-prod
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
 
-      - name: Authenticate to Google Cloud
+      - name: Authenticate to Google Cloud (Workload Identity)
+        if: vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' && vars.GCP_DEPLOY_SERVICE_ACCOUNT != ''
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Authenticate to Google Cloud (service account key)
+        if: vars.GCP_WORKLOAD_IDENTITY_PROVIDER == '' || vars.GCP_DEPLOY_SERVICE_ACCOUNT == ''
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
@@ -38,6 +47,8 @@ jobs:
 
       - name: Deploy mekasa-api
         working-directory: backend
+        env:
+          DEPLOY_ONLY: "1"
         run: |
           set -euo pipefail
           chmod +x scripts/deploy-cloud-run.sh
