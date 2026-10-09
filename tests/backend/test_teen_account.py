@@ -186,6 +186,31 @@ def test_any_owner_can_replace_the_shared_photo(client: TestClient) -> None:
     ]
 
 
+def test_current_household_loads_when_invite_lookup_fails(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    Satisfies: REQ-019 AC7
+    Spec version: 1.0
+
+    A missing Firestore collection-group index used to 500 this route, which
+    left the teen stuck before any household could load.
+    """
+    created = client.post("/v1/households", json={"name": "Casa Test"}, headers=_auth("owner-1"))
+    assert created.status_code == 201
+    household_id = created.json()["id"]
+
+    from app.members_repository import get_members_repository
+
+    def explode(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("FAILED_PRECONDITION: COLLECTION_GROUP_ASC index")
+
+    monkeypatch.setattr(get_members_repository(), "accept_pending_invites_for_email", explode)
+    current = client.get("/v1/households/current", headers=_auth("owner-1"))
+    assert current.status_code == 200
+    assert current.json()["id"] == household_id
+
+
 def test_signing_in_with_the_invited_email_shows_family_inventory(client: TestClient) -> None:
     """
     Satisfies: REQ-019 AC7

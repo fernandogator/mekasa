@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
@@ -21,10 +22,15 @@ from app.models import (
 from app.members_repository import normalize_avoid_list, normalize_email
 from app.repository import get_household_repository
 
+logger = logging.getLogger(__name__)
+
 HOUSEHOLDS = "households"
 MEMBERS = "members"
 INVITES = "invites"
 INVITE_TOKENS = "invite_tokens"
+# Point reads only. Collection-group queries on invites need an index this
+# project does not have, and that missing index was failing household load.
+INVITE_EMAILS = "invite_emails"
 USER_MEMBERSHIPS = "user_memberships"
 
 
@@ -185,6 +191,12 @@ class FirestoreMembersRepository:
             {"household_id": household_id, "invite_id": invite_id},
         )
         batch.commit()
+        normalized = data.get("email_lower")
+        if normalized:
+            try:
+                self._index_pending_email(str(normalized), token, household_id, invite_id)
+            except Exception:
+                logger.exception("invite email index write failed")
         return _invite_from(household_id, invite_id, data)
 
     def list_invites(self, household_id: str, actor_uid: str) -> list[HouseholdInviteResponse]:
@@ -237,6 +249,16 @@ class FirestoreMembersRepository:
             },
         )
         batch.commit()
+        normalized = normalize_email(invite.get("email") or invite.get("email_lower"))
+        if normalized:
+            try:
+                email_ref = self._db.collection(INVITE_EMAILS).document(normalized)
+                if email_ref.get().exists:
+                    email_ref.update(
+                        {f"pending.{token}": firestore.DELETE_FIELD, "updated_at": now}
+                    )
+            except Exception:
+                logger.exception("invite email index cleanup failed")
         return _member_from(household_id, actor_uid, member_data)
 
     def update_role(
@@ -337,22 +359,127 @@ class FirestoreMembersRepository:
                 accepted.append(self.accept_invite(str(token), actor_uid, actor_name))
             except (KeyError, ValueError):
                 continue
+            except Exception:
+                logger.exception("accept pending invite failed")
+                continue
         return accepted
 
     def _pending_invite_snaps(self, raw_email: str, normalized: str):
+        """
+        Pending invites for this email.
+
+        New invites are stored at invite_emails/{email} and read by document id.
+        Older invites have no such row, so those are found by reading each
+        household's invites subcollection. That path does not need the
+        collection-group index that was returning FAILED_PRECONDITION.
+        """
+        try:
+            indexed = self._indexed_pending_snaps(normalized)
+        except Exception:
+            logger.exception("invite email index read failed")
+            return
+        if indexed is not None:
+            yield from indexed
+            return
+        try:
+            matches = self._scan_household_invites(raw_email, normalized)
+        except Exception:
+            logger.exception("legacy invite scan failed")
+            return
+        if not matches:
+            try:
+                self._ensure_empty_email_index(normalized)
+            except Exception:
+                logger.exception("empty invite email index write failed")
+            return
+        for snap in matches:
+            data = snap.to_dict() or {}
+            token = str(data.get("token") or "")
+            household_id = snap.reference.parent.parent.id
+            try:
+                self._index_pending_email(normalized, token, household_id, snap.id)
+            except Exception:
+                logger.exception("invite email index write failed")
+            yield snap
+
+    def _indexed_pending_snaps(self, normalized: str) -> list[Any] | None:
+        snap = self._db.collection(INVITE_EMAILS).document(normalized).get()
+        if not snap.exists:
+            return None
+        pending = (snap.to_dict() or {}).get("pending") or {}
+        if not isinstance(pending, dict):
+            return []
+        snaps: list[Any] = []
+        for meta in pending.values():
+            if not isinstance(meta, dict):
+                continue
+            household_id = meta.get("household_id")
+            invite_id = meta.get("invite_id")
+            if not household_id or not invite_id:
+                continue
+            invite_snap = self._invites_col(str(household_id)).document(str(invite_id)).get()
+            if invite_snap.exists:
+                snaps.append(invite_snap)
+        return snaps
+
+    def _scan_household_invites(self, raw_email: str, normalized: str) -> list[Any]:
+        found: list[Any] = []
         seen: set[str] = set()
-        queries = [
-            self._db.collection_group(INVITES).where("email_lower", "==", normalized),
-            self._db.collection_group(INVITES).where("email", "==", normalized),
-        ]
-        if raw_email != normalized:
-            queries.append(self._db.collection_group(INVITES).where("email", "==", raw_email))
-        for query in queries:
-            for snap in query.stream(retry=STREAM_RETRY):
-                if snap.id in seen:
+        for household_snap in self._db.collection(HOUSEHOLDS).stream(retry=STREAM_RETRY):
+            invites = household_snap.reference.collection(INVITES).stream(retry=STREAM_RETRY)
+            for invite_snap in invites:
+                if invite_snap.id in seen:
                     continue
-                seen.add(snap.id)
-                yield snap
+                data = invite_snap.to_dict() or {}
+                if data.get("status") != "pending":
+                    continue
+                stored = normalize_email(data.get("email_lower") or data.get("email"))
+                raw_stored = str(data.get("email") or "").strip()
+                if stored != normalized and raw_stored != raw_email and raw_stored.lower() != normalized:
+                    continue
+                seen.add(invite_snap.id)
+                found.append(invite_snap)
+        return found
+
+    def _index_pending_email(
+        self, normalized: str, token: str, household_id: str, invite_id: str
+    ) -> None:
+        if not token:
+            return
+        ref = self._db.collection(INVITE_EMAILS).document(normalized)
+        transaction = self._db.transaction()
+
+        @firestore.transactional
+        def _run(transaction: firestore.Transaction) -> None:
+            snap = ref.get(transaction=transaction)
+            pending: dict[str, Any] = {}
+            if snap.exists:
+                raw = (snap.to_dict() or {}).get("pending") or {}
+                if isinstance(raw, dict):
+                    pending = dict(raw)
+            pending[token] = {"household_id": household_id, "invite_id": invite_id}
+            transaction.set(
+                ref,
+                {"email": normalized, "pending": pending, "updated_at": _utcnow()},
+            )
+
+        _run(transaction)
+
+    def _ensure_empty_email_index(self, normalized: str) -> None:
+        ref = self._db.collection(INVITE_EMAILS).document(normalized)
+        transaction = self._db.transaction()
+
+        @firestore.transactional
+        def _run(transaction: firestore.Transaction) -> None:
+            snap = ref.get(transaction=transaction)
+            if snap.exists:
+                return
+            transaction.set(
+                ref,
+                {"email": normalized, "pending": {}, "updated_at": _utcnow()},
+            )
+
+        _run(transaction)
 
     def preferred_household_id(self, actor_uid: str) -> str | None:
         snaps = list(

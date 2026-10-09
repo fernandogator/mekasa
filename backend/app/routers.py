@@ -166,10 +166,20 @@ def get_current_household(
 
     Signing in with the invited email joins that household. A teen or member
     opens the family inventory, not a blank house created during signup.
+
+    Invite lookup is best-effort. A missing Firestore index must not turn this
+    into a 500, or the teen cannot open the house at all.
     """
     if user.email:
-        members.accept_pending_invites_for_email(user.uid, user.email, user.name)
-    joined_id = members.preferred_household_id(user.uid)
+        try:
+            members.accept_pending_invites_for_email(user.uid, user.email, user.name)
+        except Exception:
+            logger.exception("pending invite lookup failed")
+    try:
+        joined_id = members.preferred_household_id(user.uid)
+    except Exception:
+        logger.exception("preferred household lookup failed")
+        joined_id = None
     if joined_id:
         household = repo.get(joined_id)
         if household is not None:
