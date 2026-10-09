@@ -29,6 +29,15 @@ final class InventoryListModelTests: XCTestCase {
         ]
     }
 
+    func testItemRouteIdentityIsTheItemID() {
+        XCTAssertEqual(InventoryItemRoute(itemID: "milk"), InventoryItemRoute(itemID: "milk"))
+        XCTAssertNotEqual(InventoryItemRoute(itemID: "milk"), InventoryItemRoute(itemID: "eggs"))
+        XCTAssertEqual(
+            Set([InventoryItemRoute(itemID: "milk"), InventoryItemRoute(itemID: "milk")]).count,
+            1
+        )
+    }
+
     func testMatches_blankQueryMatchesEverything() {
         for row in pantry {
             XCTAssertTrue(InventoryListModel.matches(row, query: ""))
