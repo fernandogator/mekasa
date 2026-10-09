@@ -35,6 +35,13 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def normalize_email(value: str | None) -> str | None:
+    if not value:
+        return None
+    trimmed = value.strip().lower()
+    return trimmed or None
+
+
 class MembersRepository(Protocol):
     """Persistence port for household members and invites."""
 
@@ -74,6 +81,14 @@ class MembersRepository(Protocol):
 
     def primary_household_id_for_user(self, actor_uid: str) -> str | None:
         """First household the user belongs to (accepted invite / membership)."""
+
+    def accept_pending_invites_for_email(
+        self, actor_uid: str, email: str | None, actor_name: str | None
+    ) -> list[HouseholdMemberResponse]:
+        """Join every pending invite addressed to this email. Sign-in uses this so a teen does not need the link."""
+
+    def preferred_household_id(self, actor_uid: str) -> str | None:
+        """Household to open: an invited teen/member role wins over a blank house this account created."""
 
 
 class InMemoryMembersRepository:
@@ -148,7 +163,7 @@ class InMemoryMembersRepository:
             id=str(uuid4()),
             household_id=household_id,
             name=payload.name.strip(),
-            email=payload.email,
+            email=normalize_email(payload.email) or payload.email,
             phone=payload.phone,
             role=payload.role,
             token=token,
@@ -260,11 +275,41 @@ class InMemoryMembersRepository:
         )
 
     def primary_household_id_for_user(self, actor_uid: str) -> str | None:
-        for household_id, bucket in self._members.items():
-            member = bucket.get(actor_uid)
-            if member is not None and member.status == "active":
-                return household_id
-        return None
+        return self.preferred_household_id(actor_uid)
+
+    def accept_pending_invites_for_email(
+        self, actor_uid: str, email: str | None, actor_name: str | None
+    ) -> list[HouseholdMemberResponse]:
+        normalized = normalize_email(email)
+        if normalized is None:
+            return []
+        pending = [
+            invite
+            for invite in self._invites.values()
+            if invite.status == "pending" and normalize_email(invite.email) == normalized
+        ]
+        pending.sort(key=lambda invite: invite.created_at, reverse=True)
+        accepted: list[HouseholdMemberResponse] = []
+        for invite in pending:
+            try:
+                accepted.append(self.accept_invite(invite.token, actor_uid, actor_name))
+            except (KeyError, ValueError):
+                continue
+        return accepted
+
+    def preferred_household_id(self, actor_uid: str) -> str | None:
+        active = [
+            member
+            for bucket in self._members.values()
+            for member in bucket.values()
+            if member.uid == actor_uid and member.status == "active"
+        ]
+        guests = [member for member in active if member.role in ("teen", "member")]
+        pool = guests or active
+        if not pool:
+            return None
+        pool.sort(key=lambda member: member.updated_at, reverse=True)
+        return pool[0].household_id
 
 
 _members_repo: MembersRepository | None = None

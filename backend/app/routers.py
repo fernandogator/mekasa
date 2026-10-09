@@ -161,14 +161,20 @@ def get_current_household(
 ) -> HouseholdResponse:
     """
     Satisfies: REQ-001, REQ-019
-    Acceptance criteria: AC1
+    Acceptance criteria: AC1, AC6
     Spec version: 1.0
+
+    Signing in with the invited email joins that household. A teen or member
+    opens the family inventory, not a blank house created during signup.
     """
+    if user.email:
+        members.accept_pending_invites_for_email(user.uid, user.email, user.name)
+    joined_id = members.preferred_household_id(user.uid)
+    if joined_id:
+        household = repo.get(joined_id)
+        if household is not None:
+            return household
     household = repo.get_for_owner(user.uid)
-    if household is None:
-        member_household_id = members.primary_household_id_for_user(user.uid)
-        if member_household_id:
-            household = repo.get(member_household_id)
     if household is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No household")
     return household

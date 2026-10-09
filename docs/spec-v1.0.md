@@ -356,6 +356,9 @@ Acceptance Criteria:
   scan, and submit shopping requests. They cannot change the shared
   home photo, approve requests, mark purchases, or manage members.
   Purchasing stays the future `buyer` permission (REQ-014 AC3)
+- AC7: Signing in with the invited email opens that household and its
+  inventory. A blank household created during signup does not hide
+  the family's items
 - AC4: Family screen shows the signed-in account, the household name and
   address, and each member's role and status, with a "Refresh data"
   action that re-pulls household data

@@ -184,3 +184,77 @@ def test_any_owner_can_replace_the_shared_photo(client: TestClient) -> None:
         ("member-1", "teen"),
         ("teen-1", "member"),
     ]
+
+
+def test_signing_in_with_the_invited_email_shows_family_inventory(client: TestClient) -> None:
+    """
+    Satisfies: REQ-019 AC7
+    Spec version: 1.0
+
+    Test auth email for uid teen-1 is teen-1@example.com. No invite link is opened.
+    """
+    created = client.post("/v1/households", json={"name": "Casa Test"}, headers=_auth("owner-1"))
+    assert created.status_code == 201
+    household_id = created.json()["id"]
+    added = client.post(
+        f"/v1/households/{household_id}/inventory",
+        json={"name": "Milk", "category": "Dairy", "quantity": 2},
+        headers=_auth("owner-1"),
+    )
+    assert added.status_code == 201
+
+    invited = client.post(
+        f"/v1/households/{household_id}/invites",
+        json={"name": "Riley", "email": "Teen-1@example.com", "role": "teen"},
+        headers=_auth("owner-1"),
+    )
+    assert invited.status_code == 201
+
+    current = client.get("/v1/households/current", headers=_auth("teen-1"))
+    assert current.status_code == 200
+    assert current.json()["id"] == household_id
+
+    listed = client.get(f"/v1/households/{household_id}/inventory", headers=_auth("teen-1"))
+    assert listed.status_code == 200
+    assert [item["name"] for item in listed.json()["items"]] == ["Milk"]
+
+    members = client.get(f"/v1/households/{household_id}/members", headers=_auth("teen-1"))
+    teen = next(row for row in members.json()["members"] if row["uid"] == "teen-1")
+    assert teen["role"] == "teen"
+
+
+def test_blank_signup_household_does_not_hide_family_inventory(client: TestClient) -> None:
+    """
+    Satisfies: REQ-019 AC7
+    Spec version: 1.0
+    """
+    created = client.post("/v1/households", json={"name": "Casa Test"}, headers=_auth("owner-1"))
+    household_id = created.json()["id"]
+    added = client.post(
+        f"/v1/households/{household_id}/inventory",
+        json={"name": "Milk", "category": "Dairy"},
+        headers=_auth("owner-1"),
+    )
+    assert added.status_code == 201
+
+    blank = client.post("/v1/households", json={"name": "Riley's room"}, headers=_auth("teen-1"))
+    assert blank.status_code == 201
+    assert blank.json()["id"] != household_id
+
+    invited = client.post(
+        f"/v1/households/{household_id}/invites",
+        json={"name": "Riley", "email": "teen-1@example.com", "role": "teen"},
+        headers=_auth("owner-1"),
+    )
+    assert invited.status_code == 201
+
+    current = client.get("/v1/households/current", headers=_auth("teen-1"))
+    assert current.status_code == 200
+    assert current.json()["id"] == household_id
+
+    listed = client.get(
+        f"/v1/households/{household_id}/inventory",
+        headers=_auth("teen-1"),
+    )
+    assert listed.status_code == 200
+    assert [item["name"] for item in listed.json()["items"]] == ["Milk"]
