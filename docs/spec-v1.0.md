@@ -350,7 +350,10 @@ children (Members) to the household.
 Design Artifact: design/mockups/FamilyMembers.jsx
 Acceptance Criteria:
 - AC1: Invite requires name plus email or phone number
-- AC2: Invited user receives a notification or link to download and join
+- AC2: Invited user receives a link to download and join. Mekasa does not
+  send that link by email. The owner shares it. Signing in with the
+  invited email also joins the household (AC7). The owner's phone may
+  get a push that the link is ready to share
 - AC3: Role is set at invitation and changeable by any Owner later
 - AC6: A teen invite joins as role `teen`. Teens can view inventory,
   scan, and submit shopping requests. They cannot change the shared
