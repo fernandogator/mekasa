@@ -231,6 +231,15 @@ final class AppSession: ObservableObject {
         lastRemovedIndex = nil
         inventoryUndoTask?.cancel()
         inventoryUndoTask = nil
+        ThumbnailStore.shared.removeAll()
+        ThumbnailLoader.cancelPrefetch()
+    }
+
+    /// Fill the local thumbnail database for the current inventory so the list
+    /// can paint small images without waiting on the full remote picture (UI-006 AC8).
+    func warmInventoryThumbnails() {
+        guard !isUIPreview, !isUITesting else { return }
+        ThumbnailLoader.prefetch(inventory.compactMap(\.imageURL))
     }
 
     private static func loadPendingInviteToken() -> String? {
@@ -564,6 +573,7 @@ final class AppSession: ObservableObject {
                 token: token
             )
             inventory = response.items.map { $0.toLocal() }
+            warmInventoryThumbnails()
             await refreshShoppingList(syncLowStock: true)
             updateRealtimeSync()
             PushRegistrationService.shared.requestPermissionAndRegister(idToken: token)
@@ -583,6 +593,7 @@ final class AppSession: ObservableObject {
             onInventory: { [weak self] items in
                 guard let self, self.canSyncInventory else { return }
                 self.inventory = items
+                self.warmInventoryThumbnails()
                 self.isRealtimeSyncActive = HouseholdSyncService.shared.isListening
             },
             onShoppingList: { [weak self] items in

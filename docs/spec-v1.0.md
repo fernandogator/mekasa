@@ -452,10 +452,12 @@ Acceptance Criteria:
 Priority: P0
 Design Artifact: design/pages/inventory-list.html, design/pages/item-detail.html
 User Flow: design/user-flows.md
-Test File: ios/Tests/UI/Structure/UI006StructureTests.swift, ios/Tests/Snapshots/UI006SnapshotTests.swift, Scripts/ui_vision_cases.json (legacy stubs: ios/MekasaTests/UI/InventoryScreenUITest.swift)
+Test File: ios/Tests/UI/Structure/UI006StructureTests.swift, ios/Tests/Snapshots/UI006SnapshotTests.swift, ios/MekasaTests/ThumbnailStoreTests.swift, Scripts/ui_vision_cases.json (legacy stubs: ios/MekasaTests/UI/InventoryScreenUITest.swift)
 Description: Inventory rows show a product thumbnail from barcode lookup
 (Open Food Facts image URL when available). Tapping the row (or thumbnail)
 opens item detail with a larger product image and product metadata.
+List thumbnails are small JPEGs in a local database so later visits do
+not download the full picture again.
 Acceptance Criteria:
 - AC1: Each inventory row displays a thumbnail when `image_url` is known;
   otherwise a category/placeholder image is shown
@@ -474,6 +476,11 @@ Acceptance Criteria:
   (case-insensitive) with a "No items match" state
 - AC7: The list offers an Add entry point (header button, and an
   "Add items" CTA in the empty state) that opens the Add Items hub
+- AC8: Each known `image_url` is stored once as a small JPEG (long edge
+  192 px) in a local database. A later visit paints the list thumbnail
+  from that row and does not download the full picture again. Item
+  detail still loads the full image. A new picture is a new URL, and
+  signing out deletes the stored thumbnails.
 
 ---
 
