@@ -169,7 +169,7 @@ fun FamilyScreen(
                     }
                 }
                 Text(
-                    "Teens and members share the home photo. Only owners can change it.",
+                    "Teens and members share the home photo. Only owners can change it. No email is sent — share the link, or have them sign in with this address.",
                     style = Type.caption,
                     color = palette.textMuted,
                 )

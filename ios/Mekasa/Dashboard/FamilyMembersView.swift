@@ -242,11 +242,11 @@ struct FamilyMembersView: View {
                 Text("Owner").tag("owner")
             }
             .pickerStyle(.segmented)
-            Text("Teens and members share the home photo. Only owners can change it.")
+            Text("Teens and members share the home photo. Only owners can change it. Mekasa does not email the invite — share the link, or have them sign in with this address.")
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(MekasaTheme.textMuted)
 
-            PrimaryButton(title: "Send invite", isLoading: session.isBusy) {
+            PrimaryButton(title: "Create invite", isLoading: session.isBusy) {
                 Task { await sendInvite() }
             }
 
@@ -440,7 +440,7 @@ struct FamilyMembersView: View {
             )
             name = ""
             email = ""
-            statusMessage = "Invite sent."
+            statusMessage = "Invite saved for \(trimmedName). No email was sent. Share the link below, or have them sign in with \(trimmedEmail)."
             await refresh()
         } catch {
             session.handleAPIFailure(error)

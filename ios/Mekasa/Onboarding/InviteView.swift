@@ -38,7 +38,7 @@ struct InviteView: View {
                             .foregroundStyle(MekasaTheme.text)
                             .padding(.top, 36)
 
-                        Text("Owners manage the house and the shared home photo. Teens and members can scan and request items. Send a name plus email or phone.")
+                        Text("Owners manage the house and the shared home photo. Teens and members can scan and request items. Add a name plus email or phone. Mekasa does not email the invite — share the link, or have them sign in with that address.")
                             .font(MekasaTheme.bodyFont)
                             .foregroundStyle(MekasaTheme.textMuted)
 
@@ -97,10 +97,10 @@ struct InviteView: View {
 
                 StickyBottomBar(progress: 1.0) {
                     VStack(spacing: 12) {
-                        PrimaryButton(title: "Send invite", isLoading: session.isBusy) {
+                        PrimaryButton(title: "Create invite", isLoading: session.isBusy) {
                             Task { await sendInvite(thenFinish: false) }
                         }
-                        PrimaryButton(title: "Send invite & finish") {
+                        PrimaryButton(title: "Create invite & finish") {
                             Task { await sendInvite(thenFinish: true) }
                         }
                         SecondaryButton(title: "Skip for now") {
@@ -149,7 +149,11 @@ struct InviteView: View {
                 token: token
             )
             lastInviteLink = invite.shareURL?.absoluteString ?? invite.inviteLink
-            statusMessage = "Invite created for \(invite.name)."
+            if email.isEmpty {
+                statusMessage = "Invite created for \(invite.name). Share the link — no email was sent."
+            } else {
+                statusMessage = "Invite created for \(invite.name). No email was sent. Share the link, or have them sign in with \(email)."
+            }
             name = ""
             inviteEmail = ""
             invitePhone = ""
