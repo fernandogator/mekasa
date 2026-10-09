@@ -128,8 +128,18 @@ final class AppSession: ObservableObject {
 
     var lowStockCount: Int {
         let live = inventory.filter(\.isLowStock).count
-        if inventory.isEmpty { return DashboardFixtures.lowStockCount }
+        if inventory.isEmpty, isUIPreview || isUITesting {
+            return DashboardFixtures.lowStockCount
+        }
         return live
+    }
+
+    /// Sample activity and the "12 items" stat are for previews. A signed-in house with no items shows that.
+    func dropPlaceholderActivity() {
+        guard !isUIPreview, !isUITesting else { return }
+        if activity == DashboardFixtures.activity {
+            activity = []
+        }
     }
 
     var openShoppingCount: Int {
@@ -572,6 +582,7 @@ final class AppSession: ObservableObject {
 
     /// Pull inventory from Cloud Run / Firestore.
     func refreshInventory() async {
+        dropPlaceholderActivity()
         await adoptInvitedHouseholdIfNeeded()
         guard canSyncInventory,
               let token = idToken,

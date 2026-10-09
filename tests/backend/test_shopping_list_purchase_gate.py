@@ -45,7 +45,7 @@ def _auth(uid: str) -> dict[str, str]:
 def _invite_member(client: TestClient, household_id: str, member_uid: str = "member-1") -> None:
     invite = client.post(
         f"/v1/households/{household_id}/invites",
-        json={"name": "Leo", "email": "leo@example.com", "role": "member"},
+        json={"name": "Leo", "email": f"{member_uid}@example.com", "role": "member"},
         headers=_auth("owner-1"),
     )
     assert invite.status_code == 201

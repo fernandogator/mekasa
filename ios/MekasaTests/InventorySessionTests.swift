@@ -55,6 +55,8 @@ final class InventorySessionTests: XCTestCase {
     @MainActor
     func testLowStockCount_usesLiveInventoryWhenPresent() {
         let session = AppSession()
+        XCTAssertEqual(session.lowStockCount, 0, "A signed-in empty inventory is zero, not the sample 12")
+        session.startUIPreview()
         XCTAssertEqual(session.lowStockCount, DashboardFixtures.lowStockCount)
         session.addInventoryItem(
             InventoryItem(name: "Pasta", category: "Pantry", quantity: 1, lowStockThreshold: 1, source: .manual)

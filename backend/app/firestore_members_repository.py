@@ -19,7 +19,7 @@ from app.models import (
     MemberAvoidUpdateRequest,
     member_role_sort_key,
 )
-from app.members_repository import normalize_avoid_list, normalize_email
+from app.members_repository import invite_email_matches, normalize_avoid_list, normalize_email
 from app.repository import get_household_repository
 
 logger = logging.getLogger(__name__)
@@ -108,7 +108,16 @@ class FirestoreMembersRepository:
         self, household_id: str, owner_uid: str, owner_name: str | None
     ) -> None:
         ref = self._members_col(household_id).document(owner_uid)
-        if ref.get().exists:
+        snap = ref.get()
+        if snap.exists:
+            data = snap.to_dict() or {}
+            if data.get("role") == "owner" and data.get("status") == "active":
+                return
+            now = _utcnow()
+            ref.update({"role": "owner", "status": "active", "updated_at": now})
+            self._db.collection(USER_MEMBERSHIPS).document(owner_uid).collection(HOUSEHOLDS).document(
+                household_id
+            ).set({"role": "owner", "status": "active", "updated_at": now}, merge=True)
             return
         now = _utcnow()
         data = {
@@ -208,7 +217,11 @@ class FirestoreMembersRepository:
         return sorted(invites, key=lambda item: item.created_at, reverse=True)
 
     def accept_invite(
-        self, token: str, actor_uid: str, actor_name: str | None
+        self,
+        token: str,
+        actor_uid: str,
+        actor_name: str | None,
+        actor_email: str | None = None,
     ) -> HouseholdMemberResponse:
         token_ref = self._db.collection(INVITE_TOKENS).document(token)
         token_snap = token_ref.get()
@@ -222,6 +235,11 @@ class FirestoreMembersRepository:
         if not invite_snap.exists:
             raise KeyError(token)
         invite = dict(invite_snap.to_dict() or {})
+        if not invite_email_matches(invite.get("email"), actor_email):
+            raise ValueError("invite_email_mismatch")
+        household = get_household_repository().get(household_id)
+        if household is not None and household.owner_uid == actor_uid:
+            raise ValueError("already_in_household")
         if invite.get("status") != "pending":
             raise ValueError("invite_not_pending")
         now = _utcnow()
@@ -356,13 +374,151 @@ class FirestoreMembersRepository:
                 continue
             seen_tokens.add(str(token))
             try:
-                accepted.append(self.accept_invite(str(token), actor_uid, actor_name))
+                accepted.append(
+                    self.accept_invite(str(token), actor_uid, actor_name, actor_email=email)
+                )
             except (KeyError, ValueError):
                 continue
             except Exception:
                 logger.exception("accept pending invite failed")
                 continue
+        try:
+            accepted.extend(
+                self._claim_accepted_invites(actor_uid, email.strip(), normalized, actor_name)
+            )
+        except Exception:
+            logger.exception("claim accepted invite failed")
         return accepted
+
+    def _claim_accepted_invites(
+        self, actor_uid: str, raw_email: str, normalized: str, actor_name: str | None
+    ) -> list[HouseholdMemberResponse]:
+        claimed: list[HouseholdMemberResponse] = []
+        for snap in self._accepted_invite_snaps(raw_email, normalized):
+            data = snap.to_dict() or {}
+            if data.get("status") != "accepted":
+                continue
+            household_id = snap.reference.parent.parent.id
+            if self.is_active_participant(household_id, actor_uid):
+                continue
+            claimed.append(
+                self._join_accepted_invite(household_id, data, actor_uid, actor_name)
+            )
+        return claimed
+
+    def _join_accepted_invite(
+        self,
+        household_id: str,
+        invite: dict[str, Any],
+        actor_uid: str,
+        actor_name: str | None,
+    ) -> HouseholdMemberResponse:
+        now = _utcnow()
+        member_data = {
+            "name": actor_name or invite.get("name"),
+            "email": invite.get("email"),
+            "phone": invite.get("phone"),
+            "role": invite.get("role") or "member",
+            "status": "active",
+            "created_at": now,
+            "updated_at": now,
+        }
+        batch = self._db.batch()
+        batch.set(self._members_col(household_id).document(actor_uid), member_data)
+        batch.set(
+            self._db.collection(USER_MEMBERSHIPS)
+            .document(actor_uid)
+            .collection(HOUSEHOLDS)
+            .document(household_id),
+            {"role": member_data["role"], "status": "active", "updated_at": now},
+        )
+        batch.commit()
+        return _member_from(household_id, actor_uid, member_data)
+
+    def _accepted_invite_snaps(self, raw_email: str, normalized: str) -> list[Any]:
+        ref = self._db.collection(INVITE_EMAILS).document(normalized)
+        try:
+            snap = ref.get()
+        except Exception:
+            logger.exception("accepted invite index read failed")
+            return []
+        data = snap.to_dict() if snap.exists else {}
+        if data.get("scanned"):
+            return self._snaps_from_invite_map(data.get("accepted") or {})
+        found: list[Any] = []
+        accepted_map: dict[str, dict[str, str]] = {}
+        try:
+            households = self._db.collection(HOUSEHOLDS).stream(retry=STREAM_RETRY)
+            for household_snap in households:
+                invites = household_snap.reference.collection(INVITES).stream(retry=STREAM_RETRY)
+                for invite_snap in invites:
+                    invite = invite_snap.to_dict() or {}
+                    if invite.get("status") != "accepted":
+                        continue
+                    stored = normalize_email(invite.get("email_lower") or invite.get("email"))
+                    raw_stored = str(invite.get("email") or "").strip()
+                    if (
+                        stored != normalized
+                        and raw_stored != raw_email
+                        and raw_stored.lower() != normalized
+                    ):
+                        continue
+                    token = str(invite.get("token") or invite_snap.id)
+                    accepted_map[token] = {
+                        "household_id": household_snap.id,
+                        "invite_id": invite_snap.id,
+                    }
+                    found.append(invite_snap)
+        except Exception:
+            logger.exception("accepted invite scan failed")
+            return []
+        try:
+            self._save_accepted_scan(normalized, accepted_map)
+        except Exception:
+            logger.exception("accepted invite index write failed")
+        return found
+
+    def _snaps_from_invite_map(self, mapping: Any) -> list[Any]:
+        if not isinstance(mapping, dict):
+            return []
+        snaps: list[Any] = []
+        for meta in mapping.values():
+            if not isinstance(meta, dict):
+                continue
+            household_id = meta.get("household_id")
+            invite_id = meta.get("invite_id")
+            if not household_id or not invite_id:
+                continue
+            invite_snap = self._invites_col(str(household_id)).document(str(invite_id)).get()
+            if invite_snap.exists:
+                snaps.append(invite_snap)
+        return snaps
+
+    def _save_accepted_scan(self, normalized: str, accepted_map: dict[str, dict[str, str]]) -> None:
+        ref = self._db.collection(INVITE_EMAILS).document(normalized)
+        transaction = self._db.transaction()
+
+        @firestore.transactional
+        def _run(transaction: firestore.Transaction) -> None:
+            snap = ref.get(transaction=transaction)
+            accepted: dict[str, Any] = {}
+            if snap.exists:
+                raw = (snap.to_dict() or {}).get("accepted") or {}
+                if isinstance(raw, dict):
+                    accepted = dict(raw)
+            accepted.update(accepted_map)
+            transaction.set(
+                ref,
+                {
+                    "email": normalized,
+                    "accepted": accepted,
+                    "scanned": True,
+                    "updated_at": _utcnow(),
+                },
+                merge=True,
+            )
+
+        _run(transaction)
 
     def _pending_invite_snaps(self, raw_email: str, normalized: str):
         """
