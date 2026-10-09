@@ -5,33 +5,57 @@ import SwiftUI
 /// Spec version: 1.0
 struct ProductThumbnail: View {
     let urlString: String?
-    var size: CGFloat = 56
-    var cornerRadius: CGFloat = 16
+    var size: CGFloat
+    var cornerRadius: CGFloat
+    /// Painted from the local database when this URL was seen before (UI-006 AC8).
+    @State private var image: UIImage?
+    @State private var failed = false
+
+    init(urlString: String?, size: CGFloat = 56, cornerRadius: CGFloat = 16) {
+        self.urlString = urlString
+        self.size = size
+        self.cornerRadius = cornerRadius
+        _image = State(initialValue: Self.cachedImage(urlString))
+    }
 
     var body: some View {
         Group {
-            if let urlString, let url = URL(string: urlString) {
-                MekasaRemoteImage(url: url) { phase in
-                    switch phase {
-                    case let .success(image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    case .failure:
-                        placeholder
-                    case .empty:
-                        placeholder.overlay { ProgressView() }
-                    @unknown default:
-                        placeholder
-                    }
-                }
-            } else {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else if failed || urlString == nil {
                 placeholder
+            } else {
+                placeholder.overlay { ProgressView() }
             }
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .accessibilityHidden(urlString == nil)
+        .task(id: urlString) {
+            failed = false
+            if let cached = Self.cachedImage(urlString) {
+                image = cached
+                return
+            }
+            image = nil
+            guard let urlString, let url = URL(string: urlString) else { return }
+            do {
+                image = try await ThumbnailLoader.shared.image(for: url)
+            } catch is CancellationError {
+                return
+            } catch let urlError as URLError where urlError.code == .cancelled {
+                return
+            } catch {
+                failed = true
+            }
+        }
+    }
+
+    private static func cachedImage(_ urlString: String?) -> UIImage? {
+        guard let urlString, let url = URL(string: urlString) else { return nil }
+        return ThumbnailStore.shared.image(for: PrivateItemPhoto.resolve(url).absoluteString)
     }
 
     private var placeholder: some View {

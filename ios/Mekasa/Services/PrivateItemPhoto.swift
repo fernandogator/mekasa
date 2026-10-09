@@ -111,7 +111,7 @@ actor PrivateImageLoader {
 
 /// Product photos 302 to a signed Cloud Storage URL, which must not also carry
 /// the API bearer token.
-private final class DropAuthorizationOnRedirect: NSObject, URLSessionTaskDelegate {
+final class DropAuthorizationOnRedirect: NSObject, URLSessionTaskDelegate {
     func urlSession(
         _ session: URLSession,
         task: URLSessionTask,
