@@ -274,6 +274,7 @@ Acceptance Criteria:
 ### REQ-012: Child Shopping Request Submission
 Priority: P1
 Description: A Member can submit a shopping request tagged with their name.
+Teens and members are asked what they want; the row stays pending until an owner approves.
 Design Artifact: design/mockups/ShoppingList.jsx
 Acceptance Criteria:
 - AC1: Request includes item name and is tagged with the requesting

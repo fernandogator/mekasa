@@ -17,9 +17,12 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -61,6 +65,7 @@ fun ShoppingListScreen(
 ) {
     val palette = MekasaTheme.palette
     val data = state.data
+    val asks = state.submitsShoppingRequests
     var composing by rememberSaveable { mutableStateOf(false) }
     var newName by rememberSaveable { mutableStateOf("") }
     var newQty by rememberSaveable { mutableStateOf("1") }
@@ -98,7 +103,7 @@ fun ShoppingListScreen(
                             label = "Item",
                             value = newName,
                             onValueChange = { newName = it },
-                            placeholder = "Avocados",
+                            placeholder = if (asks) "Oreos" else "Avocados",
                             testTag = TestTags.SHOPPING_NAME_FIELD,
                         )
                         Spacer(Modifier.height(Space.sm))
@@ -111,13 +116,13 @@ fun ShoppingListScreen(
                             onSubmit = ::submitNew,
                         )
                         Spacer(Modifier.height(Space.md))
-                        PrimaryButton("Add to list", onClick = ::submitNew, enabled = newName.isNotBlank(), loading = state.busy, modifier = Modifier.testTag(TestTags.SHOPPING_ADD_SUBMIT))
+                        PrimaryButton(if (asks) "Request it" else "Add to list", onClick = ::submitNew, enabled = newName.isNotBlank(), loading = state.busy, modifier = Modifier.testTag(TestTags.SHOPPING_ADD_SUBMIT))
                         Spacer(Modifier.height(Space.sm))
                         SecondaryButton("Cancel", onClick = { composing = false })
                     }
                 }
                 if (!composing) {
-                    SecondaryButton("Add an item", onClick = { composing = true }, modifier = Modifier.testTag(TestTags.SHOPPING_ADD_TOGGLE))
+                    SecondaryButton(if (asks) "What do you want?" else "Add an item", onClick = { composing = true }, modifier = Modifier.testTag(TestTags.SHOPPING_ADD_TOGGLE))
                 }
             }
 
@@ -135,7 +140,12 @@ fun ShoppingListScreen(
             }
 
             if (data.shopping.isEmpty()) {
-                item { EmptyMessage("Nothing on the list. Sync low stock or add something.", modifier = Modifier.testTag(TestTags.SHOPPING_EMPTY)) }
+                item {
+                    EmptyMessage(
+                        if (asks) "Nothing to buy yet. Ask for something you want." else "Nothing on the list. Sync low stock or add something.",
+                        modifier = Modifier.testTag(TestTags.SHOPPING_EMPTY),
+                    )
+                }
             }
 
             val pending = data.pendingApprovals
@@ -251,6 +261,59 @@ private fun ShoppingRow(
                 LinkButton("Approve", onClick = onApprove, color = palette.success, modifier = Modifier.testTag(TestTags.approve(item.id)))
                 LinkButton("Reject", onClick = onReject, modifier = Modifier.testTag(TestTags.reject(item.id)))
             }
+        }
+    }
+}
+
+/** REQ-012: the center + button asks a teen what they want before opening inventory add. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ShoppingRequestSheet(
+    state: SessionState,
+    session: SessionViewModel,
+    onDismiss: () -> Unit,
+    onAddToHouse: () -> Unit,
+) {
+    val palette = MekasaTheme.palette
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var name by rememberSaveable { mutableStateOf("") }
+
+    fun submit() {
+        if (name.isBlank()) return
+        session.addShoppingItem(name)
+        onDismiss()
+    }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Space.lg)
+                .padding(bottom = Space.xl)
+                .testTag(TestTags.TEEN_SHOPPING_ASK),
+        ) {
+            Text("What do you want?", style = Type.title, color = palette.text)
+            Spacer(Modifier.height(Space.sm))
+            Text(
+                "An owner approves it before it goes on the shopping list.",
+                style = Type.body,
+                color = palette.textMuted,
+            )
+            Spacer(Modifier.height(Space.md))
+            LabeledField(
+                label = "Item",
+                value = name,
+                onValueChange = { name = it },
+                placeholder = "Oreos",
+                capitalization = KeyboardCapitalization.Words,
+                imeAction = ImeAction.Done,
+                onSubmit = ::submit,
+                testTag = TestTags.SHOPPING_NAME_FIELD,
+            )
+            Spacer(Modifier.height(Space.md))
+            PrimaryButton("Request it", onClick = ::submit, enabled = name.isNotBlank(), loading = state.busy)
+            Spacer(Modifier.height(Space.sm))
+            SecondaryButton("Add to the house instead", onClick = onAddToHouse)
         }
     }
 }

@@ -631,8 +631,16 @@ class SessionViewModel(
     fun addShoppingItem(name: String, quantity: Int = 1) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
+        val asRequest = current.submitsShoppingRequests
+        val requestedBy = if (asRequest) current.account?.shortName ?: "Member" else null
         guarded(busy = true) {
-            val created = require().addShoppingItem(householdId(), trimmed, quantity.coerceAtLeast(1))
+            val created = require().addShoppingItem(
+                householdId(),
+                trimmed,
+                quantity.coerceAtLeast(1),
+                asRequest = asRequest,
+                requestedBy = requestedBy,
+            )
             _state.update { it.copy(data = it.data.copy(shopping = listOf(created) + it.data.shopping)) }
         }
     }

@@ -14,6 +14,7 @@ object TestTags {
     const val MAIN_SHELL_VIEW = "MainShellView"
     const val BOTTOM_NAV_BAR = "BottomNavBar"
     const val ADD_ITEM_BUTTON = "AddItemButton"
+    const val TEEN_SHOPPING_ASK = "TeenShoppingAsk"
     const val HOME_TAB = "HomeTab"
     const val LIST_TAB = "ListTab"
     const val SPEND_TAB = "SpendTab"

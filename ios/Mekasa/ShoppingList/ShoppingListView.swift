@@ -121,7 +121,9 @@ struct ShoppingListView: View {
     private var listCard: some View {
         Group {
             if session.shoppingList.isEmpty {
-                Text("Nothing to buy yet. Mark inventory low or add a custom item.")
+                Text(session.submitsShoppingRequests
+                     ? "Nothing to buy yet. Ask for something you want."
+                     : "Nothing to buy yet. Mark inventory low or add a custom item.")
                     .font(MekasaTheme.bodyFont)
                     .foregroundStyle(MekasaTheme.textMuted)
                     .padding(20)
@@ -366,7 +368,7 @@ struct ShoppingListView: View {
             HStack(spacing: 8) {
                 Image(systemName: "plus.circle")
                     .font(.system(size: 18, weight: .semibold))
-                Text("Add custom item")
+                Text(addButtonTitle)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
             }
             .foregroundStyle(MekasaTheme.text)
@@ -379,52 +381,30 @@ struct ShoppingListView: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Add custom item")
+        .accessibilityLabel(addButtonTitle)
         .accessibilityIdentifier(TestIdentifiers.addItemButton)
+    }
+
+    private var addButtonTitle: String {
+        session.submitsShoppingRequests ? "What do you want?" : "Add custom item"
     }
 
     private var addCustomSheet: some View {
         NavigationStack {
             MekasaScreen {
-                VStack(spacing: 20) {
-                    MekasaTextField(
-                        label: "Item",
-                        placeholder: "e.g. Tortillas",
-                        text: $customName,
-                        autocapitalization: .words
-                    )
-                    HStack {
-                        Text("Quantity")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(MekasaTheme.textMuted)
-                        Spacer()
-                        Stepper("\(customQty)", value: $customQty, in: 1 ... 99)
-                            .labelsHidden()
-                        Text("\(customQty)")
-                            .font(.system(size: 20, weight: .black, design: .rounded))
-                            .foregroundStyle(MekasaTheme.text)
-                            .frame(minWidth: 28)
-                    }
-                    .padding(16)
-                    .background(MekasaTheme.surfaceElevated)
-                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-
-                    Spacer()
-                    PrimaryButton(
-                        title: session.isHouseholdOwner ? "Add to list" : "Request item",
-                        disabled: customName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    ) {
-                        session.addCustomShoppingItem(
-                            name: customName.trimmingCharacters(in: .whitespacesAndNewlines),
-                            quantity: customQty
-                        )
-                        showAddCustom = false
-                        showToast(session.isHouseholdOwner ? "Added to list" : "Requested")
+                Group {
+                    if session.submitsShoppingRequests {
+                        ShoppingRequestComposer { _ in
+                            showAddCustom = false
+                            showToast("Asked. An owner will approve it.")
+                        }
+                    } else {
+                        ownerAddForm
                     }
                 }
                 .padding(24)
             }
-            .navigationTitle("Custom item")
+            .navigationTitle(session.submitsShoppingRequests ? "What do you want?" : "Custom item")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -433,6 +413,45 @@ struct ShoppingListView: View {
             }
         }
         .presentationDetents([.medium])
+    }
+
+    private var ownerAddForm: some View {
+        VStack(spacing: 20) {
+            MekasaTextField(
+                label: "Item",
+                placeholder: "e.g. Tortillas",
+                text: $customName,
+                autocapitalization: .words
+            )
+            HStack {
+                Text("Quantity")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(MekasaTheme.textMuted)
+                Spacer()
+                Stepper("\(customQty)", value: $customQty, in: 1 ... 99)
+                    .labelsHidden()
+                Text("\(customQty)")
+                    .font(.system(size: 20, weight: .black, design: .rounded))
+                    .foregroundStyle(MekasaTheme.text)
+                    .frame(minWidth: 28)
+            }
+            .padding(16)
+            .background(MekasaTheme.surfaceElevated)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+
+            Spacer()
+            PrimaryButton(
+                title: "Add to list",
+                disabled: customName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ) {
+                session.addCustomShoppingItem(
+                    name: customName.trimmingCharacters(in: .whitespacesAndNewlines),
+                    quantity: customQty
+                )
+                showAddCustom = false
+                showToast("Added to list")
+            }
+        }
     }
 
     private var listTitle: String {
@@ -460,6 +479,62 @@ struct ShoppingListView: View {
             try? await Task.sleep(nanoseconds: 1_500_000_000)
             if toast == message { toast = nil }
         }
+    }
+}
+
+/// Name and quantity for a teen or member shopping request (REQ-012).
+struct ShoppingRequestComposer: View {
+    @EnvironmentObject private var session: AppSession
+    var showsQuantity = true
+    var onSubmitted: (String) -> Void = { _ in }
+
+    @State private var name = ""
+    @State private var quantity = 1
+
+    private var trimmed: String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            MekasaTextField(
+                label: "Item",
+                placeholder: "Oreos",
+                text: $name,
+                autocapitalization: .words,
+                submitLabel: .done,
+                onSubmit: { submit() }
+            )
+            if showsQuantity {
+                HStack {
+                    Text("Quantity")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(MekasaTheme.textMuted)
+                    Spacer()
+                    Stepper("\(quantity)", value: $quantity, in: 1 ... 99)
+                        .labelsHidden()
+                    Text("\(quantity)")
+                        .font(.system(size: 20, weight: .black, design: .rounded))
+                        .foregroundStyle(MekasaTheme.text)
+                        .frame(minWidth: 28)
+                }
+                .padding(16)
+                .background(MekasaTheme.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            }
+            PrimaryButton(title: "Request it", disabled: trimmed.isEmpty) {
+                submit()
+            }
+        }
+    }
+
+    private func submit() {
+        let itemName = trimmed
+        guard !itemName.isEmpty else { return }
+        session.addCustomShoppingItem(name: itemName, quantity: quantity)
+        name = ""
+        quantity = 1
+        onSubmitted(itemName)
     }
 }
 

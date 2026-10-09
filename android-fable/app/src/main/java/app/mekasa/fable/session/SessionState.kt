@@ -133,6 +133,10 @@ data class SessionState(
             return data.members.any { it.uid == me && it.isOwner }
         }
 
+    /** Teens and members ask for shopping items. Owners add them directly (REQ-012). */
+    val submitsShoppingRequests: Boolean
+        get() = account != null && household != null && !isOwner
+
     /** REQ-014: owners mark items purchased; a future "buyer" permission is honoured without a schema change. */
     val canMarkPurchased: Boolean
         get() {

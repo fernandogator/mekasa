@@ -25,14 +25,21 @@ import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import app.mekasa.fable.data.model.InventoryItem
+import app.mekasa.fable.data.model.ShoppingItem
 import app.mekasa.fable.session.SessionState
 import app.mekasa.fable.session.SessionViewModel
 import app.mekasa.fable.ui.TestTags
@@ -40,7 +47,9 @@ import app.mekasa.fable.ui.components.Card
 import app.mekasa.fable.ui.components.Chip
 import app.mekasa.fable.ui.components.HomePhoto
 import app.mekasa.fable.ui.components.IconWell
+import app.mekasa.fable.ui.components.LabeledField
 import app.mekasa.fable.ui.components.LinkButton
+import app.mekasa.fable.ui.components.PrimaryButton
 import app.mekasa.fable.ui.components.SectionHeading
 import app.mekasa.fable.ui.components.moneyCompact
 import app.mekasa.fable.ui.components.plural
@@ -112,7 +121,11 @@ fun DashboardScreen(
             }
         }
 
-        if (approvals.isNotEmpty()) {
+        if (state.submitsShoppingRequests) {
+            item {
+                WantSomethingCard(session = session, pending = approvals, busy = state.busy)
+            }
+        } else if (approvals.isNotEmpty()) {
             item {
                 SectionHeading("Needs approval", actionLabel = "Open list", onAction = onOpenList)
             }
@@ -190,6 +203,58 @@ fun DashboardScreen(
             item { SectionHeading("Recently added") }
             items(recent, key = { "recent-${it.id}" }) { item ->
                 InventoryRow(item = item, onClick = { onOpenItem(item, recentIds) }, onConsume = { session.consume(item.id) })
+            }
+        }
+    }
+}
+
+/** REQ-012: teens and members type what they want. It stays pending until an owner approves. */
+@Composable
+private fun WantSomethingCard(
+    session: SessionViewModel,
+    pending: List<ShoppingItem>,
+    busy: Boolean,
+) {
+    val palette = MekasaTheme.palette
+    var name by rememberSaveable { mutableStateOf("") }
+    Card(modifier = Modifier.testTag(TestTags.TEEN_SHOPPING_ASK)) {
+        Text("What do you want?", style = Type.subhead, color = palette.text)
+        Text(
+            "Ask for it here. An owner adds it to the shopping list.",
+            style = Type.body,
+            color = palette.textMuted,
+        )
+        LabeledField(
+            label = "Item",
+            value = name,
+            onValueChange = { name = it },
+            placeholder = "Oreos",
+            capitalization = KeyboardCapitalization.Words,
+            imeAction = ImeAction.Done,
+            onSubmit = {
+                if (name.isNotBlank()) {
+                    session.addShoppingItem(name)
+                    name = ""
+                }
+            },
+            testTag = TestTags.SHOPPING_NAME_FIELD,
+        )
+        Spacer(Modifier.height(Space.md))
+        PrimaryButton(
+            text = "Request it",
+            onClick = {
+                session.addShoppingItem(name)
+                name = ""
+            },
+            enabled = name.isNotBlank(),
+            loading = busy,
+        )
+        if (pending.isNotEmpty()) {
+            Spacer(Modifier.height(Space.md))
+            Text("WAITING FOR AN OWNER", style = Type.label, color = palette.textMuted)
+            pending.forEach { item ->
+                Spacer(Modifier.height(Space.sm))
+                Text("${item.name} · qty ${item.quantity}", style = Type.body, color = palette.text)
             }
         }
     }

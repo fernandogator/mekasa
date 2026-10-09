@@ -379,12 +379,29 @@ class SessionViewModelTest {
         vm.addShoppingItem("  Lemons ", 4)
         assertEquals(before + 1, vm.s.data.shopping.size)
         assertEquals("Lemons", vm.s.data.shopping.first().name)
+        assertFalse(vm.s.data.shopping.first().needsApproval)
 
         vm.addShoppingItem("   ")
         assertEquals(before + 1, vm.s.data.shopping.size)
 
         vm.removeShoppingItem(vm.s.data.shopping.first().id)
         assertEquals(before, vm.s.data.shopping.size)
+    }
+
+    @Test
+    fun `a teen add is a shopping request waiting for an owner`() {
+        api.household = api.household!!.copy(ownerUid = "someone-else")
+        api.members = mutableListOf(HouseholdMember(uid = "uid-1", householdId = "hh-1", role = "teen"))
+        val vm = viewModel()
+        vm.signInWithEmail("nico@example.com", "secret", createAccount = false)
+
+        assertTrue(vm.s.submitsShoppingRequests)
+        vm.addShoppingItem("Oreos", 1)
+
+        val added = vm.s.data.shopping.first { it.name == "Oreos" }
+        assertTrue(added.needsApproval)
+        assertEquals("request", added.kind)
+        assertEquals("Ana", added.requestedBy)
     }
 
     // -------------------------------------------------------------- photo

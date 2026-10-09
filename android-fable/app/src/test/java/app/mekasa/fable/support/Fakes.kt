@@ -289,8 +289,15 @@ open class FakeApi : MekasaApi {
 
     override suspend fun createShoppingItem(token: String, householdId: String, body: ShoppingItemCreateRequest): ShoppingItem {
         record("createShopping:${body.name}")
-        return ShoppingItem(id = "s${shopping.size + 1}", householdId = householdId, name = body.name, quantity = body.quantity)
-            .also { shopping.add(it) }
+        return ShoppingItem(
+            id = "s${shopping.size + 1}",
+            householdId = householdId,
+            name = body.name,
+            quantity = body.quantity,
+            needsApproval = body.needsApproval,
+            requestedBy = body.requestedBy,
+            kind = body.kind,
+        ).also { shopping.add(it) }
     }
 
     override suspend fun patchShoppingItem(token: String, householdId: String, itemId: String, patch: ShoppingItemPatch): ShoppingItem {
