@@ -147,7 +147,9 @@ class InMemoryHouseholdRepository:
         household = self.get(household_id)
         if household is None:
             raise KeyError(household_id)
-        if household.owner_uid != owner_uid:
+        from app.household_access import is_household_owner
+
+        if not is_household_owner(household, owner_uid):
             raise PermissionError(household_id)
         return household
 

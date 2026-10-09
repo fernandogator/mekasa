@@ -13,9 +13,16 @@ struct InviteView: View {
 
     private enum InviteRole: String, CaseIterable, Identifiable {
         case member
+        case teen
         case owner
         var id: String { rawValue }
-        var label: String { self == .owner ? "Owner" : "Member" }
+        var label: String {
+            switch self {
+            case .owner: return "Owner"
+            case .teen: return "Teen"
+            case .member: return "Member"
+            }
+        }
     }
 
     var body: some View {
@@ -31,7 +38,7 @@ struct InviteView: View {
                             .foregroundStyle(MekasaTheme.text)
                             .padding(.top, 36)
 
-                        Text("Owners manage inventory and spending. Members can scan and request items. Send a name plus email or phone.")
+                        Text("Owners manage the house and the shared home photo. Teens and members can scan and request items. Send a name plus email or phone.")
                             .font(MekasaTheme.bodyFont)
                             .foregroundStyle(MekasaTheme.textMuted)
 

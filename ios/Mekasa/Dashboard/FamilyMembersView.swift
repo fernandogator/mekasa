@@ -171,9 +171,23 @@ struct FamilyMembersView: View {
                                     .accessibilityIdentifier(TestIdentifiers.familyMemberSubtitle)
                             }
                             Spacer()
-                            if member.uid != session.household?.ownerUID, member.role == "member" {
-                                Button("Make owner") {
-                                    Task { await promote(member) }
+                            if canChangeRole(of: member) {
+                                HStack(spacing: 12) {
+                                    if member.role != "member" {
+                                        Button("Make member") {
+                                            Task { await setRole(member, role: "member") }
+                                        }
+                                    }
+                                    if member.role != "teen" {
+                                        Button("Make teen") {
+                                            Task { await setRole(member, role: "teen") }
+                                        }
+                                    }
+                                    if member.role != "owner" {
+                                        Button("Make owner") {
+                                            Task { await setRole(member, role: "owner") }
+                                        }
+                                    }
                                 }
                                 .font(.system(size: 13, weight: .bold, design: .rounded))
                             }
@@ -224,9 +238,13 @@ struct FamilyMembersView: View {
             )
             Picker("Role", selection: $role) {
                 Text("Member").tag("member")
+                Text("Teen").tag("teen")
                 Text("Owner").tag("owner")
             }
             .pickerStyle(.segmented)
+            Text("Teens and members share the home photo. Only owners can change it.")
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(MekasaTheme.textMuted)
 
             PrimaryButton(title: "Send invite", isLoading: session.isBusy) {
                 Task { await sendInvite() }
@@ -239,7 +257,7 @@ struct FamilyMembersView: View {
                     .padding(.top, 8)
                 ForEach(invites.filter { $0.status == "pending" }) { invite in
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("\(invite.name) · \(invite.role)")
+                        Text("\(invite.name) · \(FamilySummary.roleLabel(invite.role))")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundStyle(MekasaTheme.text)
                         if let link = invite.inviteLink {
@@ -430,16 +448,24 @@ struct FamilyMembersView: View {
         }
     }
 
-    private func promote(_ member: HouseholdMemberDTO) async {
+    /// Owners assign roles. The household's original owner stays an owner.
+    private func canChangeRole(of member: HouseholdMemberDTO) -> Bool {
+        session.isHouseholdOwner
+            && member.uid != session.userUID
+            && member.uid != session.household?.ownerUID
+    }
+
+    private func setRole(_ member: HouseholdMemberDTO, role: String) async {
         guard let token = session.idToken, let householdID = session.household?.id else { return }
         do {
             _ = try await MekasaAPIClient.shared.updateHouseholdMemberRole(
                 householdID: householdID,
                 memberUID: member.uid,
-                role: "owner",
+                role: role,
                 token: token
             )
-            statusMessage = "\(member.name ?? member.uid) is now an owner."
+            let name = member.name ?? member.uid
+            statusMessage = "\(name) is now \(FamilySummary.roleLabel(role))."
             await refresh()
         } catch {
             session.handleAPIFailure(error)

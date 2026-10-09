@@ -1158,17 +1158,21 @@ async def upload_household_photo(
 ) -> HouseholdResponse:
     """
     Satisfies: REQ-002
-    Acceptance criteria: AC2, AC3
+    Acceptance criteria: AC2, AC3, AC4, AC5
     Spec version: 1.0
 
     Thin upload: stores a data-URL when GCS is not configured so local/dev works.
+    The URL is on the household, so every member sees the same photo.
     """
     import base64
+
+    from app.household_access import is_household_owner
 
     household = repo.get(household_id)
     if household is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
-    if household.owner_uid != user.uid:
+    # One photo on the household. Owners (admins) replace it; teens and members cannot.
+    if not is_household_owner(household, user.uid):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     content = await file.read()
     if not content:

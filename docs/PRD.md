@@ -30,17 +30,22 @@ children (Members). v1.0 supports exactly one household per account.
 - Recipe suggestions based on pantry contents
 - Multi-household support
 - Budget caps and spending alerts
-- Teen purchasing permissions (data model must allow for this later)
+- Teen purchasing permissions (the teen role exists; purchasing stays a future `buyer` permission)
 - Desktop clients (architecture must allow for future Windows support)
 - Offline-first full sync (offline queue supported, not full offline)
 
 ## 6. Core User Roles
-- Owner (Adult): full permissions — add/edit/remove inventory,
+- Owner (Adult / admin): full permissions — add/edit/remove inventory,
   approve or reject requests, manage household members, view all
-  spending data, mark items purchased
+  spending data, mark items purchased, and change the shared home photo
+- Teen: can view inventory, scan items, and submit shopping requests.
+  Sees the same household home photo as every other member. Cannot
+  change that photo, approve requests, mark items purchased, or
+  manage members
 - Member (Child): can view inventory, submit item requests to the
   shopping list, cannot approve requests, mark items purchased,
-  or edit others' entries
+  or edit others' entries. Sees the same shared home photo and
+  cannot change it
 
 ## 7. Core Features
 
@@ -89,8 +94,10 @@ children (Members). v1.0 supports exactly one household per account.
 6. Prompt: "Scan a recent receipt to bulk-add items"
 7. When user indicates done scanning: "Would you like to add
    anyone else to the household?"
-8. Invite spouse as second Owner, invite children as Members
-   (name, email, phone) — they receive download invite
+8. Invite spouse as second Owner, teens as Teens, and children as
+   Members (name, email, phone) — they receive download invite.
+   The home photo is one picture for the whole household; only
+   Owners can change it
 9. Setup complete → home dashboard
 
 ## 8. Notifications

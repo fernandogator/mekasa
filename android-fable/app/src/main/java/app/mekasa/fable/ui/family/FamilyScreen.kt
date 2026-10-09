@@ -85,7 +85,11 @@ fun FamilyScreen(
                         Text(state.account?.shortName ?: "Signed in", style = Type.subhead, color = palette.text)
                         Text(state.account?.email ?: "", style = Type.caption, color = palette.textMuted)
                     }
-                    Chip(if (state.isOwner) "Owner" else "Member", color = if (state.isOwner) palette.success else palette.textMuted)
+                    Chip(
+                        state.data.members.firstOrNull { it.uid == state.account?.uid }?.roleLabel
+                            ?: if (state.isOwner) "Owner" else "Member",
+                        color = if (state.isOwner) palette.success else palette.textMuted,
+                    )
                 }
                 if (state.isDemo) {
                     Spacer(Modifier.height(Space.sm))
@@ -117,10 +121,20 @@ fun FamilyScreen(
                                 color = palette.textMuted,
                             )
                         }
-                        Chip(member.role.replaceFirstChar { it.uppercase() }, color = if (member.isOwner) palette.success else palette.textMuted)
+                        Chip(member.roleLabel, color = if (member.isOwner) palette.success else palette.textMuted)
                     }
-                    if (state.isOwner && !member.isOwner && member.uid != state.account?.uid) {
-                        LinkButton("Make owner", onClick = { session.promoteToOwner(member.uid) })
+                    if (state.isOwner && member.uid != state.account?.uid && member.uid != state.household?.ownerUid) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(Space.md)) {
+                            if (member.role != "teen") {
+                                LinkButton("Make teen", onClick = { session.setMemberRole(member.uid, "teen") })
+                            }
+                            if (member.role != "member") {
+                                LinkButton("Make member", onClick = { session.setMemberRole(member.uid, "member") })
+                            }
+                            if (member.role != "owner") {
+                                LinkButton("Make owner", onClick = { session.setMemberRole(member.uid, "owner") })
+                            }
+                        }
                     }
                 }
             }
@@ -140,8 +154,12 @@ fun FamilyScreen(
                     testTag = TestTags.INVITE_EMAIL,
                 )
                 Spacer(Modifier.height(Space.sm))
-                Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
-                    listOf("member" to "Member (kid)", "owner" to "Owner (adult)").forEach { (role, label) ->
+                Column(verticalArrangement = Arrangement.spacedBy(Space.xs)) {
+                    listOf(
+                        "member" to "Member (kid)",
+                        "teen" to "Teen",
+                        "owner" to "Owner (adult)",
+                    ).forEach { (role, label) ->
                         val active = inviteRole == role
                         LinkButton(
                             text = (if (active) "● " else "○ ") + label,
@@ -150,6 +168,11 @@ fun FamilyScreen(
                         )
                     }
                 }
+                Text(
+                    "Teens and members share the home photo. Only owners can change it.",
+                    style = Type.caption,
+                    color = palette.textMuted,
+                )
                 Spacer(Modifier.height(Space.sm))
                 PrimaryButton(
                     text = "Create invite",

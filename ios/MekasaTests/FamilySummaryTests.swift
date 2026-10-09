@@ -34,9 +34,18 @@ final class FamilySummaryTests: XCTestCase {
 
     func testMemberSubtitle_joinsRoleAndStatus() {
         XCTAssertEqual(FamilySummary.memberSubtitle(role: "owner", status: "active"), "Owner · active")
+        XCTAssertEqual(FamilySummary.memberSubtitle(role: "teen", status: "active"), "Teen · active")
         XCTAssertEqual(FamilySummary.memberSubtitle(role: "member", status: "Invited"), "Member · invited")
         XCTAssertEqual(FamilySummary.memberSubtitle(role: "member", status: ""), "Member")
         XCTAssertEqual(FamilySummary.memberSubtitle(role: "", status: "active"), "Member · active")
+    }
+
+    func testOnlyOwnersCanChangeTheSharedHomePhoto() {
+        XCTAssertTrue(FamilySummary.canChangeHomePhoto(role: "owner", isDocumentOwner: false))
+        XCTAssertTrue(FamilySummary.canChangeHomePhoto(role: "teen", isDocumentOwner: true))
+        XCTAssertFalse(FamilySummary.canChangeHomePhoto(role: "teen", isDocumentOwner: false))
+        XCTAssertFalse(FamilySummary.canChangeHomePhoto(role: "member", isDocumentOwner: false))
+        XCTAssertFalse(FamilySummary.canChangeHomePhoto(role: nil, isDocumentOwner: false))
     }
 
     func testOfflinePreviewNoticeCopy() {

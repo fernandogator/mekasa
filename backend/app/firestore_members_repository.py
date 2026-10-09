@@ -16,6 +16,7 @@ from app.models import (
     HouseholdMemberResponse,
     HouseholdMemberRoleUpdateRequest,
     MemberAvoidUpdateRequest,
+    member_role_sort_key,
 )
 from app.members_repository import normalize_avoid_list
 from app.repository import get_household_repository
@@ -152,7 +153,7 @@ class FirestoreMembersRepository:
         ]
         return sorted(
             members,
-            key=lambda item: (0 if item.role == "owner" else 1, item.name or item.uid),
+            key=lambda item: (member_role_sort_key(item.role), item.name or item.uid),
         )
 
     def create_invite(

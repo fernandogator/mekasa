@@ -20,6 +20,12 @@ Acceptance Criteria:
 - AC1: Household name field is optional and skippable
 - AC2: Photo upload is optional and skippable
 - AC3: If provided, photo appears as home screen backdrop
+- AC4: The home photo is stored once on the household (`photo_url`)
+  and shown to every member — owners, teens, and children see the
+  same image
+- AC5: Only an owner (admin) can replace the home photo or house
+  name. Teens and members see the photo with no edit control, and
+  the API rejects their upload with 403
 
 ### REQ-003: Home Address Detection and Store Discovery
 Priority: P1
@@ -339,13 +345,17 @@ Acceptance Criteria:
 
 ### REQ-019: Household Member Invitation
 Priority: P0
-Description: Owner can invite additional adults (Owners) or children
-(Members) to the household.
+Description: Owner can invite additional adults (Owners), teens, or
+children (Members) to the household.
 Design Artifact: design/mockups/FamilyMembers.jsx
 Acceptance Criteria:
 - AC1: Invite requires name plus email or phone number
 - AC2: Invited user receives a notification or link to download and join
 - AC3: Role is set at invitation and changeable by any Owner later
+- AC6: A teen invite joins as role `teen`. Teens can view inventory,
+  scan, and submit shopping requests. They cannot change the shared
+  home photo, approve requests, mark purchases, or manage members.
+  Purchasing stays the future `buyer` permission (REQ-014 AC3)
 - AC4: Family screen shows the signed-in account, the household name and
   address, and each member's role and status, with a "Refresh data"
   action that re-pulls household data
@@ -427,7 +437,9 @@ Test File: android-fable/app/src/test/java/app/mekasa/fable/ui/DashboardUITest.k
 Acceptance Criteria:
 - AC1: Displays low-stock items prominently
 - AC2: Displays pending child requests for Owner users
-- AC3: Displays home photo as top hero band if set (tap to change via camera/Photos)
+- AC3: Displays the shared home photo as the top hero band if set.
+  Owners tap to change it via camera/Photos. Teens and members see
+  the same photo and cannot open the editor
 - AC4: Displays a shopping list teaser ("N items to pick up" / "List is
   clear" with a preview of open rows) that opens the List tab
 

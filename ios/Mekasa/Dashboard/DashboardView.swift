@@ -72,61 +72,74 @@ struct DashboardView: View {
         .animation(.easeInOut(duration: 0.2), value: pendingApprovals.map(\.id))
     }
 
-    /// 150px full-bleed hero with home photo (DESIGN_SYSTEM / UI-004 AC3).
+    private var heroFace: some View {
+        ZStack {
+            HouseholdPhotoView(urlString: session.household?.photoURL)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+
+            LinearGradient(
+                colors: [
+                    MekasaTheme.brand.opacity(0.10),
+                    MekasaTheme.brand.opacity(0.35),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            VStack(spacing: 8) {
+                Text(greeting)
+                    .font(MekasaTheme.labelFont)
+                    .tracking(1.2)
+                    .textCase(.uppercase)
+                    .foregroundStyle(MekasaTheme.border)
+                Text(householdTitle)
+                    .font(.system(size: 30, weight: .black, design: .rounded))
+                    .foregroundStyle(MekasaTheme.onBrand)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+                    .shadow(color: MekasaTheme.shadow.opacity(0.25), radius: 4, y: 1)
+
+                if session.canChangeHomePhoto && session.household?.photoURL == nil {
+                    Text("Tap to add a home photo")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(MekasaTheme.onBrand.opacity(0.9))
+                        .padding(.top, 2)
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 28)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 178)
+        .contentShape(Rectangle())
+    }
+
+    /// 150px full-bleed hero with the shared home photo (DESIGN_SYSTEM / UI-004 AC3).
+    /// Owners open the editor. Teens and members see the same picture and cannot change it.
     private var homeHero: some View {
         ZStack(alignment: .topTrailing) {
-            Button {
-                showHomePhoto = true
-            } label: {
-                ZStack {
-                    HouseholdPhotoView(urlString: session.household?.photoURL)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .clipped()
-
-                    LinearGradient(
-                        colors: [
-                            MekasaTheme.brand.opacity(0.10),
-                            MekasaTheme.brand.opacity(0.35),
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-
-                    VStack(spacing: 8) {
-                        Text(greeting)
-                            .font(MekasaTheme.labelFont)
-                            .tracking(1.2)
-                            .textCase(.uppercase)
-                            .foregroundStyle(MekasaTheme.border)
-                        Text(householdTitle)
-                            .font(.system(size: 30, weight: .black, design: .rounded))
-                            .foregroundStyle(MekasaTheme.onBrand)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.8)
-                            .shadow(color: MekasaTheme.shadow.opacity(0.25), radius: 4, y: 1)
-
-                        if session.household?.photoURL == nil {
-                            Text("Tap to add a home photo")
-                                .font(.system(size: 13, weight: .bold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.onBrand.opacity(0.9))
-                                .padding(.top, 2)
-                        }
+            Group {
+                if session.canChangeHomePhoto {
+                    Button {
+                        showHomePhoto = true
+                    } label: {
+                        heroFace
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 28)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(
+                        session.household?.photoURL == nil
+                            ? "Add home photo"
+                            : "Home photo for \(householdTitle). Double tap to change."
+                    )
+                } else {
+                    heroFace
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Home photo for \(householdTitle)")
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 178)
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
             .accessibilityIdentifier(TestIdentifiers.homePhotoHero)
-            .accessibilityLabel(
-                session.household?.photoURL == nil
-                    ? "Add home photo"
-                    : "Home photo for \(householdTitle). Double tap to change."
-            )
 
             Button {
                 showToast(session.isRealtimeSyncActive
@@ -578,8 +591,10 @@ struct HomePhotoView: View {
         userReplacedImage || (sourceImage != nil && cropChanged)
     }
 
+    private var canEdit: Bool { session.canChangeHomePhoto }
+
     private var saveEnabled: Bool {
-        !session.isBusy && (nameChanged || imageDirty)
+        canEdit && !session.isBusy && (nameChanged || imageDirty)
     }
 
     var body: some View {
@@ -595,13 +610,15 @@ struct HomePhotoView: View {
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundStyle(MekasaTheme.text)
                     Spacer()
-                    Button("Save") {
-                        Task { await save() }
+                    if canEdit {
+                        Button("Save") {
+                            Task { await save() }
+                        }
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(saveEnabled ? MekasaTheme.accent : MekasaTheme.textMuted)
+                        .disabled(!saveEnabled)
+                        .accessibilityIdentifier(TestIdentifiers.saveButton)
                     }
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(saveEnabled ? MekasaTheme.accent : MekasaTheme.textMuted)
-                    .disabled(!saveEnabled)
-                    .accessibilityIdentifier(TestIdentifiers.saveButton)
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 16)
@@ -609,7 +626,11 @@ struct HomePhotoView: View {
 
                 ScrollView {
                     VStack(spacing: 24) {
-                        Text("Name your house and frame the photo for the home screen.")
+                        Text(
+                            canEdit
+                                ? "Name your house and frame the photo for the home screen."
+                                : "This picture is the same for everyone in the house."
+                        )
                             .font(MekasaTheme.bodyFont)
                             .foregroundStyle(MekasaTheme.textMuted)
                             .multilineTextAlignment(.center)
@@ -633,6 +654,7 @@ struct HomePhotoView: View {
                                 )
                                 .textInputAutocapitalization(.words)
                                 .disableAutocorrection(true)
+                                .disabled(!canEdit)
                                 .accessibilityIdentifier(TestIdentifiers.homePhotoNameField)
                         }
                         .padding(.horizontal, 24)
@@ -648,6 +670,7 @@ struct HomePhotoView: View {
                             }
                         }
 
+                        if canEdit {
                         VStack(spacing: 12) {
                             if CameraImagePicker.isCameraAvailable {
                 PrimaryButton(title: "Take photo", disabled: session.isBusy) {
@@ -674,6 +697,7 @@ struct HomePhotoView: View {
                             .accessibilityIdentifier(TestIdentifiers.homePhotoLibraryButton)
                         }
                         .padding(.horizontal, 24)
+                        }
 
                         if let localError {
                             Text(localError)
@@ -689,7 +713,11 @@ struct HomePhotoView: View {
                                 .padding(.horizontal, 24)
                         }
 
-                        Text("Owners can update this anytime. Members see it on the dashboard hero.")
+                        Text(
+                            canEdit
+                                ? "This photo is shared with everyone in the house. Only owners can change it."
+                                : "Only household owners can change the home photo."
+                        )
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
                             .foregroundStyle(MekasaTheme.textMuted)
                             .multilineTextAlignment(.center)
@@ -698,15 +726,17 @@ struct HomePhotoView: View {
                     .padding(.bottom, 40)
                 }
 
-                StickyBottomBar(progress: nil) {
-                    PrimaryButton(
-                        title: "Save",
-                        disabled: !saveEnabled,
-                        isLoading: session.isBusy
-                    ) {
-                        Task { await save() }
+                if canEdit {
+                    StickyBottomBar(progress: nil) {
+                        PrimaryButton(
+                            title: "Save",
+                            disabled: !saveEnabled,
+                            isLoading: session.isBusy
+                        ) {
+                            Task { await save() }
+                        }
+                        .accessibilityIdentifier(TestIdentifiers.homePhotoSaveBottomButton)
                     }
-                    .accessibilityIdentifier(TestIdentifiers.homePhotoSaveBottomButton)
                 }
             }
         }
@@ -764,6 +794,7 @@ struct HomePhotoView: View {
 
     private func seedFromHousehold() {
         houseName = session.household?.name ?? ""
+        guard canEdit else { return }
         if sourceImage == nil,
            let existing = HouseholdPhotoImage.uiImage(from: session.household?.photoURL) {
             sourceImage = existing

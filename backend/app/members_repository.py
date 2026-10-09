@@ -13,6 +13,7 @@ from app.models import (
     HouseholdMemberResponse,
     HouseholdMemberRoleUpdateRequest,
     MemberAvoidUpdateRequest,
+    member_role_sort_key,
 )
 from app.product_health import normalize_avoidance
 from app.repository import get_household_repository
@@ -132,7 +133,7 @@ class InMemoryMembersRepository:
         self._require_member_or_owner(household_id, actor_uid)
         return sorted(
             self._members.get(household_id, {}).values(),
-            key=lambda item: (0 if item.role == "owner" else 1, item.name or item.uid),
+            key=lambda item: (member_role_sort_key(item.role), item.name or item.uid),
         )
 
     def create_invite(

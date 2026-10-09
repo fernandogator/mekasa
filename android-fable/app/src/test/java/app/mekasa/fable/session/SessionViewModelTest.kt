@@ -390,6 +390,24 @@ class SessionViewModelTest {
     // -------------------------------------------------------------- photo
 
     @Test
+    fun `a teen sees the household photo but cannot change it`() {
+        api.household = api.household!!.copy(ownerUid = "someone-else", photoUrl = "https://cdn/shared.jpg")
+        api.members = mutableListOf(HouseholdMember(uid = "uid-1", householdId = "hh-1", role = "teen"))
+        val vm = viewModel()
+        vm.signInWithEmail("ana@example.com", "secret", createAccount = false)
+
+        assertEquals("https://cdn/shared.jpg", vm.s.household?.photoUrl)
+        assertFalse(vm.s.isOwner)
+
+        var result: Boolean? = null
+        vm.saveHomeDetails(name = "Renamed", jpeg = byteArrayOf(1)) { result = it }
+        assertEquals(false, result)
+        assertEquals(SessionViewModel.OWNER_ONLY_PHOTO, vm.s.error)
+        assertEquals("https://cdn/shared.jpg", vm.s.household?.photoUrl)
+        assertTrue(api.calls.none { it.startsWith("uploadPhoto") || it.startsWith("renameHousehold") })
+    }
+
+    @Test
     fun `only the owner may change the home photo`() {
         api.household = api.household!!.copy(ownerUid = "someone-else")
         api.members = mutableListOf(HouseholdMember(uid = "uid-1", householdId = "hh-1", role = "member"))

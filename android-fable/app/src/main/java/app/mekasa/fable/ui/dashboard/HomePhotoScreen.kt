@@ -101,7 +101,8 @@ fun HomePhotoScreen(
         if (granted) takePhoto.launch(null) else cameraPermission.launch(Manifest.permission.CAMERA)
     }
 
-    val dirty = picked != null || name.trim() != originalName.trim()
+    val canEdit = state.isOwner
+    val dirty = canEdit && (picked != null || name.trim() != originalName.trim())
     val save = {
         val jpeg = picked?.let(::encodeJpeg)
         if (picked != null && jpeg == null) {
@@ -117,13 +118,15 @@ fun HomePhotoScreen(
                 title = "Home photo",
                 onBack = onClose,
                 trailing = {
-                    LinkButton(
-                        text = if (state.busy) "Saving…" else "Save",
-                        onClick = save,
-                        enabled = dirty && !state.busy,
-                        color = palette.text,
-                        modifier = Modifier.testTag(TestTags.HOME_PHOTO_SAVE_BUTTON),
-                    )
+                    if (canEdit) {
+                        LinkButton(
+                            text = if (state.busy) "Saving…" else "Save",
+                            onClick = save,
+                            enabled = dirty && !state.busy,
+                            color = palette.text,
+                            modifier = Modifier.testTag(TestTags.HOME_PHOTO_SAVE_BUTTON),
+                        )
+                    }
                 },
             )
             Column(
@@ -155,48 +158,52 @@ fun HomePhotoScreen(
                     }
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(Space.md)) {
-                    SecondaryButton(
-                        text = "Gallery",
-                        onClick = openGallery,
-                        icon = Icons.Outlined.PhotoLibrary,
-                        modifier = Modifier.weight(1f).testTag(TestTags.HOME_PHOTO_LIBRARY_BUTTON),
-                        enabled = !state.busy,
-                    )
-                    SecondaryButton(
-                        text = "Camera",
-                        onClick = openCamera,
-                        icon = Icons.Outlined.PhotoCamera,
-                        modifier = Modifier.weight(1f).testTag(TestTags.HOME_PHOTO_CAMERA_BUTTON),
-                        enabled = !state.busy,
+                if (canEdit) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(Space.md)) {
+                        SecondaryButton(
+                            text = "Gallery",
+                            onClick = openGallery,
+                            icon = Icons.Outlined.PhotoLibrary,
+                            modifier = Modifier.weight(1f).testTag(TestTags.HOME_PHOTO_LIBRARY_BUTTON),
+                            enabled = !state.busy,
+                        )
+                        SecondaryButton(
+                            text = "Camera",
+                            onClick = openCamera,
+                            icon = Icons.Outlined.PhotoCamera,
+                            modifier = Modifier.weight(1f).testTag(TestTags.HOME_PHOTO_CAMERA_BUTTON),
+                            enabled = !state.busy,
+                        )
+                    }
+
+                    LabeledField(
+                        label = "House name",
+                        value = name,
+                        onValueChange = { name = it },
+                        placeholder = "The Guerrero Home",
+                        testTag = TestTags.HOME_PHOTO_NAME_FIELD,
                     )
                 }
-
-                LabeledField(
-                    label = "House name",
-                    value = name,
-                    onValueChange = { name = it },
-                    placeholder = "The Guerrero Home",
-                    testTag = TestTags.HOME_PHOTO_NAME_FIELD,
-                )
 
                 Text(
                     text = when {
                         state.isDemo -> "Offline preview: the photo stays on this device."
-                        state.isOwner -> "Photos are resized to 1600px and uploaded as JPEG (max 5 MB)."
-                        else -> "Only the household owner can change the name or photo."
+                        canEdit -> "This photo is shared with everyone in the house. Only owners can change it."
+                        else -> "Only household owners can change the home photo."
                     },
                     style = Type.caption,
-                    color = if (state.isOwner || state.isDemo) palette.textMuted else palette.warning,
+                    color = if (canEdit || state.isDemo) palette.textMuted else palette.warning,
                 )
 
-                PrimaryButton(
-                    text = "Save changes",
-                    onClick = save,
-                    enabled = dirty,
-                    loading = state.busy,
-                    modifier = Modifier.testTag(TestTags.HOME_PHOTO_SAVE_BOTTOM_BUTTON),
-                )
+                if (canEdit) {
+                    PrimaryButton(
+                        text = "Save changes",
+                        onClick = save,
+                        enabled = dirty,
+                        loading = state.busy,
+                        modifier = Modifier.testTag(TestTags.HOME_PHOTO_SAVE_BOTTOM_BUTTON),
+                    )
+                }
             }
         }
     }
