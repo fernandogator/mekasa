@@ -841,6 +841,14 @@ enum APIError: LocalizedError, Equatable {
     case unauthorized(detail: String)
     case server(status: Int, detail: String)
 
+    /// 404 from GET /households/current: this account has no household yet.
+    var isMissingHousehold: Bool {
+        if case let .server(status, _) = self, status == 404 {
+            return true
+        }
+        return false
+    }
+
     /// True when the Cloud Run / Firebase bearer session is rejected.
     var isUnauthorized: Bool {
         switch self {
