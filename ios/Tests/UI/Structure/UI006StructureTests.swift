@@ -204,7 +204,7 @@ final class UI006StructureTests: XCTestCase {
 
         let useOne = UITestLaunch.element(app, TestIdentifiers.itemDetailUseOneButton)
         guard useOne.waitForExistence(timeout: UITestLaunch.elementTimeout) else {
-            throw XCTSkip("Item detail did not open for Bananas under --uitesting")
+            return XCTFail("Tapping an inventory row should open item detail")
         }
         if !useOne.isHittable {
             app.scrollViews.firstMatch.swipeUp()

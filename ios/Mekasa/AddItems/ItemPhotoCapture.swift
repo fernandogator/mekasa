@@ -91,8 +91,9 @@ extension View {
     }
 }
 
-/// Product thumbnail that offers "replace with my photo" on tap. The tap is a
-/// high-priority gesture so it wins over an enclosing row link / button.
+/// Product thumbnail that offers "replace with my photo" on tap.
+/// A borderless button keeps that tap on the picture. A high-priority gesture
+/// on a list row wins the whole cell, so the inventory item never opens.
 struct EditableProductThumbnail: View {
     let urlString: String?
     var size: CGFloat = 56
@@ -104,38 +105,39 @@ struct EditableProductThumbnail: View {
     @State private var isUploading = false
 
     var body: some View {
-        ProductThumbnail(urlString: urlString, size: size, cornerRadius: cornerRadius)
-            .overlay {
-                if isUploading {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(MekasaTheme.scrim.opacity(0.35))
-                        .overlay { ProgressView().tint(MekasaTheme.onBrand) }
+        Button {
+            showOptions = true
+        } label: {
+            ProductThumbnail(urlString: urlString, size: size, cornerRadius: cornerRadius)
+                .overlay {
+                    if isUploading {
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(MekasaTheme.scrim.opacity(0.35))
+                            .overlay { ProgressView().tint(MekasaTheme.onBrand) }
+                    }
                 }
-            }
-            .overlay(alignment: .bottomTrailing) {
-                Image(systemName: "camera.fill")
-                    .font(.system(size: max(9, size * 0.16), weight: .bold))
-                    .foregroundStyle(MekasaTheme.onBrand)
-                    .padding(4)
-                    .background(MekasaTheme.brand.opacity(0.85))
-                    .clipShape(Circle())
-                    .padding(3)
-                    .accessibilityHidden(true)
-            }
-            .contentShape(Rectangle())
-            .highPriorityGesture(TapGesture().onEnded { showOptions = true })
-            .accessibilityElement()
-            .accessibilityLabel("Photo of \(itemName)")
-            .accessibilityHint("Double tap to replace it with your own photo")
-            .accessibilityAddTraits(.isButton)
-            .accessibilityAction { showOptions = true }
-            .itemPhotoReplacement(isPresented: $showOptions) { image in
-                Task {
-                    isUploading = true
-                    await onImage(image)
-                    isUploading = false
+                .overlay(alignment: .bottomTrailing) {
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: max(9, size * 0.16), weight: .bold))
+                        .foregroundStyle(MekasaTheme.onBrand)
+                        .padding(4)
+                        .background(MekasaTheme.brand.opacity(0.85))
+                        .clipShape(Circle())
+                        .padding(3)
+                        .accessibilityHidden(true)
                 }
+        }
+        .buttonStyle(.borderless)
+        .disabled(isUploading)
+        .accessibilityLabel("Photo of \(itemName)")
+        .accessibilityHint("Double tap to replace it with your own photo")
+        .itemPhotoReplacement(isPresented: $showOptions) { image in
+            Task {
+                isUploading = true
+                await onImage(image)
+                isUploading = false
             }
+        }
     }
 }
 

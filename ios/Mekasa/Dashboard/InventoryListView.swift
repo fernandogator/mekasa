@@ -1,5 +1,14 @@
 import SwiftUI
 
+/// Push value for an inventory row.
+///
+/// The dashboard already registers `navigationDestination(item:)` for `String`
+/// (low-stock rows) on this same stack. SwiftUI keeps one destination per
+/// hashable type, so `NavigationLink(value: item.id)` is ignored and no item opens.
+struct InventoryItemRoute: Hashable {
+    var itemID: String
+}
+
 /// Full household inventory: searchable, grouped by category, with an Add entry point
 /// (UI-006 AC6–AC7) and swipe Use 1 / Remove (REQ-INV-014–018).
 /// Spec version: 1.0
@@ -8,6 +17,7 @@ struct InventoryListView: View {
     @State private var query = ""
     @State private var showAddItems = false
     @State private var showDuplicates = false
+    @State private var openedItem: InventoryItemRoute?
 
     private var sections: [InventoryListModel.Section] {
         InventoryListModel.sections(session.inventory, query: query)
@@ -71,8 +81,8 @@ struct InventoryListView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(TestIdentifiers.inventoryListView)
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(for: String.self) { itemID in
-            ItemDetailView(itemID: itemID, pager: ItemPager(ids: sections.flatMap { $0.items.map(\.id) }))
+        .navigationDestination(item: $openedItem) { route in
+            ItemDetailView(itemID: route.itemID, pager: ItemPager(ids: sections.flatMap { $0.items.map(\.id) }))
         }
         .sheet(isPresented: $showAddItems) {
             NavigationStack {
@@ -182,39 +192,51 @@ struct InventoryListView: View {
     // MARK: - Rows
 
     private func row(_ item: InventoryItem) -> some View {
-        NavigationLink(value: item.id) {
-            HStack(spacing: 14) {
-                EditableProductThumbnail(urlString: item.imageURL, size: 56, cornerRadius: 16, itemName: item.name) { image in
-                    await session.replaceInventoryItemImage(itemID: item.id, image: image)
-                }
-                .accessibilityIdentifier(TestIdentifiers.itemThumbnail)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(item.name)
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(MekasaTheme.text)
-                        .accessibilityIdentifier(TestIdentifiers.itemTitle)
-                    Text("Qty \(item.quantity) · \(item.category)")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(MekasaTheme.textMuted)
-                        .accessibilityIdentifier(TestIdentifiers.itemSubtitle)
-                    // REQ-021 AC2: say what it contains and who it affects.
-                    AffectedMembersCaption(warnings: session.memberWarnings(for: item.health))
-                }
-                Spacer()
-                // REQ-021: affected-member chip + grade badge.
-                AffectedMembersChip(warnings: session.memberWarnings(for: item.health))
-                if let health = item.health, health.hasGrade {
-                    HealthGradeBadge(grade: health.grade, size: 24)
-                }
-                if item.quantity == 0 {
-                    stockChip("Out")
-                } else if item.isLowStock {
-                    stockChip("Low")
-                }
+        // A row button rather than NavigationLink: trailing swipe actions swallow link taps.
+        HStack(spacing: 14) {
+            EditableProductThumbnail(urlString: item.imageURL, size: 56, cornerRadius: 16, itemName: item.name) { image in
+                await session.replaceInventoryItemImage(itemID: item.id, image: image)
             }
-            .padding(.vertical, 4)
+            .accessibilityIdentifier(TestIdentifiers.itemThumbnail)
+            Button {
+                openedItem = InventoryItemRoute(itemID: item.id)
+            } label: {
+                HStack(spacing: 14) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(item.name)
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(MekasaTheme.text)
+                            .accessibilityIdentifier(TestIdentifiers.itemTitle)
+                        Text("Qty \(item.quantity) · \(item.category)")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(MekasaTheme.textMuted)
+                            .accessibilityIdentifier(TestIdentifiers.itemSubtitle)
+                        // REQ-021 AC2: say what it contains and who it affects.
+                        AffectedMembersCaption(warnings: session.memberWarnings(for: item.health))
+                    }
+                    Spacer(minLength: 0)
+                    // REQ-021: affected-member chip + grade badge.
+                    AffectedMembersChip(warnings: session.memberWarnings(for: item.health))
+                    if let health = item.health, health.hasGrade {
+                        HealthGradeBadge(grade: health.grade, size: 24)
+                    }
+                    if item.quantity == 0 {
+                        stockChip("Out")
+                    } else if item.isLowStock {
+                        stockChip("Low")
+                    }
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(MekasaTheme.textMuted)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens item details")
         }
+        .padding(.vertical, 4)
         .listRowBackground(MekasaTheme.surface)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(TestIdentifiers.itemCell)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             if item.quantity > 1 {
