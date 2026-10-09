@@ -64,7 +64,7 @@ def test_teen_shares_home_photo_and_cannot_change_it(client: TestClient) -> None
 
     invited = client.post(
         f"/v1/households/{household_id}/invites",
-        json={"name": "Riley", "email": "riley@example.com", "role": "teen"},
+        json={"name": "Riley", "email": "teen-1@example.com", "role": "teen"},
         headers=_auth("owner-1"),
     )
     assert invited.status_code == 201
@@ -121,9 +121,9 @@ def test_any_owner_can_replace_the_shared_photo(client: TestClient) -> None:
     household_id = created.json()["id"]
 
     for uid, role, email in (
-        ("teen-1", "teen", "riley@example.com"),
-        ("member-1", "member", "sam@example.com"),
-        ("owner-2", "owner", "alex@example.com"),
+        ("teen-1", "teen", "teen-1@example.com"),
+        ("member-1", "member", "member-1@example.com"),
+        ("owner-2", "owner", "owner-2@example.com"),
     ):
         invited = client.post(
             f"/v1/households/{household_id}/invites",
@@ -209,6 +209,82 @@ def test_current_household_loads_when_invite_lookup_fails(
     current = client.get("/v1/households/current", headers=_auth("owner-1"))
     assert current.status_code == 200
     assert current.json()["id"] == household_id
+
+
+def test_owner_cannot_accept_a_teen_invite_addressed_to_someone_else(client: TestClient) -> None:
+    """
+    Satisfies: REQ-019 AC6, AC7
+    Spec version: 1.0
+
+    Opening the share link on the admin phone must not use up the teen's invite.
+    """
+    created = client.post("/v1/households", json={"name": "Casa Test"}, headers=_auth("owner-1"))
+    household_id = created.json()["id"]
+    invited = client.post(
+        f"/v1/households/{household_id}/invites",
+        json={"name": "Riley", "email": "teen-1@example.com", "role": "teen"},
+        headers=_auth("owner-1"),
+    )
+    assert invited.status_code == 201
+
+    stolen = client.post(
+        "/v1/invites/accept",
+        json={"token": invited.json()["token"]},
+        headers=_auth("owner-1"),
+    )
+    assert stolen.status_code == 400
+    assert stolen.json()["detail"] == "invite_email_mismatch"
+
+    current = client.get("/v1/households/current", headers=_auth("teen-1"))
+    assert current.status_code == 200
+    assert current.json()["id"] == household_id
+    members = client.get(f"/v1/households/{household_id}/members", headers=_auth("teen-1"))
+    teen = next(row for row in members.json()["members"] if row["uid"] == "teen-1")
+    assert teen["role"] == "teen"
+
+
+def test_signing_in_joins_when_someone_else_already_accepted_the_invite(client: TestClient) -> None:
+    """
+    Satisfies: REQ-019 AC7
+    Spec version: 1.0
+
+    The admin phone already accepted the teen link. Signing in with the invited
+    email still opens the family household, and the document owner stays an owner.
+    """
+    created = client.post("/v1/households", json={"name": "Casa Test"}, headers=_auth("owner-1"))
+    household_id = created.json()["id"]
+    added = client.post(
+        f"/v1/households/{household_id}/inventory",
+        json={"name": "Milk", "category": "Dairy", "quantity": 2},
+        headers=_auth("owner-1"),
+    )
+    assert added.status_code == 201
+    invited = client.post(
+        f"/v1/households/{household_id}/invites",
+        json={"name": "Riley", "email": "teen-1@example.com", "role": "teen"},
+        headers=_auth("owner-1"),
+    )
+    assert invited.status_code == 201
+
+    from app.members_repository import get_members_repository
+
+    repo = get_members_repository()
+    invite = next(item for item in repo._invites.values() if item.token == invited.json()["token"])
+    repo._invites[invite.id] = invite.model_copy(update={"status": "accepted"})
+    owner = repo._members[household_id]["owner-1"]
+    repo._members[household_id]["owner-1"] = owner.model_copy(update={"role": "teen"})
+
+    current = client.get("/v1/households/current", headers=_auth("teen-1"))
+    assert current.status_code == 200
+    assert current.json()["id"] == household_id
+    listed = client.get(f"/v1/households/{household_id}/inventory", headers=_auth("teen-1"))
+    assert [item["name"] for item in listed.json()["items"]] == ["Milk"]
+
+    members = client.get(f"/v1/households/{household_id}/members", headers=_auth("owner-1"))
+    assert members.status_code == 200
+    roles = {row["uid"]: row["role"] for row in members.json()["members"]}
+    assert roles["owner-1"] == "owner"
+    assert roles["teen-1"] == "teen"
 
 
 def test_signing_in_with_the_invited_email_shows_family_inventory(client: TestClient) -> None:

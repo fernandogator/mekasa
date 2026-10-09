@@ -42,6 +42,14 @@ def normalize_email(value: str | None) -> str | None:
     return trimmed or None
 
 
+def invite_email_matches(invite_email: str | None, actor_email: str | None) -> bool:
+    """Phone-only invites match anyone with the link. An email invite matches that address only."""
+    invited = normalize_email(invite_email)
+    if invited is None:
+        return True
+    return invited == normalize_email(actor_email)
+
+
 class MembersRepository(Protocol):
     """Persistence port for household members and invites."""
 
@@ -57,7 +65,11 @@ class MembersRepository(Protocol):
         """List invites (owner only)."""
 
     def accept_invite(
-        self, token: str, actor_uid: str, actor_name: str | None
+        self,
+        token: str,
+        actor_uid: str,
+        actor_name: str | None,
+        actor_email: str | None = None,
     ) -> HouseholdMemberResponse:
         """Accept invite and join household as member."""
 
@@ -107,6 +119,11 @@ class InMemoryMembersRepository:
     ) -> None:
         bucket = self._members.setdefault(household_id, {})
         if owner_uid in bucket:
+            member = bucket[owner_uid]
+            if member.role != "owner" or member.status != "active":
+                bucket[owner_uid] = member.model_copy(
+                    update={"role": "owner", "status": "active", "updated_at": _utcnow()}
+                )
             return
         now = _utcnow()
         bucket[owner_uid] = HouseholdMemberResponse(
@@ -186,32 +203,47 @@ class InMemoryMembersRepository:
         )
 
     def accept_invite(
-        self, token: str, actor_uid: str, actor_name: str | None
+        self,
+        token: str,
+        actor_uid: str,
+        actor_name: str | None,
+        actor_email: str | None = None,
     ) -> HouseholdMemberResponse:
         with self._lock:
             invite = next((item for item in self._invites.values() if item.token == token), None)
             if invite is None:
                 raise KeyError(token)
+            if not invite_email_matches(invite.email, actor_email):
+                raise ValueError("invite_email_mismatch")
+            household = get_household_repository().get(invite.household_id)
+            if household is not None and household.owner_uid == actor_uid:
+                raise ValueError("already_in_household")
             if invite.status != "pending":
                 raise ValueError("invite_not_pending")
-            now = _utcnow()
-            member = HouseholdMemberResponse(
-                uid=actor_uid,
-                household_id=invite.household_id,
-                name=actor_name or invite.name,
-                email=invite.email,
-                phone=invite.phone,
-                role=invite.role,
-                status="active",
-                created_at=now,
-                updated_at=now,
-            )
-            bucket = self._members.setdefault(invite.household_id, {})
-            bucket[actor_uid] = member
+            member = self._add_member_from_invite(invite, actor_uid, actor_name)
             self._invites[invite.id] = invite.model_copy(
-                update={"status": "accepted", "updated_at": now}
+                update={"status": "accepted", "updated_at": member.updated_at}
             )
             return member
+
+    def _add_member_from_invite(
+        self, invite: HouseholdInviteResponse, actor_uid: str, actor_name: str | None
+    ) -> HouseholdMemberResponse:
+        now = _utcnow()
+        member = HouseholdMemberResponse(
+            uid=actor_uid,
+            household_id=invite.household_id,
+            name=actor_name or invite.name,
+            email=invite.email,
+            phone=invite.phone,
+            role=invite.role,
+            status="active",
+            created_at=now,
+            updated_at=now,
+        )
+        bucket = self._members.setdefault(invite.household_id, {})
+        bucket[actor_uid] = member
+        return member
 
     def update_role(
         self,
@@ -292,10 +324,29 @@ class InMemoryMembersRepository:
         accepted: list[HouseholdMemberResponse] = []
         for invite in pending:
             try:
-                accepted.append(self.accept_invite(invite.token, actor_uid, actor_name))
+                accepted.append(
+                    self.accept_invite(invite.token, actor_uid, actor_name, actor_email=email)
+                )
             except (KeyError, ValueError):
                 continue
+        accepted.extend(
+            self._claim_accepted_invites_for_email(actor_uid, normalized, actor_name)
+        )
         return accepted
+
+    def _claim_accepted_invites_for_email(
+        self, actor_uid: str, normalized: str, actor_name: str | None
+    ) -> list[HouseholdMemberResponse]:
+        """Join a household when this email's invite was already accepted by someone else."""
+        claimed: list[HouseholdMemberResponse] = []
+        with self._lock:
+            for invite in list(self._invites.values()):
+                if invite.status != "accepted" or normalize_email(invite.email) != normalized:
+                    continue
+                if self.is_active_participant(invite.household_id, actor_uid):
+                    continue
+                claimed.append(self._add_member_from_invite(invite, actor_uid, actor_name))
+        return claimed
 
     def preferred_household_id(self, actor_uid: str) -> str | None:
         active = [

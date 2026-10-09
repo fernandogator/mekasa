@@ -163,7 +163,7 @@ def test_invite_flow_and_role_update(client: TestClient) -> None:
     household_id = _household(client)
     created = client.post(
         f"/v1/households/{household_id}/invites",
-        json={"name": "Alex", "email": "alex@example.com", "role": "member"},
+        json={"name": "Alex", "email": "member-2@example.com", "role": "member"},
         headers=_auth(),
     )
     assert created.status_code == 201

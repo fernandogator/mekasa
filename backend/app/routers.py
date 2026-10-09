@@ -1305,7 +1305,9 @@ def accept_household_invite(
     Spec version: 1.0
     """
     try:
-        member = members.accept_invite(payload.token, user.uid, user.name)
+        member = members.accept_invite(
+            payload.token, user.uid, user.name, actor_email=user.email
+        )
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite not found") from exc
     except ValueError as exc:

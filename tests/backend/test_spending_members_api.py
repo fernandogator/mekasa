@@ -135,7 +135,7 @@ def test_invited_member_can_access_inventory_and_current(client: TestClient) -> 
     household_id = _household(client, uid="owner-1")
     invite = client.post(
         f"/v1/households/{household_id}/invites",
-        json={"name": "Sam", "email": "sam@example.com", "role": "member"},
+        json={"name": "Sam", "email": "member-2@example.com", "role": "member"},
         headers=_auth("owner-1"),
     )
     assert invite.status_code == 201
