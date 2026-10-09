@@ -200,7 +200,8 @@ struct WelcomeView: View {
         if session.onboardingStep == .done, session.household != nil {
             return
         }
-        if let existing = try? await MekasaAPIClient.shared.currentHousehold(token: token) {
+        do {
+            let existing = try await MekasaAPIClient.shared.currentHousehold(token: token)
             session.household = existing
             // Invited teens and members land on the family's inventory, not a new empty house.
             let step: OnboardingStep = existing.ownerUID == session.userUID
@@ -210,8 +211,15 @@ struct WelcomeView: View {
             session.updateRealtimeSync()
             await session.refreshInventory()
             PushRegistrationService.shared.requestPermissionAndRegister(idToken: token)
-        } else {
+        } catch let error as APIError where error.isMissingHousehold {
             withAnimation { session.onboardingStep = .household }
+        } catch {
+            // A 500 used to look like "no household" and start "Name this house"
+            // for an admin who already has one.
+            session.showError(
+                "Couldn't open your household. It is still saved. Sign in again in a moment.",
+                error: error
+            )
         }
     }
 
