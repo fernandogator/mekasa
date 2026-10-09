@@ -24,7 +24,7 @@ final class AppSession: ObservableObject {
             CrashReporting.setUser(uid: isUIPreview || isUITesting ? nil : userUID)
         }
     }
-    /// Role from members API (`owner` / `member`); used with household.ownerUID.
+    /// Role from members API (`owner` / `teen` / `member`); used with household.ownerUID.
     @Published var myMemberRole: String?
     /// Extra capabilities from members API (REQ-014 AC3, e.g. `buyer`).
     @Published var myPermissions: [String] = []
@@ -115,6 +115,15 @@ final class AppSession: ObservableObject {
         guard let uid = userUID else { return false }
         if household?.ownerUID == uid { return true }
         return myMemberRole == "owner"
+    }
+
+    /// One shared home photo. Only owners (admins) may replace it — not teens or members.
+    /// Unlike `isHouseholdOwner`, UI preview / UI testing do not force this true.
+    var canChangeHomePhoto: Bool {
+        FamilySummary.canChangeHomePhoto(
+            role: myMemberRole,
+            isDocumentOwner: userUID != nil && household?.ownerUID == userUID
+        )
     }
 
     var lowStockCount: Int {
@@ -1411,7 +1420,7 @@ final class AppSession: ObservableObject {
             logActivity("Updated home photo", kind: .success)
             return true
         }
-        guard isHouseholdOwner else {
+        guard canChangeHomePhoto else {
             showError("Only household owners can change the home photo.")
             return false
         }
@@ -1469,8 +1478,8 @@ final class AppSession: ObservableObject {
             }
             return true
         }
-        guard isHouseholdOwner else {
-            showError("Only household owners can update the home photo.")
+        guard canChangeHomePhoto else {
+            showError("Only household owners can change the home photo.")
             return false
         }
         guard let token = idToken, let householdID = household?.id else {

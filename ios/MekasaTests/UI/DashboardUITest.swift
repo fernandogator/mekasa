@@ -89,6 +89,28 @@ final class DashboardUITest: XCTestCase {
     }
 
     @MainActor
+    func testTeenCannotReplaceTheSharedHomePhoto() async {
+        let session = AppSession()
+        session.userUID = "teen-1"
+        session.myMemberRole = "teen"
+        session.idToken = "token"
+        session.household = TestFixtures.previewHousehold
+        XCTAssertEqual(session.household?.photoURL, nil)
+        XCTAssertFalse(session.canChangeHomePhoto)
+
+        let saved = await session.saveHomePhotoEdits(
+            name: "Not allowed",
+            image: nil,
+            nameChanged: true,
+            imageChanged: false
+        )
+        XCTAssertFalse(saved)
+        XCTAssertEqual(session.household?.name, "The Test House")
+        XCTAssertNil(session.household?.photoURL)
+        XCTAssertEqual(session.lastError, "Only household owners can change the home photo.")
+    }
+
+    @MainActor
     func testFlow_navigatesToNextScreen() async {
         let session = AppSession()
         session.startUITesting()

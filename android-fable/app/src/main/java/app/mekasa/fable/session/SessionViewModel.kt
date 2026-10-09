@@ -686,12 +686,14 @@ class SessionViewModel(
         }
     }
 
-    fun promoteToOwner(memberUid: String) = guarded {
-        val updated = require().updateMemberRole(householdId(), memberUid, "owner")
+    fun setMemberRole(memberUid: String, role: String) = guarded {
+        val updated = require().updateMemberRole(householdId(), memberUid, role)
         _state.update {
             it.copy(data = it.data.copy(members = it.data.members.map { m -> if (m.uid == updated.uid) updated else m }))
         }
     }
+
+    fun promoteToOwner(memberUid: String) = setMemberRole(memberUid, "owner")
 
     fun onInviteLink(link: String?) {
         val token = InviteLink.tokenFrom(link) ?: return

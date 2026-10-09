@@ -118,6 +118,7 @@ class SettingsUITest {
         compose.onNodeWithText("Members").assertIsDisplayed()
         compose.onNodeWithText("Invite someone").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("● Member (kid)").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("○ Teen").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("○ Owner (adult)").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Devices").performScrollTo().assertIsDisplayed()
         compose.node(TestTags.OPEN_KIOSK).performScrollTo().assertIsDisplayed()

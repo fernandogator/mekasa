@@ -305,6 +305,13 @@ data class HouseholdMember(
     val permissions: List<String> = emptyList(),
 ) {
     val isOwner: Boolean get() = role == "owner"
+    val isTeen: Boolean get() = role == "teen"
+    val roleLabel: String
+        get() = when (role) {
+            "owner" -> "Owner"
+            "teen" -> "Teen"
+            else -> "Member"
+        }
     val displayLabel: String get() = name ?: email ?: uid
 }
 

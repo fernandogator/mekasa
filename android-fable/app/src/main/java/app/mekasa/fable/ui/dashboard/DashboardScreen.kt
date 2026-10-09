@@ -83,6 +83,7 @@ fun DashboardScreen(
                 address = household?.address,
                 photoUrl = household?.photoUrl,
                 isDemo = state.isDemo,
+                canEdit = state.isOwner,
                 onEdit = onEditHome,
             )
         }
@@ -201,6 +202,7 @@ private fun HeroBand(
     address: String?,
     photoUrl: String?,
     isDemo: Boolean,
+    canEdit: Boolean,
     onEdit: () -> Unit,
 ) {
     val palette = MekasaTheme.palette
@@ -216,7 +218,7 @@ private fun HeroBand(
                 .fillMaxWidth()
                 .height(190.dp)
                 .clip(Shapes.card)
-                .clickable(onClick = onEdit)
+                .then(if (canEdit) Modifier.clickable(onClick = onEdit) else Modifier)
                 .testTag(TestTags.HOME_PHOTO_HERO),
         ) {
             HomePhoto(photoUrl = photoUrl, modifier = Modifier.fillMaxSize())
@@ -239,16 +241,18 @@ private fun HeroBand(
                     Text(address, style = Type.caption, color = palette.onBrand.copy(alpha = 0.85f))
                 }
             }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(Space.md)
-                    .size(40.dp)
-                    .background(palette.onBrand.copy(alpha = 0.25f), CircleShape)
-                    .testTag(TestTags.EDIT_HOME_BUTTON),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Filled.PhotoCamera, contentDescription = "Edit home photo", tint = palette.onBrand, modifier = Modifier.size(20.dp))
+            if (canEdit) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(Space.md)
+                        .size(40.dp)
+                        .background(palette.onBrand.copy(alpha = 0.25f), CircleShape)
+                        .testTag(TestTags.EDIT_HOME_BUTTON),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Filled.PhotoCamera, contentDescription = "Edit home photo", tint = palette.onBrand, modifier = Modifier.size(20.dp))
+                }
             }
         }
     }

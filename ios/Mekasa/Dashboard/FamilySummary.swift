@@ -39,10 +39,26 @@ enum FamilySummary {
         return "Address not set"
     }
 
-    /// "Owner · active", "Member · invited"; status omitted when blank.
+    /// "Owner", "Teen", "Member". Unknown roles fall back to a capitalized label.
+    static func roleLabel(_ role: String) -> String {
+        switch role.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "owner": return "Owner"
+        case "teen": return "Teen"
+        case "member", "": return "Member"
+        default: return role.capitalized
+        }
+    }
+
+    /// The household stores one home photo. Only owners (admins) can replace it.
+    static func canChangeHomePhoto(role: String?, isDocumentOwner: Bool) -> Bool {
+        if isDocumentOwner { return true }
+        return role == "owner"
+    }
+
+    /// "Owner · active", "Teen · invited"; status omitted when blank.
     static func memberSubtitle(role: String, status: String) -> String {
-        let roleLabel = role.isEmpty ? "Member" : role.capitalized
+        let label = roleLabel(role)
         let statusLabel = status.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return statusLabel.isEmpty ? roleLabel : "\(roleLabel) · \(statusLabel)"
+        return statusLabel.isEmpty ? label : "\(label) · \(statusLabel)"
     }
 }

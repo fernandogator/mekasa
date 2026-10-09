@@ -126,7 +126,7 @@ export default function FamilyMembers() {
           </button>
         </div>
 
-        {/* Member 3: Luis */}
+        {/* Member 3: Luis (teen) */}
         <div className="flex items-center p-3 rounded-[24px] hover:bg-[#f8f9f8] transition-colors">
           <div className="w-12 h-12 rounded-full bg-[#f1f4f3] flex items-center justify-center mr-4 shrink-0 overflow-hidden">
              <span className="text-xl font-bold text-brand">L</span>
@@ -134,7 +134,7 @@ export default function FamilyMembers() {
           <div className="flex-1">
             <p className="font-bold text-[16px]">Luis</p>
             <div className="flex items-center mt-1">
-              <span className="px-2 py-0.5 bg-[#f1f4f3] rounded-full text-[10px] font-bold uppercase tracking-wider text-muted">Member</span>
+              <span className="px-2 py-0.5 bg-[#f1f4f3] rounded-full text-[10px] font-bold uppercase tracking-wider text-muted">Teen</span>
             </div>
           </div>
           <button className="w-10 h-10 rounded-full flex items-center justify-center text-muted hover:bg-gray-100">

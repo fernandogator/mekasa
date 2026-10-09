@@ -418,7 +418,12 @@ class ProductSearchResponse(BaseModel):
     results: list[ProductSearchHit]
 
 
-MemberRole = Literal["owner", "member"]
+MemberRole = Literal["owner", "teen", "member"]
+
+
+def member_role_sort_key(role: str) -> int:
+    """Owners first, then teens, then children (members)."""
+    return {"owner": 0, "teen": 1, "member": 2}.get(role, 9)
 
 
 class ReceiptLineItem(BaseModel):
