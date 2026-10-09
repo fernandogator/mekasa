@@ -236,6 +236,13 @@ def test_blank_signup_household_does_not_hide_family_inventory(client: TestClien
         headers=_auth("owner-1"),
     )
     assert added.status_code == 201
+    uploaded = client.post(
+        f"/v1/households/{household_id}/photo",
+        headers=_auth("owner-1"),
+        files={"file": _jpeg()},
+    )
+    assert uploaded.status_code == 200
+    family_photo = uploaded.json()["photo_url"]
 
     blank = client.post("/v1/households", json={"name": "Riley's room"}, headers=_auth("teen-1"))
     assert blank.status_code == 201
@@ -251,6 +258,7 @@ def test_blank_signup_household_does_not_hide_family_inventory(client: TestClien
     current = client.get("/v1/households/current", headers=_auth("teen-1"))
     assert current.status_code == 200
     assert current.json()["id"] == household_id
+    assert current.json()["photo_url"] == family_photo
 
     listed = client.get(
         f"/v1/households/{household_id}/inventory",
