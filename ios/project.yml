@@ -51,7 +51,7 @@ targets:
         VERSIONING_SYSTEM: apple-generic
         DEVELOPMENT_TEAM: ""
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        OTHER_LDFLAGS: "$(inherited) -ObjC -lsqlite3"
+        OTHER_LDFLAGS: "$(inherited) -ObjC"
     preBuildScripts:
       - name: Sync Google Sign-In URL scheme
         basedOnDependencyAnalysis: false
