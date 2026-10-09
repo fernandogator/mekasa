@@ -572,6 +572,7 @@ final class AppSession: ObservableObject {
 
     /// Pull inventory from Cloud Run / Firestore.
     func refreshInventory() async {
+        await adoptInvitedHouseholdIfNeeded()
         guard canSyncInventory,
               let token = idToken,
               let householdID = household?.id
@@ -589,6 +590,18 @@ final class AppSession: ObservableObject {
         } catch {
             handleAPIFailure(error)
         }
+    }
+
+    /// If this sign-in was invited (teen or member), open that household instead of a blank one.
+    func adoptInvitedHouseholdIfNeeded() async {
+        guard canSyncInventory, let token = idToken else { return }
+        guard let current = try? await MekasaAPIClient.shared.currentHousehold(token: token) else { return }
+        guard current.id != household?.id else { return }
+        household = current
+        if current.ownerUID != userUID {
+            onboardingStep = .done
+        }
+        updateRealtimeSync()
     }
 
     /// Attach or detach Firestore listeners for inventory + shopping list (REQ-020).

@@ -202,8 +202,13 @@ struct WelcomeView: View {
         }
         if let existing = try? await MekasaAPIClient.shared.currentHousehold(token: token) {
             session.household = existing
-            withAnimation { session.onboardingStep = resumeStep(for: existing) }
+            // Invited teens and members land on the family's inventory, not a new empty house.
+            let step: OnboardingStep = existing.ownerUID == session.userUID
+                ? resumeStep(for: existing)
+                : .done
+            withAnimation { session.onboardingStep = step }
             session.updateRealtimeSync()
+            await session.refreshInventory()
             PushRegistrationService.shared.requestPermissionAndRegister(idToken: token)
         } else {
             withAnimation { session.onboardingStep = .household }

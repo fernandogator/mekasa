@@ -18,7 +18,7 @@ from app.models import (
     MemberAvoidUpdateRequest,
     member_role_sort_key,
 )
-from app.members_repository import normalize_avoid_list
+from app.members_repository import normalize_avoid_list, normalize_email
 from app.repository import get_household_repository
 
 HOUSEHOLDS = "households"
@@ -167,7 +167,8 @@ class FirestoreMembersRepository:
         token = uuid4().hex
         data = {
             "name": payload.name.strip(),
-            "email": payload.email,
+            "email": normalize_email(payload.email) or payload.email,
+            "email_lower": normalize_email(payload.email),
             "phone": payload.phone,
             "role": payload.role,
             "token": token,
@@ -316,15 +317,61 @@ class FirestoreMembersRepository:
         perms = data.get("permissions") or []
         return isinstance(perms, list) and permission in perms
 
-    def primary_household_id_for_user(self, actor_uid: str) -> str | None:
+    def accept_pending_invites_for_email(
+        self, actor_uid: str, email: str | None, actor_name: str | None
+    ) -> list[HouseholdMemberResponse]:
+        normalized = normalize_email(email)
+        if normalized is None:
+            return []
+        accepted: list[HouseholdMemberResponse] = []
+        seen_tokens: set[str] = set()
+        for snap in self._pending_invite_snaps(email.strip(), normalized):
+            data = snap.to_dict() or {}
+            if data.get("status") != "pending":
+                continue
+            token = data.get("token")
+            if not token or token in seen_tokens:
+                continue
+            seen_tokens.add(str(token))
+            try:
+                accepted.append(self.accept_invite(str(token), actor_uid, actor_name))
+            except (KeyError, ValueError):
+                continue
+        return accepted
+
+    def _pending_invite_snaps(self, raw_email: str, normalized: str):
+        seen: set[str] = set()
+        queries = [
+            self._db.collection_group(INVITES).where("email_lower", "==", normalized),
+            self._db.collection_group(INVITES).where("email", "==", normalized),
+        ]
+        if raw_email != normalized:
+            queries.append(self._db.collection_group(INVITES).where("email", "==", raw_email))
+        for query in queries:
+            for snap in query.stream(retry=STREAM_RETRY):
+                if snap.id in seen:
+                    continue
+                seen.add(snap.id)
+                yield snap
+
+    def preferred_household_id(self, actor_uid: str) -> str | None:
         snaps = list(
             self._db.collection(USER_MEMBERSHIPS)
             .document(actor_uid)
             .collection(HOUSEHOLDS)
             .stream(retry=STREAM_RETRY)
         )
+        active = []
         for snap in snaps:
             data = snap.to_dict() or {}
             if data.get("status") == "active":
-                return snap.id
-        return None
+                active.append((snap.id, data.get("role") or "member", data.get("updated_at")))
+        guests = [row for row in active if row[1] in ("teen", "member")]
+        pool = guests or active
+        if not pool:
+            return None
+        pool.sort(key=lambda row: row[2] or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+        return pool[0][0]
+
+    def primary_household_id_for_user(self, actor_uid: str) -> str | None:
+        return self.preferred_household_id(actor_uid)
