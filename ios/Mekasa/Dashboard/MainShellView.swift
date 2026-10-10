@@ -7,6 +7,7 @@ struct MainShellView: View {
     @EnvironmentObject private var session: AppSession
     @State private var tab: MainTab = .home
     @State private var showAddItems = false
+    @State private var showHouseAdd = false
 
     var body: some View {
         MekasaScreen {
@@ -28,6 +29,7 @@ struct MainShellView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 BottomNavBar(selected: $tab) {
+                    showHouseAdd = false
                     showAddItems = true
                 }
                 .padding(.horizontal, 24)
@@ -36,13 +38,9 @@ struct MainShellView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(TestIdentifiers.mainShellView)
-        .sheet(isPresented: $showAddItems) {
-            NavigationStack {
-                AddItemsView()
-            }
-            .environmentObject(session)
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
+        .sheet(isPresented: $showAddItems, onDismiss: { showHouseAdd = false }) {
+            addSheet
+                .environmentObject(session)
         }
         .task {
             guard !session.isUITesting else { return }
@@ -55,6 +53,49 @@ struct MainShellView: View {
             await session.refreshMyMembership()
             session.updateRealtimeSync()
             PushRegistrationService.shared.requestPermissionAndRegister(idToken: session.idToken)
+        }
+    }
+}
+
+extension MainShellView {
+    @ViewBuilder
+    fileprivate var addSheet: some View {
+        if session.submitsShoppingRequests && !showHouseAdd {
+            NavigationStack {
+                MekasaScreen {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("What do you want?")
+                                .font(.system(size: 28, weight: .black, design: .rounded))
+                                .foregroundStyle(MekasaTheme.text)
+                            Text("An owner approves it before it goes on the shopping list.")
+                                .font(MekasaTheme.bodyFont)
+                                .foregroundStyle(MekasaTheme.textMuted)
+                            ShoppingRequestComposer { _ in
+                                showAddItems = false
+                            }
+                            SecondaryButton(title: "Add to the house instead") {
+                                showHouseAdd = true
+                            }
+                        }
+                        .padding(24)
+                    }
+                }
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Close") { showAddItems = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+            .accessibilityIdentifier(TestIdentifiers.teenShoppingAsk)
+        } else {
+            NavigationStack {
+                AddItemsView()
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
     }
 }

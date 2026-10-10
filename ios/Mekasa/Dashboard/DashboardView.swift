@@ -31,7 +31,11 @@ struct DashboardView: View {
                     statsRow
                         .padding(.top, 8)
                     lowStockSection
-                    needsApprovalSection
+                    if session.submitsShoppingRequests {
+                        wantsSection
+                    } else {
+                        needsApprovalSection
+                    }
                     shoppingTeaserSection
                     recentActivitySection
                 }
@@ -316,6 +320,47 @@ struct DashboardView: View {
                 .stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1)
         )
         .shadow(color: MekasaTheme.shadow.opacity(0.04), radius: 6, y: 2)
+    }
+
+    /// REQ-012: a teen or member is asked what they want. The row waits for an owner.
+    private var wantsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("What do you want?")
+                .font(.system(size: 20, weight: .heavy, design: .rounded))
+                .foregroundStyle(MekasaTheme.text)
+            Text("Ask for it here. An owner adds it to the shopping list.")
+                .font(MekasaTheme.bodyFont)
+                .foregroundStyle(MekasaTheme.textMuted)
+            ShoppingRequestComposer(showsQuantity: false) { itemName in
+                showToast("Asked for \(itemName). An owner will approve it.")
+            }
+            if !pendingApprovals.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Waiting for an owner")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .textCase(.uppercase)
+                        .tracking(0.8)
+                        .foregroundStyle(MekasaTheme.textMuted)
+                    ForEach(pendingApprovals) { item in
+                        HStack {
+                            Text(item.name)
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundStyle(MekasaTheme.text)
+                            Spacer()
+                            Text("qty \(item.quantity)")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundStyle(MekasaTheme.textMuted)
+                        }
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(MekasaTheme.warningTint)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    }
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(TestIdentifiers.teenShoppingAsk)
     }
 
     private var needsApprovalSection: some View {

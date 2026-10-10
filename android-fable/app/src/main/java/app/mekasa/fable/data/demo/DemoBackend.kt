@@ -279,9 +279,22 @@ class DemoBackend(
 
     override suspend fun shoppingList(householdId: String): List<ShoppingItem> = lock.withLock { shoppingRows.toList() }
 
-    override suspend fun addShoppingItem(householdId: String, name: String, quantity: Int): ShoppingItem = lock.withLock {
-        ShoppingItem(id = nextId("shop"), householdId = householdId, name = name, quantity = quantity.coerceAtLeast(1))
-            .also { shoppingRows.add(0, it) }
+    override suspend fun addShoppingItem(
+        householdId: String,
+        name: String,
+        quantity: Int,
+        asRequest: Boolean,
+        requestedBy: String?,
+    ): ShoppingItem = lock.withLock {
+        ShoppingItem(
+            id = nextId("shop"),
+            householdId = householdId,
+            name = name,
+            quantity = quantity.coerceAtLeast(1),
+            needsApproval = asRequest,
+            requestedBy = if (asRequest) requestedBy else null,
+            kind = if (asRequest) "request" else "custom",
+        ).also { shoppingRows.add(0, it) }
     }
 
     override suspend fun setShoppingChecked(householdId: String, itemId: String, checked: Boolean): ShoppingItem =

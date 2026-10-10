@@ -91,7 +91,13 @@ interface HouseholdBackend {
     suspend fun mergeInventory(householdId: String, itemIds: List<String>): InventoryMergeResponse
 
     suspend fun shoppingList(householdId: String): List<ShoppingItem>
-    suspend fun addShoppingItem(householdId: String, name: String, quantity: Int): ShoppingItem
+    suspend fun addShoppingItem(
+        householdId: String,
+        name: String,
+        quantity: Int,
+        asRequest: Boolean = false,
+        requestedBy: String? = null,
+    ): ShoppingItem
     suspend fun setShoppingChecked(householdId: String, itemId: String, checked: Boolean): ShoppingItem
     suspend fun deleteShoppingItem(householdId: String, itemId: String)
     suspend fun approveShoppingItem(householdId: String, itemId: String): ShoppingItem

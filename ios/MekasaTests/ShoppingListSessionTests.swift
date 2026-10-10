@@ -88,6 +88,53 @@ final class ShoppingListSessionTests: XCTestCase {
         XCTAssertNil(session.lastError)
     }
 
+    /// REQ-012: a teen is asked for what they want, and the row waits for an owner.
+    @MainActor
+    func testTeenRequest_needsOwnerApproval() {
+        let session = AppSession()
+        session.didSeedShoppingList = true
+        session.userUID = "teen-user"
+        session.displayName = "Nico"
+        session.myMemberRole = "teen"
+        session.household = Household(
+            id: "family-house",
+            name: "Guerrero Home",
+            photoURL: nil,
+            ownerUID: "owner-user",
+            address: nil,
+            latitude: nil,
+            longitude: nil,
+            storeIDs: [],
+            createdAt: nil,
+            updatedAt: nil
+        )
+
+        XCTAssertTrue(session.submitsShoppingRequests)
+        XCTAssertFalse(session.isHouseholdOwner)
+
+        session.addCustomShoppingItem(name: "Oreos", quantity: 1)
+
+        let item = try XCTUnwrap(session.shoppingList.first)
+        XCTAssertEqual(item.name, "Oreos")
+        XCTAssertTrue(item.needsApproval)
+        XCTAssertEqual(item.kind, .request)
+        XCTAssertEqual(item.requestedBy, "Nico")
+        XCTAssertFalse(item.isChecked)
+    }
+
+    /// Owners add straight onto the list. Preview mode is treated as an owner.
+    @MainActor
+    func testOwnerAdd_isNotARequest() {
+        let session = ownerSession()
+        XCTAssertFalse(session.submitsShoppingRequests)
+        session.addCustomShoppingItem(name: "Tortillas", quantity: 1)
+        let item = try XCTUnwrap(session.shoppingList.first)
+        XCTAssertEqual(item.name, "Tortillas")
+        XCTAssertFalse(item.needsApproval)
+        XCTAssertEqual(item.kind, .custom)
+        XCTAssertNil(item.requestedBy)
+    }
+
     @MainActor
     func testRemoveShoppingItem_unknownIDIsNoOp() {
         let session = AppSession()

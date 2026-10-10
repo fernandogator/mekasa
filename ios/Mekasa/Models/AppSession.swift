@@ -117,6 +117,14 @@ final class AppSession: ObservableObject {
         return myMemberRole == "owner"
     }
 
+    /// Teens and members ask for shopping items. Owners add them directly (REQ-012).
+    /// Preview and UI tests stay on the owner path so those screens keep Needs Approval.
+    var submitsShoppingRequests: Bool {
+        if isUIPreview || isUITesting { return false }
+        guard userUID != nil, household != nil else { return false }
+        return !isHouseholdOwner
+    }
+
     /// One shared home photo. Only owners (admins) may replace it — not teens or members.
     /// Unlike `isHouseholdOwner`, UI preview / UI testing do not force this true.
     var canChangeHomePhoto: Bool {
@@ -1039,7 +1047,7 @@ final class AppSession: ObservableObject {
     }
 
     func addCustomShoppingItem(name: String, quantity: Int) {
-        let asRequest = !isHouseholdOwner && !isUIPreview && !isUITesting
+        let asRequest = submitsShoppingRequests
         let item = ShoppingListItem(
             name: name,
             quantity: max(1, quantity),

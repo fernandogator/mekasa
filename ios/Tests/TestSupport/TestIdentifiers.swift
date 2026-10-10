@@ -89,6 +89,7 @@ enum TestIdentifiers {
 
     // MARK: - Request Queue
     static let requestQueue = "RequestQueue"
+    static let teenShoppingAsk = "TeenShoppingAsk"
     static let requestCell = "RequestCell"
     static let approveButton = "ApproveButton"
     static let rejectButton = "RejectButton"

@@ -141,8 +141,24 @@ class RemoteBackend(
     override suspend fun shoppingList(householdId: String): List<ShoppingItem> =
         api.listShopping(token(), householdId).items
 
-    override suspend fun addShoppingItem(householdId: String, name: String, quantity: Int): ShoppingItem =
-        api.createShoppingItem(token(), householdId, ShoppingItemCreateRequest(name = name, quantity = quantity))
+    override suspend fun addShoppingItem(
+        householdId: String,
+        name: String,
+        quantity: Int,
+        asRequest: Boolean,
+        requestedBy: String?,
+    ): ShoppingItem =
+        api.createShoppingItem(
+            token(),
+            householdId,
+            ShoppingItemCreateRequest(
+                name = name,
+                quantity = quantity,
+                needsApproval = asRequest,
+                requestedBy = if (asRequest) requestedBy else null,
+                kind = if (asRequest) "request" else "custom",
+            ),
+        )
 
     override suspend fun setShoppingChecked(householdId: String, itemId: String, checked: Boolean): ShoppingItem =
         api.patchShoppingItem(token(), householdId, itemId, ShoppingItemPatch(isChecked = checked))

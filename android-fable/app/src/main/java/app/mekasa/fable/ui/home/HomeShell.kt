@@ -67,6 +67,7 @@ import app.mekasa.fable.ui.inventory.InventoryScreen
 import app.mekasa.fable.ui.inventory.ItemDetailScreen
 import app.mekasa.fable.ui.inventory.ItemPager
 import app.mekasa.fable.ui.shopping.ShoppingListScreen
+import app.mekasa.fable.ui.shopping.ShoppingRequestSheet
 import app.mekasa.fable.ui.spending.SpendingScreen
 import app.mekasa.fable.ui.theme.MekasaTheme
 import app.mekasa.fable.ui.theme.Shapes
@@ -108,6 +109,7 @@ fun HomeShell(
     val currentRoute = backStack?.destination?.route
     val showChrome = currentRoute in Routes.tabs
     var showAddSheet by rememberSaveable { mutableStateOf(false) }
+    var showHouseAdd by rememberSaveable { mutableStateOf(false) }
     var openedListIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val openItem: (InventoryItem, List<String>) -> Unit = { item, ids ->
         openedListIds = ids
@@ -130,7 +132,10 @@ fun HomeShell(
                     BottomPillNav(
                         currentRoute = currentRoute,
                         onSelect = { tab -> navController.switchTab(tab.route) },
-                        onAdd = { showAddSheet = true },
+                        onAdd = {
+                            showHouseAdd = false
+                            showAddSheet = true
+                        },
                     )
                 }
             },
@@ -179,7 +184,10 @@ fun HomeShell(
                         onRemove = { session.removeInventoryItem(it.id) },
                         onUndoRemove = session::undoInventoryRemove,
                         onOpenItem = openItem,
-                        onAdd = { showAddSheet = true },
+                        onAdd = {
+                            showHouseAdd = true
+                            showAddSheet = true
+                        },
                         onFindDuplicates = { navController.navigate(Routes.DUPLICATES) },
                     )
                 }
@@ -222,13 +230,24 @@ fun HomeShell(
         }
     }
 
-    if (showAddSheet) {
-        AddItemsSheet(
+    if (showAddSheet && state.submitsShoppingRequests && !showHouseAdd) {
+        ShoppingRequestSheet(
             state = state,
             session = session,
             onDismiss = { showAddSheet = false },
+            onAddToHouse = { showHouseAdd = true },
+        )
+    } else if (showAddSheet) {
+        AddItemsSheet(
+            state = state,
+            session = session,
+            onDismiss = {
+                showAddSheet = false
+                showHouseAdd = false
+            },
             onOpenTrash = {
                 showAddSheet = false
+                showHouseAdd = false
                 navController.navigate(Routes.TRASH)
             },
         )
