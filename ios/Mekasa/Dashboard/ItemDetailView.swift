@@ -16,6 +16,7 @@ struct ItemDetailView: View {
     @State private var editedName: String = ""
     @State private var useOneMessage: String?
     @State private var copiedUPCMessage: String?
+    @State private var showLightbox = false
     @State private var dragOffset: CGFloat = 0
     @State private var arrivalEdge: Edge = .trailing
     @State private var addCodeItem: InventoryItem?
@@ -177,6 +178,18 @@ struct ItemDetailView: View {
             }
             .environmentObject(session)
         }
+        .fullScreenCover(isPresented: $showLightbox) {
+            ProductImageLightbox(
+                urlString: item?.imageURL,
+                title: item?.name ?? "",
+                onPrevious: pager.neighbor(of: currentID, .previous) == nil
+                    ? nil
+                    : { move(.previous) },
+                onNext: pager.neighbor(of: currentID, .next) == nil
+                    ? nil
+                    : { move(.next) }
+            )
+        }
         .onAppear(perform: loadEditableValues)
         .onChange(of: currentID) { oldID, _ in
             if !oldID.isEmpty { saveName(itemID: oldID) }
@@ -255,7 +268,11 @@ struct ItemDetailView: View {
     }
 
     private func hero(_ item: InventoryItem) -> some View {
-        ProductHeroImage(urlString: item.imageURL, title: item.name) { image in
+        ProductHeroImage(
+            urlString: item.imageURL,
+            title: item.name,
+            lightboxPresented: $showLightbox
+        ) { image in
             await session.replaceInventoryItemImage(itemID: item.id, image: image)
         }
         .background(alignment: .leading) { neighborSliver(.previous) }

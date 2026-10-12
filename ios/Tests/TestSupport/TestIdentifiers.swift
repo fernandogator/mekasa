@@ -71,6 +71,7 @@ enum TestIdentifiers {
 
     // MARK: - Item Detail
     static let itemDetailView = "ItemDetailView"
+    static let itemLightbox = "ItemLightbox"
     static let itemImage = "ItemImage"
     static let itemNameLabel = "ItemNameLabel"
     static let itemBarcodeLabel = "ItemBarcodeLabel"

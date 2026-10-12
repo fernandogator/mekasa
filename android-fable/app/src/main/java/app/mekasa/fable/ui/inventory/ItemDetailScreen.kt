@@ -386,22 +386,90 @@ fun ItemDetailScreen(
 
     if (lightbox) {
         Dialog(onDismissRequest = { lightbox = false }) {
+            val lightboxSlide = remember { Animatable(0f) }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(420.dp)
+                    .height(480.dp)
                     .clip(Shapes.card)
                     .background(palette.surfaceElevated)
                     .clickable { lightbox = false }
+                    .then(
+                        if (pager.isActive) {
+                            Modifier.pointerInput(item.id, pager) {
+                                val minPx = 60.dp.toPx()
+                                var start = Offset.Zero
+                                var last = Offset.Zero
+                                detectHorizontalDragGestures(
+                                    onDragStart = { start = it; last = it },
+                                    onDragEnd = {
+                                        val step = ItemPager.step(last.x - start.x, last.y - start.y, minPx)
+                                        if (step != null) {
+                                            move(step)
+                                            scope.launch { lightboxSlide.snapTo(0f) }
+                                        } else {
+                                            scope.launch { lightboxSlide.animateTo(0f, spring()) }
+                                        }
+                                    },
+                                    onDragCancel = {
+                                        scope.launch { lightboxSlide.animateTo(0f, spring()) }
+                                    },
+                                ) { change, _ ->
+                                    last = change.position
+                                    scope.launch { lightboxSlide.snapTo((last.x - start.x) * 0.35f) }
+                                }
+                            }
+                        } else {
+                            Modifier
+                        },
+                    )
                     .testTag(TestTags.ITEM_LIGHTBOX),
             ) {
-                ProductThumbnail(
-                    imageUrl = item.imageUrl,
-                    name = item.name,
-                    modifier = Modifier.fillMaxSize(),
-                    size = 420.dp,
-                    shape = Shapes.card,
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .offset { IntOffset(lightboxSlide.value.roundToInt(), 0) },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        item.name,
+                        style = Type.body,
+                        color = palette.text,
+                        modifier = Modifier.padding(top = Space.md, start = Space.lg, end = Space.lg),
+                        maxLines = 1,
+                    )
+                    if (pager.isActive) {
+                        Text(
+                            "Swipe for the next item",
+                            style = Type.caption,
+                            color = palette.textMuted,
+                            modifier = Modifier.padding(bottom = Space.sm),
+                        )
+                    }
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        ProductThumbnail(
+                            imageUrl = item.imageUrl,
+                            name = item.name,
+                            modifier = Modifier.fillMaxSize(),
+                            size = 420.dp,
+                            shape = Shapes.card,
+                        )
+                        if (previous != null) {
+                            PagerChevron(
+                                icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                description = "Previous item",
+                                modifier = Modifier.align(Alignment.CenterStart).testTag(TestTags.ITEM_PAGER_PREVIOUS),
+                            ) { move(ItemPager.Step.PREVIOUS) }
+                        }
+                        if (next != null) {
+                            PagerChevron(
+                                icon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                description = "Next item",
+                                modifier = Modifier.align(Alignment.CenterEnd).testTag(TestTags.ITEM_PAGER_NEXT),
+                            ) { move(ItemPager.Step.NEXT) }
+                        }
+                    }
+                }
             }
         }
     }
