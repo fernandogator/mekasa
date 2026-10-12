@@ -60,16 +60,16 @@ struct MekasaApp: App {
                     Task { await session.acceptPendingInviteIfNeeded() }
                 }
         }
-        // Scene.onChange only has the single-parameter form (unlike View's iOS 17 API).
-        .onChange(of: scenePhase) { phase in
+        // Scene supports the iOS 17 zero-parameter onChange (two-parameter is View-only).
+        .onChange(of: scenePhase) {
             // NFR-007 AC2: queued error reports go out when the app returns to the foreground.
-            if phase == .active {
+            if scenePhase == .active {
                 ErrorReporter.shared.flushSoon(after: 0)
                 FaceIDLock.shared.sceneDidBecomeActive(
                     onboardingDone: session.onboardingStep == .done,
                     isUITesting: session.isUITesting
                 )
-            } else if phase == .background {
+            } else if scenePhase == .background {
                 // Google Sign-In backgrounds the app; do not arm Face ID for that.
                 FaceIDLock.shared.sceneDidEnterBackground(arm: !session.isBusy)
             }
