@@ -166,9 +166,10 @@ open class FakeApi : MekasaApi {
     }
 
     override suspend fun patchInventoryItem(token: String, householdId: String, itemId: String, patch: InventoryItemPatch): InventoryItem {
-        record("patchInventory:$itemId:${patch.quantity}:${patch.lowStockThreshold}")
+        record("patchInventory:$itemId:${patch.quantity}:${patch.lowStockThreshold}:${patch.name}")
         val idx = inventory.indexOfFirst { it.id == itemId }
         val updated = inventory[idx].copy(
+            name = patch.name ?: inventory[idx].name,
             quantity = patch.quantity ?: inventory[idx].quantity,
             lowStockThreshold = patch.lowStockThreshold ?: inventory[idx].lowStockThreshold,
             imageUrl = patch.imageUrl ?: inventory[idx].imageUrl,

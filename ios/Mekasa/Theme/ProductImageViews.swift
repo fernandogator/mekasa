@@ -70,20 +70,35 @@ struct ProductThumbnail: View {
 
 /// Large product hero; tap to present a full-screen lightbox. With `onReplace`,
 /// tap offers View full size / Take photo / Choose from library instead.
+/// Pass `lightboxPresented` when the parent owns the cover (so it can stay open
+/// while swiping between items).
 struct ProductHeroImage: View {
     let urlString: String?
     let title: String
     var onReplace: ((UIImage) async -> Void)?
+    var lightboxPresented: Binding<Bool>?
     @State private var showLightbox = false
     @State private var showPhotoOptions = false
     @State private var isUploading = false
+
+    init(
+        urlString: String?,
+        title: String,
+        lightboxPresented: Binding<Bool>? = nil,
+        onReplace: ((UIImage) async -> Void)? = nil
+    ) {
+        self.urlString = urlString
+        self.title = title
+        self.lightboxPresented = lightboxPresented
+        self.onReplace = onReplace
+    }
 
     var body: some View {
         Button {
             if onReplace != nil {
                 showPhotoOptions = true
             } else if urlString != nil {
-                showLightbox = true
+                openLightbox()
             }
         } label: {
             Group {
@@ -140,7 +155,7 @@ struct ProductHeroImage: View {
         }
         .itemPhotoReplacement(
             isPresented: $showPhotoOptions,
-            onViewFullSize: urlString == nil ? nil : { showLightbox = true }
+            onViewFullSize: urlString == nil ? nil : { openLightbox() }
         ) { image in
             guard let onReplace else { return }
             Task {
@@ -148,6 +163,14 @@ struct ProductHeroImage: View {
                 await onReplace(image)
                 isUploading = false
             }
+        }
+    }
+
+    private func openLightbox() {
+        if let lightboxPresented {
+            lightboxPresented.wrappedValue = true
+        } else {
+            showLightbox = true
         }
     }
 
@@ -169,7 +192,13 @@ struct ProductHeroImage: View {
 struct ProductImageLightbox: View {
     let urlString: String?
     let title: String
+    /// REQ-INV-020: swipe / chevrons move within the list the detail came from.
+    var onPrevious: (() -> Void)? = nil
+    var onNext: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
+    @State private var dragOffset: CGFloat = 0
+
+    private var canPage: Bool { onPrevious != nil || onNext != nil }
 
     var body: some View {
         ZStack {
@@ -182,6 +211,8 @@ struct ProductImageLightbox: View {
                             .resizable()
                             .scaledToFit()
                             .padding(16)
+                            .offset(x: dragOffset)
+                            .id(urlString)
                     case .failure, .empty:
                         ProgressView().tint(MekasaTheme.onCamera)
                     @unknown default:
@@ -189,6 +220,21 @@ struct ProductImageLightbox: View {
                     }
                 }
             }
+        }
+        .overlay(alignment: .top) {
+            VStack(spacing: 4) {
+                Text(title)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(MekasaTheme.onCamera)
+                    .lineLimit(1)
+                    .padding(.horizontal, 56)
+                if canPage {
+                    Text("Swipe for the next item")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(MekasaTheme.onCamera.opacity(0.7))
+                }
+            }
+            .padding(.top, 16)
         }
         .overlay(alignment: .topTrailing) {
             Button {
@@ -201,7 +247,67 @@ struct ProductImageLightbox: View {
             }
             .accessibilityLabel("Close")
         }
+        .overlay(alignment: .leading) {
+            if onPrevious != nil {
+                lightboxChevron(systemName: "chevron.left", label: "Previous item") {
+                    onPrevious?()
+                }
+                .accessibilityIdentifier(TestIdentifiers.itemPagerPrevious)
+            }
+        }
+        .overlay(alignment: .trailing) {
+            if onNext != nil {
+                lightboxChevron(systemName: "chevron.right", label: "Next item") {
+                    onNext?()
+                }
+                .accessibilityIdentifier(TestIdentifiers.itemPagerNext)
+            }
+        }
         .accessibilityLabel("Enlarged image of \(title)")
+        .accessibilityAction(named: Text("Next item")) { onNext?() }
+        .accessibilityAction(named: Text("Previous item")) { onPrevious?() }
+        .simultaneousGesture(lightboxSwipe)
         .onTapGesture { dismiss() }
+        .accessibilityIdentifier(TestIdentifiers.itemLightbox)
+    }
+
+    private func lightboxChevron(systemName: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(MekasaTheme.onCamera)
+                .frame(width: 40, height: 40)
+                .background(MekasaTheme.onCamera.opacity(0.18))
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .padding(12)
+        .accessibilityLabel(label)
+    }
+
+    private var lightboxSwipe: some Gesture {
+        DragGesture(minimumDistance: 20)
+            .onChanged { value in
+                guard canPage else { return }
+                let dx = value.translation.width
+                guard abs(dx) > abs(value.translation.height) * 1.5 else { return }
+                dragOffset = dx * 0.35
+            }
+            .onEnded { value in
+                guard canPage else {
+                    dragOffset = 0
+                    return
+                }
+                if let step = ItemPager.step(translation: value.translation, startX: value.startLocation.x) {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) { dragOffset = 0 }
+                    switch step {
+                    case .previous: onPrevious?()
+                    case .next: onNext?()
+                    }
+                } else {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { dragOffset = 0 }
+                }
+            }
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Route for the catalog match sheet (avoids navigationDestination type-checker issues).
 private struct CatalogMatchRoute: Identifiable, Hashable {
@@ -385,10 +386,21 @@ struct ItemConfirmView: View {
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(MekasaTheme.textMuted)
                     if let barcode = draft.wrappedValue.barcode, !barcode.isEmpty {
-                        Text("UPC \(barcode)")
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                        Button {
+                            UIPasteboard.general.string = barcode
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text("UPC \(barcode)")
+                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                Image(systemName: "doc.on.doc")
+                                    .font(.system(size: 11, weight: .semibold))
+                            }
                             .foregroundStyle(MekasaTheme.textMuted)
-                            .accessibilityIdentifier(TestIdentifiers.itemBarcodeLabel)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("UPC \(barcode)")
+                        .accessibilityHint("Copies the UPC")
+                        .accessibilityIdentifier(TestIdentifiers.itemBarcodeLabel)
                     } else if sharedPhotoDraftIDs.contains(draft.wrappedValue.id) {
                         Text(PhotoOnlyCapture.savedCardNote)
                             .font(.system(size: 12, weight: .bold, design: .rounded))

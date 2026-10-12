@@ -88,11 +88,12 @@ class RemoteBackend(
         itemId: String,
         quantity: Int?,
         threshold: Int?,
+        name: String?,
     ): InventoryItem = api.patchInventoryItem(
         token(),
         householdId,
         itemId,
-        InventoryItemPatch(quantity = quantity, lowStockThreshold = threshold),
+        InventoryItemPatch(name = name, quantity = quantity, lowStockThreshold = threshold),
     )
 
     override suspend fun replaceItemPhoto(householdId: String, itemId: String, jpeg: ByteArray): InventoryItem {

@@ -176,8 +176,10 @@ class DemoBackend(
         itemId: String,
         quantity: Int?,
         threshold: Int?,
+        name: String?,
     ): InventoryItem = replaceInventory(itemId) {
         it.copy(
+            name = name?.trim()?.takeIf { value -> value.isNotEmpty() } ?: it.name,
             quantity = quantity?.coerceAtLeast(0) ?: it.quantity,
             lowStockThreshold = threshold?.coerceAtLeast(0) ?: it.lowStockThreshold,
         )

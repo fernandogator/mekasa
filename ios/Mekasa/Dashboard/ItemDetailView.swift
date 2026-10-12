@@ -13,7 +13,10 @@ struct ItemDetailView: View {
     @State private var openedPager: ItemPager
     @State private var threshold: Int = 1
     @State private var quantity: Int = 1
+    @State private var editedName: String = ""
     @State private var useOneMessage: String?
+    @State private var copiedUPCMessage: String?
+    @State private var showLightbox = false
     @State private var dragOffset: CGFloat = 0
     @State private var arrivalEdge: Edge = .trailing
     @State private var addCodeItem: InventoryItem?
@@ -45,22 +48,44 @@ struct ItemDetailView: View {
                         VStack(alignment: .leading, spacing: 24) {
                             hero(item)
 
-                            Text(item.name)
+                            TextField("Item name", text: $editedName)
                                 .font(.system(size: 28, weight: .black, design: .rounded))
                                 .foregroundStyle(MekasaTheme.text)
+                                .textInputAutocapitalization(.words)
+                                .submitLabel(.done)
+                                .onSubmit { saveName(itemID: item.id) }
                                 .accessibilityIdentifier(TestIdentifiers.itemNameLabel)
                                 .accessibilityAction(named: Text("Next item")) { move(.next) }
                                 .accessibilityAction(named: Text("Previous item")) { move(.previous) }
+                                .accessibilityHint("Edit the item name")
 
                             Text(item.category)
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                                 .foregroundStyle(MekasaTheme.textMuted)
 
                             if let barcode = item.barcode, !barcode.isEmpty {
-                                Text("UPC \(barcode)")
-                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                Button {
+                                    UIPasteboard.general.string = barcode
+                                    showCopiedUPC()
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Text("UPC \(barcode)")
+                                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                                        Image(systemName: "doc.on.doc")
+                                            .font(.system(size: 12, weight: .semibold))
+                                    }
                                     .foregroundStyle(MekasaTheme.textMuted)
-                                    .accessibilityIdentifier(TestIdentifiers.itemBarcodeLabel)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("UPC \(barcode)")
+                                .accessibilityHint("Copies the UPC")
+                                .accessibilityIdentifier(TestIdentifiers.itemBarcodeLabel)
+                                if let copiedUPCMessage {
+                                    Text(copiedUPCMessage)
+                                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                                        .foregroundStyle(MekasaTheme.success)
+                                        .accessibilityIdentifier(TestIdentifiers.itemBarcodeCopied)
+                                }
                             }
 
                             // REQ-RCP-020 AC15: a code added later unlocks nutrition (REQ-021).
@@ -153,10 +178,27 @@ struct ItemDetailView: View {
             }
             .environmentObject(session)
         }
+        .fullScreenCover(isPresented: $showLightbox) {
+            ProductImageLightbox(
+                urlString: item?.imageURL,
+                title: item?.name ?? "",
+                onPrevious: pager.neighbor(of: currentID, .previous) == nil
+                    ? nil
+                    : { move(.previous) },
+                onNext: pager.neighbor(of: currentID, .next) == nil
+                    ? nil
+                    : { move(.next) }
+            )
+        }
         .onAppear(perform: loadEditableValues)
-        .onChange(of: currentID) { _, _ in
+        .onChange(of: currentID) { oldID, _ in
+            if !oldID.isEmpty { saveName(itemID: oldID) }
             useOneMessage = nil
+            copiedUPCMessage = nil
             loadEditableValues()
+        }
+        .onDisappear {
+            saveName(itemID: currentID)
         }
         .task(id: currentID) {
             await refetchMissingImageIfNeeded()
@@ -168,6 +210,27 @@ struct ItemDetailView: View {
         if let item {
             threshold = item.lowStockThreshold
             quantity = item.quantity
+            editedName = item.name
+        }
+    }
+
+    private func saveName(itemID: String) {
+        let trimmed = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            if let item = session.inventory.first(where: { $0.id == itemID }) {
+                editedName = item.name
+            }
+            return
+        }
+        _ = session.updateInventoryName(itemID: itemID, name: trimmed)
+        editedName = trimmed
+    }
+
+    private func showCopiedUPC() {
+        copiedUPCMessage = "Copied"
+        Task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            if copiedUPCMessage == "Copied" { copiedUPCMessage = nil }
         }
     }
 
@@ -205,7 +268,11 @@ struct ItemDetailView: View {
     }
 
     private func hero(_ item: InventoryItem) -> some View {
-        ProductHeroImage(urlString: item.imageURL, title: item.name) { image in
+        ProductHeroImage(
+            urlString: item.imageURL,
+            title: item.name,
+            lightboxPresented: $showLightbox
+        ) { image in
             await session.replaceInventoryItemImage(itemID: item.id, image: image)
         }
         .background(alignment: .leading) { neighborSliver(.previous) }

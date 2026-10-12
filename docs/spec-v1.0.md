@@ -214,6 +214,7 @@ Acceptance Criteria:
 - AC5: VoiceOver/TalkBack offer "Next item" and "Previous item" actions with the same result (NFR-005)
 - AC6: Opened without a list (e.g. a deep link or route straight to the item), the detail shows no position, chevrons or swipe
 - AC7: Moving to another item shows that item's own quantity, threshold, picture and status, and runs the same on-open refreshes (image, health) as opening it from the list
+- AC8: The full-size image ("View full size" / lightbox) uses the same previous/next swipe and chevrons, and stays open while the underlying item changes
 
 ### REQ-INV-021: Find and Merge Duplicate Items
 Priority: P2
@@ -483,7 +484,8 @@ Acceptance Criteria:
 - AC2: Item detail shows a large product image; tapping it opens a
   full-screen enlarged view
 - AC3: Item detail shows at least name, category, UPC (when known),
-  quantity, and low-stock threshold
+  quantity, and low-stock threshold. The name is editable and saves via
+  `PATCH …/inventory/{id}`; tapping the UPC copies it to the clipboard.
 - AC4: Thumbnail and detail images use the barcode lookup image URL
   (REQ-004 / Open Food Facts) without blocking the UI on load failure
 - AC5: When item detail opens for a row with no stored `image_url`, the

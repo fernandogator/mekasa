@@ -971,6 +971,33 @@ final class AppSession: ObservableObject {
         }
     }
 
+    /// Rename an inventory row (REQ-RCP-013 AC6 / item detail edit).
+    @discardableResult
+    func updateInventoryName(itemID: String, name: String) -> Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        guard let idx = inventory.firstIndex(where: { $0.id == itemID }) else { return false }
+        guard inventory[idx].name != trimmed else { return true }
+        inventory[idx].name = trimmed
+        inventory[idx].updatedAt = Date()
+        logActivity("Renamed to \(trimmed)", kind: .success)
+        guard canSyncInventory, let token = idToken, let householdID = household?.id else { return true }
+        Task {
+            do {
+                let remote = try await MekasaAPIClient.shared.updateInventoryItem(
+                    householdID: householdID,
+                    itemID: itemID,
+                    name: trimmed,
+                    token: token
+                )
+                upsertRemote(remote)
+            } catch {
+                handleAPIFailure(error)
+            }
+        }
+        return true
+    }
+
     func logActivity(_ title: String, kind: ActivityItem.Kind) {
         let item = ActivityItem(
             id: UUID().uuidString,

@@ -54,7 +54,13 @@ interface HouseholdBackend {
 
     suspend fun inventory(householdId: String): List<InventoryItem>
     suspend fun addInventory(householdId: String, draft: InventoryDraft): InventoryItem
-    suspend fun updateInventory(householdId: String, itemId: String, quantity: Int?, threshold: Int?): InventoryItem
+    suspend fun updateInventory(
+        householdId: String,
+        itemId: String,
+        quantity: Int? = null,
+        threshold: Int? = null,
+        name: String? = null,
+    ): InventoryItem
     suspend fun consume(householdId: String, itemId: String, amount: Int): InventoryItem
     suspend fun consumeByBarcode(householdId: String, barcode: String, amount: Int): ConsumeByBarcodeResult
     suspend fun refreshImage(householdId: String, itemId: String): InventoryItem
