@@ -483,7 +483,8 @@ Acceptance Criteria:
 - AC2: Item detail shows a large product image; tapping it opens a
   full-screen enlarged view
 - AC3: Item detail shows at least name, category, UPC (when known),
-  quantity, and low-stock threshold
+  quantity, and low-stock threshold. The name is editable and saves via
+  `PATCH …/inventory/{id}`; tapping the UPC copies it to the clipboard.
 - AC4: Thumbnail and detail images use the barcode lookup image URL
   (REQ-004 / Open Food Facts) without blocking the UI on load failure
 - AC5: When item detail opens for a row with no stored `image_url`, the

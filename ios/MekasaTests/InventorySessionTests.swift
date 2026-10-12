@@ -68,6 +68,22 @@ final class InventorySessionTests: XCTestCase {
     }
 
     @MainActor
+    func testUpdateInventoryName_renamesLocally() {
+        let session = AppSession()
+        session.addInventoryItem(
+            InventoryItem(name: "Milk", category: "Dairy", quantity: 1, source: .manual)
+        )
+        let id = session.inventory[0].id
+
+        XCTAssertTrue(session.updateInventoryName(itemID: id, name: "  Skim Milk  "))
+        XCTAssertEqual(session.inventory[0].name, "Skim Milk")
+        XCTAssertEqual(session.activity.first?.title, "Renamed to Skim Milk")
+
+        XCTAssertFalse(session.updateInventoryName(itemID: id, name: "   "))
+        XCTAssertEqual(session.inventory[0].name, "Skim Milk")
+    }
+
+    @MainActor
     func testAddInventoryItem_skipsAPIWithoutHousehold() {
         let session = AppSession()
         session.idToken = "preview"

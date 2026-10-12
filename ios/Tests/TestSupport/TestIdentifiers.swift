@@ -74,6 +74,7 @@ enum TestIdentifiers {
     static let itemImage = "ItemImage"
     static let itemNameLabel = "ItemNameLabel"
     static let itemBarcodeLabel = "ItemBarcodeLabel"
+    static let itemBarcodeCopied = "ItemBarcodeCopied"
     static let editButton = "EditButton"
     static let deleteButton = "DeleteButton"
     static let quantityControl = "QuantityControl"

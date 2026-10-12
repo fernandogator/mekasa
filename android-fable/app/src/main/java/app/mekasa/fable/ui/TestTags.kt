@@ -91,6 +91,8 @@ object TestTags {
 
     // Item detail (UI-006)
     const val ITEM_DETAIL_VIEW = "ItemDetailView"
+    const val ITEM_NAME_FIELD = "ItemNameField"
+    const val ITEM_BARCODE_LABEL = "ItemBarcodeLabel"
     const val ITEM_IMAGE = "ItemImage"
     const val ITEM_LIGHTBOX = "ItemLightbox"
     const val ITEM_PAGER_POSITION = "ItemPagerPosition"

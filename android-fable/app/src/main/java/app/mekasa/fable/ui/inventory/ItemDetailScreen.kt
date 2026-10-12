@@ -1,9 +1,13 @@
 package app.mekasa.fable.ui.inventory
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -71,6 +75,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import app.mekasa.fable.data.CatalogCapture
 import app.mekasa.fable.data.model.InventoryItem
@@ -114,6 +119,7 @@ fun ItemDetailScreen(
     var lightbox by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
     var addingCode by remember(item.id) { mutableStateOf(false) }
+    var editedName by remember(item.id, item.name) { mutableStateOf(item.name) }
 
     // REQ-INV-020: swipe / chevrons / TalkBack actions move within the list the detail came from.
     val haptics = LocalHapticFeedback.current
@@ -208,7 +214,13 @@ fun ItemDetailScreen(
             ScreenHeader(
                 title = "Item",
                 eyebrow = item.category,
-                onBack = onBack,
+                onBack = {
+                    val trimmed = editedName.trim()
+                    if (trimmed.isNotEmpty() && trimmed != item.name) {
+                        session.updateInventory(item.id, name = trimmed)
+                    }
+                    onBack()
+                },
                 trailing = {
                     pager.positionLabel(item.id)?.let {
                         Chip(it, color = palette.text, modifier = Modifier.testTag(TestTags.ITEM_PAGER_POSITION))
@@ -270,7 +282,23 @@ fun ItemDetailScreen(
                     LinkButton("Look up product image", onClick = { session.refreshItemImage(item.id) })
                 }
 
-                Text(item.name, style = Type.title, color = palette.text)
+                LabeledField(
+                    label = "Name",
+                    value = editedName,
+                    onValueChange = { editedName = it },
+                    placeholder = "Item name",
+                    capitalization = KeyboardCapitalization.Words,
+                    imeAction = ImeAction.Done,
+                    onSubmit = {
+                        val trimmed = editedName.trim()
+                        if (trimmed.isEmpty()) {
+                            editedName = item.name
+                        } else if (trimmed != item.name) {
+                            session.updateInventory(item.id, name = trimmed)
+                        }
+                    },
+                    testTag = TestTags.ITEM_NAME_FIELD,
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(Space.sm), verticalAlignment = Alignment.CenterVertically) {
                     Chip(item.category, color = palette.textMuted)
                     if (item.isLowStock) Chip("Low stock", color = palette.warning)
@@ -279,7 +307,19 @@ fun ItemDetailScreen(
                 if (!item.barcode.isNullOrBlank()) {
                     Column {
                         SectionLabel("UPC")
-                        Text(item.barcode, style = Type.mono, color = palette.text)
+                        Text(
+                            item.barcode,
+                            style = Type.mono,
+                            color = palette.text,
+                            modifier = Modifier
+                                .clickable {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    clipboard.setPrimaryClip(ClipData.newPlainText("UPC", item.barcode))
+                                    Toast.makeText(context, "UPC copied", Toast.LENGTH_SHORT).show()
+                                }
+                                .testTag(TestTags.ITEM_BARCODE_LABEL),
+                        )
+                        Text("Tap to copy", style = Type.caption, color = palette.textMuted)
                     }
                 }
                 if (item.canAddCode) {

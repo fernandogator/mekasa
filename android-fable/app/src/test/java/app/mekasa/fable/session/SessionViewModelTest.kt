@@ -328,7 +328,18 @@ class SessionViewModelTest {
         val item = vm.s.data.inventory.single()
         assertEquals(7, item.quantity)
         assertEquals(3, item.lowStockThreshold)
-        assertTrue(api.calls.contains("patchInventory:i1:7:3"))
+        assertTrue(api.calls.contains("patchInventory:i1:7:3:null"))
+    }
+
+    @Test
+    fun `update inventory renames an item`() {
+        val vm = viewModel()
+        vm.signInWithEmail("ana@example.com", "secret", createAccount = false)
+        vm.updateInventory("i1", name = "  Skim Milk  ")
+
+        val item = vm.s.data.inventory.single()
+        assertEquals("Skim Milk", item.name)
+        assertTrue(api.calls.contains("patchInventory:i1:null:null:Skim Milk"))
     }
 
     // ------------------------------------------------------------ shopping

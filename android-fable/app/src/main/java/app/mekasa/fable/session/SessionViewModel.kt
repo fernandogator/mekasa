@@ -429,8 +429,14 @@ class SessionViewModel(
         }
     }
 
-    fun updateInventory(itemId: String, quantity: Int? = null, threshold: Int? = null) = guarded {
-        val updated = require().updateInventory(householdId(), itemId, quantity, threshold)
+    fun updateInventory(
+        itemId: String,
+        quantity: Int? = null,
+        threshold: Int? = null,
+        name: String? = null,
+    ) = guarded {
+        val trimmedName = name?.trim()?.takeIf { it.isNotEmpty() }
+        val updated = require().updateInventory(householdId(), itemId, quantity, threshold, trimmedName)
         replaceInventory(updated)
     }
 
