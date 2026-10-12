@@ -196,6 +196,9 @@ struct WelcomeView: View {
         session.userUID = AuthService.shared.currentUserUID
         AppLog.shared.info("auth", "Signed in", fields: ["user_ref": session.userUID.map(CrashReporting.userRef)])
         session.rememberSignedInEmail(email ?? self.email)
+        // Do not Face ID-lock immediately after Google/email auth — presenting LA while
+        // the Google sheet dismisses crashes. Lock again after the next real background.
+        FaceIDLock.shared.allowThroughAfterSignIn()
         await session.acceptPendingInviteIfNeeded()
         if session.onboardingStep == .done, session.household != nil {
             return

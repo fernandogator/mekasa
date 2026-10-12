@@ -70,7 +70,8 @@ struct MekasaApp: App {
                     isUITesting: session.isUITesting
                 )
             } else if phase == .background {
-                FaceIDLock.shared.sceneDidEnterBackground()
+                // Google Sign-In backgrounds the app; do not arm Face ID for that.
+                FaceIDLock.shared.sceneDidEnterBackground(arm: !session.isBusy)
             }
         }
     }

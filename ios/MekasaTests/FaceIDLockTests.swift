@@ -208,6 +208,43 @@ final class FaceIDLockTests: XCTestCase {
     }
 
     @MainActor
+    func testAllowThroughAfterSignInSkipsImmediateLock() {
+        let lock = makeLock()
+        lock.isEnabled = true
+        lock.markBackgroundedForTesting(secondsAgo: FaceIDLock.backgroundGraceSeconds + 5)
+        lock.allowThroughAfterSignIn()
+        XCTAssertTrue(lock.isUnlocked)
+        lock.prepareForHome(isUITesting: false)
+        XCTAssertTrue(lock.isUnlocked, "Fresh sign-in must not Face ID-lock over Google dismiss")
+        lock.sceneDidBecomeActive(onboardingDone: true, isUITesting: false)
+        XCTAssertTrue(lock.isUnlocked)
+    }
+
+    @MainActor
+    func testSceneBackgroundNotArmedWhileAuthBusy() {
+        let lock = makeLock()
+        lock.isEnabled = true
+        lock.markUnlockedForTesting()
+        lock.sceneDidEnterBackground(arm: false)
+        lock.markBackgroundedForTesting(secondsAgo: FaceIDLock.backgroundGraceSeconds + 5)
+        // arm:false should not have set backgroundedAt; the test helper did — clear and re-check.
+        lock.allowThroughAfterSignIn()
+        lock.sceneDidEnterBackground(arm: false)
+        lock.sceneDidBecomeActive(onboardingDone: true, isUITesting: false)
+        XCTAssertTrue(lock.isUnlocked)
+    }
+
+    @MainActor
+    func testResetAfterSignOutAllowsPrepareAgain() {
+        let lock = makeLock()
+        lock.isEnabled = true
+        lock.allowThroughAfterSignIn()
+        lock.resetAfterSignOut()
+        lock.prepareForHome(isUITesting: false)
+        XCTAssertFalse(lock.isUnlocked)
+    }
+
+    @MainActor
     func testSceneActiveSkipsLockUnderUITesting() {
         let lock = makeLock()
         lock.isEnabled = true

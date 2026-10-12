@@ -73,8 +73,10 @@ final class FaceIDLock: ObservableObject {
         )
     }
 
-    func sceneDidEnterBackground() {
-        guard isEnabled else { return }
+    /// Arm a future re-lock. Pass `arm: false` while Google Sign-In (or other auth UI)
+    /// is presenting — that background is not "left the house".
+    func sceneDidEnterBackground(arm: Bool = true) {
+        guard isEnabled, arm else { return }
         backgroundedAt = Date()
     }
 
@@ -178,6 +180,23 @@ final class FaceIDLock: ObservableObject {
         backgroundedAt = nil
     }
 
+    /// After email/Google sign-in succeeds, stay unlocked for this launch.
+    /// Presenting Face ID while Google Sign-In is still dismissing crashes / loops.
+    func allowThroughAfterSignIn() {
+        isUnlocked = true
+        backgroundedAt = nil
+        hasPreparedHomeThisLaunch = true
+        statusMessage = nil
+    }
+
+    /// Sign-out clears the one-shot home prepare so a later sign-in can lock on cold paths.
+    func resetAfterSignOut() {
+        isUnlocked = true
+        backgroundedAt = nil
+        hasPreparedHomeThisLaunch = false
+        statusMessage = nil
+    }
+
     func markUnlockedForTesting() {
         isUnlocked = true
     }
@@ -192,6 +211,10 @@ final class FaceIDLock: ObservableObject {
     }
 
     private static func systemAuthenticate(reason: String) async -> Result<Void, Error> {
+        // Avoid evaluating over another modal (Google Sign-In teardown).
+        if hasPresentedViewController {
+            return .failure(LAError(.systemCancel))
+        }
         let context = LAContext()
         context.localizedCancelTitle = "Cancel"
         // Prefer Face ID / Touch ID. Passcode remains available as the system fallback
@@ -205,6 +228,15 @@ final class FaceIDLock: ObservableObject {
         } catch {
             return .failure(error)
         }
+    }
+
+    /// True when a UIKit modal is still up (Google Sign-In, system sheets, …).
+    static var hasPresentedViewController: Bool {
+        let roots = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .compactMap(\.rootViewController)
+        return roots.contains { $0.presentedViewController != nil }
     }
 
     private static func isCancel(_ error: Error) -> Bool {
@@ -284,6 +316,14 @@ struct FaceIDLockScreen: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(TestIdentifiers.faceIDLockScreen)
         .task {
+            // Wait for Google Sign-In (or any modal) to finish dismissing before LA.
+            for _ in 0..<25 {
+                if Task.isCancelled { return }
+                if !FaceIDLock.hasPresentedViewController { break }
+                try? await Task.sleep(nanoseconds: 100_000_000)
+            }
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            if Task.isCancelled { return }
             await lock.unlock()
         }
     }
