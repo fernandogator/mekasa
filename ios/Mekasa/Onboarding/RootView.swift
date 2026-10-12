@@ -51,6 +51,12 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: showFaceIDLock)
+        .onAppear {
+            // Cold start already on `.done` does not fire onChange — lock then if needed.
+            if session.onboardingStep == .done {
+                faceIDLock.prepareForHome(isUITesting: session.isUITesting)
+            }
+        }
         .onChange(of: session.onboardingStep) { _, step in
             if step == .done {
                 faceIDLock.prepareForHome(isUITesting: session.isUITesting)

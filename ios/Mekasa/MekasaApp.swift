@@ -60,7 +60,8 @@ struct MekasaApp: App {
                     Task { await session.acceptPendingInviteIfNeeded() }
                 }
         }
-        .onChange(of: scenePhase) { _, phase in
+        // Scene.onChange only has the single-parameter form (unlike View's iOS 17 API).
+        .onChange(of: scenePhase) { phase in
             // NFR-007 AC2: queued error reports go out when the app returns to the foreground.
             if phase == .active {
                 ErrorReporter.shared.flushSoon(after: 0)

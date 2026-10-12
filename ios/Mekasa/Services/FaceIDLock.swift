@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Optional Face ID / Touch ID gate for a signed-in session.
 /// Sign-in stays on Firebase email/Google; this only unlocks the already-open house.
-/// Spec version: 1.0
+/// Spec version: 1.1
 @MainActor
 final class FaceIDLock: ObservableObject {
     static let shared = FaceIDLock()
@@ -15,6 +15,9 @@ final class FaceIDLock: ObservableObject {
     @Published var statusMessage: String?
 
     private var backgroundedAt: Date?
+    private var isAuthenticating = false
+    /// Ensures cold-start lock runs once; later SwiftUI `onAppear` must not re-lock.
+    private var hasPreparedHomeThisLaunch = false
     private let defaults: UserDefaults
     private let authenticate: (String) async -> Result<Void, Error>
     private let biometryAvailableOverride: Bool?
@@ -38,19 +41,19 @@ final class FaceIDLock: ObservableObject {
         self.biometryLabelOverride = biometryLabel
     }
 
-    /// True when the device can run Face ID, Touch ID, or the passcode fallback.
+    /// True when Face ID / Touch ID can run (not passcode-only).
     var biometryAvailable: Bool {
         if let biometryAvailableOverride { return biometryAvailableOverride }
         let context = LAContext()
         var error: NSError?
-        return context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
+        return context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
     }
 
     /// "Face ID", "Touch ID", or "Passcode" for the Family toggle label.
     var biometryLabel: String {
         if let biometryLabelOverride { return biometryLabelOverride }
         let context = LAContext()
-        _ = context.canEvaluatePolicy(.deviceOwnerAuthentication, error: nil)
+        _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
         switch context.biometryType {
         case .faceID: return "Face ID"
         case .touchID: return "Touch ID"
@@ -75,7 +78,9 @@ final class FaceIDLock: ObservableObject {
         backgroundedAt = Date()
     }
 
-    /// Re-lock after the grace window, then prompt Face ID.
+    /// Re-lock only after a real background past the grace window.
+    /// LocalAuthentication sheets use `.inactive`, not `.background` — those must not re-lock
+    /// or the passcode/Face ID prompt loops forever after enabling.
     func sceneDidBecomeActive(onboardingDone: Bool, isUITesting: Bool) {
         guard !isUITesting else {
             isUnlocked = true
@@ -86,35 +91,48 @@ final class FaceIDLock: ObservableObject {
             backgroundedAt = nil
             return
         }
-        if let backgroundedAt,
-           Date().timeIntervalSince(backgroundedAt) < Self.backgroundGraceSeconds {
+        // No background since last unlock / enable → stay as-is (covers LA + Control Center).
+        guard let backgroundedAt else { return }
+
+        if Date().timeIntervalSince(backgroundedAt) < Self.backgroundGraceSeconds {
             self.backgroundedAt = nil
             return
         }
-        backgroundedAt = nil
+        self.backgroundedAt = nil
         isUnlocked = false
         // FaceIDLockScreen auto-prompts via `.task` when the overlay appears.
     }
 
-    /// First launch into the house with the preference on starts locked.
+    /// Cold start into the house with the preference on starts locked (once per launch).
     func prepareForHome(isUITesting: Bool) {
-        guard !isUITesting, isEnabled else {
+        guard !isUITesting else {
             isUnlocked = true
             return
         }
+        guard isEnabled else {
+            isUnlocked = true
+            return
+        }
+        guard !hasPreparedHomeThisLaunch else { return }
+        hasPreparedHomeThisLaunch = true
         isUnlocked = false
     }
 
     func unlock() async {
+        guard !isAuthenticating else { return }
+        isAuthenticating = true
+        defer { isAuthenticating = false }
+
         statusMessage = nil
         guard biometryAvailable else {
-            statusMessage = "Biometrics aren’t available on this device."
+            statusMessage = "\(biometryLabel) isn’t available. Check Settings → Face ID & Passcode."
             return
         }
         let result = await authenticate("Unlock Mekasa")
         switch result {
         case .success:
             isUnlocked = true
+            backgroundedAt = nil
             statusMessage = nil
         case let .failure(error):
             if Self.isCancel(error) {
@@ -128,9 +146,13 @@ final class FaceIDLock: ObservableObject {
     /// Run one Face ID prompt before turning the preference on.
     @discardableResult
     func enableWithPrompt() async -> Bool {
+        guard !isAuthenticating else { return false }
+        isAuthenticating = true
+        defer { isAuthenticating = false }
+
         statusMessage = nil
         guard biometryAvailable else {
-            statusMessage = "Biometrics aren’t available on this device."
+            statusMessage = "\(biometryLabel) isn’t available. Check Settings → Face ID & Passcode."
             return false
         }
         let result = await authenticate("Turn on \(biometryLabel) for Mekasa")
@@ -138,6 +160,8 @@ final class FaceIDLock: ObservableObject {
         case .success:
             isEnabled = true
             isUnlocked = true
+            backgroundedAt = nil
+            hasPreparedHomeThisLaunch = true
             return true
         case let .failure(error):
             if !Self.isCancel(error) {
@@ -162,11 +186,21 @@ final class FaceIDLock: ObservableObject {
         isUnlocked = false
     }
 
+    /// Test helper: pretend the app backgrounded `secondsAgo` seconds ago.
+    func markBackgroundedForTesting(secondsAgo: TimeInterval) {
+        backgroundedAt = Date().addingTimeInterval(-secondsAgo)
+    }
+
     private static func systemAuthenticate(reason: String) async -> Result<Void, Error> {
         let context = LAContext()
         context.localizedCancelTitle = "Cancel"
+        // Prefer Face ID / Touch ID. Passcode remains available as the system fallback
+        // after biometric failure — not as the first prompt.
         do {
-            let ok = try await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)
+            let ok = try await context.evaluatePolicy(
+                .deviceOwnerAuthenticationWithBiometrics,
+                localizedReason: reason
+            )
             return ok ? .success(()) : .failure(LAError(.authenticationFailed))
         } catch {
             return .failure(error)
@@ -192,7 +226,7 @@ enum FaceIDLockPolicy {
     }
 }
 
-/// Full-screen gate shown until Face ID (or passcode) succeeds.
+/// Full-screen gate shown until Face ID (or Touch ID) succeeds.
 struct FaceIDLockScreen: View {
     @ObservedObject var lock: FaceIDLock
     @State private var isUnlocking = false

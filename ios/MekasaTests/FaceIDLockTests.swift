@@ -84,7 +84,10 @@ final class FaceIDLockTests: XCTestCase {
         let ok = await lock.enableWithPrompt()
         XCTAssertFalse(ok)
         XCTAssertFalse(lock.isEnabled)
-        XCTAssertEqual(lock.statusMessage, "Biometrics aren’t available on this device.")
+        XCTAssertEqual(
+            lock.statusMessage,
+            "Face ID isn’t available. Check Settings → Face ID & Passcode."
+        )
     }
 
     @MainActor
@@ -102,6 +105,10 @@ final class FaceIDLockTests: XCTestCase {
         lock.isEnabled = true
         lock.prepareForHome(isUITesting: false)
         XCTAssertFalse(lock.isUnlocked)
+        lock.markUnlockedForTesting()
+        // Second prepare (SwiftUI onAppear) must not bounce the lock screen back.
+        lock.prepareForHome(isUITesting: false)
+        XCTAssertTrue(lock.isUnlocked)
         lock.prepareForHome(isUITesting: true)
         XCTAssertTrue(lock.isUnlocked)
     }
@@ -168,6 +175,36 @@ final class FaceIDLockTests: XCTestCase {
         lock.sceneDidEnterBackground()
         lock.sceneDidBecomeActive(onboardingDone: true, isUITesting: false)
         XCTAssertTrue(lock.isUnlocked, "Brief background should stay inside the grace window")
+    }
+
+    @MainActor
+    func testSceneActiveWithoutBackgroundDoesNotRelock() {
+        let lock = makeLock()
+        lock.isEnabled = true
+        lock.markUnlockedForTesting()
+        // LA / notification shade use inactive→active with no background stamp.
+        lock.sceneDidBecomeActive(onboardingDone: true, isUITesting: false)
+        XCTAssertTrue(lock.isUnlocked, "Must not re-lock after Face ID sheet dismisses")
+    }
+
+    @MainActor
+    func testSceneActiveAfterGraceRelocks() {
+        let lock = makeLock()
+        lock.isEnabled = true
+        lock.markUnlockedForTesting()
+        lock.markBackgroundedForTesting(secondsAgo: FaceIDLock.backgroundGraceSeconds + 1)
+        lock.sceneDidBecomeActive(onboardingDone: true, isUITesting: false)
+        XCTAssertFalse(lock.isUnlocked)
+    }
+
+    @MainActor
+    func testEnableClearsBackgroundSoLADoesNotRelock() async {
+        let lock = makeLock()
+        lock.markBackgroundedForTesting(secondsAgo: FaceIDLock.backgroundGraceSeconds + 5)
+        let ok = await lock.enableWithPrompt()
+        XCTAssertTrue(ok)
+        lock.sceneDidBecomeActive(onboardingDone: true, isUITesting: false)
+        XCTAssertTrue(lock.isUnlocked)
     }
 
     @MainActor
