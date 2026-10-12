@@ -226,12 +226,8 @@ final class FaceIDLockTests: XCTestCase {
         lock.isEnabled = true
         lock.markUnlockedForTesting()
         lock.sceneDidEnterBackground(arm: false)
-        lock.markBackgroundedForTesting(secondsAgo: FaceIDLock.backgroundGraceSeconds + 5)
-        // arm:false should not have set backgroundedAt; the test helper did — clear and re-check.
-        lock.allowThroughAfterSignIn()
-        lock.sceneDidEnterBackground(arm: false)
         lock.sceneDidBecomeActive(onboardingDone: true, isUITesting: false)
-        XCTAssertTrue(lock.isUnlocked)
+        XCTAssertTrue(lock.isUnlocked, "Google auth background must not arm Face ID re-lock")
     }
 
     @MainActor
