@@ -5,6 +5,14 @@ import SwiftUI
 /// Spec version: 1.0
 struct RootView: View {
     @EnvironmentObject private var session: AppSession
+    @ObservedObject private var faceIDLock = FaceIDLock.shared
+
+    private var showFaceIDLock: Bool {
+        faceIDLock.shouldPresentLock(
+            onboardingDone: session.onboardingStep == .done,
+            isUITesting: session.isUITesting
+        )
+    }
 
     var body: some View {
         Group {
@@ -36,6 +44,18 @@ struct RootView: View {
         .accessibilityIdentifier(TestIdentifiers.rootView)
         .animation(session.isUITesting ? nil : .easeInOut(duration: 0.25), value: session.onboardingStep)
         .transition(.opacity.combined(with: .move(edge: .bottom)))
+        .overlay {
+            if showFaceIDLock {
+                FaceIDLockScreen(lock: faceIDLock)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: showFaceIDLock)
+        .onChange(of: session.onboardingStep) { _, step in
+            if step == .done {
+                faceIDLock.prepareForHome(isUITesting: session.isUITesting)
+            }
+        }
         .alert("Something went wrong", isPresented: Binding(
             get: { session.lastError != nil },
             set: { isPresented in

@@ -10,6 +10,7 @@ SwiftUI client for Mekasa v1.0.
 - **Shopping list** (List tab): check off, approve/deny, add custom — syncs to Cloud Run when signed in; low-stock auto-adds via API
 - **Spending** (Spend tab): week/month/year report from purchase events; Dashboard card shows weekly total
 - **Scan sounds**: accepted barcodes play `Mekasa/Sounds/scanner-beep.mp3` + success haptic; unknown/fail uses a nack tone + warning haptic. Trash station also uses a 5 s cooldown. Mute via Family → **Scan sounds** (default on). Quiet under `--uitesting`.
+- **Face ID**: optional unlock gate after Firebase sign-in. Enable via Family → **Unlock with Face ID** (default off). Uses `LocalAuthentication` (Face ID / Touch ID / passcode); 10 s background grace; skipped under `--uitesting`.
 
 Talks to Cloud Run for auth/household/**inventory**/**shopping list**/**spending**/**barcode lookup**.
 
@@ -224,13 +225,15 @@ cd ios && xcodegen generate
 
 Mute on-device via Family → **Scan sounds**. Unit coverage: `MekasaTests/ScanFeedbackTests.swift`. Structural: Family toggle in `UI004StructureTests`; trash typed-UPC in `UI005StructureTests`.
 
+Optional Face ID unlock: Family → **Unlock with Face ID**. Unit coverage: `MekasaTests/FaceIDLockTests.swift`. Structural: `UI004StructureTests.testFamily_faceIDLockToggleExists`.
+
 ## Spec mapping
 
 - UI-003 Onboarding · REQ-001 Auth · REQ-002 Household · REQ-003 Address/Stores  
 - UI-004 Dashboard + Add items hub · REQ-004–REQ-008 (inventory sync to API when signed in)  
 - UI-005 Trash station · REQ-008 (typed UPC, scan beep + haptic, 5 s cooldown, Scan sounds toggle)  
 - Shopping list · REQ-011–REQ-014 (client staging; low-stock auto-add)  
-- Family · REQ-019 (account/household cards, Scan sounds toggle)  
+- Family · REQ-019 (account/household cards, Scan sounds toggle, Face ID lock toggle)  
 - Voice add · REQ-007 (speech or sample phrase → catalog match → confirm)  
 - Realtime sync · REQ-020 (Firestore listeners when signed in; REST mutations)  
 - Push · PRD §8 (device register + invite FCM hooks; APNs key required in prod)  

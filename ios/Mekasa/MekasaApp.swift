@@ -62,7 +62,15 @@ struct MekasaApp: App {
         }
         .onChange(of: scenePhase) { _, phase in
             // NFR-007 AC2: queued error reports go out when the app returns to the foreground.
-            if phase == .active { ErrorReporter.shared.flushSoon(after: 0) }
+            if phase == .active {
+                ErrorReporter.shared.flushSoon(after: 0)
+                FaceIDLock.shared.sceneDidBecomeActive(
+                    onboardingDone: session.onboardingStep == .done,
+                    isUITesting: session.isUITesting
+                )
+            } else if phase == .background {
+                FaceIDLock.shared.sceneDidEnterBackground()
+            }
         }
     }
 

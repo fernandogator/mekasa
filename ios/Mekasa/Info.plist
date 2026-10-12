@@ -41,6 +41,8 @@
 	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Mekasa uses the camera to scan barcodes and receipts, and to take a home photo for your dashboard.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Mekasa uses Face ID so you can unlock the app when you return to your house.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Mekasa uses your location to suggest your home address and nearby stores.</string>
 	<key>NSMicrophoneUsageDescription</key>

@@ -16,6 +16,8 @@ struct FamilyMembersView: View {
     /// REQ-021: member whose avoid list is being edited.
     @State private var avoidEditing: HouseholdMemberDTO?
     @State private var scanSoundsEnabled = ScanFeedback.soundsEnabled
+    @ObservedObject private var faceIDLock = FaceIDLock.shared
+    @State private var faceIDEnabled = FaceIDLock.shared.isEnabled
     @State private var isSendingDiagnostics = false
     @State private var diagnosticsStatus: String?
 
@@ -32,6 +34,7 @@ struct FamilyMembersView: View {
                 membersSection
                 inviteSection
                 scanSoundsSection
+                faceIDLockSection
                 trashKioskSection
                 helpSection
 
@@ -308,6 +311,52 @@ struct FamilyMembersView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(MekasaTheme.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var faceIDLockSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Security")
+                .font(.system(size: 18, weight: .heavy, design: .rounded))
+                .foregroundStyle(MekasaTheme.text)
+            Toggle(isOn: $faceIDEnabled) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Unlock with \(faceIDLock.biometryLabel)")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(MekasaTheme.text)
+                    Text("Require \(faceIDLock.biometryLabel) when you open Mekasa again.")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(MekasaTheme.textMuted)
+                }
+            }
+            .tint(MekasaTheme.accent)
+            .onChange(of: faceIDEnabled) { _, enabled in
+                if enabled {
+                    if session.isUITesting {
+                        faceIDLock.isEnabled = true
+                        faceIDLock.markUnlockedForTesting()
+                        return
+                    }
+                    Task {
+                        let ok = await faceIDLock.enableWithPrompt()
+                        if !ok { faceIDEnabled = false }
+                    }
+                } else {
+                    faceIDLock.disable()
+                }
+            }
+            .accessibilityIdentifier(TestIdentifiers.faceIDLockToggle)
+            if let statusMessage = faceIDLock.statusMessage, !statusMessage.isEmpty {
+                Text(statusMessage)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(MekasaTheme.danger)
+                    .accessibilityIdentifier(TestIdentifiers.faceIDLockStatus)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(MekasaTheme.surfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .onAppear { faceIDEnabled = faceIDLock.isEnabled }
     }
 
     private var trashKioskSection: some View {
