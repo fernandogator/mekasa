@@ -84,7 +84,10 @@ final class FaceIDLockTests: XCTestCase {
         let ok = await lock.enableWithPrompt()
         XCTAssertFalse(ok)
         XCTAssertFalse(lock.isEnabled)
-        XCTAssertEqual(lock.statusMessage, "Biometrics aren’t available on this device.")
+        XCTAssertEqual(
+            lock.statusMessage,
+            "Face ID isn’t available. Check Settings → Face ID & Passcode."
+        )
     }
 
     @MainActor
