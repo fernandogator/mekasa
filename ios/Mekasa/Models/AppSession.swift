@@ -244,6 +244,7 @@ final class AppSession: ObservableObject {
         lastError = expiredSessionMessage
         isUIPreview = false
         isUITesting = false
+        FaceIDLock.shared.resetAfterSignOut()
         inventory = []
         activity = DashboardFixtures.activity
         shoppingList = []
