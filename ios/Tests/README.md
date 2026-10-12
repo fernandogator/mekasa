@@ -13,6 +13,8 @@ Shared identifiers + fixtures: `Tests/TestSupport/` (compiled into the app targe
 
 **Scan sounds (REQ-004 AC8 · REQ-008 AC4–AC5 · REQ-019 AC5 · UI-005 AC5):** Layer 0 `ScanFeedbackTests` + `ScanCooldownTests`; Layer 1 Family toggle in `UI004StructureTests.testFamily_scanSoundsToggleExists`, trash typed-UPC in `UI005StructureTests`. Feedback is forced off under `--uitesting`.
 
+**Face ID lock:** Layer 0 `FaceIDLockTests` (preference + gate policy + grace); Layer 1 Family toggle in `UI004StructureTests.testFamily_faceIDLockToggleExists`. Lock overlay is skipped under `--uitesting`.
+
 ```bash
 cd ios && xcodegen generate
 

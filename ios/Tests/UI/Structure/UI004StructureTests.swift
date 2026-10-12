@@ -133,6 +133,34 @@ final class UI004StructureTests: XCTestCase {
         XCTAssertEqual(toggle.value as? String, "1", "Toggle should turn Scan sounds back on")
     }
 
+    /// Family → Security → Unlock with Face ID toggle is present and off by default.
+    func testFamily_faceIDLockToggleExists() {
+        let familyTab = app.buttons["Family"]
+        XCTAssertTrue(familyTab.waitForExistence(timeout: UITestLaunch.elementTimeout))
+        familyTab.tap()
+
+        let toggle = app.switches[TestIdentifiers.faceIDLockToggle]
+        if !toggle.waitForExistence(timeout: 5) {
+            app.swipeUp()
+        }
+        if !toggle.waitForExistence(timeout: 5) {
+            app.swipeUp()
+        }
+        XCTAssertTrue(
+            toggle.waitForExistence(timeout: UITestLaunch.elementTimeout),
+            "Face ID lock toggle missing on Family tab"
+        )
+        XCTAssertEqual(toggle.value as? String, "0", "Face ID lock should default to off")
+        toggle.tap()
+        XCTAssertEqual(toggle.value as? String, "1", "Toggle should turn Face ID lock on")
+        toggle.tap()
+        XCTAssertEqual(toggle.value as? String, "0", "Toggle should turn Face ID lock back off")
+        XCTAssertFalse(
+            app.otherElements[TestIdentifiers.faceIDLockScreen].exists,
+            "Lock screen must stay hidden under --uitesting"
+        )
+    }
+
     /// REQ-005 AC7: pasted receipt text goes through the same parse + confirm path as a photo.
     func testAddHub_receiptPasteTextReachesConfirm() {
         UITestLaunch.addItemButton(app).tap()

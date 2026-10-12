@@ -1,0 +1,181 @@
+import XCTest
+@testable import Mekasa
+
+/// Optional Face ID / Touch ID gate preference and presentation rules.
+final class FaceIDLockTests: XCTestCase {
+
+    private var defaults: UserDefaults!
+
+    override func setUp() {
+        super.setUp()
+        let suite = "FaceIDLockTests.\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        UserDefaults.standard.removeObject(forKey: FaceIDLock.preferenceKey)
+        FaceIDLock.shared.disable()
+    }
+
+    override func tearDown() {
+        defaults.removeObject(forKey: FaceIDLock.preferenceKey)
+        defaults = nil
+        UserDefaults.standard.removeObject(forKey: FaceIDLock.preferenceKey)
+        FaceIDLock.shared.disable()
+        super.tearDown()
+    }
+
+    func testPreferenceKeyIsStable() {
+        XCTAssertEqual(FaceIDLock.preferenceKey, "mekasa.faceIDLockEnabled")
+    }
+
+    func testBackgroundGraceIsTenSeconds() {
+        XCTAssertEqual(FaceIDLock.backgroundGraceSeconds, 10)
+    }
+
+    private func makeLock(
+        authenticate: @escaping (String) async -> Result<Void, Error> = { _ in .success(()) },
+        biometryAvailable: Bool = true
+    ) -> FaceIDLock {
+        FaceIDLock(
+            defaults: defaults,
+            authenticate: authenticate,
+            biometryAvailable: biometryAvailable,
+            biometryLabel: "Face ID"
+        )
+    }
+
+    func testPreferenceDefaultsOff() {
+        XCTAssertFalse(makeLock().isEnabled)
+    }
+
+    func testPreferenceTogglePersists() {
+        let lock = makeLock()
+        lock.isEnabled = true
+        XCTAssertTrue(lock.isEnabled)
+        XCTAssertTrue(defaults.bool(forKey: FaceIDLock.preferenceKey))
+        lock.disable()
+        XCTAssertFalse(lock.isEnabled)
+        XCTAssertTrue(lock.isUnlocked)
+    }
+
+    @MainActor
+    func testEnableWithPromptSetsPreferenceOnSuccess() async {
+        let lock = makeLock()
+        let ok = await lock.enableWithPrompt()
+        XCTAssertTrue(ok)
+        XCTAssertTrue(lock.isEnabled)
+        XCTAssertTrue(lock.isUnlocked)
+    }
+
+    @MainActor
+    func testEnableWithPromptLeavesPreferenceOffOnFailure() async {
+        struct Boom: LocalizedError {
+            var errorDescription: String? { "denied" }
+        }
+        let lock = makeLock { _ in .failure(Boom()) }
+        let ok = await lock.enableWithPrompt()
+        XCTAssertFalse(ok)
+        XCTAssertFalse(lock.isEnabled)
+        XCTAssertEqual(lock.statusMessage, "denied")
+    }
+
+    @MainActor
+    func testEnableWithPromptFailsWhenBiometryUnavailable() async {
+        let lock = makeLock(biometryAvailable: false)
+        let ok = await lock.enableWithPrompt()
+        XCTAssertFalse(ok)
+        XCTAssertFalse(lock.isEnabled)
+        XCTAssertEqual(lock.statusMessage, "Biometrics aren’t available on this device.")
+    }
+
+    @MainActor
+    func testUnlockSetsUnlockedOnSuccess() async {
+        let lock = makeLock()
+        lock.markLockedForTesting()
+        await lock.unlock()
+        XCTAssertTrue(lock.isUnlocked)
+        XCTAssertNil(lock.statusMessage)
+    }
+
+    @MainActor
+    func testPrepareForHomeLocksWhenEnabled() {
+        let lock = makeLock()
+        lock.isEnabled = true
+        lock.prepareForHome(isUITesting: false)
+        XCTAssertFalse(lock.isUnlocked)
+        lock.prepareForHome(isUITesting: true)
+        XCTAssertTrue(lock.isUnlocked)
+    }
+
+    @MainActor
+    func testPrepareForHomeStaysUnlockedWhenDisabled() {
+        let lock = makeLock()
+        lock.isEnabled = false
+        lock.prepareForHome(isUITesting: false)
+        XCTAssertTrue(lock.isUnlocked)
+    }
+
+    func testPolicyHidesLockWhenDisabledOrUnlockedOrTesting() {
+        XCTAssertFalse(
+            FaceIDLockPolicy.shouldPresentLock(
+                enabled: false,
+                unlocked: false,
+                onboardingDone: true,
+                isUITesting: false
+            )
+        )
+        XCTAssertFalse(
+            FaceIDLockPolicy.shouldPresentLock(
+                enabled: true,
+                unlocked: true,
+                onboardingDone: true,
+                isUITesting: false
+            )
+        )
+        XCTAssertFalse(
+            FaceIDLockPolicy.shouldPresentLock(
+                enabled: true,
+                unlocked: false,
+                onboardingDone: false,
+                isUITesting: false
+            )
+        )
+        XCTAssertFalse(
+            FaceIDLockPolicy.shouldPresentLock(
+                enabled: true,
+                unlocked: false,
+                onboardingDone: true,
+                isUITesting: true
+            )
+        )
+    }
+
+    func testPolicyShowsLockWhenEnabledLockedAndHomeOpen() {
+        XCTAssertTrue(
+            FaceIDLockPolicy.shouldPresentLock(
+                enabled: true,
+                unlocked: false,
+                onboardingDone: true,
+                isUITesting: false
+            )
+        )
+    }
+
+    @MainActor
+    func testSceneGraceKeepsUnlockedForBriefBackground() {
+        let lock = makeLock()
+        lock.isEnabled = true
+        lock.markUnlockedForTesting()
+        lock.sceneDidEnterBackground()
+        lock.sceneDidBecomeActive(onboardingDone: true, isUITesting: false)
+        XCTAssertTrue(lock.isUnlocked, "Brief background should stay inside the grace window")
+    }
+
+    @MainActor
+    func testSceneActiveSkipsLockUnderUITesting() {
+        let lock = makeLock()
+        lock.isEnabled = true
+        lock.markLockedForTesting()
+        lock.sceneDidBecomeActive(onboardingDone: true, isUITesting: true)
+        XCTAssertTrue(lock.isUnlocked)
+    }
+}

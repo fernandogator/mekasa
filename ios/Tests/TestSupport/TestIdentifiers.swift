@@ -160,4 +160,8 @@ enum TestIdentifiers {
     static let sendDiagnosticsButton = "SendDiagnosticsButton"
     static let diagnosticsStatus = "DiagnosticsStatus"
     static let scanSoundsToggle = "ScanSoundsToggle"
+    static let faceIDLockToggle = "FaceIDLockToggle"
+    static let faceIDLockScreen = "FaceIDLockScreen"
+    static let faceIDUnlockButton = "FaceIDUnlockButton"
+    static let faceIDLockStatus = "FaceIDLockStatus"
 }
