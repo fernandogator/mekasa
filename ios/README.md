@@ -225,6 +225,8 @@ cd ios && xcodegen generate
 
 Mute on-device via Family → **Scan sounds**. Unit coverage: `MekasaTests/ScanFeedbackTests.swift`. Structural: Family toggle in `UI004StructureTests`; trash typed-UPC in `UI005StructureTests`.
 
+Optional Face ID unlock: Family → **Unlock with Face ID**. Unit coverage: `MekasaTests/FaceIDLockTests.swift`. Structural: `UI004StructureTests.testFamily_faceIDLockToggleExists`.
+
 ## Spec mapping
 
 - UI-003 Onboarding · REQ-001 Auth · REQ-002 Household · REQ-003 Address/Stores  
