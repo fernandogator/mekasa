@@ -133,6 +133,15 @@ final class UI004StructureTests: XCTestCase {
         XCTAssertEqual(toggle.value as? String, "1", "Toggle should turn Scan sounds back on")
     }
 
+    private func waitForSwitchValue(_ element: XCUIElement, _ expected: String, timeout: TimeInterval = 3) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if element.value as? String == expected { return true }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+        return element.value as? String == expected
+    }
+
     /// Family → Security → Unlock with Face ID toggle is present and off by default.
     func testFamily_faceIDLockToggleExists() {
         let familyTab = app.buttons["Family"]
@@ -150,11 +159,24 @@ final class UI004StructureTests: XCTestCase {
             toggle.waitForExistence(timeout: UITestLaunch.elementTimeout),
             "Face ID lock toggle missing on Family tab"
         )
+        // The section sits near the bottom of Family; keep it clear of the floating tab bar.
+        let windowBottom = app.windows.firstMatch.frame.maxY
+        for _ in 0 ..< 4 where toggle.frame.maxY > windowBottom - 160 {
+            app.swipeUp(velocity: .slow)
+        }
+        // Tap the switch itself; the row center is the two-line label.
+        let switchControl = toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5))
         XCTAssertEqual(toggle.value as? String, "0", "Face ID lock should default to off")
-        toggle.tap()
-        XCTAssertEqual(toggle.value as? String, "1", "Toggle should turn Face ID lock on")
-        toggle.tap()
-        XCTAssertEqual(toggle.value as? String, "0", "Toggle should turn Face ID lock back off")
+        switchControl.tap()
+        XCTAssertTrue(
+            waitForSwitchValue(toggle, "1"),
+            "Toggle should turn Face ID lock on"
+        )
+        switchControl.tap()
+        XCTAssertTrue(
+            waitForSwitchValue(toggle, "0"),
+            "Toggle should turn Face ID lock back off"
+        )
         XCTAssertFalse(
             app.otherElements[TestIdentifiers.faceIDLockScreen].exists,
             "Lock screen must stay hidden under --uitesting"
