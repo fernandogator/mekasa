@@ -566,3 +566,15 @@ secret, idempotent SQL migrations validated in CI against a Postgres
 service container, conservative automatic thresholds (3
 distinct households, or authoritative + 1), and by keeping the
 curation surface (`/v1/admin/product-conflicts`) as a follow-up.
+
+### ADR-009: Enum Strategy
+See [ADR-009](adr/ADR-009-enum-strategy.md).
+
+### ADR-010: Firebase Hosting for the Web App
+Date: 2026-10-13
+Status: Accepted
+Decision: Serve the desktop web app from Firebase Hosting in
+`hackathon2025-472017`, with a `/v1/**` rewrite to the `mekasa-api`
+Cloud Run service so the browser calls the API on the same origin.
+Details, alternatives and constraints (60-second rewrite timeout,
+auth-gated images) in [ADR-010](adr/ADR-010-web-hosting-firebase.md).
