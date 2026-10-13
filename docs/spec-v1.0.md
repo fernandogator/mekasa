@@ -508,8 +508,8 @@ Priority: P1
 Status: Draft — awaiting approval (decided 2026-10-13)
 Description: A desktop web app for the same households, users and data
 as the mobile apps, hosted on Firebase Hosting (ADR-010). It covers the
-dashboard, inventory, shopping list, spending, members and receipt upload.
-Barcode scanning, Trash Station mode and voice entry stay mobile-only.
+dashboard, inventory, shopping list, spending, members and receipt upload,
+with usage analytics (AC18). Barcode scanning, Trash Station mode and voice entry stay mobile-only.
 Design Artifact: design/exports/superdesign/desktop/01-dashboard.html
   (shell, Dashboard, Inventory), design/exports/superdesign/desktop/02-shopping-list.html,
   design/exports/superdesign/desktop/03-spending-analytics.html,
