@@ -1,84 +1,6 @@
-<!DOCTYPE html><html lang="en"><head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mekasa - Spending Report</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
-  <meta name="view-transition" content="same-origin">
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
-    :root {
-      --color-brand: #171e19;
-      --color-brand-muted: #b7c6c2;
-      --color-surface: #eeebe3;
-      --color-surface-elevated: #ffffff;
-      --color-text: #171e19;
-      --color-text-muted: #6d7a76;
-      --color-accent: #ca0013;
-      --color-danger: #ca0013;
-      --color-success: #2f6b4f;
-      --color-warning: #c45c12;
-      --color-overlay: rgba(183, 198, 194, 0.20);
-    }
-    body {
-      font-family: 'Nunito', sans-serif;
-      background-color: var(--color-surface);
-      color: var(--color-text);
-      margin: 0;
-    }
-    .text-brand { color: var(--color-brand); }
-    .text-text { color: var(--color-text); }
-    .text-muted { color: var(--color-text-muted); }
-    .bg-brand { background-color: var(--color-brand); }
-    .bg-accent { background-color: var(--color-accent); }
-    .bg-surface-elevated { background-color: var(--color-surface-elevated); }
-    .border-muted { border-color: rgba(183, 198, 194, 0.3); }
-    .sage-blob {
-      position: absolute;
-      top: -50px;
-      right: -50px;
-      width: 300px;
-      height: 300px;
-      border-radius: 50%;
-      background: var(--color-overlay);
-      filter: blur(40px);
-      z-index: 0;
-      pointer-events: none;
-    }
-    
-    /* View Transitions */
-    html {
-        background-color: var(--color-surface);
-    }
-    @view-transition { navigation: auto; }
-    ::view-transition { background-color: var(--color-surface); }
-
-    ::view-transition-old(nav), ::view-transition-new(nav),
-    ::view-transition-old(fab), ::view-transition-new(fab),
-    ::view-transition-old(sage-blob), ::view-transition-new(sage-blob) {
-        animation: none;
-        mix-blend-mode: normal;
-    }
-
-    ::view-transition-old(main-content) {
-        animation: 0.25s ease-out both fade-out;
-    }
-    ::view-transition-new(main-content) {
-        animation: 0.25s ease-in 0.1s both fade-in;
-    }
-
-    @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
-    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-
-    ::view-transition-old(root),
-    ::view-transition-new(root) {
-        animation: none;
-        mix-blend-mode: normal;
-    }
-  </style>
-
-<meta name="preview-version" content="a45a3eab-e709-415e-8a81-19f333a3c88b" />
-<meta name="preview-timestamp" content="2026-09-22T17:51:42.319Z" />
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><script src="https://cdn.tailwindcss.com"></script><script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script><link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet"><style>:root { --color-brand: #5d5652; --color-brand-muted: #5c6b54; --color-surface: #ede8e0; --color-surface-elevated: #faf7f3; --color-text: #5d5652; --color-text-muted: #5c6b54; --color-accent: #5a6f4f; --color-success: #dce8d3; --color-danger: #a44a3f; --color-warning-text: #8b5c32; --color-warning-tint: #f3e6d8; --color-decorative: #8fa085; --color-border: #76896b; } body { font-family: 'Nunito', sans-serif; background-color: var(--color-surface); color: var(--color-text); -webkit-font-smoothing: antialiased; } .sage-blob { position: absolute; top: -50px; right: -50px; width: 300px; height: 300px; border-radius: 50%; background: rgba(143, 160, 133, 0.20); filter: blur(40px); z-index: 0; pointer-events: none; } .mono { font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace; } .camera-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }</style>
+<meta name="preview-version" content="f60e440a-5add-4eae-98f3-0846b4f84bfe" />
+<meta name="preview-timestamp" content="2026-10-13T01:45:30.152Z" />
 
 <style>
   html::-webkit-scrollbar, body::-webkit-scrollbar, *::-webkit-scrollbar {
@@ -104,11 +26,11 @@
 </script>
 <script type="module">
     // SuperDesign Runtime
-    console.log('[SuperDesign] Preview loaded for versionId:', "a45a3eab-e709-415e-8a81-19f333a3c88b");
+    console.log('[SuperDesign] Preview loaded for versionId:', "f60e440a-5add-4eae-98f3-0846b4f84bfe");
 
     window.__SUPERDESIGN_PREVIEW__ = {
-      versionId: "a45a3eab-e709-415e-8a81-19f333a3c88b",
-      timestamp: "2026-09-22T17:51:42.319Z",
+      versionId: "f60e440a-5add-4eae-98f3-0846b4f84bfe",
+      timestamp: "2026-10-13T01:45:30.152Z",
       _modernScreenshotModule: null,
 
       sendMessage: function(type, data) {
@@ -457,7 +379,7 @@
     var componentRegistry = new Map();
     var instanceRegistry = new Map();
     var API_BASE = "https://api.superdesign.dev";
-    var DRAFT_ID = "a45a3eab-e709-415e-8a81-19f333a3c88b";
+    var DRAFT_ID = "f60e440a-5add-4eae-98f3-0846b4f84bfe";
 
     function buildDefaultProps(definition) {
       var defaultProps = {};
@@ -759,124 +681,4 @@
     console.log('[SDComponent] Runtime initialized');
   })();
   </script>
-</head>
-<body>
-  <div class="w-full h-screen flex flex-col relative overflow-hidden bg-[#eeebe3]">
-    <div class="sage-blob" style="view-transition-name: sage-blob"></div>
-    
-    <!-- Header -->
-    <header class="shrink-0 pt-14 px-6 z-10">
-      <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-black text-brand leading-none">This month</h1>
-        <div class="bg-surface-elevated rounded-full p-1 border border-muted flex items-center shadow-sm">
-            <button class="px-3 py-1 rounded-full text-[12px] font-bold text-muted">W</button>
-            <button class="px-3 py-1 rounded-full text-[12px] font-bold bg-brand text-white">M</button>
-            <button class="px-3 py-1 rounded-full text-[12px] font-bold text-muted">Y</button>
-        </div>
-      </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="flex-1 overflow-y-auto px-6 pb-32 z-10 space-y-8" style="view-transition-name: main-content">
-      
-      <!-- Hero Amount -->
-      <div class="flex flex-col items-center justify-center py-6">
-        <p class="text-[12px] font-bold uppercase tracking-[0.1em] text-muted mb-2">Total Spend</p>
-        <h2 class="text-[56px] font-black text-brand leading-none tracking-tight">$186<span class="text-[32px] text-muted">.40</span></h2>
-      </div>
-
-      <!-- Categories -->
-      <section class="bg-surface-elevated rounded-[40px] p-6 shadow-sm border border-muted space-y-6">
-        <h3 class="text-[20px] font-extrabold mb-4">By Category</h3>
-        
-        <!-- Category 1: Groceries -->
-        <div class="space-y-2">
-            <div class="flex justify-between items-end">
-                <span class="text-[16px] font-bold">Groceries</span>
-                <span class="text-[16px] font-black">$112.50</span>
-            </div>
-            <div class="h-4 w-full bg-[#b7c6c2]/30 rounded-full overflow-hidden">
-                <div class="h-full bg-brand rounded-full" style="width: 65%"></div>
-            </div>
-            <p class="text-[10px] font-bold text-muted uppercase tracking-wider">$200 Budget</p>
-        </div>
-
-        <!-- Category 2: Household (Over budget) -->
-        <div class="space-y-2">
-            <div class="flex justify-between items-end">
-                <span class="text-[16px] font-bold">Household</span>
-                <span class="text-[16px] font-black text-[#ca0013]">$48.90</span>
-            </div>
-            <div class="h-4 w-full bg-[#ca0013]/10 rounded-full overflow-hidden">
-                <div class="h-full bg-accent rounded-full" style="width: 100%"></div>
-            </div>
-            <p class="text-[10px] font-bold text-[#ca0013] uppercase tracking-wider">$40 Budget (Over)</p>
-        </div>
-
-        <!-- Category 3: Pets -->
-        <div class="space-y-2">
-            <div class="flex justify-between items-end">
-                <span class="text-[16px] font-bold">Pets</span>
-                <span class="text-[16px] font-black">$15.00</span>
-            </div>
-            <div class="h-4 w-full bg-[#b7c6c2]/30 rounded-full overflow-hidden">
-                <div class="h-full bg-brand rounded-full" style="width: 25%"></div>
-            </div>
-            <p class="text-[10px] font-bold text-muted uppercase tracking-wider">$60 Budget</p>
-        </div>
-
-        <!-- Category 4: Personal -->
-        <div class="space-y-2">
-            <div class="flex justify-between items-end">
-                <span class="text-[16px] font-bold">Personal</span>
-                <span class="text-[16px] font-black">$10.00</span>
-            </div>
-            <div class="h-4 w-full bg-[#b7c6c2]/30 rounded-full overflow-hidden">
-                <div class="h-full bg-brand rounded-full" style="width: 15%"></div>
-            </div>
-            <p class="text-[10px] font-bold text-muted uppercase tracking-wider">$80 Budget</p>
-        </div>
-      </section>
-
-      <!-- Top Store -->
-      <div class="bg-surface-elevated p-5 rounded-[40px] shadow-sm border border-muted flex items-center">
-        <div class="w-12 h-12 rounded-full bg-[#f1f4f3] flex items-center justify-center mr-4">
-            <iconify-icon icon="lucide:shopping-bag" class="text-2xl text-brand"></iconify-icon>
-        </div>
-        <div>
-            <p class="text-[12px] font-bold text-muted uppercase tracking-wider">Top Store</p>
-            <p class="text-[20px] font-extrabold">H-E-B</p>
-        </div>
-      </div>
-
-    </main>
-
-    <!-- Bottom Navigation -->
-    <div class="absolute bottom-8 left-6 right-6 z-40" style="view-transition-name: nav">
-      <div class="bg-brand h-[64px] rounded-full flex items-center justify-between px-6 shadow-xl relative">
-        <a id="nav-home-link" href="https://p.superdesign.dev/draft/69d15b18-61b1-45ec-92f6-5f89e59a7ee9" class="flex flex-col items-center justify-center text-[#b7c6c2] w-12">
-          <iconify-icon icon="lucide:home" class="text-2xl mb-1"></iconify-icon>
-        </a>
-        <a id="nav-list-link" href="https://p.superdesign.dev/draft/b234a6ab-1837-48a9-84d1-a2ed870ae61c" class="flex flex-col items-center justify-center text-[#b7c6c2] w-12">
-          <iconify-icon icon="lucide:list-todo" class="text-2xl mb-1"></iconify-icon>
-        </a>
-        
-        <!-- Spacer for FAB -->
-        <div class="w-16"></div>
-        
-        <a id="nav-spend-link" href="https://p.superdesign.dev/draft/a45a3eab-e709-415e-8a81-19f333a3c88b" class="flex flex-col items-center justify-center text-white w-12">
-          <iconify-icon icon="lucide:pie-chart" class="text-2xl mb-1"></iconify-icon>
-        </a>
-        <a id="nav-people-link" href="https://p.superdesign.dev/draft/248f70a0-c51e-430f-9a3c-ed7d25f68606" class="flex flex-col items-center justify-center text-[#b7c6c2] w-12">
-          <iconify-icon icon="lucide:users" class="text-2xl mb-1"></iconify-icon>
-        </a>
-      </div>
-      
-      <!-- Center Add FAB -->
-      <a id="fab-add-btn" href="https://p.superdesign.dev/draft/eee7d5dd-5cc6-4c4a-8c91-2717e1973660" style="view-transition-name: fab" class="absolute left-1/2 -top-6 -translate-x-1/2 w-[56px] h-[56px] bg-accent rounded-full flex items-center justify-center text-white shadow-[0_8px_16px_rgba(202,0,19,0.3)] border-[4px] border-[#eeebe3] active:scale-95 transition-transform">
-        <iconify-icon icon="lucide:plus" class="text-2xl"></iconify-icon>
-      </a>
-    </div>
-
-  </div>
-</body></html>
+</head><body><div class="w-full h-screen flex flex-col relative overflow-hidden bg-[#ede8e0]" data-sd-id="1"><div class="sage-blob" data-sd-id="2"></div><header class="shrink-0 pt-14 px-6 z-10 flex items-center justify-between" data-sd-id="3"><a id="nav-back-step-2" href="#" class="w-11 h-11 -ml-2 rounded-full flex items-center justify-center hover:bg-black/5 transition-colors" data-sd-id="4"><iconify-icon icon="lucide:chevron-left" class="text-2xl"></iconify-icon></a><div class="flex flex-col items-center" data-sd-id="5"><span class="text-[12px] font-bold uppercase tracking-[0.12em] text-[#5c6b54]" data-sd-id="6">Step 1 of 3</span><div class="h-1 w-24 bg-white/40 rounded-full mt-1 overflow-hidden" data-sd-id="7"><div class="h-full w-1/3 bg-[#5d5652] rounded-full" data-sd-id="8"></div></div></div><div class="w-11" data-sd-id="9"></div></header><main class="flex-1 overflow-y-auto px-6 pt-6 z-10 relative flex flex-col" data-sd-id="10"><div class="mb-6" data-sd-id="11"><h2 class="text-[24px] font-black leading-tight tracking-tight mb-1" data-sd-id="12">Sourdough Loaf</h2><div class="flex items-center gap-2 text-[12px] font-bold text-[#5c6b54]" data-sd-id="13"><span class="uppercase tracking-wider" data-sd-id="14">HEB SRDGH LOAF</span><span data-sd-id="15">•</span><span class="font-black text-[#5d5652]" data-sd-id="16">$4.99</span></div></div><div class="bg-white/60 rounded-[24px] p-4 border border-[#76896b]/30 flex items-center justify-between mb-8" data-sd-id="17"><div class="flex items-center gap-3" data-sd-id="18"><div class="w-8 h-8 rounded-full bg-[#dce8d3] flex items-center justify-center" data-sd-id="19"><iconify-icon icon="lucide:check" class="text-[#5d5652] text-lg"></iconify-icon></div><div class="flex flex-col" data-sd-id="20"><span class="text-[12px] font-bold uppercase tracking-wider text-[#5c6b54]" data-sd-id="21">Barcode Found</span><span class="mono text-[18px] font-bold tracking-tighter" data-sd-id="22">0 41220 57603 7</span></div></div><a id="rescan-link" href="#" class="h-11 flex items-center text-[12px] font-extrabold text-[#5a6f4f] uppercase tracking-wider px-2" data-sd-id="23">Rescan</a></div><div class="mb-8" data-sd-id="shared-info-container"><div class="flex items-center justify-between mb-2"><h4 class="text-[14px] font-extrabold text-[#5d5652]">Shared with all users</h4><button id="info-shared-btn" class="w-11 h-11 flex items-center justify-center text-[#76896b] hover:bg-black/5 rounded-full transition-colors"><iconify-icon icon="lucide:info" class="text-xl"></iconify-icon></button></div><p class="text-[14px] leading-snug text-[#5c6b54]">Your photo will be shown with this product to other Mekasa households. Keep people, faces and receipts out of the shot.</p></div><div class="flex flex-col items-center mb-8" data-sd-id="24"><h3 class="text-[18px] font-extrabold mb-6" data-sd-id="25">Take a picture <span class="text-[#5c6b54] font-semibold" data-sd-id="26">(optional)</span></h3><button id="camera-capture-btn" class="w-[120px] h-[120px] rounded-full bg-[#1a1918] flex items-center justify-center text-[#faf7f3] shadow-[0_12px_24px_rgba(26,25,24,0.3)] active:scale-90 transition-transform" data-sd-id="27"><iconify-icon icon="lucide:camera" class="text-4xl"></iconify-icon></button><a id="library-link" href="#" class="h-11 mt-4 px-4 flex items-center justify-center text-[14px] font-bold text-[#5c6b54] gap-1" data-sd-id="28"><iconify-icon icon="lucide:image" class="text-lg"></iconify-icon> Use library</a></div><div id="catalog-match-card" class="bg-[#faf7f3] rounded-[24px] p-4 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] border border-[#76896b]/30 mb-8" data-sd-id="29"><div class="flex items-center gap-4" data-sd-id="30"><div class="w-16 h-16 rounded-[16px] bg-[#f8f9f8] overflow-hidden flex items-center justify-center shrink-0 border border-black/5" data-sd-id="31"><img src="https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&amp;fit=crop&amp;q=80&amp;w=200&amp;h=200" alt="Sourdough Loaf" class="w-full h-full object-cover" data-sd-id="32" onerror="this.onerror=null;this.src='https://placehold.co/600x400/1a1a1a/888?text=Image';"></div><div class="flex-1" data-sd-id="33"><div class="bg-[#dce8d3] inline-flex px-3 py-1 rounded-full mb-1 border border-[#76896b]/50" data-sd-id="34"><span class="text-[12px] font-black uppercase tracking-wider text-[#5d5652]" data-sd-id="35">Catalog Match</span></div><h4 class="font-black text-[16px] leading-tight mb-0.5" data-sd-id="36">H-E-B Sourdough Loaf</h4><p class="text-[12px] font-bold text-[#5c6b54]" data-sd-id="37">Pantry · 24 oz · $4.99</p></div><iconify-icon icon="lucide:chevron-right" class="text-[#5c6b54] text-xl"></iconify-icon></div></div></main><footer class="shrink-0 px-6 pb-[34px] z-10 flex flex-col gap-3" data-sd-id="38"><a id="cta-save-next" href="#" class="flex items-center justify-center w-full h-14 bg-[#5a6f4f] text-white rounded-[24px] font-black text-[18px] shadow-[0_8px_20px_rgba(90,111,79,0.25)] active:scale-95 transition-transform" data-sd-id="39">Looks right — next</a><a id="cta-not-product" href="#" class="flex items-center justify-center w-full h-11 text-[14px] font-bold text-[#5c6b54] active:scale-95 transition-transform">Not this product?</a></footer></div></body></html>

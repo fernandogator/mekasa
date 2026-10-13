@@ -1,0 +1,1030 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="view-transition" content="same-origin">
+  <title>Mekasa Desktop - Spending Analytics</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+
+    :root {
+      --color-brand: #5d5652;
+      --color-brand-muted: #8fa085;
+      --color-surface: #ede8e0;
+      --color-surface-elevated: #faf7f3;
+      --color-text: #5d5652;
+      --color-text-muted: #8fa085;
+      --color-accent: #5a6f4f;
+      --color-danger: #a44a3f;
+      --color-success: #5a6f4f;
+      --color-warning: #c48c5a;
+    }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background-color: var(--color-surface);
+      color: var(--color-text);
+      margin: 0;
+      overflow: hidden;
+    }
+
+    .sidebar-link.active {
+      background-color: var(--color-accent);
+      color: white !important;
+      box-shadow: 0 4px 12px rgba(90, 111, 79, 0.2);
+    }
+
+    .card-shadow {
+      box-shadow: 0 10px 30px -10px rgba(93, 86, 82, 0.1);
+    }
+
+    /* Custom Chart Visuals */
+    .trend-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--color-accent);
+      border-radius: 50%;
+      position: relative;
+    }
+    .trend-line {
+      height: 2px;
+      background: var(--color-accent);
+      opacity: 0.3;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: var(--color-brand-muted);
+      border-radius: 10px;
+    }
+  </style>
+
+<meta name="preview-version" content="5f669691-b723-4a86-bb50-d6d7ef4f1ca0" />
+<meta name="preview-timestamp" content="2026-10-13T01:45:32.656Z" />
+
+<style>
+  html::-webkit-scrollbar, body::-webkit-scrollbar, *::-webkit-scrollbar {
+    display: none !important; width: 0 !important; height: 0 !important;
+  }
+  html, body, * {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+</style>
+<style>
+          body:not(.sd-ready) { opacity: 0 !important; }
+          body.sd-ready { opacity: 1 !important; transition: opacity 0.1s ease-in; }
+          sd-component { display: block; }
+        </style>
+
+<script type="module">
+  (function() {
+    document.addEventListener('wheel', function(e) {
+      if (e.ctrlKey) e.preventDefault();
+    }, { passive: false });
+  })();
+</script>
+<script type="module">
+    // SuperDesign Runtime
+    console.log('[SuperDesign] Preview loaded for versionId:', "5f669691-b723-4a86-bb50-d6d7ef4f1ca0");
+
+    window.__SUPERDESIGN_PREVIEW__ = {
+      versionId: "5f669691-b723-4a86-bb50-d6d7ef4f1ca0",
+      timestamp: "2026-10-13T01:45:32.656Z",
+      _modernScreenshotModule: null,
+
+      sendMessage: function(type, data) {
+        if (window.parent) {
+          window.parent.postMessage({
+            source: 'superdesign-preview',
+            type: type,
+            data: data,
+            versionId: this.versionId
+          }, '*');
+        }
+      },
+
+      ready: function() {
+        this.sendMessage('ready', { timestamp: Date.now() });
+      },
+
+      
+      _captureScreenshotInternal: async function() {
+        if (!this._modernScreenshotModule) {
+          console.log('[SuperDesign] Loading modern-screenshot library...');
+          this._modernScreenshotModule = await import('https://esm.sh/modern-screenshot@4.6.6');
+        }
+        var modernScreenshot = this._modernScreenshotModule;
+        if (!modernScreenshot || !modernScreenshot.domToCanvas) {
+          throw new Error('modern-screenshot library not loaded');
+        }
+
+        var scrollX = window.scrollX || window.pageXOffset;
+        var scrollY = window.scrollY || window.pageYOffset;
+        var viewportWidth = window.innerWidth;
+        var viewportHeight = window.innerHeight;
+        var documentWidth = Math.max(
+          document.documentElement.scrollWidth,
+          document.documentElement.offsetWidth,
+          document.documentElement.clientWidth,
+          document.body.scrollWidth,
+          document.body.offsetWidth
+        );
+        var documentHeight = Math.max(
+          document.documentElement.scrollHeight,
+          document.documentElement.offsetHeight,
+          document.documentElement.clientHeight,
+          document.body.scrollHeight,
+          document.body.offsetHeight
+        );
+
+        var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        var pixelRatio = isMobile ? 1 : (window.devicePixelRatio || 1);
+
+        var dataUrl;
+
+        if (isMobile) {
+          var wrapper = document.createElement('div');
+          wrapper.style.cssText = 'position:fixed;top:0;left:0;width:' + viewportWidth + 'px;height:' + viewportHeight + 'px;overflow:hidden;z-index:999999;pointer-events:none;';
+          var clone = document.body.cloneNode(true);
+          clone.style.cssText = 'position:absolute;top:' + (-scrollY) + 'px;left:' + (-scrollX) + 'px;margin:0;width:' + documentWidth + 'px;';
+          wrapper.appendChild(clone);
+          document.body.appendChild(wrapper);
+          try {
+            var viewportCanvas = await modernScreenshot.domToCanvas(wrapper, {
+              scale: 1, backgroundColor: '#ffffff',
+              width: viewportWidth, height: viewportHeight,
+            });
+            dataUrl = viewportCanvas.toDataURL('image/png', 0.5);
+          } finally {
+            document.body.removeChild(wrapper);
+          }
+        } else {
+          var fullCanvas = await modernScreenshot.domToCanvas(document.documentElement, {
+            scale: pixelRatio, backgroundColor: '#ffffff',
+            width: documentWidth, height: documentHeight,
+          });
+          var viewportCanvas = document.createElement('canvas');
+          viewportCanvas.width = viewportWidth * pixelRatio;
+          viewportCanvas.height = viewportHeight * pixelRatio;
+          var ctx = viewportCanvas.getContext('2d');
+          if (!ctx) throw new Error('Failed to get canvas context');
+          ctx.drawImage(
+            fullCanvas,
+            scrollX * pixelRatio, scrollY * pixelRatio,
+            viewportWidth * pixelRatio, viewportHeight * pixelRatio,
+            0, 0, viewportWidth * pixelRatio, viewportHeight * pixelRatio
+          );
+          dataUrl = viewportCanvas.toDataURL('image/png', 1.0);
+        }
+
+        if (!dataUrl || !dataUrl.startsWith('data:image/png;base64,') || dataUrl.length < 100) {
+          throw new Error('Invalid screenshot data');
+        }
+
+        return {
+          dataUrl: dataUrl,
+          viewportWidth: viewportWidth,
+          viewportHeight: viewportHeight,
+          pixelRatio: pixelRatio
+        };
+      },
+
+      autoCapture: async function() {
+        if (window === window.parent) return;
+        try {
+          var result = await this._captureScreenshotInternal();
+          this.sendMessage('auto-screenshot', {
+            dataUrl: result.dataUrl,
+            timestamp: Date.now(),
+            viewportWidth: result.viewportWidth,
+            viewportHeight: result.viewportHeight,
+            pixelRatio: result.pixelRatio,
+          });
+        } catch (error) {
+          console.error('[SuperDesign] Auto-capture failed:', error);
+        }
+      },
+
+      captureScreenshot: async function(requestId, autoCaptureId) {
+        try {
+          this._currentRequestId = requestId;
+          this._currentAutoCaptureId = autoCaptureId;
+          var result = await this._captureScreenshotInternal();
+          this.sendMessage('screenshot-captured', {
+            dataUrl: result.dataUrl,
+            timestamp: Date.now(),
+            viewportWidth: result.viewportWidth,
+            viewportHeight: result.viewportHeight,
+            pixelRatio: result.pixelRatio,
+            requestId: this._currentRequestId,
+            autoCaptureId: this._currentAutoCaptureId
+          });
+          return result.dataUrl;
+        } catch (error) {
+          console.error('[SuperDesign] Screenshot capture failed:', error);
+          this.sendMessage('screenshot-error', {
+            error: error.message || String(error),
+            timestamp: Date.now(),
+            requestId: this._currentRequestId,
+            autoCaptureId: this._currentAutoCaptureId
+          });
+          throw error;
+        }
+      }
+  
+    };
+
+    
+    // Font loading helpers
+    window.__SUPERDESIGN_PREVIEW__.loadedFonts = new Set();
+    window.__SUPERDESIGN_PREVIEW__.loadGoogleFont = function(fontFamily) {
+      if (!fontFamily || this.loadedFonts.has(fontFamily)) return;
+      if (fontFamily.startsWith('Custom-')) return;
+
+      var systemFonts = ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI',
+        'Roboto', 'Helvetica', 'Arial', 'sans-serif', 'Georgia', 'Times New Roman',
+        'Times', 'serif', 'Menlo', 'Monaco', 'Consolas', 'Courier New', 'monospace'];
+      if (systemFonts.some(function(sf) { return fontFamily.toLowerCase().includes(sf.toLowerCase()); })) return;
+
+      if (!document.querySelector('link[href*="fonts.googleapis.com"]')) {
+        var preconnect1 = document.createElement('link');
+        preconnect1.rel = 'preconnect';
+        preconnect1.href = 'https://fonts.googleapis.com';
+        document.head.appendChild(preconnect1);
+        var preconnect2 = document.createElement('link');
+        preconnect2.rel = 'preconnect';
+        preconnect2.href = 'https://fonts.gstatic.com';
+        preconnect2.crossOrigin = 'anonymous';
+        document.head.appendChild(preconnect2);
+      }
+
+      var linkId = 'google-font-' + fontFamily.replace(/\\s+/g, '-').toLowerCase();
+      if (!document.getElementById(linkId)) {
+        var link = document.createElement('link');
+        link.id = linkId;
+        link.rel = 'stylesheet';
+        link.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(fontFamily) + ':wght@400;500;600;700&display=swap';
+        link.onerror = function() { console.error('[SuperDesign] Failed to load Google Font:', fontFamily); };
+        document.head.appendChild(link);
+      }
+      this.loadedFonts.add(fontFamily);
+    };
+
+    window.__SUPERDESIGN_PREVIEW__.loadedCustomFonts = new Set();
+    window.__SUPERDESIGN_PREVIEW__.loadCustomFont = function(fontInfo) {
+      if (!fontInfo || !fontInfo.family || !fontInfo.url) return;
+      if (this.loadedCustomFonts.has(fontInfo.family)) return;
+      var styleId = 'custom-font-' + fontInfo.family.replace(/[^a-zA-Z0-9]/g, '-');
+      if (document.getElementById(styleId)) return;
+      var style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = '@font-face { ' +
+        'font-family: "' + fontInfo.family + '"; ' +
+        'src: url("' + fontInfo.url + '") format("' + (fontInfo.format || 'woff2') + '"); ' +
+        'font-weight: 100 900; font-style: normal; font-display: swap; }';
+      document.head.appendChild(style);
+      this.loadedCustomFonts.add(fontInfo.family);
+    };
+  
+    
+    // Theme sync
+    window.__SUPERDESIGN_PREVIEW__.applyTheme = function(payload, isDark) {
+      var root = document.documentElement;
+      var colorVars = isDark ? payload.dark : payload.light;
+      for (var name in colorVars) {
+        if (colorVars.hasOwnProperty(name)) {
+          root.style.setProperty(name, colorVars[name]);
+        }
+      }
+
+      if (payload.customFonts && Array.isArray(payload.customFonts)) {
+        payload.customFonts.forEach(function(fontInfo) {
+          window.__SUPERDESIGN_PREVIEW__.loadCustomFont(fontInfo);
+        });
+      }
+
+      if (payload.typography) {
+        var t = payload.typography;
+        if (t.fontSans && !t.fontSans.startsWith('Custom-')) window.__SUPERDESIGN_PREVIEW__.loadGoogleFont(t.fontSans);
+        if (t.fontSerif && !t.fontSerif.startsWith('Custom-')) window.__SUPERDESIGN_PREVIEW__.loadGoogleFont(t.fontSerif);
+        if (t.fontMono && !t.fontMono.startsWith('Custom-')) window.__SUPERDESIGN_PREVIEW__.loadGoogleFont(t.fontMono);
+
+        var formatFontValue = function(ff) {
+          if (!ff) return ff;
+          var first = ff.split(',')[0].trim().replace(/^["']|["']$/g, '');
+          return first.startsWith('var(') ? first : '"' + first + '"';
+        };
+        root.style.setProperty('--font-sans', formatFontValue(t.fontSans));
+        root.style.setProperty('--font-serif', formatFontValue(t.fontSerif));
+        root.style.setProperty('--font-mono', formatFontValue(t.fontMono));
+        root.style.setProperty('--font-size', t.fontSize);
+        root.style.setProperty('--line-height', t.lineHeight);
+        root.style.setProperty('--letter-spacing-body', t.letterSpacing);
+        root.style.setProperty('--letter-spacing-heading', t.headingLetterSpacing);
+        root.style.setProperty('--font-weight-regular', t.fontWeightRegular);
+        root.style.setProperty('--font-weight-bold', t.fontWeightBold);
+      }
+
+      if (payload.effects) {
+        root.style.setProperty('--radius', payload.effects.radius);
+        root.style.setProperty('--shadow', payload.effects.shadow);
+      }
+
+      if (isDark) { root.classList.add('dark'); } else { root.classList.remove('dark'); }
+    };
+  
+    
+    // Message listener
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'request-screenshot') {
+        if (window.__SUPERDESIGN_PREVIEW__) {
+          window.__SUPERDESIGN_PREVIEW__.captureScreenshot(event.data.requestId, event.data.autoCaptureId);
+        }
+      }
+
+      if (event.data && event.data.type === 'superdesign-theme-update') {
+        if (window.__SUPERDESIGN_PREVIEW__ && event.data.payload) {
+          var isDark = event.data.isDark || false;
+          window.__SUPERDESIGN_PREVIEW__.applyTheme(event.data.payload, isDark);
+          window.__SUPERDESIGN_PREVIEW__.sendMessage('theme-applied', { timestamp: Date.now(), isDark: isDark });
+        }
+      }
+
+      if (event.data && event.data.type === 'navigate-to-route') {
+        var route = event.data.route;
+        if (route) {
+          if (route === '/') {
+            if (window.location.hash) {
+              history.pushState(null, '', window.location.pathname + window.location.search);
+              window.dispatchEvent(new HashChangeEvent('hashchange'));
+            }
+          } else {
+            var newHash = '#' + route;
+            if (window.location.hash !== newHash) {
+              window.location.hash = route;
+            }
+          }
+        }
+      }
+    });
+  
+    
+    // Page lifecycle
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() { window.__SUPERDESIGN_PREVIEW__.ready(); });
+    } else {
+      window.__SUPERDESIGN_PREVIEW__.ready();
+    }
+
+    function onPageFullyLoaded() {
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          setTimeout(function() {
+            window.__SUPERDESIGN_PREVIEW__.sendMessage('loaded', { timestamp: Date.now() });
+          }, 1500);
+          // Auto-capture disabled for this preview type
+        });
+      });
+    }
+
+    if (document.readyState === 'complete') {
+      onPageFullyLoaded();
+    } else {
+      window.addEventListener('load', onPageFullyLoaded);
+    }
+  
+  </script>
+<script type="module">
+  window.addEventListener('error', function(event) {
+    var msg = event.message || '';
+    var name = (event.error && event.error.name) || msg.split(':')[0] || '';
+    if (name === 'HierarchyRequestError' || msg.includes("Failed to execute 'appendChild' on 'Node'")) return;
+    if (window.__SUPERDESIGN_PREVIEW__) {
+      var err = event.error;
+      window.__SUPERDESIGN_PREVIEW__.sendMessage('error', {
+        message: event.message, filename: event.filename,
+        lineno: event.lineno, colno: event.colno,
+        name: (err && err.name) || name || 'Error',
+        stack: (err && err.stack) || null
+      });
+    }
+  });
+  window.addEventListener('unhandledrejection', function(event) {
+    var reason = event.reason;
+    var msg = (reason && reason.message) || (typeof reason === 'string' ? reason : '');
+    var name = (reason && reason.name) || 'UnhandledRejection';
+    if (name === 'HierarchyRequestError' || msg.includes("Failed to execute 'appendChild' on 'Node'")) return;
+    if (window.__SUPERDESIGN_PREVIEW__) {
+      window.__SUPERDESIGN_PREVIEW__.sendMessage('unhandled-rejection', {
+        reason: (reason && reason.message) || String(reason),
+        name: name,
+        stack: (reason && reason.stack) || null
+      });
+    }
+  });
+</script>
+<script type="module">import '/__visual-edit-bridge/iframe-runtime.mjs?v=81349612';</script>
+<script  src="https://cdn.jsdelivr.net/npm/petite-vue@0.4.1/dist/petite-vue.iife.js"></script>
+<script type="module">
+  (function() {
+    'use strict';
+
+    var MAX_RENDER_DEPTH = 5;
+
+    function showPage() {
+      document.body.classList.add('sd-ready');
+    }
+
+    var componentRegistry = new Map();
+    var instanceRegistry = new Map();
+    var API_BASE = "https://api.superdesign.dev";
+    var DRAFT_ID = "5f669691-b723-4a86-bb50-d6d7ef4f1ca0";
+
+    function buildDefaultProps(definition) {
+      var defaultProps = {};
+      var props = definition.props;
+      if (!props || !Array.isArray(props)) return defaultProps;
+      for (var i = 0; i < props.length; i++) {
+        var prop = props[i];
+        if (prop.defaultValue === undefined) continue;
+        var path = prop.name.split('.');
+        var current = defaultProps;
+        for (var j = 0; j < path.length - 1; j++) {
+          var key = path[j];
+          if (!(key in current) || typeof current[key] !== 'object' || current[key] === null) {
+            current[key] = {};
+          }
+          current = current[key];
+        }
+        current[path[path.length - 1]] = prop.defaultValue;
+      }
+      return defaultProps;
+    }
+
+    function deepMerge(target, source) {
+      var result = Object.assign({}, target);
+      for (var key in source) {
+        if (!source.hasOwnProperty(key)) continue;
+        if (
+          source[key] && typeof source[key] === 'object' && !Array.isArray(source[key]) &&
+          result[key] && typeof result[key] === 'object' && !Array.isArray(result[key])
+        ) {
+          result[key] = deepMerge(result[key], source[key]);
+        } else {
+          result[key] = source[key];
+        }
+      }
+      return result;
+    }
+
+    function registerComponent(id, definition) {
+      componentRegistry.set(id, definition);
+      console.log('[SDComponent] Registered component:', id);
+    }
+
+    function renderComponent(element, depth) {
+      depth = depth || 0;
+      var componentId = element.getAttribute('componentid') || element.getAttribute('ref');
+      var instanceId = element.getAttribute('instance');
+      var propsAttr = element.getAttribute('props');
+
+      if (!componentId) {
+        console.warn('[SDComponent] Missing componentId attribute on sd-component');
+        return;
+      }
+
+      if (depth >= MAX_RENDER_DEPTH) {
+        console.warn('[SDComponent] Max render depth reached for:', componentId);
+        element.setAttribute('data-error', 'max-depth');
+        return;
+      }
+
+      var definition = componentRegistry.get(componentId);
+      if (!definition) {
+        console.warn('[SDComponent] Component not found:', componentId);
+        element.setAttribute('data-pending', 'true');
+        return;
+      }
+
+      var instanceProps = {};
+      if (propsAttr) {
+        try { instanceProps = JSON.parse(propsAttr); }
+        catch (e) { console.warn('[SDComponent] Invalid props JSON:', propsAttr); }
+      }
+
+      var defaultProps = buildDefaultProps(definition);
+      var finalProps = deepMerge(defaultProps, instanceProps);
+
+      element.innerHTML = definition.htmlContent;
+
+      if (window.PetiteVue) {
+        finalProps.$emit = function(eventName, payload) {
+          if (payload && typeof payload === 'object' && payload.href) {
+            window.location.href = payload.href;
+            return;
+          }
+          var customEvent = new CustomEvent('sd-' + eventName, {
+            detail: payload, bubbles: true, composed: true,
+          });
+          element.dispatchEvent(customEvent);
+        };
+        window.PetiteVue.createApp(finalProps).mount(element);
+      } else {
+        console.warn('[SDComponent] Petite-Vue not loaded, template syntax will not be resolved');
+      }
+
+      instanceRegistry.set(instanceId, {
+        componentId: componentId,
+        element: element,
+        props: finalProps,
+        version: definition.version,
+      });
+
+      element.removeAttribute('data-pending');
+      element.setAttribute('data-rendered', 'true');
+      element.setAttribute('data-version', String(definition.version));
+      console.log('[SDComponent] Rendered:', componentId, instanceId);
+
+      // Render any nested sd-component children that were just injected
+      var nestedElements = element.querySelectorAll('sd-component[componentid], sd-component[ref]');
+      if (nestedElements.length > 0) {
+        var missingIds = [];
+        nestedElements.forEach(function(nested) {
+          var nestedId = nested.getAttribute('componentid') || nested.getAttribute('ref');
+          if (nestedId && !componentRegistry.has(nestedId)) {
+            missingIds.push(nestedId);
+          }
+        });
+
+        if (missingIds.length > 0) {
+          // Fetch missing nested components, then render
+          loadComponentsByIds(missingIds).then(function() {
+            nestedElements.forEach(function(nested) {
+              if (!nested.getAttribute('data-rendered')) {
+                renderComponent(nested, depth + 1);
+              }
+            });
+          });
+        } else {
+          // All nested definitions already loaded — render immediately
+          nestedElements.forEach(function(nested) {
+            if (!nested.getAttribute('data-rendered')) {
+              renderComponent(nested, depth + 1);
+            }
+          });
+        }
+      }
+    }
+
+    function updateComponentInstances(componentId) {
+      var elements = document.querySelectorAll('sd-component[componentid="' + componentId + '"], sd-component[ref="' + componentId + '"]');
+      elements.forEach(function(el) { renderComponent(el); });
+    }
+
+    function initializeComponents() {
+      var elements = document.querySelectorAll('sd-component[componentid], sd-component[ref]');
+      elements.forEach(function(el) {
+        if (!el.getAttribute('data-rendered')) { renderComponent(el); }
+      });
+    }
+
+    async function loadComponentsByIds(ids) {
+      if (!ids || ids.length === 0) return;
+      // Deduplicate and filter already-loaded
+      var uniqueIds = ids.filter(function(id, i, arr) {
+        return arr.indexOf(id) === i && !componentRegistry.has(id);
+      });
+      if (uniqueIds.length === 0) return;
+
+      try {
+        console.log('[SDComponent] Batch loading components:', uniqueIds);
+        var response = await fetch(API_BASE + '/v1/design-drafts/components/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ componentIds: uniqueIds }),
+        });
+        if (!response.ok) throw new Error('Batch load failed: ' + response.status);
+        var components = await response.json();
+        console.log('[SDComponent] Batch loaded', components.length, 'components');
+        components.forEach(function(comp) { registerComponent(comp.id, comp); });
+      } catch (error) {
+        console.error('[SDComponent] Failed to batch load components:', error);
+      }
+    }
+
+    async function loadComponentsForDraft() {
+      if (!DRAFT_ID) {
+        console.warn('[SDComponent] No draft ID configured');
+        showPage();
+        return;
+      }
+      try {
+        console.log('[SDComponent] Loading components for draft:', DRAFT_ID);
+        var response = await fetch(API_BASE + '/v1/design-drafts/' + DRAFT_ID + '/components', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) throw new Error('Failed to load components: ' + response.status);
+        var components = await response.json();
+        console.log('[SDComponent] Loaded', components.length, 'components');
+        components.forEach(function(comp) { registerComponent(comp.id, comp); });
+        initializeComponents();
+        showPage();
+      } catch (error) {
+        console.error('[SDComponent] Failed to load components:', error);
+        showPage();
+      }
+    }
+
+    function findReferencedComponents() {
+      var elements = document.querySelectorAll('sd-component[componentid], sd-component[ref]');
+      var ids = new Set();
+      elements.forEach(function(el) {
+        var ref = el.getAttribute('componentid') || el.getAttribute('ref');
+        if (ref) ids.add(ref);
+      });
+      return Array.from(ids);
+    }
+
+    window.__SD_COMPONENTS__ = {
+      register: registerComponent,
+      render: renderComponent,
+      update: updateComponentInstances,
+      loadForDraft: loadComponentsForDraft,
+      loadByIds: loadComponentsByIds,
+      init: initializeComponents,
+      findRefs: findReferencedComponents,
+      getRegistry: function() { return componentRegistry; },
+      getInstances: function() { return instanceRegistry; },
+      getDraftId: function() { return DRAFT_ID; },
+    };
+
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'SD_COMPONENT_UPDATE') {
+        var cId = event.data.componentId;
+        var def = event.data.definition;
+        if (cId && def) { registerComponent(cId, def); updateComponentInstances(cId); }
+      }
+      if (event.data && event.data.type === 'SD_COMPONENTS_REGISTER') {
+        var comps = event.data.components;
+        if (Array.isArray(comps)) {
+          comps.forEach(function(c) { registerComponent(c.id, c); });
+          initializeComponents();
+        }
+      }
+    });
+
+    function bootComponents() {
+      // Pre-register components from __SD_COMPONENT_PRELOAD__ (injected by backend for standalone previews)
+      if (window.__SD_COMPONENT_PRELOAD__ && Array.isArray(window.__SD_COMPONENT_PRELOAD__)) {
+        console.log('[SDComponent] Pre-registering', window.__SD_COMPONENT_PRELOAD__.length, 'preloaded components');
+        window.__SD_COMPONENT_PRELOAD__.forEach(function(comp) {
+          registerComponent(comp.id, comp);
+        });
+      }
+
+      var refs = findReferencedComponents();
+      var unloaded = refs.filter(function(id) { return !componentRegistry.has(id); });
+
+      if (unloaded.length > 0) {
+        if (DRAFT_ID) {
+          loadComponentsForDraft();
+        } else {
+          // No draft ID — try batch loading the missing IDs directly
+          loadComponentsByIds(unloaded).then(function() {
+            initializeComponents();
+            showPage();
+          });
+        }
+      } else if (refs.length > 0) {
+        // All components already registered (e.g. from preload) — render immediately
+        initializeComponents();
+        showPage();
+      } else {
+        showPage();
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootComponents);
+    } else {
+      bootComponents();
+    }
+
+    var observer = new MutationObserver(function(mutations) {
+      var hasNew = false;
+      mutations.forEach(function(m) {
+        m.addedNodes.forEach(function(node) {
+          if (node.nodeType === 1) {
+            if (node.tagName === 'SD-COMPONENT') { hasNew = true; }
+            else if (node.querySelector) {
+              if (node.querySelectorAll('sd-component[componentid], sd-component[ref]').length > 0) hasNew = true;
+            }
+          }
+        });
+      });
+      if (hasNew) {
+        var refs = findReferencedComponents();
+        var unloaded = refs.filter(function(id) { return !componentRegistry.has(id); });
+        if (unloaded.length > 0) {
+          loadComponentsByIds(unloaded).then(function() {
+            initializeComponents();
+          });
+        } else {
+          initializeComponents();
+        }
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    console.log('[SDComponent] Runtime initialized');
+  })();
+  </script>
+</head>
+<body>
+  <div class="flex h-screen w-full" data-sd-id="1">
+    <!-- Persistent Sidebar -->
+    <aside class="w-72 bg-brand text-white flex flex-col shrink-0 z-40" style="background-color: var(--color-brand);" data-sd-id="2">
+      <div class="p-10 pb-6 flex items-center space-x-3" data-sd-id="3">
+        <img src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/747347d9-34d0-43dd-a1c8-e170f34a7b5c/generated-images/generated-b4990631-3f37-4a3c-8db8-46174fd7fd83.png" alt="Mekasa" class="w-12 h-12 rounded-2xl" data-sd-id="4" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1a1a1a/888?text=Image';">
+        <span class="text-2xl font-black tracking-tighter" data-sd-id="5">Mekasa</span>
+      </div>
+      
+      <nav class="flex-1 px-6 mt-10 space-y-2" data-sd-id="6">
+        <a id="sidebar-dashboard" href="#dashboard" class="flex items-center px-4 py-4 rounded-3xl text-brand-muted font-bold hover:bg-white/5 transition-all group" data-sd-id="7">
+          <iconify-icon icon="lucide:layout-dashboard" class="text-2xl mr-4 group-hover:text-white"></iconify-icon>
+          <span class="group-hover:text-white" data-sd-id="8">Dashboard</span>
+        </a>
+        <a id="sidebar-inventory" href="#inventory" class="flex items-center px-4 py-4 rounded-3xl text-brand-muted font-bold hover:bg-white/5 transition-all group" data-sd-id="9">
+          <iconify-icon icon="lucide:archive" class="text-2xl mr-4 group-hover:text-white"></iconify-icon>
+          <span class="group-hover:text-white" data-sd-id="10">Inventory</span>
+        </a>
+        <a id="sidebar-shopping" href="#shopping" class="flex items-center px-4 py-4 rounded-3xl text-brand-muted font-bold hover:bg-white/5 transition-all group" data-sd-id="11">
+          <iconify-icon icon="lucide:shopping-bag" class="text-2xl mr-4 group-hover:text-white"></iconify-icon>
+          <span class="group-hover:text-white" data-sd-id="12">Shopping List</span>
+        </a>
+        <a id="sidebar-spending" href="#spending" class="active flex items-center px-4 py-4 rounded-3xl text-white font-bold transition-all" data-sd-id="13">
+          <iconify-icon icon="lucide:pie-chart" class="text-2xl mr-4"></iconify-icon>
+          Spending
+        </a>
+        <a id="sidebar-members" href="#members" class="flex items-center px-4 py-4 rounded-3xl text-brand-muted font-bold hover:bg-white/5 transition-all group" data-sd-id="14">
+          <iconify-icon icon="lucide:users-2" class="text-2xl mr-4 group-hover:text-white"></iconify-icon>
+          <span class="group-hover:text-white" data-sd-id="15">Members</span>
+        </a>
+      </nav>
+
+      <div class="p-8 mt-auto" data-sd-id="16">
+        <div class="bg-white/5 rounded-[32px] p-5" data-sd-id="17">
+          <div class="flex items-center space-x-3 mb-3" data-sd-id="18">
+            <div class="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-[10px] font-black" data-sd-id="19">PRO</div>
+            <span class="text-xs font-bold" data-sd-id="20">Family Premium</span>
+          </div>
+          <p class="text-[10px] text-brand-muted font-bold uppercase tracking-widest leading-relaxed" data-sd-id="21">Full history &amp; reports active</p>
+        </div>
+        <a id="sidebar-settings" href="#settings" class="flex items-center px-4 py-4 mt-4 rounded-3xl text-brand-muted font-bold hover:text-white transition-all" data-sd-id="22">
+          <iconify-icon icon="lucide:settings" class="text-2xl mr-4"></iconify-icon>
+          Settings
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col min-w-0 h-full overflow-hidden" data-sd-id="23">
+      <!-- Header -->
+      <header class="h-24 bg-white border-b border-brand-muted/10 flex items-center justify-between px-12 shrink-0 z-10" data-sd-id="24">
+        <div class="flex items-center space-x-6" data-sd-id="25">
+          <div class="flex flex-col" data-sd-id="26">
+            <span class="text-[10px] font-black uppercase tracking-[0.2em] text-brand-muted mb-0.5" data-sd-id="27">Household Selection</span>
+            <div class="flex items-center space-x-2 cursor-pointer" data-sd-id="28">
+              <h2 class="text-2xl font-black tracking-tight" data-sd-id="29">The Rodriguez House</h2>
+              <iconify-icon icon="lucide:chevron-down" class="text-xl text-brand-muted"></iconify-icon>
+            </div>
+          </div>
+          
+          <div class="h-10 w-px bg-brand-muted/20 mx-2" data-sd-id="30"></div>
+          
+          <div class="bg-surface rounded-2xl p-1 flex items-center" data-sd-id="31">
+            <button class="px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-brand-muted hover:text-brand transition-colors" data-sd-id="32">This Week</button>
+            <button class="px-6 py-2 rounded-xl bg-white shadow-sm text-xs font-black uppercase tracking-widest text-brand" data-sd-id="33">This Month</button>
+            <button class="px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-brand-muted hover:text-brand transition-colors" data-sd-id="34">This Year</button>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-8" data-sd-id="35">
+          <div class="flex items-center space-x-2" data-sd-id="36">
+            <button class="w-12 h-12 rounded-full flex items-center justify-center hover:bg-surface transition-colors" data-sd-id="37">
+              <iconify-icon icon="lucide:search" class="text-2xl text-brand-muted"></iconify-icon>
+            </button>
+            <button class="w-12 h-12 rounded-full flex items-center justify-center hover:bg-surface relative transition-colors" data-sd-id="38">
+              <iconify-icon icon="lucide:bell" class="text-2xl text-brand-muted"></iconify-icon>
+              <span class="absolute top-3 right-3 w-2 h-2 bg-danger rounded-full ring-2 ring-white" data-sd-id="39"></span>
+            </button>
+          </div>
+          <div class="flex items-center space-x-4 pl-6 border-l border-brand-muted/10" data-sd-id="40">
+            <div class="flex flex-col text-right" data-sd-id="41">
+              <span class="text-sm font-black" data-sd-id="42">Leo Rodriguez</span>
+              <span class="text-[10px] font-bold text-brand-muted uppercase tracking-widest" data-sd-id="43">Household Admin</span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-brand overflow-hidden" data-sd-id="44">
+               <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Leo" alt="Avatar" data-sd-id="45" onerror="this.onerror=null;this.src='https://placehold.co/600x400/1a1a1a/888?text=Image';">
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Scrollable Insights -->
+      <div class="flex-1 overflow-y-auto p-12 custom-scrollbar" data-sd-id="46">
+        <!-- Top Metrics -->
+        <div class="grid grid-cols-4 gap-8 mb-12" data-sd-id="47">
+          <div class="col-span-1 bg-white p-8 rounded-[40px] card-shadow border border-brand-muted/5" data-sd-id="48">
+            <span class="text-[10px] font-black uppercase tracking-[0.2em] text-brand-muted" data-sd-id="49">Total Spend</span>
+            <div class="text-5xl font-black mt-3 mb-2 tracking-tighter" data-sd-id="50">$425<span class="text-2xl text-brand-muted" data-sd-id="51">.62</span></div>
+            <div class="flex items-center text-danger text-xs font-bold" data-sd-id="52">
+              <iconify-icon icon="lucide:trending-up" class="mr-1"></iconify-icon>
+              12% higher than last month
+            </div>
+          </div>
+          
+          <div class="col-span-1 bg-white p-8 rounded-[40px] card-shadow border border-brand-muted/5" data-sd-id="53">
+            <span class="text-[10px] font-black uppercase tracking-[0.2em] text-brand-muted" data-sd-id="54">Active Budget</span>
+            <div class="text-4xl font-black mt-3 mb-2 tracking-tighter" data-sd-id="55">$600<span class="text-xl text-brand-muted text-brand-muted" data-sd-id="56">.00</span></div>
+            <div class="w-full h-2 bg-surface rounded-full overflow-hidden mt-4" data-sd-id="57">
+              <div class="h-full bg-accent" style="width: 71%;" data-sd-id="58"></div>
+            </div>
+            <div class="mt-2 text-[10px] font-bold text-brand-muted uppercase tracking-widest" data-sd-id="59">71% Utilized</div>
+          </div>
+
+          <div class="col-span-2 bg-[#a44a3f]/10 p-8 rounded-[40px] border border-[#a44a3f]/20 flex items-center justify-between" data-sd-id="60">
+            <div class="flex flex-col" data-sd-id="61">
+              <div class="flex items-center space-x-2 mb-2" data-sd-id="62">
+                <iconify-icon icon="lucide:alert-circle" class="text-danger text-xl"></iconify-icon>
+                <span class="text-[10px] font-black uppercase tracking-[0.2em] text-danger" data-sd-id="63">Budget Alert</span>
+              </div>
+              <h3 class="text-xl font-extrabold tracking-tight" data-sd-id="64">Meat &amp; Proteins category is $22 over budget</h3>
+              <p class="text-sm text-brand mt-1 font-semibold opacity-70" data-sd-id="65">Consider adjusting upcoming grocery lists.</p>
+            </div>
+            <button class="px-8 py-4 bg-danger text-white rounded-[24px] font-black text-sm uppercase tracking-widest hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-danger/20" data-sd-id="66">
+              View Details
+            </button>
+          </div>
+        </div>
+
+        <!-- Middle Visualizations -->
+        <div class="grid grid-cols-12 gap-8 mb-12" data-sd-id="67">
+          <!-- Category Breakdown -->
+          <div class="col-span-7 bg-white p-10 rounded-[48px] card-shadow border border-brand-muted/5" data-sd-id="68">
+            <div class="flex justify-between items-center mb-10" data-sd-id="69">
+              <h3 class="text-2xl font-black tracking-tight" data-sd-id="70">Category Breakdown</h3>
+              <button class="text-sm font-black text-accent uppercase tracking-widest flex items-center" data-sd-id="71">
+                Export <iconify-icon icon="lucide:download" class="ml-2"></iconify-icon>
+              </button>
+            </div>
+            
+            <div class="space-y-8" data-sd-id="72">
+              <div data-sd-id="73">
+                <div class="flex justify-between items-center mb-3" data-sd-id="74">
+                  <span class="text-sm font-bold" data-sd-id="75">Produce</span>
+                  <span class="text-sm font-black" data-sd-id="76">$142.20 <span class="text-brand-muted font-bold ml-2" data-sd-id="77">33%</span></span>
+                </div>
+                <div class="w-full h-4 bg-surface rounded-full overflow-hidden" data-sd-id="78">
+                  <div class="h-full bg-accent" style="width: 33%;" data-sd-id="79"></div>
+                </div>
+              </div>
+              
+              <div data-sd-id="80">
+                <div class="flex justify-between items-center mb-3" data-sd-id="81">
+                  <span class="text-sm font-bold" data-sd-id="82">Meat &amp; Seafood</span>
+                  <span class="text-sm font-black" data-sd-id="83">$122.00 <span class="text-brand-muted font-bold ml-2" data-sd-id="84">28%</span></span>
+                </div>
+                <div class="w-full h-4 bg-surface rounded-full overflow-hidden" data-sd-id="85">
+                  <div class="h-full bg-danger" style="width: 28%;" data-sd-id="86"></div>
+                </div>
+              </div>
+              
+              <div data-sd-id="87">
+                <div class="flex justify-between items-center mb-3" data-sd-id="88">
+                  <span class="text-sm font-bold" data-sd-id="89">Dairy &amp; Eggs</span>
+                  <span class="text-sm font-black" data-sd-id="90">$85.50 <span class="text-brand-muted font-bold ml-2" data-sd-id="91">20%</span></span>
+                </div>
+                <div class="w-full h-4 bg-surface rounded-full overflow-hidden" data-sd-id="92">
+                  <div class="h-full bg-warning" style="width: 20%;" data-sd-id="93"></div>
+                </div>
+              </div>
+
+              <div data-sd-id="94">
+                <div class="flex justify-between items-center mb-3" data-sd-id="95">
+                  <span class="text-sm font-bold" data-sd-id="96">Pantry &amp; Grains</span>
+                  <span class="text-sm font-black" data-sd-id="97">$55.92 <span class="text-brand-muted font-bold ml-2" data-sd-id="98">13%</span></span>
+                </div>
+                <div class="w-full h-4 bg-surface rounded-full overflow-hidden" data-sd-id="99">
+                  <div class="h-full bg-brand-muted" style="width: 13%;" data-sd-id="100"></div>
+                </div>
+              </div>
+
+              <div data-sd-id="101">
+                <div class="flex justify-between items-center mb-3" data-sd-id="102">
+                  <span class="text-sm font-bold" data-sd-id="103">Frozen Foods</span>
+                  <span class="text-sm font-black" data-sd-id="104">$20.00 <span class="text-brand-muted font-bold ml-2" data-sd-id="105">6%</span></span>
+                </div>
+                <div class="w-full h-4 bg-surface rounded-full overflow-hidden" data-sd-id="106">
+                  <div class="h-full bg-brand" style="width: 6%;" data-sd-id="107"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Member Contribution -->
+          <div class="col-span-5 bg-white p-10 rounded-[48px] card-shadow border border-brand-muted/5 flex flex-col items-center justify-center text-center" data-sd-id="108">
+            <h3 class="text-2xl font-black tracking-tight mb-2" data-sd-id="109">Member Contribution</h3>
+            <p class="text-xs font-bold text-brand-muted uppercase tracking-widest mb-10" data-sd-id="110">Who's buying the most</p>
+            
+            <!-- Mock Pie Chart -->
+            <div class="relative w-64 h-64 mb-10" data-sd-id="111">
+              <svg viewBox="0 0 100 100" class="w-full h-full transform -rotate-90 shadow-lg rounded-full" data-sd-id="112">
+                <circle cx="50" cy="50" r="40" fill="transparent" stroke="#5a6f4f" stroke-width="20" stroke-dasharray="180 251"></circle>
+                <circle cx="50" cy="50" r="40" fill="transparent" stroke="#8fa085" stroke-width="20" stroke-dasharray="71 251" stroke-dashoffset="-180"></circle>
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center" data-sd-id="113">
+                <span class="text-4xl font-black tracking-tighter" data-sd-id="114">$425</span>
+                <span class="text-[10px] font-black uppercase text-brand-muted tracking-[0.2em]" data-sd-id="115">Total</span>
+              </div>
+            </div>
+
+            <div class="flex space-x-12" data-sd-id="116">
+              <div class="flex items-center space-x-3" data-sd-id="117">
+                <div class="w-3 h-3 rounded-full bg-accent" data-sd-id="118"></div>
+                <div class="flex flex-col text-left" data-sd-id="119">
+                  <span class="text-sm font-black" data-sd-id="120">Leo Rodriguez</span>
+                  <span class="text-[10px] font-extrabold text-brand-muted tracking-widest uppercase" data-sd-id="121">$302.10 (71%)</span>
+                </div>
+              </div>
+              <div class="flex items-center space-x-3" data-sd-id="122">
+                <div class="w-3 h-3 rounded-full bg-brand-muted" data-sd-id="123"></div>
+                <div class="flex flex-col text-left" data-sd-id="124">
+                  <span class="text-sm font-black" data-sd-id="125">Maria Rodriguez</span>
+                  <span class="text-[10px] font-extrabold text-brand-muted tracking-widest uppercase" data-sd-id="126">$123.52 (29%)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Trend Graph -->
+        <div class="bg-white p-10 rounded-[48px] card-shadow border border-brand-muted/5" data-sd-id="127">
+          <div class="flex justify-between items-center mb-10" data-sd-id="128">
+            <div class="flex flex-col" data-sd-id="129">
+               <h3 class="text-2xl font-black tracking-tight" data-sd-id="130">Spending Trend</h3>
+               <p class="text-xs font-bold text-brand-muted uppercase tracking-widest mt-1" data-sd-id="131">October 01 – October 31</p>
+            </div>
+            <div class="flex space-x-4" data-sd-id="132">
+               <div class="flex items-center space-x-2" data-sd-id="133">
+                 <div class="w-2 h-2 rounded-full bg-accent" data-sd-id="134"></div>
+                 <span class="text-xs font-black uppercase tracking-widest text-brand-muted" data-sd-id="135">Actual Spend</span>
+               </div>
+               <div class="flex items-center space-x-2" data-sd-id="136">
+                 <div class="w-2 h-2 rounded-full border border-brand-muted border-dashed" data-sd-id="137"></div>
+                 <span class="text-xs font-black uppercase tracking-widest text-brand-muted" data-sd-id="138">Projected</span>
+               </div>
+            </div>
+          </div>
+
+          <!-- Mock Trend Graph -->
+          <div class="h-[300px] w-full relative flex items-end justify-between px-4 pb-12 border-b border-brand-muted/10" data-sd-id="139">
+            <div class="absolute inset-0 flex flex-col justify-between py-12 pointer-events-none" data-sd-id="140">
+               <div class="w-full h-px bg-brand-muted/10" data-sd-id="141"></div>
+               <div class="w-full h-px bg-brand-muted/10" data-sd-id="142"></div>
+               <div class="w-full h-px bg-brand-muted/10" data-sd-id="143"></div>
+            </div>
+
+            <div class="flex flex-col items-center h-full justify-end group cursor-pointer" data-sd-id="144">
+               <div class="trend-dot mb-[-4px]" data-sd-id="145"></div>
+               <div class="h-[20%] w-1.5 bg-accent/20 rounded-t-lg group-hover:bg-accent/40 transition-all" data-sd-id="146"></div>
+               <span class="text-[10px] font-black uppercase tracking-widest text-brand-muted mt-4" data-sd-id="147">Week 1</span>
+            </div>
+            <div class="flex flex-col items-center h-full justify-end group cursor-pointer" data-sd-id="148">
+               <div class="trend-dot mb-[-4px]" data-sd-id="149"></div>
+               <div class="h-[45%] w-1.5 bg-accent/20 rounded-t-lg group-hover:bg-accent/40 transition-all" data-sd-id="150"></div>
+               <span class="text-[10px] font-black uppercase tracking-widest text-brand-muted mt-4" data-sd-id="151">Week 2</span>
+            </div>
+            <div class="flex flex-col items-center h-full justify-end group cursor-pointer" data-sd-id="152">
+               <div class="trend-dot mb-[-4px]" data-sd-id="153"></div>
+               <div class="h-[85%] w-1.5 bg-accent/20 rounded-t-lg group-hover:bg-accent/40 transition-all" data-sd-id="154"></div>
+               <span class="text-[10px] font-black uppercase tracking-widest text-brand-muted mt-4" data-sd-id="155">Week 3</span>
+            </div>
+            <div class="flex flex-col items-center h-full justify-end group cursor-pointer" data-sd-id="156">
+               <div class="trend-dot mb-[-4px]" data-sd-id="157"></div>
+               <div class="h-[60%] w-1.5 bg-accent/20 rounded-t-lg group-hover:bg-accent/40 transition-all" data-sd-id="158"></div>
+               <span class="text-[10px] font-black uppercase tracking-widest text-brand-muted mt-4" data-sd-id="159">Week 4</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+</body></html>

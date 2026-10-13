@@ -1,122 +1,101 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
+<!DOCTYPE html><html lang="en"><head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="view-transition" content="same-origin">
-  <link rel="prefetch" href="https://p.superdesign.dev/draft/69d15b18-61b1-45ec-92f6-5f89e59a7ee9" as="document">
-  <link rel="prefetch" href="https://p.superdesign.dev/draft/afdeeaad-6431-495e-9674-5231b3993dca" as="document">
-  <link rel="prefetch" href="https://p.superdesign.dev/draft/b234a6ab-1837-48a9-84d1-a2ed870ae61c" as="document">
-  <link rel="prefetch" href="https://p.superdesign.dev/draft/eee7d5dd-5cc6-4c4a-8c91-2717e1973660" as="document">
-  <link rel="prefetch" href="https://p.superdesign.dev/draft/a8a15416-6c7a-4f32-b1b0-c233c57f0cd1" as="document">
-  <link rel="prefetch" href="https://p.superdesign.dev/draft/cf8659c3-ef2d-4f9c-b097-f7774783a2f3" as="document">
-  <link rel="prefetch" href="https://p.superdesign.dev/draft/a45a3eab-e709-415e-8a81-19f333a3c88b" as="document">
-  <link rel="prefetch" href="https://p.superdesign.dev/draft/248f70a0-c51e-430f-9a3c-ed7d25f68606" as="document">
-  <title>Store Selection - Mekasa</title>
+  <title>Mekasa - App Store Screenshot</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
     :root {
-      --color-brand: #171e19;
-      --color-brand-muted: #b7c6c2;
-      --color-surface: #eeebe3;
-      --color-surface-elevated: #ffffff;
-      --color-text: #171e19;
-      --color-text-muted: #6d7a76;
-      --color-accent: #ca0013;
-      --color-danger: #ca0013;
-      --color-success: #2f6b4f;
-      --color-warning: #c45c12;
-      --color-overlay: rgba(183, 198, 194, 0.20);
+      --color-brand: #5d5652;
+      --color-brand-muted: #8fa085;
+      --color-surface: #ede8e0;
+      --color-surface-elevated: #faf7f3;
+      --color-text: #5d5652;
+      --color-text-muted: #8fa085;
+      --color-accent: #5a6f4f;
+      --color-danger: #a44a3f;
+      --color-success: #5a6f4f;
+      --color-warning: #c48c5a;
     }
     body {
       font-family: 'Nunito', sans-serif;
-      background-color: var(--color-surface);
-      color: var(--color-text);
+      background: linear-gradient(180deg, #5d5652 0%, #8fa085 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
       margin: 0;
+      overflow: hidden;
+      height: 2778px;
+      width: 1284px;
     }
-    html {
+    .iphone-frame {
+      width: 1200px;
+      height: 2600px;
+      background: #000;
+      border-radius: 120px;
+      padding: 30px;
+      box-shadow: 0 50px 100px -20px rgba(0,0,0,0.5);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .iphone-screen {
       background-color: var(--color-surface);
+      width: 100%;
+      height: 100%;
+      border-radius: 90px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
     }
-    @view-transition {
-      navigation: auto;
+    .dynamic-island {
+      position: absolute;
+      top: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 360px;
+      height: 110px;
+      background: #000;
+      border-radius: 60px;
+      z-index: 50;
     }
-    ::view-transition {
-      background-color: var(--color-surface);
+    .marketing-header {
+      position: absolute;
+      top: 180px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      z-index: 40;
+      padding: 0 100px;
     }
-    ::view-transition-old(main-content) {
-      animation: 0.25s ease-out both fade-out;
+    .marketing-title {
+      color: #fff;
+      font-size: 84px;
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -2px;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.3);
     }
-    ::view-transition-new(main-content) {
-      animation: 0.25s ease-in 0.1s both fade-in;
+    .nav-pill {
+      box-shadow: 0 20px 40px -10px rgba(0,0,0,0.2);
     }
-    @keyframes fade-out {
-      from { opacity: 1; }
-      to { opacity: 0; }
-    }
-    @keyframes fade-in {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    ::view-transition-old(root),
-    ::view-transition-new(root) {
-      animation: none;
-      mix-blend-mode: normal;
-    }
-
-    .text-brand { color: var(--color-brand); }
-    .text-text { color: var(--color-text); }
-    .text-muted { color: var(--color-text-muted); }
-    .bg-brand { background-color: var(--color-brand); }
-    .bg-accent { background-color: var(--color-accent); }
-    .bg-surface-elevated { background-color: var(--color-surface-elevated); }
-    .border-muted { border-color: rgba(183, 198, 194, 0.3); }
-    
     .sage-blob {
       position: absolute;
-      top: -50px;
-      right: -50px;
-      width: 300px;
-      height: 300px;
+      top: -100px;
+      right: -100px;
+      width: 600px;
+      height: 600px;
+      background: rgba(143, 160, 133, 0.2);
+      filter: blur(80px);
       border-radius: 50%;
-      background: var(--color-overlay);
-      filter: blur(40px);
-      z-index: 0;
       pointer-events: none;
-    }
-    
-    /* Custom checkbox styling */
-    .store-checkbox {
-      appearance: none;
-      width: 24px;
-      height: 24px;
-      border: 2px solid var(--color-brand-muted);
-      border-radius: 50%;
-      outline: none;
-      cursor: pointer;
-      position: relative;
-      transition: all 0.2s ease;
-    }
-    .store-checkbox:checked {
-      background-color: var(--color-accent);
-      border-color: var(--color-accent);
-    }
-    .store-checkbox:checked::after {
-      content: '';
-      position: absolute;
-      left: 7px;
-      top: 4px;
-      width: 6px;
-      height: 10px;
-      border: solid white;
-      border-width: 0 2px 2px 0;
-      transform: rotate(45deg);
     }
   </style>
 
-<meta name="preview-version" content="afdeeaad-6431-495e-9674-5231b3993dca" />
-<meta name="preview-timestamp" content="2026-09-22T17:51:40.342Z" />
+<meta name="preview-version" content="9c1383f3-688f-4124-a0a2-b59db0c6b1ac" />
+<meta name="preview-timestamp" content="2026-10-13T01:45:32.928Z" />
 
 <style>
   html::-webkit-scrollbar, body::-webkit-scrollbar, *::-webkit-scrollbar {
@@ -142,11 +121,11 @@
 </script>
 <script type="module">
     // SuperDesign Runtime
-    console.log('[SuperDesign] Preview loaded for versionId:', "afdeeaad-6431-495e-9674-5231b3993dca");
+    console.log('[SuperDesign] Preview loaded for versionId:', "9c1383f3-688f-4124-a0a2-b59db0c6b1ac");
 
     window.__SUPERDESIGN_PREVIEW__ = {
-      versionId: "afdeeaad-6431-495e-9674-5231b3993dca",
-      timestamp: "2026-09-22T17:51:40.342Z",
+      versionId: "9c1383f3-688f-4124-a0a2-b59db0c6b1ac",
+      timestamp: "2026-10-13T01:45:32.928Z",
       _modernScreenshotModule: null,
 
       sendMessage: function(type, data) {
@@ -495,7 +474,7 @@
     var componentRegistry = new Map();
     var instanceRegistry = new Map();
     var API_BASE = "https://api.superdesign.dev";
-    var DRAFT_ID = "afdeeaad-6431-495e-9674-5231b3993dca";
+    var DRAFT_ID = "9c1383f3-688f-4124-a0a2-b59db0c6b1ac";
 
     function buildDefaultProps(definition) {
       var defaultProps = {};
@@ -799,141 +778,125 @@
   </script>
 </head>
 <body>
-  <div class="w-full h-screen flex flex-col relative overflow-hidden bg-[#eeebe3]">
-    <div class="sage-blob"></div>
+  <div class="iphone-frame" data-sd-id="1">
+    <div class="dynamic-island" data-sd-id="2"></div>
     
-    <!-- Onboarding Header -->
-    <header class="shrink-0 pt-14 px-6 z-10">
-      <div class="flex items-center justify-between mb-4">
-        <a id="btn-back" href="https://p.superdesign.dev/draft/cf8659c3-ef2d-4f9c-b097-f7774783a2f3" class="w-10 h-10 rounded-full flex items-center justify-center border border-muted bg-surface-elevated">
-          <iconify-icon icon="lucide:chevron-left" class="text-xl text-brand"></iconify-icon>
-        </a>
-        <div class="flex flex-col items-center justify-center space-y-0.5">
-          <p class="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">Step 4 of 6</p>
-          <h1 class="text-lg font-black text-brand tracking-tight">Mekasa</h1>
-        </div>
-        <div class="w-10"></div>
-      </div>
-    </header>
-
-    <!-- Main Content Area with View Transition -->
-    <main class="flex-1 overflow-y-auto px-6 pt-10 pb-32 z-10 flex flex-col" style="view-transition-name: main-content">
-      
-      <!-- Header Section -->
-      <div class="mb-8">
-        <h2 class="text-[32px] font-black text-brand leading-tight mb-3">Where do you shop?</h2>
-        <p class="text-[16px] font-semibold text-muted">
-          We'll look within 15 miles of 1842 Magnolia Ave.
-        </p>
-      </div>
-
-      <!-- Search Field -->
-      <div class="relative mb-6">
-        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-          <iconify-icon icon="lucide:search" class="text-xl text-muted"></iconify-icon>
-        </div>
-        <input 
-          type="text" 
-          placeholder="Search for a store..."
-          class="w-full h-[56px] pl-12 pr-4 bg-surface-elevated border border-muted rounded-[24px] text-[16px] font-semibold focus:outline-none focus:border-brand shadow-sm"
-        >
-      </div>
-
-      <!-- Store List Container -->
-      <div class="bg-surface-elevated rounded-[40px] p-2 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] border border-muted flex-1 overflow-y-auto space-y-1">
-        
-        <!-- Store Row: Selected -->
-        <label class="flex items-center justify-between p-4 rounded-[32px] bg-[#171e19] text-white cursor-pointer transition-colors">
-          <div class="flex items-center">
-            <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center mr-4 shrink-0 overflow-hidden">
-               <!-- Placeholder for store logo, using text for now -->
-               <span class="text-brand font-black text-sm">H-E-B</span>
-            </div>
-            <div>
-              <p class="font-extrabold text-[16px]">H-E-B</p>
-              <p class="text-[12px] font-bold text-[#b7c6c2] uppercase tracking-wider">0.8 mi</p>
-            </div>
-          </div>
-          <div class="w-8 h-8 rounded-full bg-accent flex items-center justify-center">
-             <iconify-icon icon="lucide:check" class="text-white"></iconify-icon>
-          </div>
-        </label>
-
-        <!-- Store Row: Selected -->
-        <label class="flex items-center justify-between p-4 rounded-[32px] bg-[#171e19] text-white cursor-pointer transition-colors">
-          <div class="flex items-center">
-            <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center mr-4 shrink-0 overflow-hidden">
-               <span class="text-brand font-black text-sm">Costco</span>
-            </div>
-            <div>
-              <p class="font-extrabold text-[16px]">Costco</p>
-              <p class="text-[12px] font-bold text-[#b7c6c2] uppercase tracking-wider">4.2 mi</p>
-            </div>
-          </div>
-          <div class="w-8 h-8 rounded-full bg-accent flex items-center justify-center">
-             <iconify-icon icon="lucide:check" class="text-white"></iconify-icon>
-          </div>
-        </label>
-
-        <!-- Store Row: Unselected -->
-        <label class="flex items-center justify-between p-4 rounded-[32px] hover:bg-[#f8f9f8] cursor-pointer transition-colors">
-          <div class="flex items-center">
-            <div class="w-12 h-12 rounded-full bg-[#f1f4f3] flex items-center justify-center mr-4 shrink-0 overflow-hidden">
-               <span class="text-brand font-black text-sm">Kroger</span>
-            </div>
-            <div>
-              <p class="font-extrabold text-[16px]">Kroger</p>
-              <p class="text-[12px] font-bold text-muted uppercase tracking-wider">2.1 mi</p>
-            </div>
-          </div>
-          <input type="checkbox" class="store-checkbox">
-        </label>
-
-        <!-- Store Row: Unselected -->
-        <label class="flex items-center justify-between p-4 rounded-[32px] hover:bg-[#f8f9f8] cursor-pointer transition-colors">
-          <div class="flex items-center">
-            <div class="w-12 h-12 rounded-full bg-[#f1f4f3] flex items-center justify-center mr-4 shrink-0 overflow-hidden">
-               <span class="text-brand font-black text-xs">Walmart</span>
-            </div>
-            <div>
-              <p class="font-extrabold text-[16px]">Walmart Supercenter</p>
-              <p class="text-[12px] font-bold text-muted uppercase tracking-wider">6.7 mi</p>
-            </div>
-          </div>
-          <input type="checkbox" class="store-checkbox">
-        </label>
-
-        <!-- Store Row: Unselected -->
-        <label class="flex items-center justify-between p-4 rounded-[32px] hover:bg-[#f8f9f8] cursor-pointer transition-colors">
-          <div class="flex items-center">
-            <div class="w-12 h-12 rounded-full bg-[#f1f4f3] flex items-center justify-center mr-4 shrink-0 overflow-hidden">
-               <span class="text-brand font-black text-sm">Target</span>
-            </div>
-            <div>
-              <p class="font-extrabold text-[16px]">Target</p>
-              <p class="text-[12px] font-bold text-muted uppercase tracking-wider">5.4 mi</p>
-            </div>
-          </div>
-          <input type="checkbox" class="store-checkbox">
-        </label>
-
-      </div>
-    </main>
-
-    <!-- Sticky Bottom CTA (No Tab Bar) -->
-    <div class="absolute bottom-0 left-0 right-0 p-6 pt-4 bg-gradient-to-t from-[#eeebe3] via-[#eeebe3] to-transparent z-40">
-      <a href="https://p.superdesign.dev/draft/cf8659c3-ef2d-4f9c-b097-f7774783a2f3" 
-         id="btn-confirm-stores" 
-         class="flex items-center justify-center w-full h-[56px] bg-accent text-white rounded-[24px] font-extrabold text-[18px] shadow-[0_8px_16px_rgba(202,0,19,0.2)] active:scale-[0.98] transition-transform">
-        Confirm stores
-      </a>
-      
-      <!-- Progress indicator track beneath CTA -->
-      <div class="mt-6 w-full h-[3px] bg-[#d5ddd9] rounded-full overflow-hidden">
-         <div class="h-full bg-brand w-[66.6%] transition-all duration-500"></div>
-      </div>
+    <div class="marketing-header" data-sd-id="3">
+      <h2 class="marketing-title" data-sd-id="4">Know What's in Your Home</h2>
     </div>
 
+    <div class="iphone-screen" data-sd-id="5">
+      <div class="sage-blob" data-sd-id="6"></div>
+
+      <!-- Hero Section -->
+      <div class="relative h-[1000px] w-full shrink-0 overflow-hidden rounded-b-[120px] z-10" data-sd-id="7">
+        <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/747347d9-34d0-43dd-a1c8-e170f34a7b5c/generated-images/generated-78b17f54-47b2-4d08-a56e-8120d0f413d7.png');" data-sd-id="8"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-[#171e19]/10 to-[#171e19]/50" data-sd-id="9"></div>
+        <div class="relative h-full flex flex-col items-center justify-end pb-32 px-12 text-center" data-sd-id="10">
+          <p class="text-[36px] font-bold uppercase tracking-[0.2em] text-[#ede8e0]/80 mb-4" data-sd-id="11">Good Morning</p>
+          <h1 class="text-[110px] font-black text-white leading-tight tracking-tight" data-sd-id="12">The Rodriguez House</h1>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-2 gap-8 px-12 -mt-[160px] relative z-20 mb-16" data-sd-id="13">
+        <div class="bg-[#faf7f3] p-12 rounded-[80px] border border-[#8fa085]/20 shadow-xl" data-sd-id="14">
+          <div class="flex items-center space-x-4 mb-4" data-sd-id="15">
+            <div class="w-16 h-16 rounded-full bg-[#5a6f4f]/10 flex items-center justify-center" data-sd-id="16">
+              <iconify-icon icon="lucide:alert-circle" class="text-4xl text-[#5a6f4f]"></iconify-icon>
+            </div>
+            <span class="text-2xl font-black text-[#8fa085] uppercase tracking-widest" data-sd-id="17">Low Stock</span>
+          </div>
+          <div class="text-7xl font-black text-[#5d5652]" data-sd-id="18">12 items</div>
+        </div>
+        <div class="bg-[#faf7f3] p-12 rounded-[80px] border border-[#8fa085]/20 shadow-xl" data-sd-id="19">
+          <div class="flex items-center space-x-4 mb-4" data-sd-id="20">
+            <div class="w-16 h-16 rounded-full bg-[#5a6f4f]/10 flex items-center justify-center" data-sd-id="21">
+              <iconify-icon icon="lucide:wallet" class="text-4xl text-[#5a6f4f]"></iconify-icon>
+            </div>
+            <span class="text-2xl font-black text-[#8fa085] uppercase tracking-widest" data-sd-id="22">Spend</span>
+          </div>
+          <div class="text-7xl font-black text-[#5d5652]" data-sd-id="23">$430 <span class="text-3xl text-[#8fa085]" data-sd-id="24">/wk</span></div>
+        </div>
+      </div>
+
+      <!-- Needs Approval List -->
+      <div class="flex-1 px-12" data-sd-id="25">
+        <div class="flex justify-between items-center mb-10" data-sd-id="26">
+          <h2 class="text-5xl font-black tracking-tight text-[#5d5652]" data-sd-id="27">Needs Approval</h2>
+          <button class="text-2xl font-black text-[#8fa085] uppercase tracking-widest" data-sd-id="28">View All</button>
+        </div>
+
+        <div class="space-y-6" data-sd-id="29">
+          <div class="flex items-center p-8 bg-white/60 rounded-[60px] border border-[#8fa085]/10" data-sd-id="30">
+            <div class="w-24 h-24 rounded-full bg-[#ede8e0] flex items-center justify-center text-4xl font-black mr-8 shrink-0" data-sd-id="31">MA</div>
+            <div class="flex-1" data-sd-id="32">
+              <div class="flex items-center gap-4 mb-2" data-sd-id="33">
+                <p class="font-black text-4xl" data-sd-id="34">Paper Towels</p>
+                <span class="text-xl font-black uppercase text-white bg-[#5a6f4f] px-4 py-2 rounded-full" data-sd-id="35">×2</span>
+              </div>
+              <p class="text-2xl font-bold text-[#8fa085]" data-sd-id="36">Requested by Maya</p>
+            </div>
+            <div class="flex space-x-4" data-sd-id="37">
+              <div class="w-20 h-20 rounded-full border-2 border-[#8fa085] flex items-center justify-center text-[#5d5652]" data-sd-id="38"><iconify-icon icon="lucide:x" class="text-4xl"></iconify-icon></div>
+              <div class="w-20 h-20 rounded-full bg-[#5d5652] text-white flex items-center justify-center" data-sd-id="39"><iconify-icon icon="lucide:check" class="text-4xl"></iconify-icon></div>
+            </div>
+          </div>
+
+          <div class="flex items-center p-8 bg-white/60 rounded-[60px] border border-[#8fa085]/10" data-sd-id="40">
+            <div class="w-24 h-24 rounded-full bg-[#ede8e0] flex items-center justify-center text-4xl font-black mr-8 shrink-0" data-sd-id="41">LR</div>
+            <div class="flex-1" data-sd-id="42">
+              <div class="flex items-center gap-4 mb-2" data-sd-id="43">
+                <p class="font-black text-4xl" data-sd-id="44">Whole Milk</p>
+                <span class="text-xl font-black uppercase text-white bg-[#5a6f4f] px-4 py-2 rounded-full" data-sd-id="45">×1</span>
+              </div>
+              <p class="text-2xl font-bold text-[#8fa085]" data-sd-id="46">Requested by Leo</p>
+            </div>
+            <div class="flex space-x-4" data-sd-id="47">
+              <div class="w-20 h-20 rounded-full border-2 border-[#8fa085] flex items-center justify-center text-[#5d5652]" data-sd-id="48"><iconify-icon icon="lucide:x" class="text-4xl"></iconify-icon></div>
+              <div class="w-20 h-20 rounded-full bg-[#5d5652] text-white flex items-center justify-center" data-sd-id="49"><iconify-icon icon="lucide:check" class="text-4xl"></iconify-icon></div>
+            </div>
+          </div>
+
+          <div class="flex items-center p-8 bg-white/60 rounded-[60px] border border-[#8fa085]/10 opacity-60" data-sd-id="50">
+            <div class="w-24 h-24 rounded-full bg-[#ede8e0] flex items-center justify-center text-4xl font-black mr-8 shrink-0" data-sd-id="51">LR</div>
+            <div class="flex-1" data-sd-id="52">
+              <p class="font-black text-4xl" data-sd-id="53">Oatmeal</p>
+              <p class="text-2xl font-bold text-[#8fa085]" data-sd-id="54">Requested by Leo</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Navigation -->
+      <div class="relative h-[300px] w-full mt-auto" data-sd-id="55">
+        <div class="absolute bottom-12 left-10 right-10 z-40" data-sd-id="56">
+          <div class="bg-[#5d5652] h-40 rounded-full flex items-center justify-between px-20 shadow-2xl relative" data-sd-id="57">
+            <a id="nav-home" href="#" class="flex flex-col items-center justify-center text-[#5a6f4f] transition-colors" data-sd-id="58">
+              <iconify-icon icon="lucide:home" class="text-7xl"></iconify-icon>
+            </a>
+            <a id="nav-list" href="#" class="flex flex-col items-center justify-center text-[#8fa085] transition-colors" data-sd-id="59">
+              <iconify-icon icon="lucide:list-todo" class="text-7xl"></iconify-icon>
+            </a>
+            <div class="w-32" data-sd-id="60"></div> <!-- FAB Spacer -->
+            <a id="nav-spend" href="#" class="flex flex-col items-center justify-center text-[#8fa085] transition-colors" data-sd-id="61">
+              <iconify-icon icon="lucide:pie-chart" class="text-7xl"></iconify-icon>
+            </a>
+            <a id="nav-people" href="#" class="flex flex-col items-center justify-center text-[#8fa085] transition-colors" data-sd-id="62">
+              <iconify-icon icon="lucide:users" class="text-7xl"></iconify-icon>
+            </a>
+          </div>
+          
+          <!-- Center FAB -->
+          <a id="nav-add" href="#" class="absolute left-1/2 -top-12 -translate-x-1/2 w-48 h-48 bg-[#5a6f4f] rounded-full flex items-center justify-center text-white shadow-2xl border-[12px] border-[#ede8e0]" data-sd-id="63">
+            <iconify-icon icon="lucide:plus" class="text-7xl"></iconify-icon>
+          </a>
+        </div>
+      </div>
+
+      <!-- Home Indicator -->
+      <div class="w-48 h-2 bg-[#5d5652]/20 rounded-full absolute bottom-4 left-1/2 -translate-x-1/2" data-sd-id="64"></div>
+    </div>
   </div>
-</body>
-</html>
+
+</body></html>
