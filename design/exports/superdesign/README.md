@@ -8,6 +8,8 @@ Canvas: https://superdesign.dev/teams/97f327bd-7027-43ef-8186-e2aafd35b597/proje
 Browse: [`index.html`](index.html) — on GitHub Pages at
 https://fernandogator.github.io/mekasa/design/exports/superdesign/
 
+Checked against the canvas on 2026-10-13: 46 drafts, every one exported at its latest version.
+
 ## Refreshing
 
 Each file is the public preview of its draft, so no login is needed:
@@ -16,8 +18,12 @@ Each file is the public preview of its draft, so no login is needed:
 curl -sL https://p.superdesign.dev/draft/<draft-id> -o <file>.html
 ```
 
-With the Superdesign CLI logged in, `npx @superdesign/cli get-design --draft-id <id> --output <file>`
-does the same. Keep the table below in step with the files.
+The preview wraps the draft HTML from `npx @superdesign/cli get-design --draft-id <id>`
+with Superdesign's renderer and an image-load fallback; the design markup is identical.
+Only the `preview-timestamp` meta tag changes between downloads, so a refresh with no
+other diff means nothing changed on the canvas. List every draft with
+`npx @superdesign/cli fetch-design-nodes --project-id 747347d9-34d0-43dd-a1c8-e170f34a7b5c`
+and keep the tables below in step with it.
 
 ## Mobile — primary screens
 
@@ -54,6 +60,7 @@ does the same. Keep the table below in step with the files.
 | [`mobile/variants/22-dashboard-warm-bottom-launcher.html`](mobile/variants/22-dashboard-warm-bottom-launcher.html) | Dashboard variant - Warm with Bottom Launcher | `907e2ec9-2402-4e39-b4ca-cdbf842560c4` |
 | [`mobile/variants/23-dashboard-green-olive-pastel.html`](mobile/variants/23-dashboard-green-olive-pastel.html) | Dashboard variant - Green Olive Pastel | `df6bd27d-193f-4e87-8851-df851e84a4ce` |
 | [`mobile/variants/24-dashboard-warm-cream.html`](mobile/variants/24-dashboard-warm-cream.html) | Dashboard variant - Warm Cream | `2c41c588-ecb7-42d7-8edc-b50ac9f3a7bb` |
+| [`mobile/variants/24b-dashboard-rich-grounded.html`](mobile/variants/24b-dashboard-rich-grounded.html) | Dashboard variant - Rich & Grounded | `f3fe52d4-0b26-4fc2-9434-27ce554a455b` |
 | [`mobile/variants/25-dashboard-soft-cozy.html`](mobile/variants/25-dashboard-soft-cozy.html) | Dashboard variant - Soft & Cozy | `0d605f15-16ae-4676-9e3b-12dcd6ab2e31` |
 | [`mobile/variants/26-dashboard-dark.html`](mobile/variants/26-dashboard-dark.html) | Dashboard variant - Dark Mode | `4cae47c9-b8f1-439f-879e-eb3d8af1cac6` |
 
@@ -62,8 +69,11 @@ does the same. Keep the table below in step with the files.
 | File | Screen | Draft ID |
 |------|--------|----------|
 | [`mobile/dark/27-barcode-scan-dark.html`](mobile/dark/27-barcode-scan-dark.html) | Barcode Scan - Dark | `4b5561d4-5bf7-4598-bdd1-f7cb69b5771c` |
+| [`mobile/dark/27b-barcode-scan-step-dark.html`](mobile/dark/27b-barcode-scan-step-dark.html) | Barcode Scan Step - Dark Mode (draft) | `b019f02d-634a-4260-ad86-49afb8edc2a8` |
 | [`mobile/dark/28-new-product-card-dark.html`](mobile/dark/28-new-product-card-dark.html) | New Product Card - Dark | `64b9880d-3515-410d-b9ed-e199e2ab06fa` |
+| [`mobile/dark/28b-new-product-card-dark.html`](mobile/dark/28b-new-product-card-dark.html) | New Product Card - Dark Mode (draft) | `b8b3a093-8fea-47e0-bb8e-0e397553fd01` |
 | [`mobile/dark/29-haul-summary-dark.html`](mobile/dark/29-haul-summary-dark.html) | Haul Summary - Dark | `fc918c2b-60ff-4209-bdc2-4275d85e4ab3` |
+| [`mobile/dark/29b-scan-completion-dark.html`](mobile/dark/29b-scan-completion-dark.html) | Scan Completion Summary - Dark Mode (draft) | `fb208fef-3b90-4cf8-baa1-8160916ffcb8` |
 | [`mobile/dark/30-item-detail-pager.html`](mobile/dark/30-item-detail-pager.html) | Item Detail Pager | `999ef27d-3a78-4932-97a3-dd668d7a0f1c` |
 
 ## Desktop web app
@@ -86,7 +96,15 @@ does the same. Keep the table below in step with the files.
 | [`app-store-screenshots/05-family.html`](app-store-screenshots/05-family.html) | App Store - Family | `1a4335a9-c7c2-477c-8fef-c3ac13ec6f0e` |
 | [`app-store-screenshots/06-trash-station.html`](app-store-screenshots/06-trash-station.html) | App Store - Trash Station | `b86f48df-cffe-40e5-b22f-f93038c60cd3` |
 
-## Not exported yet
+## Image assets
 
-Image assets on the canvas (home interior, house exterior full and thumbnail, app icon v1 and v2)
-have no public preview URL; they need the Superdesign CLI logged in to download.
+From the project's image generations (`npx @superdesign/cli list-generations`).
+
+| File | Image |
+|------|-------|
+| [`assets/images/mekasa-app-icon-v2.png`](assets/images/mekasa-app-icon-v2.png) | App icon v2 — green house, barcode, red scan line (current brand asset) |
+| [`assets/images/mekasa-app-icon-v1.png`](assets/images/mekasa-app-icon-v1.png) | App icon v1 — green house with barcode |
+| [`assets/images/home-interior.jpg`](assets/images/home-interior.jpg) | Home interior (generated) |
+
+The house exterior photo (full and thumbnail crops) is not copied here: it is a real,
+identifiable house and this repository is public. It stays on the Superdesign canvas.
