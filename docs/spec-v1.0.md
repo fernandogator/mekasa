@@ -609,6 +609,30 @@ Acceptance Criteria:
   deploy the live channel after the same manual approval as the API. The
   Firebase web config is public client config, read from GitHub Actions
   variables at build time (not committed).
+- AC18: **Analytics.** The web app uses Firebase Analytics (Google
+  Analytics 4) with the measurement ID from the `FIREBASE_WEB_MEASUREMENT_ID`
+  build variable:
+  - **When:** collection runs only in the live build on the AC1 domains.
+    It is off on localhost, preview channels, tests and when the
+    measurement ID is missing. If the browser blocks Analytics (e.g. an
+    ad blocker), the app works normally and logs nothing about it.
+  - **Page views:** one `page_view` per screen change, with the screen
+    name (`dashboard`, `inventory`, `item_detail`, `shopping_list`,
+    `spending`, `members`, `settings`, `sign_in`).
+  - **Events:** `login` (method `google` or `password`), `receipt_scan`
+    (input `image` or `text`, line count, identified count, duration, and
+    `ok`, `failed` or `cancelled`), `receipt_saved` (line count),
+    `item_added` (source `manual` or `receipt`), `shopping_item_added`,
+    `shopping_request_approved`, `shopping_request_rejected`,
+    `shopping_item_purchased`, `invite_sent` and `theme_changed`.
+  - **User properties:** `role` (owner, teen or member) and `theme`. The
+    user ID is the hashed `user_ref` (NFR-006 AC6).
+  - **Privacy (NFR-002):** no names, emails, household names, addresses,
+    item names, receipt text, barcodes or prices are sent. Google signals
+    and ad personalization are off.
+  - **Opt-out:** Settings has a "Share usage analytics" switch (on by
+    default). Turning it off stops collection on that browser right away
+    and is remembered there.
 
 ---
 
