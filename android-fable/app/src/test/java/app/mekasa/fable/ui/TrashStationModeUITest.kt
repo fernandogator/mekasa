@@ -7,6 +7,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.mekasa.fable.data.demo.DemoBackend
@@ -99,6 +100,8 @@ class TrashStationModeUITest {
         compose.awaitDisplayed(TestTags.FAMILY_VIEW)
 
         // Family → "Trash station kiosk" swaps the whole shell for the kiosk (UI-005 AC1).
+        // Scroll past the Devices section so the button is not under the floating pill nav.
+        compose.node(TestTags.SIGN_OUT).performScrollTo()
         compose.node(TestTags.OPEN_KIOSK).performClick()
         compose.awaitDisplayed(TestTags.TRASH_KIOSK_VIEW)
         compose.onNodeWithText("Trash station").assertIsDisplayed()
