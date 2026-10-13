@@ -6,21 +6,21 @@ final class FaceIDLockTests: XCTestCase {
 
     private var defaults: UserDefaults!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         let suite = "FaceIDLockTests.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
         UserDefaults.standard.removeObject(forKey: FaceIDLock.preferenceKey)
-        FaceIDLock.shared.disable()
+        await FaceIDLock.shared.disable()
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         defaults.removeObject(forKey: FaceIDLock.preferenceKey)
         defaults = nil
         UserDefaults.standard.removeObject(forKey: FaceIDLock.preferenceKey)
-        FaceIDLock.shared.disable()
-        super.tearDown()
+        await FaceIDLock.shared.disable()
+        try await super.tearDown()
     }
 
     func testPreferenceKeyIsStable() {
@@ -31,6 +31,7 @@ final class FaceIDLockTests: XCTestCase {
         XCTAssertEqual(FaceIDLock.backgroundGraceSeconds, 10)
     }
 
+    @MainActor
     private func makeLock(
         authenticate: @escaping (String) async -> Result<Void, Error> = { _ in .success(()) },
         biometryAvailable: Bool = true
@@ -43,10 +44,12 @@ final class FaceIDLockTests: XCTestCase {
         )
     }
 
+    @MainActor
     func testPreferenceDefaultsOff() {
         XCTAssertFalse(makeLock().isEnabled)
     }
 
+    @MainActor
     func testPreferenceTogglePersists() {
         let lock = makeLock()
         lock.isEnabled = true

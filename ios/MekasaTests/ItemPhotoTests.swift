@@ -158,7 +158,8 @@ final class ThumbnailStoreTests: XCTestCase {
         let first = try await loader.image(for: url)
         let second = try await loader.image(for: url)
 
-        XCTAssertEqual(await counter.value, 1)
+        let fetches = await counter.value
+        XCTAssertEqual(fetches, 1)
         XCTAssertLessThanOrEqual(pixelLongest(first), ThumbnailImage.maxPixel)
         XCTAssertEqual(pixelLongest(first), pixelLongest(second))
         XCTAssertEqual(store.count(), 1)

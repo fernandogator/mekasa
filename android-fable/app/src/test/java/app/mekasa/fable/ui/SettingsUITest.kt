@@ -77,6 +77,8 @@ class SettingsUITest {
         compose.node(TestTags.CREATE_INVITE).performScrollTo().assertIsNotEnabled()
         compose.node(TestTags.INVITE_NAME).performTextInput("Alex")
         compose.node(TestTags.INVITE_EMAIL).performTextInput("alex@example.com")
+        // The role picker pushes the CTA down; scroll past it so it is not under the floating pill nav.
+        compose.node(TestTags.OPEN_KIOSK).performScrollTo()
         compose.node(TestTags.CREATE_INVITE).assertIsEnabled().performClick()
         compose.waitUntil(UiHarness.WAIT_MS) { compose.onAllNodes(hasText("Pending invites")).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("alex@example.com · member").performScrollTo().assertIsDisplayed()
