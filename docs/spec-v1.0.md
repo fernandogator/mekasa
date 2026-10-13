@@ -503,6 +503,137 @@ Acceptance Criteria:
   detail still loads the full image. A new picture is a new URL, and
   signing out deletes the stored thumbnails.
 
+### UI-007: Desktop Web App
+Priority: P1
+Status: Draft — awaiting approval (decided 2026-10-13)
+Description: A desktop web app for the same households, users and data
+as the mobile apps, hosted on Firebase Hosting (ADR-010). It covers the
+dashboard, inventory, shopping list, spending, members and receipt upload,
+with usage analytics (AC18). Barcode scanning, Trash Station mode and voice entry stay mobile-only.
+Design Artifact: design/exports/superdesign/desktop/01-dashboard.html
+  (shell, Dashboard, Inventory), design/exports/superdesign/desktop/02-shopping-list.html,
+  design/exports/superdesign/desktop/03-spending-analytics.html,
+  design/exports/superdesign/desktop/04-family-members.html;
+  receipt review reference: design/exports/superdesign/mobile/13-receipt-results.html.
+  Pending desktop drafts (needed before those screens are built): Sign in,
+  Receipt upload and review, Item detail, Settings.
+User Flow: design/user-flows.md
+Test File: web/src/**/*.test.ts (unit), web/tests/layout/*.spec.ts (layout),
+  design/baselines/web/ (visual baselines)
+Acceptance Criteria:
+- AC1: **Hosting.** The app is a static single-page app in `web/` served
+  from the default Firebase Hosting domains (`hackathon2025-472017.web.app`
+  and `hackathon2025-472017.firebaseapp.com`). Hosting rewrites `/v1/**`
+  to the Cloud Run service `mekasa-api` (us-central1), so API calls are
+  same-origin; every other path serves `index.html`. No custom domain in
+  v1.0.
+- AC2: **Sign in and roles.** Users sign in with Firebase Auth (Google and
+  email/password, as REQ-001 AC2–AC3) and land in their current household.
+  All roles (owner, teen, member) can use the web app. The role rules are
+  the same as on mobile and the API enforces them; the web app hides
+  controls a role cannot use:
+  - only owners mark shopping rows purchased (REQ-014) and approve or
+    reject requests (REQ-013);
+  - teens and members add rows as requests (REQ-012);
+  - only owners change the home photo or name (REQ-002 AC5), invite
+    members or revoke invites (REQ-019).
+- AC3: **Session expiry.** A `401` triggers one token refresh and then
+  sign-out with the "session expired" message, as REQ-022 AC1–AC4.
+- AC4: **Shell.** A left sidebar with Dashboard, Inventory, Shopping List,
+  Spending, Members and Settings (active item highlighted), and a header
+  with the household name and the signed-in user's initials and name.
+  Layouts are designed for widths of 1024–1920 px; below 1024 px the
+  sidebar collapses to icons.
+- AC5: **Dashboard.** Shows the home photo hero, low-stock items, the
+  shopping list teaser and, for owners, pending requests (UI-004 AC1–AC4).
+- AC6: **Inventory.** A card grid (thumbnail, name, category, quantity
+  badge, low-stock tag) with category filter chips, sort (Newest, Name A–Z,
+  Quantity low) and a search field (UI-006 AC6). Selecting a card opens
+  item detail with the large image, editable name, quantity, low-stock
+  threshold and copyable UPC (UI-006 AC2–AC3), plus delete with undo
+  (REQ-INV-016–018). "Add Item" opens manual entry with catalog search
+  (REQ-006). Expiry dates shown in the design are out of scope (no data).
+- AC7: **Shopping list.** Rows grouped by category with quantity, the
+  requester's initials and a Pending / Approved status, filterable by
+  status and sortable by category, requester or date added. Role controls
+  follow AC2. "Print List" prints the open rows with a print stylesheet.
+- AC8: **Spending.** Total for This Week / This Month / This Year,
+  category breakdown, member contribution and a spending trend chart, from
+  the existing spending API (REQ-017, REQ-018). Budgets, the "PRO" badge and Export
+  in the design are out of scope.
+- AC9: **Members.** A table of members (initials, name, email, role,
+  joined date) and pending invites. Owners can invite (REQ-019) and revoke
+  a pending invite. The permissions card describes the real roles (Owner,
+  Teen, Member) in place of the design's Admin / Member / Guest.
+- AC10: **Receipt upload.** "Scan hauls" opens a dialog where any member
+  drops or chooses a receipt image (JPEG, PNG or WebP, ≤ 10 MB; other types
+  are rejected with a message) or pastes receipt text (REQ-005 AC7):
+  - images are downscaled in the browser to a 2048 px long edge JPEG
+    before upload;
+  - while parsing, the dialog shows "Reading your receipt…" with Cancel,
+    for up to 120 s;
+  - the review table lists each line's image, name, quantity, price paid
+    and category, highlights unidentified lines (REQ-005 AC5) and lets the
+    user edit or remove lines and search the catalog for an unidentified
+    line (REQ-005 AC6);
+  - Save adds the confirmed lines to inventory with price paid (REQ-005
+    AC2–AC3) through the same API calls the mobile apps use.
+- AC11: **Long receipt calls.** Hosting rewrites stop at 60 s and a receipt
+  scan can take longer (45 s Gemini timeout, then OCR fallback and catalog
+  matching). The web app therefore sends `POST …/receipts/scan` straight
+  to the Cloud Run service URL; all other calls stay on same-origin `/v1`.
+  The API allows cross-origin bearer requests to that endpoint only from
+  the AC1 origins and `http://localhost:5173`.
+- AC12: **Photos.** Product and item photos are shown from signed links
+  (REQ-023), so plain `<img>` tags work without sending the bearer token.
+- AC13: **Themes.** Every color, font, radius and shadow comes from CSS
+  custom properties defined in one token file that mirrors
+  `.superdesign/design-system.md`; components never hard-code colors (a
+  lint check fails on hex or rgb values outside the token file). The theme
+  is chosen with `data-theme` on `<html>`. v1.0 ships `grounded` light and
+  dark (following `prefers-color-scheme`). A seasonal theme (e.g.
+  Halloween) is one extra token block and needs no component changes; a
+  test switches `data-theme` and checks computed colors change.
+- AC14: **Accessibility.** Meets NFR-005 contrast; every control is
+  reachable and usable by keyboard with a visible focus ring; icons and
+  images have accessible names.
+- AC15: **Diagnostics.** API calls send the NFR-006 AC7 request headers,
+  and errors are reported to `POST /v1/client-errors` with platform `web`
+  (NFR-007 AC2–AC3). No Crashlytics on web.
+- AC16: **Tests (guardrail 9).** Unit tests run with Vitest. Each screen
+  has a Playwright layout test at 1280×800 and 1920×1080 against a mocked
+  API, with screenshot baselines in `design/baselines/web/`. A
+  visual-verification pass compares each screen to its design artifact.
+- AC17: **Deploy.** CI builds `web/` on every PR and deploys it to a
+  Firebase Hosting preview channel (expires after 7 days). Merges to `main`
+  deploy the live channel after the same manual approval as the API. The
+  Firebase web config is public client config, read from GitHub Actions
+  variables at build time (not committed).
+- AC18: **Analytics.** The web app uses Firebase Analytics (Google
+  Analytics 4) with the measurement ID from the `FIREBASE_WEB_MEASUREMENT_ID`
+  build variable:
+  - **When:** collection runs only in the live build on the AC1 domains.
+    It is off on localhost, preview channels, tests and when the
+    measurement ID is missing. If the browser blocks Analytics (e.g. an
+    ad blocker), the app works normally and logs nothing about it.
+  - **Page views:** one `page_view` per screen change, with the screen
+    name (`dashboard`, `inventory`, `item_detail`, `shopping_list`,
+    `spending`, `members`, `settings`, `sign_in`).
+  - **Events:** `login` (method `google` or `password`), `receipt_scan`
+    (input `image` or `text`, line count, identified count, duration, and
+    `ok`, `failed` or `cancelled`), `receipt_saved` (line count),
+    `item_added` (source `manual` or `receipt`), `shopping_item_added`,
+    `shopping_request_approved`, `shopping_request_rejected`,
+    `shopping_item_purchased`, `invite_sent` and `theme_changed`.
+  - **User properties:** `role` (owner, teen or member) and `theme`. The
+    user ID is the hashed `user_ref` (NFR-006 AC6).
+  - **Privacy (NFR-002):** no names, emails, household names, addresses,
+    item names, receipt text, barcodes or prices are sent. Google signals
+    and ad personalization are off.
+  - **Opt-out:** Settings has a "Share usage analytics" switch (on by
+    default). Turning it off stops collection on that browser right away
+    and is remembered there.
+
 ---
 
 ## Non-Functional Requirements
@@ -630,6 +761,43 @@ Acceptance Criteria:
   also returns the user to Welcome / Sign in
 - AC5: After sign-out (including session expiry), the last signed-in
   username/email is remembered and prefilled on the Welcome sign-in form
+
+### REQ-023: Signed Photo Links With a Server-Side Cache
+Priority: P1
+Status: Draft — awaiting approval (decided 2026-10-13)
+Description: Clients that cannot attach the bearer token to an image
+request (the web app's `<img>` tags, UI-007 AC12) ask the API for
+short-lived signed Cloud Storage links. The API keeps the links it has
+signed and reuses them, so repeat requests skip the signing call and
+return the same URL, which the browser has already cached.
+Design Artifact: N/A (backend)
+Test File: tests/backend/test_photo_links.py
+Acceptance Criteria:
+- AC1: `POST /v1/households/{household_id}/photo-links` (bearer token)
+  takes `{photos: [...]}` with up to 100 photo paths, each either
+  `/v1/households/{household_id}/item-photos/{uuid}` (REQ-INV-019) or
+  `/v1/product-photos/{uuid}` (REQ-RCP-021). It returns
+  `{links: {<path>: {url, expires_at}}}`; paths whose photo does not
+  exist map to `null`. More than 100 paths, or a malformed path, returns
+  `400`.
+- AC2: Access is checked on every call and the cache never skips it.
+  The caller must be a member of `household_id` (`403` otherwise,
+  unknown household `404`). Item photos must belong to that household
+  (other households' paths map to `null`); any product photo is allowed.
+- AC3: Links are V4 signed `GET` URLs valid for 60 minutes. They never
+  reveal more than the object path already used by the API.
+- AC4: **Cache.** Each API instance keeps signed links in memory, keyed
+  by storage object (at most 5,000; least recently used dropped first). A
+  cached link is reused while it has at least 15 minutes left, so every
+  returned link is valid for at least 15 minutes. A cache hit makes no
+  IAM `signBlob` call. Deleting or replacing a photo removes its entry on
+  that instance. The existing `GET /v1/product-photos/{id}` redirect uses
+  the same cache.
+- AC5: Each call logs one `photo_links` INFO line with the counts of
+  requested, cached, newly signed and missing photos (NFR-006).
+- AC6: Without Cloud Storage (local runs and tests) the link is the API
+  path itself, and the web app's development build loads it with the
+  bearer token.
 
 ---
 
