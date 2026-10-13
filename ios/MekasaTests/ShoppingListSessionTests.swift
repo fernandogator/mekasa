@@ -90,7 +90,7 @@ final class ShoppingListSessionTests: XCTestCase {
 
     /// REQ-012: a teen is asked for what they want, and the row waits for an owner.
     @MainActor
-    func testTeenRequest_needsOwnerApproval() {
+    func testTeenRequest_needsOwnerApproval() throws {
         let session = AppSession()
         session.didSeedShoppingList = true
         session.userUID = "teen-user"
@@ -124,7 +124,7 @@ final class ShoppingListSessionTests: XCTestCase {
 
     /// Owners add straight onto the list. Preview mode is treated as an owner.
     @MainActor
-    func testOwnerAdd_isNotARequest() {
+    func testOwnerAdd_isNotARequest() throws {
         let session = ownerSession()
         XCTAssertFalse(session.submitsShoppingRequests)
         session.addCustomShoppingItem(name: "Tortillas", quantity: 1)
