@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     # Shared product photos from the capture flow (REQ-RCP-021), e.g.
     # mekasa-product-photos-prod; unset → photos and ownership kept in memory.
     product_photo_bucket: str | None = None
+    # Origins allowed to call the receipt scan directly on Cloud Run (UI-007 AC11);
+    # comma-separated. Everything else reaches the API through Firebase Hosting.
+    web_cors_origins: str = (
+        "https://hackathon2025-472017.web.app,"
+        "https://hackathon2025-472017.firebaseapp.com,"
+        "http://localhost:5173"
+    )
     # NFR-006: JSON lines for Cloud Logging; LOG_FORMAT=text for readable local output.
     log_level: str = "INFO"
     log_format: str = "json"

@@ -12,6 +12,7 @@ from app.catalog_routes import products_router
 from app.client_diagnostics import diagnostics_router
 from app.config import get_settings
 from app.observability import RequestTracingMiddleware, configure_logging
+from app.photo_link_routes import photo_links_router
 from app.product_photo_routes import product_photos_router
 from app.routers import (
     api_router,
@@ -21,6 +22,7 @@ from app.routers import (
     shopping_list_router,
     spending_router,
 )
+from app.web_cors import ReceiptScanCorsMiddleware, parse_origins
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +51,10 @@ def create_app() -> FastAPI:
     application.include_router(product_photos_router)
     application.include_router(capture_router)
     application.include_router(diagnostics_router)
+    application.include_router(photo_links_router)
     application.add_exception_handler(CatalogSaltMissing, _catalog_salt_missing)
     application.add_middleware(RequestTracingMiddleware)
+    application.add_middleware(ReceiptScanCorsMiddleware, origins=parse_origins(settings.web_cors_origins))
     application.state.settings = settings  # type: ignore[attr-defined]
     return application
 

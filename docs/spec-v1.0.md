@@ -505,7 +505,7 @@ Acceptance Criteria:
 
 ### UI-007: Desktop Web App
 Priority: P1
-Status: Draft — awaiting approval (decided 2026-10-13)
+Status: Approved 2026-10-13
 Description: A desktop web app for the same households, users and data
 as the mobile apps, hosted on Firebase Hosting (ADR-010). It covers the
 dashboard, inventory, shopping list, spending, members and receipt upload,
@@ -764,7 +764,7 @@ Acceptance Criteria:
 
 ### REQ-023: Signed Photo Links With a Server-Side Cache
 Priority: P1
-Status: Draft — awaiting approval (decided 2026-10-13)
+Status: Approved 2026-10-13
 Description: Clients that cannot attach the bearer token to an image
 request (the web app's `<img>` tags, UI-007 AC12) ask the API for
 short-lived signed Cloud Storage links. The API keeps the links it has
@@ -791,8 +791,8 @@ Acceptance Criteria:
   cached link is reused while it has at least 15 minutes left, so every
   returned link is valid for at least 15 minutes. A cache hit makes no
   IAM `signBlob` call. Deleting or replacing a photo removes its entry on
-  that instance. The existing `GET /v1/product-photos/{id}` redirect uses
-  the same cache.
+  that instance. The existing `GET /v1/product-photos/{id}` redirect keeps
+  its own uncached links of at most 15 minutes (REQ-RCP-021 AC3).
 - AC5: Each call logs one `photo_links` INFO line with the counts of
   requested, cached, newly signed and missing photos (NFR-006).
 - AC6: Without Cloud Storage (local runs and tests) the link is the API

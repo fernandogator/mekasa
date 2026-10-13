@@ -27,6 +27,7 @@ from uuid import UUID, uuid4
 from app.catalog_repository import photo_image_url
 from app.config import Settings, get_settings
 from app.item_photos import ImageTooLarge, UnsupportedImage, process_upload  # noqa: F401 - re-exported for the router
+from app.photo_links import CachedGcsSigner, GcsSigningCredentials, LinkLookup, PhotoLink, shared_link_cache
 
 UNREFERENCED_TTL = timedelta(hours=24)
 SIGNED_URL_TTL = timedelta(minutes=15)
@@ -89,6 +90,8 @@ class ProductPhotoStore(Protocol):
 
     def resolve(self, photo_id: str) -> PhotoRedirect | PhotoBytes | None: ...
 
+    def link(self, photo_id: str) -> LinkLookup: ...
+
     def delete(self, photo_id: str) -> bool: ...
 
 
@@ -107,6 +110,12 @@ class InMemoryProductPhotoStore:
         with self._lock:
             jpeg = self._objects.get(_object_name(photo_id))
         return PhotoBytes(jpeg) if jpeg is not None else None
+
+    def link(self, photo_id: str) -> LinkLookup:
+        """Without Cloud Storage the link is the API path itself (REQ-023 AC6)."""
+        with self._lock:
+            present = _object_name(photo_id) in self._objects
+        return LinkLookup(PhotoLink(photo_image_url(photo_id), None) if present else None, cached=False)
 
     def delete(self, photo_id: str) -> bool:
         with self._lock:
@@ -131,8 +140,8 @@ class GcsProductPhotoStore:
 
         client = storage.Client(project=project_id) if project_id else storage.Client()
         self._bucket = client.bucket(bucket_name)
-        self._credentials = None
-        self._cred_lock = Lock()
+        self._credentials = GcsSigningCredentials()
+        self._links = CachedGcsSigner(self._bucket, shared_link_cache(), self._credentials)
 
     def put(self, photo_id: str, jpeg: bytes) -> None:
         blob = self._bucket.blob(_object_name(photo_id))
@@ -153,9 +162,14 @@ class GcsProductPhotoStore:
         )
         return PhotoRedirect(url)
 
+    def link(self, photo_id: str) -> LinkLookup:
+        """A cached 60-minute signed link for the web app (REQ-023 AC3, AC4)."""
+        return self._links.link(_object_name(photo_id))
+
     def delete(self, photo_id: str) -> bool:
         from google.api_core.exceptions import NotFound
 
+        self._links.evict(_object_name(photo_id))
         try:
             self._bucket.blob(_object_name(photo_id)).delete()
             return True
@@ -163,17 +177,7 @@ class GcsProductPhotoStore:
             return False
 
     def _signer(self) -> tuple[str, str]:
-        import google.auth
-        from google.auth.transport.requests import Request
-
-        with self._cred_lock:
-            if self._credentials is None:
-                self._credentials, _ = google.auth.default(
-                    scopes=["https://www.googleapis.com/auth/cloud-platform"]
-                )
-            if not self._credentials.valid:
-                self._credentials.refresh(Request())
-            return self._credentials.service_account_email, self._credentials.token
+        return self._credentials.current()
 
 
 # ---------------------------------------------------------------------------
@@ -320,6 +324,11 @@ class ProductPhotoService:
     def resolve(self, photo_id: str) -> PhotoRedirect | PhotoBytes | None:
         canonical = parse_photo_id(photo_id)
         return self.store.resolve(canonical) if canonical else None
+
+    def link(self, photo_id: str) -> LinkLookup:
+        """A browser-loadable link for any product photo (REQ-023 AC2)."""
+        canonical = parse_photo_id(photo_id)
+        return self.store.link(canonical) if canonical else LinkLookup(None, cached=False)
 
     def delete(self, household_id: str, photo_id: str) -> bool:
         """Remove the object and the ownership record (AC5); False when not this household's."""
