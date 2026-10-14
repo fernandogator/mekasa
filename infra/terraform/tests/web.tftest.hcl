@@ -40,12 +40,38 @@ override_resource {
   }
 }
 
+override_resource {
+  target = google_firebase_hosting_site.web
+  values = {
+    site_id = "mekasa"
+    app_id  = "1:123:web:abc123"
+  }
+}
+
+override_resource {
+  target = google_identity_platform_config.auth
+  values = {
+    authorized_domains = ["localhost", "hackathon2025-472017.firebaseapp.com", "hackathon2025-472017.web.app"]
+  }
+}
+
 variables {
   web_app_id = "1:123:web:abc123"
 }
 
 run "deployer_gets_only_deploy_roles" {
   command = apply
+
+  # The protected imported resources stay out, so teardown can destroy
+  # everything the run created.
+  plan_options {
+    target = [
+      google_project_iam_member.deployer,
+      google_service_account_iam_member.deployer_acts_as_runtime,
+      google_service_account_iam_member.github_deploys_as_deployer,
+      github_actions_environment_variable.deploy,
+    ]
+  }
 
   assert {
     condition = toset([for m in google_project_iam_member.deployer : m.role]) == toset([
@@ -71,6 +97,17 @@ run "deployer_gets_only_deploy_roles" {
 
 run "only_the_prod_environment_can_act_as_deployer" {
   command = apply
+
+  # The protected imported resources stay out, so teardown can destroy
+  # everything the run created.
+  plan_options {
+    target = [
+      google_project_iam_member.deployer,
+      google_service_account_iam_member.deployer_acts_as_runtime,
+      google_service_account_iam_member.github_deploys_as_deployer,
+      github_actions_environment_variable.deploy,
+    ]
+  }
 
   assert {
     condition     = google_iam_workload_identity_pool_provider.github.attribute_condition == "assertion.repository == 'fernandogator/mekasa'"
@@ -112,8 +149,13 @@ run "writes_web_build_variables_from_firebase" {
   }
 
   assert {
-    condition     = google_firebase_hosting_site.default["default"].site_id == "hackathon2025-472017"
-    error_message = "Hosting site must be the project's default site."
+    condition     = google_firebase_hosting_site.web.site_id == "mekasa" && google_firebase_hosting_site.web.app_id == "1:123:web:abc123"
+    error_message = "The web app must be served from the mekasa site it is linked to."
+  }
+
+  assert {
+    condition     = contains(google_identity_platform_config.auth.authorized_domains, "mekasa.web.app") && contains(google_identity_platform_config.auth.authorized_domains, "localhost")
+    error_message = "Sign-in must be allowed on mekasa.web.app and keep working locally."
   }
 }
 

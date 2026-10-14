@@ -7,7 +7,8 @@ One-time setup in project `hackathon2025-472017` for the desktop web app
 | What | Why |
 |---|---|
 | Enables the Firebase, Hosting, Identity Toolkit, Installations, API Keys, IAM, IAM Credentials and STS APIs | Hosting, web sign-in and keyless sign-in |
-| Default Hosting site `hackathon2025-472017` | Serves `*.web.app` / `*.firebaseapp.com` |
+| Hosting site `mekasa` (imported; already linked to the web app) | Serves `https://mekasa.web.app` and `https://mekasa.firebaseapp.com` |
+| Auth authorized domains | Google sign-in uses a popup, which Auth refuses outside this list. Only the list is managed; sign-in methods stay in the console |
 | `mekasa-deployer` service account | The only account CI deploys as; it has no key |
 | Deployer roles: `run.sourceDeveloper`, `secretmanager.viewer`, `serviceusage.serviceUsageConsumer`, `firebasehosting.admin`, `run.viewer`, plus `iam.serviceAccountUser` on `mekasa-api` only | `deploy-cloud-run.sh` with `DEPLOY_ONLY=1`, and `firebase deploy --only hosting` with the Cloud Run rewrite |
 | Workload Identity pool `github`, provider `mekasa` | GitHub Actions signs in with short-lived tokens. Only this repository's tokens are accepted, and only jobs in the `mekasa-prod` environment may act as the deployer |
@@ -17,9 +18,9 @@ One-time setup in project `hackathon2025-472017` for the desktop web app
 
 The Cloud Run service, the photo buckets and the runtime account's own
 roles (including its signing role for REQ-023) stay with
-`backend/scripts/deploy-cloud-run.sh`. Auth's authorized domains already
-include the default `web.app` and `firebaseapp.com` addresses, so they are
-not managed here.
+`backend/scripts/deploy-cloud-run.sh`. The project's default site
+(`hackathon2025-472017.web.app`) still exists, because Firebase can't delete
+it, but nothing is deployed there.
 
 ## Prerequisites
 
@@ -53,10 +54,6 @@ Values for `terraform.tfvars`:
 
 - `web_app_id`: the web app's `appId` from Firebase console > Project
   settings > Your apps.
-- `import_hosting_site`: run `firebase hosting:sites:list --project
-  hackathon2025-472017`. Set `true` if the default site is listed. If you
-  guess wrong, apply fails with "already exists" (set `true`) or "cannot
-  import non-existent remote object" (set `false`).
 - `browser_api_key_id`: optional. Get it with
   `gcloud services api-keys list --project hackathon2025-472017
   --filter='displayName:"Browser key"' --format='value(uid)'`. Before
@@ -64,10 +61,13 @@ Values for `terraform.tfvars`:
   `GoogleService-Info.plist` / `google-services.json` show a different
   key), because the restriction blocks every other caller.
 
-The browser key allows only the default addresses and `localhost:5173`.
-Sign-in on PR preview channels (`<project>--<channel>.web.app`) needs
-those hosts added to `browser_key_referrers` and to Auth's authorized
-domains.
+`auth_authorized_domains` replaces the list in the Firebase console, so
+`terraform plan` shows any domain added there by hand as being removed. Add
+it to the variable before applying.
+
+The browser key allows only the `mekasa` addresses and `localhost:5173`.
+Sign-in on PR preview channels (`mekasa--<channel>.web.app`) needs those
+hosts added to `browser_key_referrers` and to `auth_authorized_domains`.
 
 ## After apply: retire the old key
 

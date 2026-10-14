@@ -1,8 +1,8 @@
 # One-time cloud setup for the desktop web app (UI-007, ADR-010) and keyless
 # CI deploys (deployer.tf).
 #
-# Manages the APIs these need, the Hosting site, the browser API key
-# restrictions and the GitHub Actions variables CI reads. The Cloud Run
+# Manages the APIs these need, the Hosting site, Auth's authorized domains,
+# the browser API key restrictions and the GitHub Actions variables CI reads. The Cloud Run
 # service, buckets and the runtime account's own roles stay with
 # backend/scripts/deploy-cloud-run.sh.
 
@@ -18,8 +18,7 @@ locals {
     "sts.googleapis.com",
   ]
 
-  hosting_site_import = var.import_hosting_site ? { default = var.project_id } : {}
-  browser_key_import  = var.browser_api_key_id == "" ? {} : { browser = var.browser_api_key_id }
+  browser_key_import = var.browser_api_key_id == "" ? {} : { browser = var.browser_api_key_id }
 }
 
 resource "google_project_service" "web" {
@@ -30,19 +29,61 @@ resource "google_project_service" "web" {
 }
 
 import {
-  for_each = local.hosting_site_import
-  to       = google_firebase_hosting_site.default[each.key]
-  id       = "projects/${var.project_id}/sites/${each.value}"
+  to = google_firebase_hosting_site.web
+  id = "projects/${var.project_id}/sites/${var.hosting_site_id}"
 }
 
-# Serves https://<project>.web.app and https://<project>.firebaseapp.com.
-resource "google_firebase_hosting_site" "default" {
-  for_each = { default = var.project_id }
+# Serves https://<site>.web.app and https://<site>.firebaseapp.com. The site
+# already exists and is linked to the web app, so it is always imported.
+resource "google_firebase_hosting_site" "web" {
   provider = google-beta
 
   project = var.project_id
-  site_id = each.value
+  site_id = var.hosting_site_id
   app_id  = var.web_app_id
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [google_project_service.web]
+}
+
+# The project's default site can't be deleted; stop managing it, keep it.
+removed {
+  from = google_firebase_hosting_site.default
+
+  lifecycle {
+    destroy = false
+  }
+}
+
+import {
+  to = google_identity_platform_config.auth
+  id = "projects/${var.project_id}/config"
+}
+
+# Only the authorized domains are managed here: Google sign-in uses a popup,
+# which Auth refuses on pages outside this list. Sign-in methods and every
+# other Auth setting stay with the Firebase console.
+resource "google_identity_platform_config" "auth" {
+  project            = var.project_id
+  authorized_domains = var.auth_authorized_domains
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes = [
+      autodelete_anonymous_users,
+      blocking_functions,
+      client,
+      mfa,
+      monitoring,
+      multi_tenant,
+      quota,
+      sign_in,
+      sms_region_config,
+    ]
+  }
 
   depends_on = [google_project_service.web]
 }

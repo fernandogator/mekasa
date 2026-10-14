@@ -38,10 +38,22 @@ variable "deploy_environment" {
   default     = "mekasa-prod"
 }
 
-variable "import_hosting_site" {
-  description = "Set true when the default Hosting site already exists, so it is imported instead of created."
-  type        = bool
-  default     = false
+variable "hosting_site_id" {
+  description = "Hosting site that serves the web app at https://<site>.web.app. Must already exist and be linked to web_app_id."
+  type        = string
+  default     = "mekasa"
+}
+
+variable "auth_authorized_domains" {
+  description = "Every domain Firebase Auth accepts sign-in from. Replaces the console list, so keep the defaults and add to them."
+  type        = list(string)
+  default = [
+    "localhost",
+    "hackathon2025-472017.firebaseapp.com",
+    "hackathon2025-472017.web.app",
+    "mekasa.web.app",
+    "mekasa.firebaseapp.com",
+  ]
 }
 
 variable "browser_api_key_id" {
@@ -54,8 +66,8 @@ variable "browser_key_referrers" {
   description = "Pages allowed to use the browser API key."
   type        = list(string)
   default = [
-    "https://hackathon2025-472017.web.app/*",
-    "https://hackathon2025-472017.firebaseapp.com/*",
+    "https://mekasa.web.app/*",
+    "https://mekasa.firebaseapp.com/*",
     "http://localhost:5173/*",
   ]
 }
