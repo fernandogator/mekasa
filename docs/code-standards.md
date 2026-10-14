@@ -39,4 +39,6 @@ Every function includes:
 
 - Spec, code, and tests must always match the same version.
 - No application code without a versioned spec entry first.
+- New or changed requirements use EARS notation (GUARDRAILS rule 11,
+  "Requirement Notation" in `docs/spec-v1.0.md`).
 - Requirement IDs are permanent — mark deprecated, never delete or renumber.
