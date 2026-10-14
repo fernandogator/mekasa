@@ -509,7 +509,10 @@ Status: Approved 2026-10-13
 Description: A desktop web app for the same households, users and data
 as the mobile apps, hosted on Firebase Hosting (ADR-010). It covers the
 dashboard, inventory, shopping list, spending, members and receipt upload,
-with usage analytics (AC18). Barcode scanning, Trash Station mode and voice entry stay mobile-only.
+with usage analytics (AC18). Barcode scanning, Trash Station mode and voice
+entry stay mobile-only. Out of scope for v1.0, although shown in the
+designs: expiry dates, budgets, the "PRO" badge and spending export.
+Acceptance criteria use EARS notation.
 Design Artifact: design/exports/superdesign/desktop/01-dashboard.html
   (shell, Dashboard, Inventory), design/exports/superdesign/desktop/02-shopping-list.html,
   design/exports/superdesign/desktop/03-spending-analytics.html,
@@ -522,118 +525,219 @@ User Flow: design/user-flows.md
 Test File: web/src/**/*.test.ts (unit), web/tests/layout/*.spec.ts (layout),
   design/baselines/web/ (visual baselines)
 Acceptance Criteria:
-- AC1: **Hosting.** The app is a static single-page app in `web/` served
-  from the default Firebase Hosting domains (`hackathon2025-472017.web.app`
-  and `hackathon2025-472017.firebaseapp.com`). Hosting rewrites `/v1/**`
-  to the Cloud Run service `mekasa-api` (us-central1), so API calls are
-  same-origin; every other path serves `index.html`. No custom domain in
-  v1.0.
-- AC2: **Sign in and roles.** Users sign in with Firebase Auth (Google and
-  email/password, as REQ-001 AC2–AC3) and land in their current household.
-  All roles (owner, teen, member) can use the web app. The role rules are
-  the same as on mobile and the API enforces them; the web app hides
-  controls a role cannot use:
-  - only owners mark shopping rows purchased (REQ-014) and approve or
-    reject requests (REQ-013);
-  - teens and members add rows as requests (REQ-012);
-  - only owners change the home photo or name (REQ-002 AC5), invite
-    members or revoke invites (REQ-019).
-- AC3: **Session expiry.** A `401` triggers one token refresh and then
-  sign-out with the "session expired" message, as REQ-022 AC1–AC4.
-- AC4: **Shell.** A left sidebar with Dashboard, Inventory, Shopping List,
-  Spending, Members and Settings (active item highlighted), and a header
-  with the household name and the signed-in user's initials and name.
-  Layouts are designed for widths of 1024–1920 px; below 1024 px the
-  sidebar collapses to icons.
-- AC5: **Dashboard.** Shows the home photo hero, low-stock items, the
-  shopping list teaser and, for owners, pending requests (UI-004 AC1–AC4).
-- AC6: **Inventory.** A card grid (thumbnail, name, category, quantity
-  badge, low-stock tag) with category filter chips, sort (Newest, Name A–Z,
-  Quantity low) and a search field (UI-006 AC6). Selecting a card opens
-  item detail with the large image, editable name, quantity, low-stock
-  threshold and copyable UPC (UI-006 AC2–AC3), plus delete with undo
-  (REQ-INV-016–018). "Add Item" opens manual entry with catalog search
-  (REQ-006). Expiry dates shown in the design are out of scope (no data).
-- AC7: **Shopping list.** Rows grouped by category with quantity, the
-  requester's initials and a Pending / Approved status, filterable by
-  status and sortable by category, requester or date added. Role controls
-  follow AC2. "Print List" prints the open rows with a print stylesheet.
-- AC8: **Spending.** Total for This Week / This Month / This Year,
-  category breakdown, member contribution and a spending trend chart, from
-  the existing spending API (REQ-017, REQ-018). Budgets, the "PRO" badge and Export
-  in the design are out of scope.
-- AC9: **Members.** A table of members (initials, name, email, role,
-  joined date) and pending invites. Owners can invite (REQ-019) and revoke
-  a pending invite. The permissions card describes the real roles (Owner,
-  Teen, Member) in place of the design's Admin / Member / Guest.
-- AC10: **Receipt upload.** "Scan hauls" opens a dialog where any member
-  drops or chooses a receipt image (JPEG, PNG or WebP, ≤ 10 MB; other types
-  are rejected with a message) or pastes receipt text (REQ-005 AC7):
-  - images are downscaled in the browser to a 2048 px long edge JPEG
-    before upload;
-  - while parsing, the dialog shows "Reading your receipt…" with Cancel,
-    for up to 120 s;
-  - the review table lists each line's image, name, quantity, price paid
-    and category, highlights unidentified lines (REQ-005 AC5) and lets the
-    user edit or remove lines and search the catalog for an unidentified
-    line (REQ-005 AC6);
-  - Save adds the confirmed lines to inventory with price paid (REQ-005
-    AC2–AC3) through the same API calls the mobile apps use.
-- AC11: **Long receipt calls.** Hosting rewrites stop at 60 s and a receipt
-  scan can take longer (45 s Gemini timeout, then OCR fallback and catalog
-  matching). The web app therefore sends `POST …/receipts/scan` straight
-  to the Cloud Run service URL; all other calls stay on same-origin `/v1`.
-  The API allows cross-origin bearer requests to that endpoint only from
-  the AC1 origins and `http://localhost:5173`.
-- AC12: **Photos.** Product and item photos are shown from signed links
-  (REQ-023), so plain `<img>` tags work without sending the bearer token.
-- AC13: **Themes.** Every color, font, radius and shadow comes from CSS
-  custom properties defined in one token file that mirrors
-  `.superdesign/design-system.md`; components never hard-code colors (a
-  lint check fails on hex or rgb values outside the token file). The theme
-  is chosen with `data-theme` on `<html>`. v1.0 ships `grounded` light and
-  dark (following `prefers-color-scheme`). A seasonal theme (e.g.
-  Halloween) is one extra token block and needs no component changes; a
-  test switches `data-theme` and checks computed colors change.
-- AC14: **Accessibility.** Meets NFR-005 contrast; every control is
-  reachable and usable by keyboard with a visible focus ring; icons and
-  images have accessible names.
-- AC15: **Diagnostics.** API calls send the NFR-006 AC7 request headers,
-  and errors are reported to `POST /v1/client-errors` with platform `web`
-  (NFR-007 AC2–AC3). No Crashlytics on web.
-- AC16: **Tests (guardrail 9).** Unit tests run with Vitest. Each screen
-  has a Playwright layout test at 1280×800 and 1920×1080 against a mocked
-  API, with screenshot baselines in `design/baselines/web/`. A
-  visual-verification pass compares each screen to its design artifact.
-- AC17: **Deploy.** CI builds `web/` on every PR and deploys it to a
-  Firebase Hosting preview channel (expires after 7 days). Merges to `main`
-  deploy the live channel after the same manual approval as the API. The
-  Firebase web config is public client config, read from GitHub Actions
-  variables at build time (not committed).
-- AC18: **Analytics.** The web app uses Firebase Analytics (Google
-  Analytics 4) with the measurement ID from the `FIREBASE_WEB_MEASUREMENT_ID`
-  build variable:
-  - **When:** collection runs only in the live build on the AC1 domains.
-    It is off on localhost, preview channels, tests and when the
-    measurement ID is missing. If the browser blocks Analytics (e.g. an
-    ad blocker), the app works normally and logs nothing about it.
-  - **Page views:** one `page_view` per screen change, with the screen
-    name (`dashboard`, `inventory`, `item_detail`, `shopping_list`,
-    `spending`, `members`, `settings`, `sign_in`).
-  - **Events:** `login` (method `google` or `password`), `receipt_scan`
+- AC1: **Hosting.**
+  - The web app **shall** be a static single-page app built from `web/`
+    and served from the default Firebase Hosting domains
+    `hackathon2025-472017.web.app` and `hackathon2025-472017.firebaseapp.com`,
+    with no custom domain in v1.0.
+  - **When** the browser requests a path under `/v1/`, Firebase Hosting
+    **shall** forward it on the same origin to the Cloud Run service
+    `mekasa-api` (us-central1).
+  - **When** the browser requests any other path, Firebase Hosting
+    **shall** serve `index.html`.
+- AC2: **Sign in and roles.**
+  - The web app **shall** let users sign in with Firebase Auth using
+    Google or email and password (REQ-001 AC2–AC3).
+  - **When** sign-in succeeds, the web app **shall** open the user's
+    current household.
+  - **If** the signed-in user belongs to no household, **then** the web
+    app **shall** explain how to create or join one in the mobile app and
+    offer sign-out.
+  - The web app **shall** be available to every role (owner, teen and
+    member).
+  - The API **shall** enforce the same role rules for web requests as for
+    mobile requests.
+  - **While** the signed-in user is not an owner, the web app **shall**
+    hide the controls to mark shopping rows purchased (REQ-014), approve or
+    reject requests (REQ-013), change the home photo or name (REQ-002 AC5),
+    and invite members or revoke invites (REQ-019).
+  - **When** a teen or member adds a shopping row, the web app **shall**
+    send it as a request (REQ-012).
+- AC3: **Session expiry.**
+  - **When** an authenticated API call returns `401`, the web app
+    **shall** refresh the Firebase ID token once and repeat the call.
+  - **If** the refresh fails or the repeated call also returns `401`,
+    **then** the web app **shall** sign the user out and show the sign-in
+    screen with the "session expired" message and the last email
+    prefilled (REQ-022 AC1–AC3, AC5).
+  - **When** Firebase Auth reports the user signed out during a session,
+    the web app **shall** show the sign-in screen (REQ-022 AC4).
+- AC4: **Shell.**
+  - The web app **shall** show a left sidebar with Dashboard, Inventory,
+    Shopping List, Spending, Members and Settings, with the current screen
+    highlighted.
+  - The web app **shall** show a header with the household name and the
+    signed-in user's initials and name.
+  - The web app **shall** lay out every screen for viewport widths from
+    1024 to 1920 px.
+  - **While** the viewport is narrower than 1024 px, the web app **shall**
+    collapse the sidebar to icons.
+  - **If** a screen has no data to show, **then** the web app **shall**
+    show an empty state that says what will appear there.
+  - **If** a screen's data fails to load, **then** the web app **shall**
+    show an error message with a Retry action.
+- AC5: **Dashboard.**
+  - The web app **shall** show on the dashboard the home photo hero, the
+    low-stock items and the shopping list teaser (UI-004 AC1–AC3).
+  - **While** the signed-in user is an owner, the web app **shall** also
+    show pending requests on the dashboard (UI-004 AC4).
+- AC6: **Inventory.**
+  - The web app **shall** show inventory as a card grid with each item's
+    thumbnail, name, category, quantity badge and low-stock tag.
+  - The web app **shall** offer category filter chips, sorting by Newest,
+    Name A–Z or Quantity low, and a search field (UI-006 AC6).
+  - **When** the user selects a card, the web app **shall** open item
+    detail with the large image, editable name, quantity, low-stock
+    threshold and a copyable UPC (UI-006 AC2–AC3).
+  - **When** the user deletes an item, the web app **shall** remove it and
+    offer Undo (REQ-INV-016–018).
+  - **When** the user chooses "Add Item", the web app **shall** open manual
+    entry with catalog search (REQ-006).
+- AC7: **Shopping list.**
+  - The web app **shall** show shopping rows grouped by category, each
+    with its quantity, the requester's initials and a Pending or Approved
+    status.
+  - The web app **shall** let the user filter rows by status and sort them
+    by category, requester or date added.
+  - The web app **shall** apply the AC2 role rules to every shopping list
+    control.
+  - **When** the user chooses "Print List", the web app **shall** print the
+    open rows with a print stylesheet.
+- AC8: **Spending.**
+  - **When** the user selects This Week, This Month or This Year, the web
+    app **shall** show that period's total, category breakdown, member
+    contribution and spending trend chart from the spending API (REQ-017,
+    REQ-018).
+- AC9: **Members.**
+  - The web app **shall** show a table of members (initials, name, email,
+    role and joined date) and the pending invites.
+  - **While** the signed-in user is an owner, the web app **shall** let
+    them invite a member (REQ-019) and revoke a pending invite.
+  - **When** an owner creates an invite, the web app **shall** show the
+    invite link with a copy action.
+  - The web app **shall** describe the real roles (Owner, Teen and Member)
+    in the permissions card.
+- AC10: **Receipt upload.**
+  - **When** any member chooses "Scan hauls", the web app **shall** open a
+    receipt dialog that accepts a dropped or chosen image, or pasted
+    receipt text (REQ-005 AC7).
+  - **If** the chosen file is not JPEG, PNG or WebP, or is larger than
+    10 MB, **then** the web app **shall** reject it with a message and
+    upload nothing.
+  - **When** the user submits an image, the web app **shall** downscale it
+    in the browser to a JPEG with a long edge of at most 2048 px before
+    uploading it.
+  - **While** a receipt is being read, the web app **shall** show "Reading
+    your receipt…" with a Cancel action.
+  - **If** reading fails, takes longer than 120 s, or the user cancels,
+    **then** the web app **shall** stop waiting, keep the user's input and
+    let them try again.
+  - **When** reading finishes, the web app **shall** show a review table
+    with each line's image, name, quantity, price paid and category, with
+    unidentified lines highlighted (REQ-005 AC5).
+  - **While** the review table is shown, the web app **shall** let the user
+    edit or remove any line and search the catalog for an unidentified line
+    (REQ-005 AC6).
+  - **When** the user saves the review, the web app **shall** add the
+    confirmed lines to inventory with their price paid (REQ-005 AC2–AC3)
+    through the same API calls the mobile apps use.
+  - **If** some lines fail to save, **then** the web app **shall** keep
+    only those lines in the review and offer Retry.
+- AC11: **Long receipt calls.** Hosting rewrites stop at 60 s, and a
+  receipt scan can take longer (45 s Gemini timeout, then OCR fallback and
+  catalog matching).
+  - The web app **shall** send `POST …/receipts/scan` directly to the
+    Cloud Run service URL, and every other API call to same-origin `/v1`.
+  - **When** the API receives a cross-origin request for the receipt scan
+    endpoint from an AC1 origin or `http://localhost:5173`, the API
+    **shall** allow it with a bearer token.
+  - **If** a cross-origin request comes from any other origin or targets
+    any other endpoint, **then** the API **shall** not allow it.
+- AC12: **Photos.**
+  - **When** the web app shows a product or item photo, it **shall** load
+    the photo from a signed link (REQ-023), so a plain `<img>` tag works
+    without the bearer token.
+  - **If** an item has no photo, only a placeholder, or a photo with no
+    link, **then** the web app **shall** show its category tile.
+- AC13: **Themes.**
+  - The web app **shall** take every color, font, radius and shadow from
+    CSS custom properties defined in one token file that mirrors
+    `.superdesign/design-system.md`.
+  - **If** a hex, `rgb()` or `hsl()` color appears outside the token file,
+    **then** the token lint check **shall** fail.
+  - The web app **shall** select the theme with `data-theme` on `<html>`
+    and ship the `grounded` and `grounded-dark` themes in v1.0.
+  - **While** the theme preference is System, the web app **shall** follow
+    the browser's `prefers-color-scheme`.
+  - **Where** a seasonal theme (for example Halloween) is added, it
+    **shall** be one extra token block that needs no component changes.
+  - **When** `data-theme` changes, the web app **shall** render with the
+    new theme's computed colors (checked by a test).
+- AC14: **Accessibility.**
+  - The web app **shall** meet NFR-005 contrast.
+  - The web app **shall** make every control reachable and usable by
+    keyboard, with a visible focus ring.
+  - The web app **shall** give every icon and image that carries meaning
+    an accessible name.
+- AC15: **Diagnostics.**
+  - The web app **shall** send the NFR-006 AC7 request headers on every
+    API call.
+  - **When** an unexpected error occurs (any failed call other than a
+    handled `401` or `404`), the web app **shall** report it to
+    `POST /v1/client-errors` with platform `web` (NFR-007 AC2–AC3).
+  - **If** sending a report fails, **then** the web app **shall** keep up
+    to 50 reports in that browser and send them later.
+  - The web app **shall** not use Crashlytics.
+- AC16: **Tests (guardrail 9).**
+  - The web app **shall** have unit tests that run with Vitest.
+  - The web app **shall** have a Playwright layout test for each screen at
+    1280×800 and 1920×1080 against a mocked API, with screenshot baselines
+    in `design/baselines/web/`.
+  - **When** a screen or its baseline changes, a visual verification pass
+    **shall** compare the screen with its design artifact.
+- AC17: **Deploy.**
+  - **When** a pull request is opened or updated, CI **shall** build and
+    test `web/` and deploy it to a Firebase Hosting preview channel that
+    expires after 7 days.
+  - **When** a change is merged to `main`, CI **shall** deploy the live
+    channel only after the same manual approval as the API.
+  - **If** the build, unit tests or layout tests fail, **then** CI
+    **shall** not deploy.
+  - CI **shall** read the Firebase web config (public client config) from
+    GitHub Actions variables at build time, and the config **shall** not
+    be committed.
+- AC18: **Analytics.**
+  - **Where** the build has a `FIREBASE_WEB_MEASUREMENT_ID`, the web app
+    **shall** use Firebase Analytics (Google Analytics 4) with that
+    measurement ID.
+  - **While** the live build runs on an AC1 domain and the user has not
+    opted out, the web app **shall** collect analytics.
+  - **While** the web app runs anywhere else (localhost, preview channels,
+    tests) or has no measurement ID, the web app **shall** not collect
+    analytics.
+  - **If** the browser blocks Analytics (for example an ad blocker),
+    **then** the web app **shall** keep working normally and log nothing
+    about it.
+  - **When** the screen changes, the web app **shall** send one `page_view`
+    with the screen name (`dashboard`, `inventory`, `item_detail`,
+    `shopping_list`, `spending`, `members`, `settings` or `sign_in`).
+  - **When** one of these actions completes, the web app **shall** send
+    its event: `login` (method `google` or `password`), `receipt_scan`
     (input `image` or `text`, line count, identified count, duration, and
-    `ok`, `failed` or `cancelled`), `receipt_saved` (line count),
+    outcome `ok`, `failed` or `cancelled`), `receipt_saved` (line count),
     `item_added` (source `manual` or `receipt`), `shopping_item_added`,
     `shopping_request_approved`, `shopping_request_rejected`,
     `shopping_item_purchased`, `invite_sent` and `theme_changed`.
-  - **User properties:** `role` (owner, teen or member) and `theme`. The
-    user ID is the hashed `user_ref` (NFR-006 AC6).
-  - **Privacy (NFR-002):** no names, emails, household names, addresses,
-    item names, receipt text, barcodes or prices are sent. Google signals
-    and ad personalization are off.
-  - **Opt-out:** Settings has a "Share usage analytics" switch (on by
-    default). Turning it off stops collection on that browser right away
-    and is remembered there.
+  - **When** a user is signed in, the web app **shall** set the Analytics
+    user ID to the hashed `user_ref` (NFR-006 AC6) and the user properties
+    `role` (owner, teen or member) and `theme`.
+  - The web app **shall** not send names, emails, household names,
+    addresses, item names, receipt text, barcodes or prices to Analytics
+    (NFR-002).
+  - The web app **shall** keep Google signals and ad personalization off.
+  - **When** the user turns off "Share usage analytics" in Settings (on by
+    default), the web app **shall** stop collection in that browser at
+    once and remember the choice there.
 
 ---
 
@@ -771,34 +875,55 @@ request (the web app's `<img>` tags, UI-007 AC12) ask the API for
 short-lived signed Cloud Storage links. The API keeps the links it has
 signed and reuses them, so repeat requests skip the signing call and
 return the same URL, which the browser has already cached.
+Acceptance criteria use EARS notation.
 Design Artifact: N/A (backend)
 Test File: tests/backend/test_photo_links.py
 Acceptance Criteria:
-- AC1: `POST /v1/households/{household_id}/photo-links` (bearer token)
-  takes `{photos: [...]}` with up to 100 photo paths, each either
-  `/v1/households/{household_id}/item-photos/{uuid}` (REQ-INV-019) or
-  `/v1/product-photos/{uuid}` (REQ-RCP-021). It returns
-  `{links: {<path>: {url, expires_at}}}`; paths whose photo does not
-  exist map to `null`. More than 100 paths, or a malformed path, returns
-  `400`.
-- AC2: Access is checked on every call and the cache never skips it.
-  The caller must be a member of `household_id` (`403` otherwise,
-  unknown household `404`). Item photos must belong to that household
-  (other households' paths map to `null`); any product photo is allowed.
-- AC3: Links are V4 signed `GET` URLs valid for 60 minutes. They never
-  reveal more than the object path already used by the API.
-- AC4: **Cache.** Each API instance keeps signed links in memory, keyed
-  by storage object (at most 5,000; least recently used dropped first). A
-  cached link is reused while it has at least 15 minutes left, so every
-  returned link is valid for at least 15 minutes. A cache hit makes no
-  IAM `signBlob` call. Deleting or replacing a photo removes its entry on
-  that instance. The existing `GET /v1/product-photos/{id}` redirect keeps
-  its own uncached links of at most 15 minutes (REQ-RCP-021 AC3).
-- AC5: Each call logs one `photo_links` INFO line with the counts of
-  requested, cached, newly signed and missing photos (NFR-006).
-- AC6: Without Cloud Storage (local runs and tests) the link is the API
-  path itself, and the web app's development build loads it with the
-  bearer token.
+- AC1: **Request and response.**
+  - **When** a caller sends `POST /v1/households/{household_id}/photo-links`
+    with a bearer token and `{photos: [...]}` of up to 100 photo paths, each
+    either `/v1/households/{household_id}/item-photos/{uuid}` (REQ-INV-019)
+    or `/v1/product-photos/{uuid}` (REQ-RCP-021), the API **shall** return
+    `{links: {<path>: {url, expires_at}}}`.
+  - **If** a requested photo does not exist, **then** the API **shall** map
+    its path to `null`.
+  - **If** the request has more than 100 paths or any malformed path,
+    **then** the API **shall** return `400`.
+- AC2: **Access.**
+  - The API **shall** check access on every call, including calls answered
+    from the cache.
+  - **If** the caller is not a member of `household_id`, **then** the API
+    **shall** return `403`.
+  - **If** `household_id` does not exist, **then** the API **shall** return
+    `404`.
+  - **If** an item photo path belongs to another household, **then** the
+    API **shall** map it to `null`.
+  - The API **shall** accept any product photo path from a member.
+- AC3: **Links.**
+  - The API **shall** return V4 signed `GET` URLs that are valid for 60
+    minutes and reveal no more than the object path the API already uses.
+- AC4: **Cache.**
+  - The API **shall** keep signed links in memory on each instance, keyed
+    by storage object, holding at most 5,000 and dropping the least
+    recently used first.
+  - **When** a requested photo has a cached link with at least 15 minutes
+    left, the API **shall** return that link without an IAM `signBlob`
+    call.
+  - **When** a requested photo has no cached link, or one with less than
+    15 minutes left, the API **shall** sign a new link and cache it.
+  - **When** a photo is deleted or replaced, the API **shall** remove its
+    cache entry on that instance.
+  - The API **shall** keep the `GET /v1/product-photos/{id}` redirect's own
+    uncached links of at most 15 minutes (REQ-RCP-021 AC3).
+- AC5: **Logging.**
+  - **When** a photo-links call finishes, the API **shall** log one
+    `photo_links` INFO line with the counts of requested, cached, newly
+    signed and missing photos (NFR-006).
+- AC6: **Without Cloud Storage.**
+  - **Where** Cloud Storage is not configured (local runs and tests), the
+    API **shall** return the API path itself as the link.
+  - **When** a returned link equals its API path, the web app **shall**
+    fetch the image with the bearer token.
 
 ---
 
