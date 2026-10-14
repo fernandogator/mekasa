@@ -83,6 +83,12 @@ variable "browser_key_apis" {
   ]
 }
 
+variable "places_key_secret" {
+  description = "Secret Manager secret holding the Places/Geocoding server key. deploy-cloud-run.sh reads the same name (PLACES_KEY_SECRET)."
+  type        = string
+  default     = "mekasa-places-api-key"
+}
+
 variable "github_owner" {
   description = "GitHub user or organisation that owns the repository."
   type        = string

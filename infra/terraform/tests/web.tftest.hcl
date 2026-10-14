@@ -159,6 +159,42 @@ run "writes_web_build_variables_from_firebase" {
   }
 }
 
+run "places_key_is_limited_and_readable_only_by_the_api" {
+  command = apply
+
+  plan_options {
+    target = [
+      google_secret_manager_secret_version.places_key,
+      google_secret_manager_secret_iam_member.runtime_reads_places_key,
+    ]
+  }
+
+  assert {
+    condition     = toset([for t in google_apikeys_key.places.restrictions[0].api_targets : t.service]) == toset(["places.googleapis.com", "geocoding-backend.googleapis.com"])
+    error_message = "The server key may call only Places API (New) and the Geocoding API."
+  }
+
+  assert {
+    condition     = length(google_apikeys_key.places.restrictions[0].browser_key_restrictions) == 0
+    error_message = "The server key must not be a browser key."
+  }
+
+  assert {
+    condition     = google_secret_manager_secret.places_key.secret_id == "mekasa-places-api-key"
+    error_message = "deploy-cloud-run.sh reads the key from mekasa-places-api-key."
+  }
+
+  assert {
+    condition     = google_secret_manager_secret_version.places_key.secret_data == google_apikeys_key.places.key_string
+    error_message = "The secret must hold the key Terraform created."
+  }
+
+  assert {
+    condition     = google_secret_manager_secret_iam_member.runtime_reads_places_key.member == "serviceAccount:mekasa-api@hackathon2025-472017.iam.gserviceaccount.com" && google_secret_manager_secret_iam_member.runtime_reads_places_key.role == "roles/secretmanager.secretAccessor"
+    error_message = "Only the Cloud Run runtime account gets read access to the key."
+  }
+}
+
 run "leaves_browser_key_alone_without_an_id" {
   command = plan
 

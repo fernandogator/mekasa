@@ -15,6 +15,7 @@ One-time setup in project `hackathon2025-472017` for the desktop web app
 | `mekasa-prod` environment variables `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_DEPLOY_SERVICE_ACCOUNT` | Already read by `ci.yml` (deploy-prod) and `deploy-backend.yml` |
 | Repository variables `FIREBASE_WEB_*` and `WEB_API_DIRECT_URL` | Read by the web build (UI-007 AC17); values come from Firebase and Cloud Run |
 | Referrer and API restrictions on the Firebase browser key (optional) | The key ships in the page by design; this limits where it works |
+| Places API (New), Geocoding API and Secret Manager; server key `mekasa-places-server` limited to Places and Geocoding; secret `mekasa-places-api-key` holding it; `secretAccessor` on that secret for `mekasa-api` | Store discovery (REQ-003 AC7–AC8). `deploy-cloud-run.sh` passes the secret to Cloud Run as `GOOGLE_PLACES_API_KEY` |
 
 The Cloud Run service, the photo buckets and the runtime account's own
 roles (including its signing role for REQ-023) stay with
@@ -68,6 +69,12 @@ it to the variable before applying.
 The browser key allows only the `mekasa` addresses and `localhost:5173`.
 Sign-in on PR preview channels (`mekasa--<channel>.web.app`) needs those
 hosts added to `browser_key_referrers` and to `auth_authorized_domains`.
+
+The Places key string ends up in Terraform state, which is one more reason
+the state bucket stays private to project owners. After the first apply that
+creates the key, redeploy the backend (**Actions > Deploy backend (Cloud
+Run)** or `backend/scripts/deploy-cloud-run.sh`) so Cloud Run picks up the
+secret; until then store search finds no stores in production.
 
 ## After apply: retire the old key
 

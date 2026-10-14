@@ -16,6 +16,11 @@ output "github_variables" {
   value       = sort(keys(github_actions_variable.web))
 }
 
+output "places_key_secret" {
+  description = "Secret the API reads its Places/Geocoding key from."
+  value       = google_secret_manager_secret.places_key.secret_id
+}
+
 output "deployer_service_account" {
   description = "Account CI deploys as."
   value       = google_service_account.deployer.email
