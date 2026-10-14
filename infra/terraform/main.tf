@@ -1,9 +1,10 @@
-# One-time cloud setup for the desktop web app (UI-007, ADR-010).
+# One-time cloud setup for the desktop web app (UI-007, ADR-010) and keyless
+# CI deploys (deployer.tf).
 #
-# Manages only what the web app adds: the APIs it needs, the Hosting site,
-# the deploy account's Hosting roles, the browser API key restrictions and
-# the GitHub Actions variables the web build reads. Cloud Run, buckets and
-# the runtime account stay with backend/scripts/deploy-cloud-run.sh.
+# Manages the APIs these need, the Hosting site, the browser API key
+# restrictions and the GitHub Actions variables CI reads. The Cloud Run
+# service, buckets and the runtime account's own roles stay with
+# backend/scripts/deploy-cloud-run.sh.
 
 locals {
   apis = [
@@ -12,13 +13,9 @@ locals {
     "identitytoolkit.googleapis.com",
     "firebaseinstallations.googleapis.com",
     "apikeys.googleapis.com",
-  ]
-
-  # firebase deploy --only hosting with a Cloud Run rewrite (ADR-010).
-  deployer_roles = [
-    "roles/firebasehosting.admin",
-    "roles/run.viewer",
-    "roles/serviceusage.serviceUsageConsumer",
+    "iam.googleapis.com",
+    "iamcredentials.googleapis.com",
+    "sts.googleapis.com",
   ]
 
   hosting_site_import = var.import_hosting_site ? { default = var.project_id } : {}
@@ -30,14 +27,6 @@ resource "google_project_service" "web" {
 
   service            = each.value
   disable_on_destroy = false
-}
-
-resource "google_project_iam_member" "deployer" {
-  for_each = toset(local.deployer_roles)
-
-  project = var.project_id
-  role    = each.value
-  member  = "serviceAccount:${var.deployer_service_account}"
 }
 
 import {

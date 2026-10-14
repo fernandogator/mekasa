@@ -119,7 +119,9 @@ separate dev deploy. Setup, once:
 1. **Require approval.** GitHub → Settings → Environments → `mekasa-prod-approval`
    → Required reviewers → add yourself. Without this, the approval step passes
    immediately.
-2. **Deployer service account** (keyless, recommended):
+2. **Deployer service account** (keyless, recommended). `infra/terraform`
+   creates all of steps 2 and 3, and only lets jobs in the `mekasa-prod`
+   environment act as the deployer; see its README. The manual equivalent:
 
    ```bash
    PROJECT=hackathon2025-472017
