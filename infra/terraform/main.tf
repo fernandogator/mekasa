@@ -36,13 +36,19 @@ import {
 }
 
 # Serves https://<project>.web.app and https://<project>.firebaseapp.com.
+# Not linked to the web app: that link only feeds /__/firebase/init.json,
+# which the app does not use, and the app is already linked to the `mekasa`
+# site.
 resource "google_firebase_hosting_site" "default" {
   for_each = { default = var.project_id }
   provider = google-beta
 
   project = var.project_id
   site_id = each.value
-  app_id  = var.web_app_id
+
+  lifecycle {
+    prevent_destroy = true
+  }
 
   depends_on = [google_project_service.web]
 }

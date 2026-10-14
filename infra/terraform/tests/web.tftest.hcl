@@ -47,6 +47,17 @@ variables {
 run "deployer_gets_only_deploy_roles" {
   command = apply
 
+  # Apply fills in the overridden values; the protected Hosting site stays out
+  # so teardown can destroy everything it created.
+  plan_options {
+    target = [
+      google_project_iam_member.deployer,
+      google_service_account_iam_member.deployer_acts_as_runtime,
+      google_service_account_iam_member.github_deploys_as_deployer,
+      github_actions_environment_variable.deploy,
+    ]
+  }
+
   assert {
     condition = toset([for m in google_project_iam_member.deployer : m.role]) == toset([
       "roles/run.sourceDeveloper",
@@ -71,6 +82,17 @@ run "deployer_gets_only_deploy_roles" {
 
 run "only_the_prod_environment_can_act_as_deployer" {
   command = apply
+
+  # Apply fills in the overridden values; the protected Hosting site stays out
+  # so teardown can destroy everything it created.
+  plan_options {
+    target = [
+      google_project_iam_member.deployer,
+      google_service_account_iam_member.deployer_acts_as_runtime,
+      google_service_account_iam_member.github_deploys_as_deployer,
+      github_actions_environment_variable.deploy,
+    ]
+  }
 
   assert {
     condition     = google_iam_workload_identity_pool_provider.github.attribute_condition == "assertion.repository == 'fernandogator/mekasa'"
