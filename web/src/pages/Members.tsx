@@ -1,7 +1,7 @@
 /**
  * Family members and invites.
  *
- * Satisfies: UI-007 (Desktop Web App) AC9 (REQ-019)
+ * Satisfies: UI-007 (Desktop Web App) AC4 (load errors), AC9 (REQ-019)
  * Design: design/exports/superdesign/desktop/04-family-members.html
  */
 
@@ -13,8 +13,8 @@ import { analytics } from '../analytics/analytics';
 import { api } from '../api/endpoints';
 import type { Invite, Role } from '../api/types';
 import { Dialog } from '../components/Dialog';
-import { Avatar, Button, Card, Field, Select, Tag } from '../components/ui';
-import { useInvites } from '../household/data';
+import { Avatar, Button, Card, ErrorNote, Field, Select, Spinner, Tag } from '../components/ui';
+import { useInvites, useMembers } from '../household/data';
 import { useHousehold } from '../household/HouseholdProvider';
 import { Shell } from '../layout/Shell';
 
@@ -110,6 +110,7 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
 
 export function Members() {
   const { members, isOwner } = useHousehold();
+  const membersQuery = useMembers();
   const invites = useInvites(isOwner);
   const [inviting, setInviting] = useState(false);
   const pending = (invites.data ?? []).filter((invite) => invite.status === 'pending');
@@ -126,56 +127,69 @@ export function Members() {
         ) : null
       }
     >
-      <Card className="mb-6 overflow-hidden">
-        <table className="w-full text-left text-sm" data-testid="members-table">
-          <thead className="border-b border-line">
-            <tr className="label-caps">
-              <th scope="col" className="px-6 py-4">Member</th>
-              <th scope="col" className="px-6 py-4">Role</th>
-              <th scope="col" className="px-6 py-4">Joined</th>
-              <th scope="col" className="px-6 py-4">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {active.map((member) => (
-              <tr key={member.uid}>
-                <td className="px-6 py-4">
-                  <span className="flex items-center gap-3">
-                    <Avatar name={member.name || member.email || '?'} />
-                    <span>
-                      <span className="block font-extrabold">{member.name || 'Household member'}</span>
-                      {member.email ? <span className="text-xs text-muted">{member.email}</span> : null}
-                    </span>
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <Tag tone={member.role === 'owner' ? 'accent' : 'neutral'}>{ROLE_LABEL[member.role]}</Tag>
-                </td>
-                <td className="px-6 py-4 font-semibold">{joined(member.created_at)}</td>
-                <td className="px-6 py-4 font-semibold text-muted">{member.status === 'active' ? 'Active' : 'Invited'}</td>
+      {membersQuery.isLoading ? (
+        <Spinner label="Loading members" />
+      ) : membersQuery.isError || invites.isError ? (
+        <ErrorNote
+          onRetry={() => {
+            if (membersQuery.isError) void membersQuery.refetch();
+            if (invites.isError) void invites.refetch();
+          }}
+        >
+          Couldn’t load your household members.
+        </ErrorNote>
+      ) : (
+        <Card className="mb-6 overflow-hidden">
+          <table className="w-full text-left text-sm" data-testid="members-table">
+            <thead className="border-b border-line">
+              <tr className="label-caps">
+                <th scope="col" className="px-6 py-4">Member</th>
+                <th scope="col" className="px-6 py-4">Role</th>
+                <th scope="col" className="px-6 py-4">Joined</th>
+                <th scope="col" className="px-6 py-4">Status</th>
               </tr>
-            ))}
-            {pending.map((invite) => (
-              <tr key={invite.id}>
-                <td className="px-6 py-4">
-                  <span className="flex items-center gap-3">
-                    <Avatar name={invite.name} />
-                    <span>
-                      <span className="block font-extrabold">{invite.name} (Pending)</span>
-                      {invite.email ? <span className="text-xs text-muted">{invite.email}</span> : null}
+            </thead>
+            <tbody className="divide-y divide-line">
+              {active.map((member) => (
+                <tr key={member.uid}>
+                  <td className="px-6 py-4">
+                    <span className="flex items-center gap-3">
+                      <Avatar name={member.name || member.email || '?'} />
+                      <span>
+                        <span className="block font-extrabold">{member.name || 'Household member'}</span>
+                        {member.email ? <span className="text-xs text-muted">{member.email}</span> : null}
+                      </span>
                     </span>
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <Tag tone="warning">Invited</Tag>
-                </td>
-                <td className="px-6 py-4 text-muted">—</td>
-                <td className="px-6 py-4 font-semibold text-muted">Waiting…</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+                  </td>
+                  <td className="px-6 py-4">
+                    <Tag tone={member.role === 'owner' ? 'accent' : 'neutral'}>{ROLE_LABEL[member.role]}</Tag>
+                  </td>
+                  <td className="px-6 py-4 font-semibold">{joined(member.created_at)}</td>
+                  <td className="px-6 py-4 font-semibold text-muted">{member.status === 'active' ? 'Active' : 'Invited'}</td>
+                </tr>
+              ))}
+              {pending.map((invite) => (
+                <tr key={invite.id}>
+                  <td className="px-6 py-4">
+                    <span className="flex items-center gap-3">
+                      <Avatar name={invite.name} />
+                      <span>
+                        <span className="block font-extrabold">{invite.name} (Pending)</span>
+                        {invite.email ? <span className="text-xs text-muted">{invite.email}</span> : null}
+                      </span>
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <Tag tone="warning">Invited</Tag>
+                  </td>
+                  <td className="px-6 py-4 text-muted">—</td>
+                  <td className="px-6 py-4 font-semibold text-muted">Waiting…</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
 
       <Card className="p-6" aria-labelledby="permissions-title">
         <h2 id="permissions-title" className="mb-4 text-lg font-extrabold">

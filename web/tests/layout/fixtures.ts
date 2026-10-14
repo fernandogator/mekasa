@@ -96,6 +96,7 @@ export interface FixtureOptions {
   uid?: 'owner-1' | 'teen-1';
   signedOut?: boolean;
   empty?: boolean;
+  failMembers?: boolean;
 }
 
 /** Answers every API call the app makes from in-memory fixtures. */
@@ -116,7 +117,7 @@ export async function useFixtures(page: Page, options: FixtureOptions = {}): Pro
     if (options.signedOut) return json(route, { detail: 'expired' }, 401);
     if (path === '/v1/me') return json(route, { uid, email: `${uid}@example.com`, name: null });
     if (path === '/v1/households/current') return json(route, household);
-    if (path.endsWith('/members')) return json(route, { members });
+    if (path.endsWith('/members')) return options.failMembers ? json(route, { detail: 'boom' }, 500) : json(route, { members });
     if (path.endsWith('/invites')) return json(route, { invites });
     if (path.endsWith('/inventory') && method === 'GET') return json(route, { items: options.empty ? [] : inventory });
     if (path.endsWith('/shopping-list') && method === 'GET') return json(route, { items: options.empty ? [] : shopping });

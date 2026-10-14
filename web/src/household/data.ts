@@ -21,6 +21,11 @@ export function useSpending(period: SpendingPeriod) {
   return useQuery({ queryKey: ['spending', household.id, period], queryFn: () => api.spending(household.id, period) });
 }
 
+export function useMembers() {
+  const { household } = useHousehold();
+  return useQuery({ queryKey: ['members', household.id], queryFn: () => api.members(household.id) });
+}
+
 export function useInvites(enabled: boolean) {
   const { household } = useHousehold();
   return useQuery({ queryKey: ['invites', household.id], queryFn: () => api.invites(household.id), enabled });

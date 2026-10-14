@@ -143,4 +143,12 @@ test.describe('roles and themes', () => {
     await page.goto('/inventory');
     await expect(page.getByText('Nothing in the house yet')).toBeVisible();
   });
+
+  test('a failed load shows an error with Retry (AC4)', async ({ page }) => {
+    await useFixtures(page, { failMembers: true });
+    await page.goto('/members');
+    await expect(page.getByText('Couldn’t load your household members.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+    await expect(page.getByTestId('members-table')).toHaveCount(0);
+  });
 });
