@@ -8,11 +8,14 @@ import { SessionEndedError } from '../api/client';
 
 /**
  * Codes Firebase returns when the refresh token is no longer accepted.
- * Anything else, `auth/network-request-failed` in particular, is a
- * transient failure that keeps the session.
+ * The SDK has no mapping for the server's INVALID_REFRESH_TOKEN, so it
+ * surfaces as `auth/invalid-refresh-token`. Anything else,
+ * `auth/network-request-failed` in particular, is a transient failure that
+ * keeps the session.
  */
 const SESSION_ENDING_CODES = new Set([
   'auth/user-token-expired',
+  'auth/invalid-refresh-token',
   'auth/invalid-user-token',
   'auth/user-disabled',
   'auth/user-not-found',
