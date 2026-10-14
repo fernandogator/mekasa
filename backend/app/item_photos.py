@@ -22,6 +22,7 @@ from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from app.config import Settings, get_settings
+from app.photo_links import CachedGcsSigner, LinkLookup, PhotoLink, shared_link_cache
 
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 MAX_LONG_EDGE = 1600
@@ -123,6 +124,8 @@ class ItemPhotoStore(Protocol):
 
     def get(self, ref: ItemPhotoRef) -> bytes | None: ...
 
+    def link(self, ref: ItemPhotoRef) -> LinkLookup: ...
+
     def delete(self, ref: ItemPhotoRef) -> bool: ...
 
 
@@ -141,6 +144,12 @@ class InMemoryItemPhotoStore:
         with self._lock:
             return self._objects.get(ref.object_name)
 
+    def link(self, ref: ItemPhotoRef) -> LinkLookup:
+        """Without Cloud Storage the link is the API path itself (REQ-023 AC6)."""
+        with self._lock:
+            present = ref.object_name in self._objects
+        return LinkLookup(PhotoLink(ref.url_path(), None) if present else None, cached=False)
+
     def delete(self, ref: ItemPhotoRef) -> bool:
         with self._lock:
             return self._objects.pop(ref.object_name, None) is not None
@@ -158,8 +167,10 @@ class GcsItemPhotoStore:
 
         client = storage.Client(project=project_id) if project_id else storage.Client()
         self._bucket = client.bucket(bucket_name)
+        self._links = CachedGcsSigner(self._bucket, shared_link_cache())
 
     def put(self, ref: ItemPhotoRef, jpeg: bytes) -> None:
+        self._links.evict(ref.object_name)
         blob = self._bucket.blob(ref.object_name)
         blob.cache_control = "private, max-age=0"
         blob.upload_from_string(jpeg, content_type="image/jpeg")
@@ -173,9 +184,14 @@ class GcsItemPhotoStore:
         except NotFound:
             return None
 
+    def link(self, ref: ItemPhotoRef) -> LinkLookup:
+        """A cached 60-minute signed link for the web app (REQ-023 AC3, AC4)."""
+        return self._links.link(ref.object_name)
+
     def delete(self, ref: ItemPhotoRef) -> bool:
         from google.api_core.exceptions import NotFound
 
+        self._links.evict(ref.object_name)
         try:
             self._bucket.blob(ref.object_name).delete()
             return True
@@ -198,6 +214,11 @@ class ItemPhotoService:
     def fetch(self, household_id: str, photo_id: str) -> bytes | None:
         ref = _ref_or_none(household_id, photo_id)
         return self.store.get(ref) if ref else None
+
+    def link(self, household_id: str, photo_id: str) -> LinkLookup:
+        """A browser-loadable link; the caller has checked membership (REQ-023 AC2)."""
+        ref = _ref_or_none(household_id, photo_id)
+        return self.store.link(ref) if ref else LinkLookup(None, cached=False)
 
     def delete(self, household_id: str, photo_id: str) -> bool:
         ref = _ref_or_none(household_id, photo_id)
