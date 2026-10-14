@@ -529,9 +529,9 @@ Test File: web/src/**/*.test.ts (unit), web/tests/layout/*.spec.ts (layout),
 Acceptance Criteria:
 - AC1: **Hosting.**
   - The web app **shall** be a static single-page app built from `web/`
-    and served from the default Firebase Hosting domains
-    `hackathon2025-472017.web.app` and `hackathon2025-472017.firebaseapp.com`,
-    with no custom domain in v1.0.
+    and served from the Firebase Hosting site `mekasa` at
+    `mekasa.web.app` and `mekasa.firebaseapp.com`, with no custom domain
+    in v1.0.
   - **When** the browser requests a path under `/v1/`, Firebase Hosting
     **shall** forward it on the same origin to the Cloud Run service
     `mekasa-api` (us-central1).

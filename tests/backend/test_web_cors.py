@@ -15,7 +15,7 @@ os.environ["ALLOW_TEST_AUTH"] = "true"
 os.environ["ENVIRONMENT"] = "test"
 os.environ["HOUSEHOLD_PERSISTENCE"] = "memory"
 
-WEB = "https://hackathon2025-472017.web.app"
+WEB = "https://mekasa.web.app"
 SCAN = "/v1/households/hh-1/receipts/scan"
 
 
@@ -50,7 +50,7 @@ def _preflight(client: TestClient, path: str, origin: str):
 
 @pytest.mark.parametrize(
     "origin",
-    [WEB, "https://hackathon2025-472017.firebaseapp.com", "http://localhost:5173"],
+    [WEB, "https://mekasa.firebaseapp.com", "http://localhost:5173"],
 )
 def test_preflight_from_web_origins_is_allowed_on_receipt_scan(client: TestClient, origin: str) -> None:
     response = _preflight(client, SCAN, origin)

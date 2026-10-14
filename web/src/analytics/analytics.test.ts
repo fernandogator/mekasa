@@ -14,12 +14,12 @@ function recordingSink() {
 }
 
 describe('analytics gating (UI-007 AC18)', () => {
-  const live = 'hackathon2025-472017.web.app';
+  const live = 'mekasa.web.app';
 
   it('collects only on live hosts with a measurement ID, outside mock mode, unless opted out', () => {
     expect(collectionAllowed(live, 'G-TEST', false, false)).toBe(true);
     expect(collectionAllowed('localhost', 'G-TEST', false, false)).toBe(false);
-    expect(collectionAllowed('hackathon2025-472017--pr-12-abc.web.app', 'G-TEST', false, false)).toBe(false);
+    expect(collectionAllowed('mekasa--pr-12-abc.web.app', 'G-TEST', false, false)).toBe(false);
     expect(collectionAllowed(live, '', false, false)).toBe(false);
     expect(collectionAllowed(live, 'G-TEST', true, false)).toBe(false);
     expect(collectionAllowed(live, 'G-TEST', false, true)).toBe(false);

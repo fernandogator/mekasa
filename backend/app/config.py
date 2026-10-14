@@ -51,8 +51,8 @@ class Settings(BaseSettings):
     # Origins allowed to call the receipt scan directly on Cloud Run (UI-007 AC11);
     # comma-separated. Everything else reaches the API through Firebase Hosting.
     web_cors_origins: str = (
-        "https://hackathon2025-472017.web.app,"
-        "https://hackathon2025-472017.firebaseapp.com,"
+        "https://mekasa.web.app,"
+        "https://mekasa.firebaseapp.com,"
         "http://localhost:5173"
     )
     # NFR-006: JSON lines for Cloud Logging; LOG_FORMAT=text for readable local output.
