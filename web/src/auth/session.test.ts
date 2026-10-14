@@ -5,7 +5,7 @@ const failing = (code: string) => ({ getIdToken: vi.fn(async () => Promise.rejec
 
 describe('session-ending Firebase errors (UI-007 AC3, REQ-022 AC2)', () => {
   it('treats a refused refresh as the end of the session', () => {
-    for (const code of ['auth/user-token-expired', 'auth/invalid-user-token', 'auth/user-disabled', 'auth/user-not-found']) {
+    for (const code of ['auth/user-token-expired', 'auth/invalid-refresh-token', 'auth/invalid-user-token', 'auth/user-disabled', 'auth/user-not-found']) {
       expect(endsSession({ code })).toBe(true);
     }
   });
@@ -27,6 +27,7 @@ describe('readIdToken', () => {
 
   it('turns a refused refresh into SessionEndedError', async () => {
     await expect(readIdToken(failing('auth/user-token-expired'))).rejects.toBeInstanceOf(SessionEndedError);
+    await expect(readIdToken(failing('auth/invalid-refresh-token'))).rejects.toBeInstanceOf(SessionEndedError);
   });
 
   it('rethrows network failures unchanged', async () => {
