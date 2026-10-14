@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars (untracked) and fill in.
+
+# Firebase console > Project settings > Your apps > Web app > App ID
+web_app_id = "1:000000000000:web:0000000000000000000000"
+
+# client_email of the JSON key stored in the GCP_SA_KEY GitHub secret
+deployer_service_account = "deployer@hackathon2025-472017.iam.gserviceaccount.com"
+
+# true if `firebase hosting:sites:list` already shows hackathon2025-472017
+import_hosting_site = false
+
+# gcloud services api-keys list --project hackathon2025-472017 \
+#   --filter='displayName:"Browser key"' --format='value(uid)'
+browser_api_key_id = ""
