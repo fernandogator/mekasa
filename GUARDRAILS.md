@@ -15,3 +15,7 @@
 9. No UI screen ships without a passing layout test AND a visual verification pass.
 10. Visual verification is semantic/structural, not pixel-exact —
     content differences from test data are expected and acceptable.
+11. Every new or changed requirement uses EARS notation: each acceptance
+    criterion is one EARS statement, failure cases are written as their own
+    **If** … **then** statements, and editing a requirement converts all of
+    its criteria. Format: "Requirement Notation" in `docs/spec-v1.0.md`.

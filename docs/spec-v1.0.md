@@ -1,5 +1,41 @@
 # MEKASA — Specification v1.0
 
+## Requirement Notation (EARS)
+
+Every new or changed requirement uses EARS (Easy Approach to Requirements
+Syntax). This is a hard rule (GUARDRAILS rule 11).
+
+| Pattern | Use for | Template |
+|---|---|---|
+| Ubiquitous | Always true | The `<system>` **shall** `<response>`. |
+| Event-driven | Reaction to a trigger | **When** `<trigger>`, the `<system>` **shall** `<response>`. |
+| State-driven | True while a state holds | **While** `<state>`, the `<system>` **shall** `<response>`. |
+| Unwanted behaviour | Errors, bad input, denied access, timeouts | **If** `<condition>`, **then** the `<system>` **shall** `<response>`. |
+| Optional feature | Only where a feature or setting is present | **Where** `<feature>`, the `<system>` **shall** `<response>`. |
+| Complex | Combinations | **While** `<state>`, **when** `<trigger>`, the `<system>` **shall** `<response>`. |
+
+Rules:
+
+- **One statement per criterion.** An AC is one EARS statement, or a short
+  bold label followed by a list of EARS statements. Each statement has
+  exactly one **shall** (or **shall** not).
+- **Name the system.** The subject is the part that acts: "the API", "the
+  iOS app", "the Android app", "the web app", "CI", or "the system" when
+  every part does.
+- **Complete.** Besides the normal path, write the failure cases (errors,
+  bad input, missing data, denied access, timeouts, offline) as their own
+  **If** … **then** statements.
+- **Testable.** Use observable results and real numbers (limits, sizes,
+  times) instead of words like "fast" or "user-friendly".
+- **Keywords in bold**: **When**, **While**, **If** / **then**, **Where**
+  and **shall**.
+- **Context stays in the Description.** Rationale, scope and out-of-scope
+  notes go in the Description, not in criteria.
+- **Existing requirements.** Criteria written before this rule stay valid
+  until their requirement is next changed. Any edit to a requirement
+  rewrites all of its criteria in EARS, keeping their AC numbers so tests
+  and traceability still match.
+
 ## Functional Requirements
 
 ### REQ-001: Household Account Creation
