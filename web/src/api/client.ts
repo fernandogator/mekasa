@@ -24,6 +24,14 @@ export class ApiError extends Error {
   }
 }
 
+/** Thrown by `TokenSource.getToken` when Firebase refuses to refresh the session. */
+export class SessionEndedError extends Error {
+  constructor(readonly code: string) {
+    super(`Session ended (${code})`);
+    this.name = 'SessionEndedError';
+  }
+}
+
 export interface TokenSource {
   getToken(forceRefresh?: boolean): Promise<string | null>;
   onSessionExpired(): void;
@@ -90,6 +98,11 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       if (response.status === 401) tokens.onSessionExpired();
     }
   } catch (error) {
+    if (error instanceof SessionEndedError) {
+      appLog.info('api', `${method} ${logPath} not sent: ${error.message}`, { request_id: requestId, correlation_id: correlationId });
+      tokens?.onSessionExpired();
+      throw new ApiError(401, logPath, 'Session expired', requestId, correlationId);
+    }
     if (error instanceof DOMException && error.name === 'AbortError') {
       appLog.info('api', `${options.where ?? logPath} cancelled`);
       throw error;
@@ -128,7 +141,14 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
 /** Fetches an API image with the bearer token (development builds without signed links). */
 export async function fetchImageBlob(path: string): Promise<Blob> {
-  const token = tokens ? await tokens.getToken() : null;
+  let token: string | null;
+  try {
+    token = tokens ? await tokens.getToken() : null;
+  } catch (error) {
+    if (!(error instanceof SessionEndedError)) throw error;
+    tokens?.onSessionExpired();
+    throw new ApiError(401, path, 'Session expired');
+  }
   const response = await fetch(path, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
   if (!response.ok) throw new ApiError(response.status, path, 'image');
   return response.blob();
