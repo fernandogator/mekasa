@@ -512,7 +512,9 @@ dashboard, inventory, shopping list, spending, members and receipt upload,
 with usage analytics (AC18). Barcode scanning, Trash Station mode and voice
 entry stay mobile-only. Out of scope for v1.0, although shown in the
 designs: expiry dates, budgets, the "PRO" badge and spending export.
-Acceptance criteria use EARS notation.
+Receipt scans bypass Hosting (AC11) because Hosting rewrites stop at 60 s,
+and a scan can take longer (45 s Gemini timeout, then OCR fallback and
+catalog matching). Acceptance criteria use EARS notation.
 Design Artifact: design/exports/superdesign/desktop/01-dashboard.html
   (shell, Dashboard, Inventory), design/exports/superdesign/desktop/02-shopping-list.html,
   design/exports/superdesign/desktop/03-spending-analytics.html,
@@ -643,9 +645,7 @@ Acceptance Criteria:
     through the same API calls the mobile apps use.
   - **If** some lines fail to save, **then** the web app **shall** keep
     only those lines in the review and offer Retry.
-- AC11: **Long receipt calls.** Hosting rewrites stop at 60 s, and a
-  receipt scan can take longer (45 s Gemini timeout, then OCR fallback and
-  catalog matching).
+- AC11: **Long receipt calls.**
   - The web app **shall** send `POST …/receipts/scan` directly to the
     Cloud Run service URL, and every other API call to same-origin `/v1`.
   - **When** the API receives a cross-origin request for the receipt scan
@@ -704,8 +704,8 @@ Acceptance Criteria:
   - **If** the build, unit tests or layout tests fail, **then** CI
     **shall** not deploy.
   - CI **shall** read the Firebase web config (public client config) from
-    GitHub Actions variables at build time, and the config **shall** not
-    be committed.
+    GitHub Actions variables at build time.
+  - The repository **shall** not contain the Firebase web config values.
 - AC18: **Analytics.**
   - **Where** the build has a `FIREBASE_WEB_MEASUREMENT_ID`, the web app
     **shall** use Firebase Analytics (Google Analytics 4) with that
