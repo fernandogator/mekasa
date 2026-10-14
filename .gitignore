@@ -55,3 +55,7 @@ android-fable/.kotlin/
 **/.gradle/
 **/build/
 
+
+# Playwright output
+web/test-results/
+web/playwright-report/
