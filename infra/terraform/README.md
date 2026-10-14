@@ -1,27 +1,36 @@
-# Web app cloud setup (Terraform)
+# Cloud setup for the web app and keyless deploys (Terraform)
 
-One-time setup for the desktop web app (UI-007, ADR-010) in project
-`hackathon2025-472017`. It manages only what the web app adds:
+One-time setup in project `hackathon2025-472017` for the desktop web app
+(UI-007, ADR-010) and for CI deploys without a service account key
+(`docs/gcp-firebase-setup.md` §4b).
 
 | What | Why |
 |---|---|
-| Enables Firebase, Hosting, Identity Toolkit, Installations and API Keys APIs | Hosting and web sign-in |
+| Enables the Firebase, Hosting, Identity Toolkit, Installations, API Keys, IAM, IAM Credentials and STS APIs | Hosting, web sign-in and keyless sign-in |
 | Default Hosting site `hackathon2025-472017` | Serves `*.web.app` / `*.firebaseapp.com` |
-| `roles/firebasehosting.admin`, `roles/run.viewer`, `roles/serviceusage.serviceUsageConsumer` for the deploy account | `firebase deploy --only hosting` with the `/v1/**` Cloud Run rewrite |
+| `mekasa-deployer` service account | The only account CI deploys as; it has no key |
+| Deployer roles: `run.sourceDeveloper`, `secretmanager.viewer`, `serviceusage.serviceUsageConsumer`, `firebasehosting.admin`, `run.viewer`, plus `iam.serviceAccountUser` on `mekasa-api` only | `deploy-cloud-run.sh` with `DEPLOY_ONLY=1`, and `firebase deploy --only hosting` with the Cloud Run rewrite |
+| Workload Identity pool `github`, provider `mekasa` | GitHub Actions signs in with short-lived tokens. Only this repository's tokens are accepted, and only jobs in the `mekasa-prod` environment may act as the deployer |
+| `mekasa-prod` environment variables `GCP_WORKLOAD_IDENTITY_PROVIDER` and `GCP_DEPLOY_SERVICE_ACCOUNT` | Already read by `ci.yml` (deploy-prod) and `deploy-backend.yml` |
+| Repository variables `FIREBASE_WEB_*` and `WEB_API_DIRECT_URL` | Read by the web build (UI-007 AC17); values come from Firebase and Cloud Run |
 | Referrer and API restrictions on the Firebase browser key (optional) | The key ships in the page by design; this limits where it works |
-| GitHub Actions variables `FIREBASE_WEB_*` and `WEB_API_DIRECT_URL` | Read by the web build (UI-007 AC17); values come from Firebase and Cloud Run, nothing is copied by hand |
 
-Cloud Run, the photo buckets and the runtime account (including its
-signing role for REQ-023) stay with `backend/scripts/deploy-cloud-run.sh`.
-Auth's authorized domains already include the default `web.app` and
-`firebaseapp.com` addresses, so they are not managed here.
+The Cloud Run service, the photo buckets and the runtime account's own
+roles (including its signing role for REQ-023) stay with
+`backend/scripts/deploy-cloud-run.sh`. Auth's authorized domains already
+include the default `web.app` and `firebaseapp.com` addresses, so they are
+not managed here.
 
 ## Prerequisites
 
-- Terraform 1.7 or newer, and `gcloud auth application-default login` as a
-  project owner.
+- Terraform 1.7 or newer (`brew install hashicorp/tap/terraform`; plain
+  `brew install terraform` is stuck at 1.5.7).
+- `gcloud auth application-default login` as a project owner.
 - A GitHub token allowed to write Actions variables on the repository
   (fine-grained: *Variables: read and write*), exported as `GITHUB_TOKEN`.
+- The GitHub environment `mekasa-prod` exists (Settings > Environments).
+  It is created by the first run that uses it; create it by hand if no
+  deploy has run yet.
 - A state bucket (once):
 
   ```bash
@@ -44,9 +53,6 @@ Values for `terraform.tfvars`:
 
 - `web_app_id`: the web app's `appId` from Firebase console > Project
   settings > Your apps.
-- `deployer_service_account`: the `client_email` of the key in the
-  `GCP_SA_KEY` GitHub secret. Use a dedicated deploy account rather than
-  the `mekasa-api` runtime account, so the API itself cannot change Hosting.
 - `import_hosting_site`: run `firebase hosting:sites:list --project
   hackathon2025-472017`. Set `true` if the default site is listed. If you
   guess wrong, apply fails with "already exists" (set `true`) or "cannot
@@ -62,6 +68,42 @@ The browser key allows only the default addresses and `localhost:5173`.
 Sign-in on PR preview channels (`<project>--<channel>.web.app`) needs
 those hosts added to `browser_key_referrers` and to Auth's authorized
 domains.
+
+## After apply: retire the old key
+
+CI prefers the keyless variables as soon as they exist. Once a deploy
+has worked without the key:
+
+1. Run **Actions > Deploy backend (Cloud Run)**. The log should say it
+   authenticated through Workload Identity as `mekasa-deployer`, and the
+   `/health` check should pass.
+2. Delete the `GCP_SA_KEY` secret (repository and `mekasa-prod`
+   environment, wherever it is set).
+3. Delete the downloaded `mekasa-api` keys:
+
+   ```bash
+   gcloud iam service-accounts keys list \
+     --iam-account mekasa-api@hackathon2025-472017.iam.gserviceaccount.com --managed-by=user
+   gcloud iam service-accounts keys delete <KEY_ID> \
+     --iam-account mekasa-api@hackathon2025-472017.iam.gserviceaccount.com
+   ```
+
+4. Review the project roles `mekasa-api` holds and remove any it only had
+   for deploying (for example `roles/run.admin` or Cloud Build roles):
+
+   ```bash
+   gcloud projects get-iam-policy hackathon2025-472017 \
+     --flatten='bindings[].members' \
+     --filter='bindings.members:serviceAccount:mekasa-api@' \
+     --format='value(bindings.role)'
+   ```
+
+   At runtime the API needs Firestore, Secret Manager access, Cloud SQL
+   client, `aiplatform.user`, its bucket access and signing as itself.
+
+If a keyless deploy fails with `PERMISSION_DENIED`, the log names the
+missing permission. Add that role to `deployer_roles` in `deployer.tf`, not
+to the runtime account.
 
 ## Tests
 

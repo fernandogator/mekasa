@@ -26,14 +26,16 @@ variable "web_app_id" {
   }
 }
 
-variable "deployer_service_account" {
-  description = "Email of the service account behind the GCP_SA_KEY GitHub secret, which runs firebase deploy."
+variable "runtime_service_account" {
+  description = "Cloud Run runtime identity the deployer deploys as (managed by deploy-cloud-run.sh)."
   type        = string
+  default     = "mekasa-api@hackathon2025-472017.iam.gserviceaccount.com"
+}
 
-  validation {
-    condition     = endswith(var.deployer_service_account, ".iam.gserviceaccount.com")
-    error_message = "Expected a service account email."
-  }
+variable "deploy_environment" {
+  description = "GitHub environment whose jobs may act as the deployer."
+  type        = string
+  default     = "mekasa-prod"
 }
 
 variable "import_hosting_site" {
