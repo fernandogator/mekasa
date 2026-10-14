@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="view-transition" content="same-origin">
+    <title>Mekasa Desktop - Oat Milk Detail</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="prefetch" href="https://p.superdesign.dev/draft/64c43b6c-53b3-40d3-ac58-d6b54a4832c2" as="document">
+    <link rel="prefetch" href="https://p.superdesign.dev/draft/34307113-e2a3-4c58-8482-b8143fba9261" as="document">
+    <link rel="prefetch" href="https://p.superdesign.dev/draft/01ac8495-9de5-4d41-bacb-6e7796318643" as="document">
+    <link rel="prefetch" href="https://p.superdesign.dev/draft/b95daad0-b60f-424a-af0a-77187d265de8" as="document">
+    <link rel="prefetch" href="https://p.superdesign.dev/draft/63cb673b-f7d6-4b37-8446-50cd1dfb302c" as="document">
+    <style>
+        :root {
+            --color-brand: #5d5652;
+            --color-brand-muted: #8fa085;
+            --color-surface: #ede8e0;
+            --color-surface-elevated: #faf7f3;
+            --color-text: #5d5652;
+            --color-text-muted: #8fa085;
+            --color-accent: #5a6f4f;
+            --color-danger: #a44a3f;
+            --color-success: #5a6f4f;
+            --color-warning: #c48c5a;
+            --color-overlay: rgba(143, 160, 133, 0.15);
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: var(--color-surface);
+            color: var(--color-text);
+            margin: 0;
+            padding: 0;
+        }
+
+        .sidebar-link:hover {
+            background-color: var(--color-overlay);
+        }
+
+        .sidebar-link.active {
+            background-color: var(--color-accent);
+            color: #fff;
+        }
+
+        .inventory-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: var(--color-brand-muted);
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: var(--color-brand);
+        }
+
+        @view-transition {
+            navigation: auto;
+        }
+
+        ::view-transition-old(main-nav), ::view-transition-new(main-nav) {
+            animation: none;
+            mix-blend-mode: normal;
+        }
+
+        ::view-transition-old(main-content) {
+            animation: 0.25s ease-out both fade-out;
+        }
+
+        ::view-transition-new(main-content) {
+            animation: 0.25s ease-in 0.1s both fade-in;
+        }
+
+        @keyframes fade-out {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .stepper-btn {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            border: 1px solid rgba(133, 160, 133, 0.3);
+            background: white;
+            color: var(--color-brand);
+            transition: all 0.2s;
+        }
+
+        .stepper-btn:hover {
+            background: var(--color-surface);
+        }
+
+        .health-grade {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+            font-weight: 900;
+            font-size: 20px;
+            background: #e7f0e7;
+            color: #2f6b4f;
+            border: 2px solid #5a6f4f;
+        }
+
+        #toast-undo {
+            animation: slideUp 0.3s ease-out forwards;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar (Persistent) -->
+        <aside class="w-64 bg-brand text-white flex flex-col shrink-0 z-30" style="background-color:var(--color-brand); view-transition-name: main-nav;">
+            <div class="p-8 pb-4 flex items-center space-x-3">
+                <img src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/747347d9-34d0-43dd-a1c8-e170f34a7b5c/generated-images/generated-b4990631-3f37-4a3c-8db8-46174fd7fd83.png" alt="Mekasa" class="w-10 h-10 rounded-xl">
+                <span class="text-2xl font-black tracking-tighter">Mekasa</span>
+            </div>
+            <nav class="flex-1 px-4 mt-8 space-y-1">
+                <a id="nav-dashboard" href="https://p.superdesign.dev/draft/64c43b6c-53b3-40d3-ac58-d6b54a4832c2" class="sidebar-link flex items-center px-4 py-3 rounded-2xl transition-all font-bold text-brand-muted hover:text-white">
+                    <iconify-icon icon="lucide:layout-dashboard" class="text-xl mr-3"></iconify-icon>Dashboard
+                </a>
+                <a id="nav-inventory" href="#" class="sidebar-link active flex items-center px-4 py-3 rounded-2xl transition-all font-bold text-white shadow-lg">
+                    <iconify-icon icon="lucide:archive" class="text-xl mr-3"></iconify-icon>Inventory
+                </a>
+                <a id="nav-shopping" href="#shopping" class="sidebar-link flex items-center px-4 py-3 rounded-2xl transition-all font-bold text-brand-muted hover:text-white">
+                    <iconify-icon icon="lucide:shopping-cart" class="text-xl mr-3"></iconify-icon>Shopping List
+                </a>
+                <a id="nav-spending" href="#spending" class="sidebar-link flex items-center px-4 py-3 rounded-2xl transition-all font-bold text-brand-muted hover:text-white">
+                    <iconify-icon icon="lucide:bar-chart-3" class="text-xl mr-3"></iconify-icon>Spending
+                </a>
+                <a id="nav-members" href="#members" class="sidebar-link flex items-center px-4 py-3 rounded-2xl transition-all font-bold text-brand-muted hover:text-white">
+                    <iconify-icon icon="lucide:users-2" class="text-xl mr-3"></iconify-icon>Members
+                </a>
+            </nav>
+            <div class="p-6 mt-auto border-t border-white/10">
+                <a id="nav-settings" href="https://p.superdesign.dev/draft/63cb673b-f7d6-4b37-8446-50cd1dfb302c" class="sidebar-link flex items-center px-4 py-3 rounded-2xl transition-all font-bold text-brand-muted hover:text-white">
+                    <iconify-icon icon="lucide:settings" class="text-xl mr-3"></iconify-icon>Settings
+                </a>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col min-w-0 bg-[#ede8e0] relative" style="view-transition-name: main-content;">
+            <!-- Header (Persistent) -->
+            <header class="h-20 bg-white border-b border-brand-muted/20 flex items-center justify-between px-8 shrink-0 shadow-sm z-20">
+                <div class="flex items-center space-x-4">
+                    <h2 class="text-2xl font-black tracking-tight">Inventory</h2>
+                    <div class="flex space-x-2">
+                        <span class="px-3 py-1 bg-surface rounded-full text-[10px] font-extrabold uppercase tracking-wider text-brand-muted border border-brand-muted/10">The Rodriguez House</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <div class="relative flex items-center h-10 w-64 bg-surface rounded-full px-4 border border-brand-muted/20">
+                        <iconify-icon icon="lucide:search" class="text-brand-muted mr-2"></iconify-icon>
+                        <input type="text" placeholder="Search inventory..." class="bg-transparent w-full text-sm outline-none font-semibold">
+                    </div>
+                    <button class="relative p-2 text-brand hover:bg-surface rounded-full transition-colors">
+                        <iconify-icon icon="lucide:bell" class="text-2xl"></iconify-icon>
+                        <span class="absolute top-2 right-2 w-2 h-2 bg-danger rounded-full ring-2 ring-white"></span>
+                    </button>
+                    <div class="flex items-center space-x-3 cursor-pointer p-1.5 rounded-full hover:bg-surface transition-colors">
+                        <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center text-white font-black text-sm">LR</div>
+                        <span class="font-bold text-sm hidden lg:block">Leo Rodriguez</span>
+                        <iconify-icon icon="lucide:chevron-down" class="text-brand-muted"></iconify-icon>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area (Dimmed when panel is open) -->
+            <div class="flex-1 overflow-y-auto p-8 custom-scrollbar opacity-50 grayscale-[0.2]">
+                <!-- Existing Grid from source -->
+                <div class="relative h-[240px] w-full shrink-0 overflow-hidden rounded-[32px] mb-8">
+                    <div class="absolute inset-0 bg-cover" style="background-image: url('https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/747347d9-34d0-43dd-a1c8-e170f34a7b5c/generated-images/generated-9f8732d0-09bd-4440-83b1-7f3d51826963.png'); background-position: center 30%;"></div>
+                    <div class="absolute inset-0 bg-gradient-to-t from-[#5d5652]/90 via-[#5d5652]/40 to-transparent"></div>
+                    <div class="relative h-full flex flex-col justify-end p-10">
+                        <p class="text-xs font-black uppercase tracking-[0.2em] text-white/80 mb-2">Good Morning</p>
+                        <h1 class="text-4xl font-black text-white leading-tight tracking-tight">The Rodriguez House</h1>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+                    <!-- Selected Item Highlighted -->
+                    <div class="inventory-card bg-surface-elevated rounded-[32px] overflow-hidden border-2 border-accent ring-4 ring-accent/10 flex flex-col shadow-xl">
+                        <div class="h-48 bg-cover bg-center relative" style="background-image: url('https://images.unsplash.com/photo-1550989460-0adf9ea622e2?auto=format&fit=crop&q=80&w=400')">
+                            <div class="absolute top-4 left-4">
+                                <span class="bg-accent text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">Low Stock</span>
+                            </div>
+                        </div>
+                        <div class="p-5 flex flex-col flex-1">
+                            <div class="flex justify-between items-start mb-1">
+                                <h3 class="font-black text-lg text-brand">Oat Milk</h3>
+                                <span class="font-black text-brand text-lg">×3</span>
+                            </div>
+                            <p class="text-[10px] font-extrabold uppercase text-brand-muted tracking-widest">Dairy · Chobani</p>
+                        </div>
+                    </div>
+                    <!-- Other items -->
+                    <div class="inventory-card bg-surface-elevated rounded-[32px] overflow-hidden border border-brand-muted/10 flex flex-col shadow-sm">
+                         <div class="h-48 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?auto=format&fit=crop&q=80&w=400')"></div>
+                         <div class="p-5"><h3 class="font-black">Strawberries</h3></div>
+                    </div>
+                    <div class="inventory-card bg-surface-elevated rounded-[32px] overflow-hidden border border-brand-muted/10 flex flex-col shadow-sm">
+                         <div class="h-48 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1546549032-9571cd6b27df?auto=format&fit=crop&q=80&w=400')"></div>
+                         <div class="p-5"><h3 class="font-black">Pasta (Fusilli)</h3></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Detail Panel -->
+            <div class="absolute top-0 right-0 h-full w-[440px] bg-white shadow-2xl z-40 flex flex-col border-l border-brand-muted/20">
+                <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                    <!-- Product Image -->
+                    <div class="relative rounded-[32px] overflow-hidden mb-8 group">
+                        <img src="https://images.unsplash.com/photo-1550989460-0adf9ea622e2?auto=format&fit=crop&q=80&w=800" alt="Oat Milk" class="w-full aspect-square object-cover">
+                        <button class="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-brand shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                            <iconify-icon icon="lucide:maximize-2" class="text-xl"></iconify-icon>
+                        </button>
+                    </div>
+
+                    <!-- Info Section -->
+                    <div class="space-y-6">
+                        <div>
+                            <label class="text-[10px] font-black uppercase tracking-widest text-brand-muted block mb-2">Product Name</label>
+                            <input type="text" value="Oat Milk" class="w-full text-3xl font-black tracking-tight text-brand bg-transparent border-b-2 border-transparent focus:border-accent outline-none pb-1">
+                        </div>
+
+                        <div class="flex items-center gap-4">
+                            <div class="flex-1">
+                                <label class="text-[10px] font-black uppercase tracking-widest text-brand-muted block mb-2">Category</label>
+                                <span class="inline-flex items-center px-4 py-1.5 bg-surface text-brand font-extrabold text-sm rounded-full border border-brand-muted/20">
+                                    Dairy
+                                </span>
+                            </div>
+                            <div class="health-grade" title="Health Grade: A">
+                                A
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] font-black uppercase tracking-widest text-brand-muted block mb-2">UPC / Barcode</label>
+                            <div class="flex items-center justify-between bg-surface-elevated border border-brand-muted/20 rounded-2xl px-4 py-3">
+                                <code class="font-mono text-sm text-brand font-semibold">0 12345 67890 5</code>
+                                <button class="text-accent flex items-center gap-1.5 font-black text-xs uppercase tracking-widest hover:underline">
+                                    <iconify-icon icon="lucide:copy"></iconify-icon> Copy
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Steppers -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-surface rounded-3xl p-4 border border-brand-muted/10">
+                                <label class="text-[10px] font-black uppercase tracking-widest text-brand-muted block mb-3 text-center">Current Quantity</label>
+                                <div class="flex items-center justify-center gap-4">
+                                    <button class="stepper-btn shadow-sm active:scale-90"><iconify-icon icon="lucide:minus"></iconify-icon></button>
+                                    <span class="text-2xl font-black w-8 text-center">3</span>
+                                    <button class="stepper-btn shadow-sm active:scale-90"><iconify-icon icon="lucide:plus"></iconify-icon></button>
+                                </div>
+                            </div>
+                            <div class="bg-surface rounded-3xl p-4 border border-brand-muted/10">
+                                <label class="text-[10px] font-black uppercase tracking-widest text-brand-muted block mb-3 text-center">Low-Stock Alert</label>
+                                <div class="flex items-center justify-center gap-4">
+                                    <button class="stepper-btn shadow-sm active:scale-90"><iconify-icon icon="lucide:minus"></iconify-icon></button>
+                                    <span class="text-2xl font-black w-8 text-center">1</span>
+                                    <button class="stepper-btn shadow-sm active:scale-90"><iconify-icon icon="lucide:plus"></iconify-icon></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="p-8 border-t border-brand-muted/20 bg-white flex items-center justify-between">
+                    <button class="text-danger font-black text-sm uppercase tracking-widest hover:underline px-2">Remove</button>
+                    <a href="https://p.superdesign.dev/draft/64c43b6c-53b3-40d3-ac58-d6b54a4832c2" class="px-8 py-3 bg-accent text-white rounded-2xl font-black text-sm shadow-lg shadow-accent/20 active:scale-95 transition-all">
+                        Done
+                    </a>
+                </div>
+            </div>
+
+            <!-- Bottom Left Toast -->
+            <div id="toast-undo" class="fixed bottom-8 left-[280px] z-50 bg-brand text-white px-6 py-4 rounded-[24px] shadow-2xl flex items-center gap-6 min-w-[280px]">
+                <div class="flex items-center gap-3">
+                    <iconify-icon icon="lucide:trash-2" class="text-brand-muted text-xl"></iconify-icon>
+                    <span class="font-bold">Item removed</span>
+                </div>
+                <button class="ml-auto text-accent font-black text-xs uppercase tracking-widest hover:brightness-125">
+                    Undo
+                </button>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

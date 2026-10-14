@@ -513,10 +513,11 @@ with usage analytics (AC18). Barcode scanning, Trash Station mode and voice entr
 Design Artifact: design/exports/superdesign/desktop/01-dashboard.html
   (shell, Dashboard, Inventory), design/exports/superdesign/desktop/02-shopping-list.html,
   design/exports/superdesign/desktop/03-spending-analytics.html,
-  design/exports/superdesign/desktop/04-family-members.html;
-  receipt review reference: design/exports/superdesign/mobile/13-receipt-results.html.
-  Pending desktop drafts (needed before those screens are built): Sign in,
-  Receipt upload and review, Item detail, Settings.
+  design/exports/superdesign/desktop/04-family-members.html,
+  design/exports/superdesign/desktop/05-sign-in.html,
+  design/exports/superdesign/desktop/06-receipt-upload-review.html,
+  design/exports/superdesign/desktop/07-item-detail.html,
+  design/exports/superdesign/desktop/08-settings.html
 User Flow: design/user-flows.md
 Test File: web/src/**/*.test.ts (unit), web/tests/layout/*.spec.ts (layout),
   design/baselines/web/ (visual baselines)
