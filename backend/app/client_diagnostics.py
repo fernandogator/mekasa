@@ -32,7 +32,7 @@ _WINDOW_SECONDS = 3600.0
 class ClientApp(BaseModel):
     """Which app build sent the report."""
 
-    platform: Literal["ios", "android"]
+    platform: Literal["ios", "android", "web"]
     app_version: str = Field(default="", max_length=40)
     build: str = Field(default="", max_length=40)
     os_version: str = Field(default="", max_length=40)
