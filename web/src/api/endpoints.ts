@@ -12,9 +12,11 @@ import type {
   PhotoLink,
   ProductHit,
   ReceiptScanResult,
+  SavedStore,
   ShoppingCreate,
   ShoppingItem,
   SpendingPeriod,
+  StoreSearch,
   SpendingReport,
   UserProfile,
 } from './types';
@@ -26,6 +28,15 @@ export const api = {
   currentHousehold: () => apiRequest<Household>('/v1/households/current'),
   renameHousehold: (id: string, name: string) =>
     apiRequest<Household>(`${hh(id)}/name`, { method: 'PUT', body: { name }, where: 'household.rename' }),
+  updateAddress: (id: string, address: string) =>
+    apiRequest<Household>(`${hh(id)}/address`, { method: 'PUT', body: { address }, where: 'household.address' }),
+  nearbyStores: (id: string) => apiRequest<StoreSearch>(`${hh(id)}/stores/nearby`),
+  saveStores: (id: string, stores: SavedStore[]) =>
+    apiRequest<Household>(`${hh(id)}/stores`, {
+      method: 'PUT',
+      body: { store_ids: stores.map((store) => store.id), stores },
+      where: 'household.stores',
+    }),
 
   inventory: (id: string) => apiRequest<{ items: InventoryItem[] }>(`${hh(id)}/inventory`).then((r) => r.items),
   addInventory: (id: string, item: InventoryCreate, correlationId?: string) =>
@@ -46,6 +57,8 @@ export const api = {
     apiRequest<ShoppingItem>(`${hh(id)}/shopping-list`, { method: 'POST', body: item, where: 'shopping.add' }),
   checkShopping: (id: string, itemId: string, checked: boolean) =>
     apiRequest<ShoppingItem>(`${hh(id)}/shopping-list/${itemId}`, { method: 'PATCH', body: { is_checked: checked }, where: 'shopping.purchase' }),
+  moveShopping: (id: string, itemId: string, storeId: string | null) =>
+    apiRequest<ShoppingItem>(`${hh(id)}/shopping-list/${itemId}`, { method: 'PATCH', body: { store_id: storeId }, where: 'shopping.move' }),
   approveShopping: (id: string, itemId: string) =>
     apiRequest<ShoppingItem>(`${hh(id)}/shopping-list/${itemId}/approve`, { method: 'POST', where: 'shopping.approve' }),
   rejectShopping: (id: string, itemId: string) =>

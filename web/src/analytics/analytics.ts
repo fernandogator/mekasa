@@ -35,7 +35,8 @@ export type AnalyticsEvent =
   | { name: 'shopping_request_rejected'; params: Record<string, never> }
   | { name: 'shopping_item_purchased'; params: Record<string, never> }
   | { name: 'invite_sent'; params: { role: 'owner' | 'teen' | 'member' } }
-  | { name: 'theme_changed'; params: { theme: string } };
+  | { name: 'theme_changed'; params: { theme: string } }
+  | { name: 'stores_saved'; params: { count: number } };
 
 export interface AnalyticsSink {
   event(name: string, params: Record<string, unknown>): void;
