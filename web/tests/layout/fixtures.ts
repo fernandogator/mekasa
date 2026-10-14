@@ -16,7 +16,31 @@ const item = (id: string, name: string, category: string, quantity: number, thre
   ...extra,
 });
 
-export const household = { id: H, name: 'The Rodriguez Home', photo_url: null, owner_uid: 'owner-1', created_at: now, updated_at: now };
+export const savedStores = [
+  { id: 'place-costco', name: 'Costco Wholesale', address: '4301 W William Cannon Dr, Austin', distance_miles: 6.2 },
+  { id: 'place-heb', name: 'H-E-B', address: '5808 Burnet Rd, Austin', distance_miles: 1.4 },
+];
+
+export const nearbyStores = [
+  ...savedStores,
+  { id: 'place-target', name: 'Target', address: '8601 Research Blvd, Austin', distance_miles: 3.8 },
+  { id: 'place-wfm', name: 'Whole Foods Market', address: '525 N Lamar Blvd, Austin', distance_miles: 4.9 },
+  { id: 'place-walmart', name: 'Walmart Supercenter', address: '9300 S IH-35, Austin', distance_miles: 11.3 },
+].map((store) => ({ ...store, latitude: 30.3, longitude: -97.7, provider: 'places' }));
+
+export const household = {
+  id: H,
+  name: 'The Rodriguez Home',
+  photo_url: null,
+  owner_uid: 'owner-1',
+  address: '2100 Elm St, Austin, TX',
+  latitude: 30.31,
+  longitude: -97.74,
+  store_ids: savedStores.map((store) => store.id),
+  stores: savedStores,
+  created_at: now,
+  updated_at: now,
+};
 
 export const members = [
   { uid: 'owner-1', household_id: H, name: 'Leo Rodriguez', email: 'leo@example.com', role: 'owner', status: 'active', created_at: now },
@@ -36,10 +60,10 @@ export const inventory = [
 ];
 
 export const shopping = [
-  { id: 'sh-1', household_id: H, name: 'Whole Milk', quantity: 2, is_checked: false, needs_approval: false, inventory_item_id: 'inv-1', kind: 'auto', created_by_uid: 'owner-1', created_at: now, updated_at: now },
-  { id: 'sh-2', household_id: H, name: 'Paper Towels', quantity: 1, is_checked: false, needs_approval: false, inventory_item_id: 'inv-7', kind: 'auto', created_by_uid: 'owner-1', created_at: now, updated_at: now },
+  { id: 'sh-1', household_id: H, name: 'Whole Milk', quantity: 2, is_checked: false, needs_approval: false, inventory_item_id: 'inv-1', store_id: 'place-heb', kind: 'auto', created_by_uid: 'owner-1', created_at: now, updated_at: now },
+  { id: 'sh-2', household_id: H, name: 'Paper Towels', quantity: 1, is_checked: false, needs_approval: false, inventory_item_id: 'inv-7', store_id: 'place-costco', kind: 'auto', created_by_uid: 'owner-1', created_at: now, updated_at: now },
   { id: 'sh-3', household_id: H, name: 'Ice Cream', quantity: 1, is_checked: false, needs_approval: true, requested_by: 'Maya Rodriguez', kind: 'request', created_by_uid: 'teen-1', created_at: now, updated_at: now },
-  { id: 'sh-4', household_id: H, name: 'Bananas', quantity: 6, is_checked: false, needs_approval: false, kind: 'custom', created_by_uid: 'owner-1', created_at: now, updated_at: now },
+  { id: 'sh-4', household_id: H, name: 'Bananas', quantity: 6, is_checked: false, needs_approval: false, store_id: 'place-heb', kind: 'custom', created_by_uid: 'owner-1', created_at: now, updated_at: now },
 ];
 
 const purchase = (id: string, name: string, category: string, price: number, day: number, uid: string) => ({
@@ -97,6 +121,8 @@ export interface FixtureOptions {
   signedOut?: boolean;
   empty?: boolean;
   failMembers?: boolean;
+  /** Household with no address and no saved stores. */
+  noStores?: boolean;
 }
 
 /** Answers every API call the app makes from in-memory fixtures. */
@@ -116,7 +142,26 @@ export async function useFixtures(page: Page, options: FixtureOptions = {}): Pro
     const method = route.request().method();
     if (options.signedOut) return json(route, { detail: 'expired' }, 401);
     if (path === '/v1/me') return json(route, { uid, email: `${uid}@example.com`, name: null });
-    if (path === '/v1/households/current') return json(route, household);
+    const home = options.noStores ? { ...household, address: null, latitude: null, longitude: null, store_ids: [], stores: [] } : household;
+    if (path === '/v1/households/current') return json(route, home);
+    if (path.endsWith('/stores/nearby')) return json(route, { household_id: H, radius_miles: 15, stores: nearbyStores });
+    if (path.endsWith('/stores') && method === 'PUT') {
+      const body = route.request().postDataJSON() as { store_ids: string[]; stores: unknown[] };
+      return json(route, { ...home, store_ids: body.store_ids, stores: body.stores });
+    }
+    if (path.endsWith('/address') && method === 'PUT') {
+      const body = route.request().postDataJSON() as { address: string };
+      return json(route, { ...home, address: body.address, latitude: 30.31, longitude: -97.74 });
+    }
+    if (path.endsWith('/shopping-list') && method === 'POST') {
+      const body = route.request().postDataJSON() as Record<string, unknown>;
+      return json(route, { id: 'sh-new', household_id: H, is_checked: false, created_by_uid: uid, created_at: now, updated_at: now, ...body }, 201);
+    }
+    const row = path.match(/\/shopping-list\/([^/]+)$/);
+    if (row && method === 'PATCH') {
+      const found = shopping.find((entry) => entry.id === row[1]);
+      return json(route, { ...found, ...(route.request().postDataJSON() as object) });
+    }
     if (path.endsWith('/members')) return options.failMembers ? json(route, { detail: 'boom' }, 500) : json(route, { members });
     if (path.endsWith('/invites')) return json(route, { invites });
     if (path.endsWith('/inventory') && method === 'GET') return json(route, { items: options.empty ? [] : inventory });
