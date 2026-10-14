@@ -1,0 +1,69 @@
+/*
+ * Mekasa design tokens (UI-007 AC13). The only file allowed to hold color
+ * values; `npm run lint:tokens` fails on hex/rgb literals anywhere else.
+ * Colors are space-separated RGB channels so Tailwind can apply opacity.
+ * Mirrors .superdesign/design-system.md (Rich & Grounded, 2026-10-04).
+ *
+ * A seasonal theme is one more `[data-theme='…']` block overriding these
+ * variables; components never change.
+ */
+
+:root,
+[data-theme='grounded'] {
+  color-scheme: light;
+  --color-brand: 93 86 82;
+  --color-brand-muted: 143 160 133;
+  --color-surface: 237 232 224;
+  --color-surface-elevated: 250 247 243;
+  --color-text: 93 86 82;
+  --color-text-muted: 92 107 84;
+  --color-accent: 90 111 79;
+  --color-accent-text: 90 111 79;
+  --color-on-accent: 255 255 255;
+  --color-on-brand: 255 255 255;
+  --color-on-brand-muted: 201 214 192;
+  --color-danger: 164 74 63;
+  --color-success: 90 111 79;
+  --color-warning: 139 92 50;
+  --color-warning-tint: 243 230 216;
+  --color-success-tint: 220 232 211;
+  --color-border: 118 137 107;
+  --color-line: 226 219 208;
+  --color-scrim: 28 26 24;
+
+  --font-sans: 'Nunito', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.75rem;
+  --shadow-card: 0 1px 2px rgb(93 86 82 / 0.06), 0 8px 24px -12px rgb(93 86 82 / 0.18);
+  --shadow-raised: 0 18px 40px -16px rgb(28 26 24 / 0.35);
+  --shadow-focus: 0 0 0 3px rgb(90 111 79 / 0.45);
+}
+
+[data-theme='grounded-dark'] {
+  color-scheme: dark;
+  --color-brand: 58 53 49;
+  --color-brand-muted: 90 111 79;
+  --color-surface: 28 26 24;
+  --color-surface-elevated: 39 36 33;
+  --color-text: 237 232 224;
+  --color-text-muted: 169 183 159;
+  --color-accent: 143 160 133;
+  --color-accent-text: 163 181 152;
+  --color-on-accent: 28 26 24;
+  --color-on-brand: 237 232 224;
+  --color-on-brand-muted: 181 194 171;
+  --color-danger: 227 146 134;
+  --color-success: 163 181 152;
+  --color-warning: 226 176 126;
+  --color-warning-tint: 58 46 34;
+  --color-success-tint: 44 54 40;
+  --color-border: 127 142 118;
+  --color-line: 58 53 49;
+  --color-scrim: 0 0 0;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.5);
+  --shadow-raised: 0 18px 40px -16px rgb(0 0 0 / 0.7);
+  --shadow-focus: 0 0 0 3px rgb(163 181 152 / 0.5);
+}
