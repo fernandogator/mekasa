@@ -70,6 +70,7 @@ for (const size of SIZES) {
       await heading(page, 'Shopping List');
       await expect(page.getByRole('form', { name: 'Add to the list' })).toBeVisible();
       await expect(page.getByRole('heading', { level: 2, name: 'Dairy' })).toBeVisible();
+      await expect(page.getByRole('tab', { name: 'H-E-B 2' })).toBeVisible();
       await expect(page).toHaveScreenshot(`ShoppingList_${size.name}.png`, { fullPage: true });
     });
 
@@ -97,6 +98,17 @@ for (const size of SIZES) {
       await heading(page, 'Settings');
       await expect(page.getByRole('radiogroup', { name: 'Theme' })).toBeVisible();
       await expect(page).toHaveScreenshot(`Settings_${size.name}.png`, { fullPage: true });
+    });
+
+    test('store picker (AC19)', async ({ page }) => {
+      await useFixtures(page);
+      await page.goto('/settings');
+      await page.getByRole('button', { name: 'Change stores' }).click();
+      const dialog = page.getByTestId('store-picker');
+      await expect(dialog.getByRole('heading', { name: 'Where do you shop?' })).toBeVisible();
+      await expect(dialog.getByRole('checkbox', { name: /H-E-B/ })).toHaveAttribute('aria-checked', 'true');
+      await expect(dialog.getByRole('checkbox', { name: /Target/ })).toHaveAttribute('aria-checked', 'false');
+      await expect(page).toHaveScreenshot(`StorePicker_${size.name}.png`);
     });
 
     test('receipt review (AC10)', async ({ page }) => {
@@ -136,6 +148,70 @@ test.describe('roles and themes', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'grounded-dark');
     expect(await background()).not.toBe(light);
     await expect(page).toHaveScreenshot('SettingsDark_1280.png', { fullPage: true });
+  });
+
+  test('owner picks stores; confirming saves them to Settings (AC19)', async ({ page }) => {
+    await useFixtures(page, { noStores: true });
+    await page.goto('/settings');
+    await expect(page.getByText('No stores saved yet.', { exact: false })).toBeVisible();
+    await page.getByRole('button', { name: 'Choose stores' }).click();
+    const dialog = page.getByTestId('store-picker');
+    await dialog.getByRole('textbox', { name: 'Home address' }).fill('2100 Elm St, Austin, TX');
+    await dialog.getByRole('button', { name: 'Find stores' }).click();
+    const confirm = dialog.getByRole('button', { name: 'Confirm stores' });
+    await expect(confirm).toBeDisabled();
+    await dialog.getByRole('searchbox').fill('co');
+    await expect(dialog.getByRole('checkbox')).toHaveCount(1);
+    await dialog.getByRole('checkbox', { name: /Costco/ }).click();
+    await dialog.getByRole('searchbox').fill('');
+    await dialog.getByRole('checkbox', { name: /H-E-B/ }).click();
+    await confirm.click();
+    await expect(dialog).toHaveCount(0);
+    const saved = page.getByRole('list', { name: 'Your stores' });
+    await expect(saved.getByRole('listitem')).toHaveCount(2);
+    await expect(saved).toContainText('H-E-B');
+    await expect(saved).toContainText('Costco Wholesale');
+  });
+
+  test('teen sees stores without the picker (AC19)', async ({ page }) => {
+    await useFixtures(page, { uid: 'teen-1' });
+    await page.goto('/settings');
+    await expect(page.getByRole('list', { name: 'Your stores' }).getByText('Costco Wholesale')).toBeVisible();
+    await expect(page.getByRole('button', { name: /stores/ })).toHaveCount(0);
+  });
+
+  test('each store has its own list; rows move between lists (AC20, REQ-024)', async ({ page }) => {
+    await useFixtures(page);
+    await page.goto('/shopping');
+    await heading(page, 'Shopping List');
+    const tabs = page.getByRole('tablist', { name: 'Store' });
+    await expect(tabs.getByRole('tab')).toHaveText(['All stores 4', 'Costco Wholesale 1', 'H-E-B 2', 'Any store 1']);
+    await tabs.getByRole('tab', { name: /Costco/ }).click();
+    await expect(page.getByTestId('shopping-row')).toHaveCount(1);
+    await expect(page.getByTestId('shopping-row')).toContainText('Paper Towels');
+    await expect(page.getByRole('combobox', { name: 'Store', exact: true })).toHaveValue('place-costco');
+    await expect(page).toHaveScreenshot('ShoppingListCostco_1280.png', { fullPage: true });
+
+    await tabs.getByRole('tab', { name: /H-E-B/ }).click();
+    const moved = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/shopping-list/sh-4'));
+    await page.getByRole('combobox', { name: 'Store for Bananas' }).selectOption('place-costco');
+    expect((await moved).postDataJSON()).toEqual({ store_id: 'place-costco' });
+    await expect(tabs.getByRole('tab', { name: /Costco/ })).toHaveText('Costco Wholesale 2');
+    await expect(page.getByTestId('shopping-row')).toHaveCount(1);
+
+    const added = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/shopping-list'));
+    await page.getByPlaceholder('e.g. Whole milk').fill('Tortillas');
+    await page.getByRole('button', { name: 'Add Item' }).click();
+    expect((await added).postDataJSON()).toMatchObject({ name: 'Tortillas', store_id: 'place-heb' });
+  });
+
+  test('without saved stores the list is single and points owners to Settings (AC20)', async ({ page }) => {
+    await useFixtures(page, { noStores: true });
+    await page.goto('/shopping');
+    await heading(page, 'Shopping List');
+    await expect(page.getByRole('tablist', { name: 'Store' })).toHaveCount(0);
+    await expect(page.getByTestId('stores-hint')).toBeVisible();
+    await expect(page.getByTestId('shopping-row')).toHaveCount(4);
   });
 
   test('empty household shows guidance instead of blank panels', async ({ page }) => {

@@ -17,8 +17,37 @@ export interface Household {
   photo_url: string | null;
   owner_uid: string;
   address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  store_ids?: string[];
+  stores?: SavedStore[];
   created_at: string;
   updated_at: string;
+}
+
+/** A household's chosen store, as saved with REQ-003 AC6. */
+export interface SavedStore {
+  id: string;
+  name: string;
+  address: string;
+  distance_miles?: number | null;
+}
+
+export interface NearbyStore {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  distance_miles: number;
+  provider: 'places' | 'stub';
+}
+
+export interface StoreSearch {
+  household_id: string;
+  radius_miles: number;
+  stores: NearbyStore[];
+  needs_location?: boolean;
 }
 
 export interface ProductHealth {
@@ -67,6 +96,7 @@ export interface ShoppingItem {
   requested_by?: string | null;
   inventory_item_id?: string | null;
   kind: 'auto' | 'custom' | 'request';
+  store_id?: string | null;
   created_by_uid: string;
   created_at: string;
   updated_at: string;
@@ -78,6 +108,7 @@ export interface ShoppingCreate {
   needs_approval?: boolean;
   kind?: ShoppingItem['kind'];
   requested_by?: string | null;
+  store_id?: string | null;
 }
 
 export interface Member {

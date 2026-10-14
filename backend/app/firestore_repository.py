@@ -15,6 +15,7 @@ from app.models import (
     HouseholdCreateRequest,
     HouseholdNameUpdateRequest,
     HouseholdResponse,
+    SavedStore,
 )
 
 COLLECTION = "households"
@@ -34,6 +35,7 @@ def _to_household(doc_id: str, data: dict[str, Any]) -> HouseholdResponse:
         latitude=data.get("latitude"),
         longitude=data.get("longitude"),
         store_ids=list(data.get("store_ids") or []),
+        stores=[SavedStore.model_validate(item) for item in data.get("stores") or []],
         created_at=data["created_at"],
         updated_at=data["updated_at"],
     )
@@ -113,15 +115,18 @@ class FirestoreHouseholdRepository:
         return household.model_copy(update=updates)
 
     def set_stores(
-        self, household_id: str, owner_uid: str, store_ids: list[str]
+        self, household_id: str, owner_uid: str, store_ids: list[str], stores: list[SavedStore] | None = None
     ) -> HouseholdResponse:
         household = self._require_owner(household_id, owner_uid)
-        updates = {
-            "store_ids": list(store_ids),
-            "updated_at": _utcnow(),
-        }
-        self._col.document(household_id).update(updates)
-        return household.model_copy(update=updates)
+        saved = list(stores or [])
+        self._col.document(household_id).update(
+            {
+                "store_ids": list(store_ids),
+                "stores": [store.model_dump() for store in saved],
+                "updated_at": _utcnow(),
+            }
+        )
+        return household.model_copy(update={"store_ids": list(store_ids), "stores": saved, "updated_at": _utcnow()})
 
     def update_photo_url(
         self, household_id: str, owner_uid: str, photo_url: str

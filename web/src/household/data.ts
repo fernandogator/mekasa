@@ -54,6 +54,10 @@ export function useShoppingActions() {
     approve: useMutation({ mutationFn: (id: string) => api.approveShopping(household.id, id), onSuccess: replace }),
     reject: useMutation({ mutationFn: (id: string) => api.rejectShopping(household.id, id), onSuccess: refresh }),
     purchase: useMutation({ mutationFn: (id: string) => api.checkShopping(household.id, id, true), onSuccess: refresh }),
+    move: useMutation({
+      mutationFn: ({ id, storeId }: { id: string; storeId: string | null }) => api.moveShopping(household.id, id, storeId),
+      onSuccess: replace,
+    }),
   };
 }
 

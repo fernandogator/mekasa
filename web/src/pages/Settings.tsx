@@ -1,12 +1,13 @@
 /**
  * Settings: household, appearance, privacy, help and account.
  *
- * Satisfies: UI-007 (Desktop Web App) AC2, AC13, AC15, AC18 (opt-out)
- * Design: design/exports/superdesign/desktop/08-settings.html
+ * Satisfies: UI-007 (Desktop Web App) AC2, AC13, AC15, AC18 (opt-out), AC19
+ * Design: design/exports/superdesign/desktop/08-settings.html,
+ *   design/exports/superdesign/mobile/02-store-selection.html (stores)
  */
 
 import { useQueryClient } from '@tanstack/react-query';
-import { Lock, ShieldCheck } from 'lucide-react';
+import { Lock, ShieldCheck, Store as StoreIcon } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 
 import { analytics, optedOut } from '../analytics/analytics';
@@ -16,6 +17,8 @@ import { Button, Card, Field, Switch } from '../components/ui';
 import { sendDiagnostics } from '../diagnostics/reporting';
 import { useHousehold } from '../household/HouseholdProvider';
 import { Shell } from '../layout/Shell';
+import { miles } from '../stores/logic';
+import { StoreMark, StorePicker } from '../stores/StorePicker';
 import { applyTheme, readPreference, savePreference, type ThemeName, type ThemePreference } from '../theme/theme';
 
 const THEME_CHOICES: { key: ThemePreference; label: string; previews: ThemeName[] }[] = [
@@ -42,6 +45,7 @@ export function Settings() {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(household.name ?? '');
   const [saving, setSaving] = useState(false);
+  const [pickingStores, setPickingStores] = useState(false);
   const [diag, setDiag] = useState<{ state: 'idle' | 'sending' | 'sent' | 'failed'; reference?: string }>({ state: 'idle' });
 
   function chooseTheme(next: ThemePreference) {
@@ -107,6 +111,36 @@ export function Settings() {
               <ShieldCheck aria-hidden className="h-4 w-4" /> You are an owner of this household
             </p>
           ) : null}
+        </SettingsCard>
+
+        <SettingsCard title="Grocery stores">
+          {(household.stores ?? []).length > 0 ? (
+            <ul aria-label="Your stores" className="divide-y divide-line">
+              {(household.stores ?? []).map((store) => (
+                <li key={store.id} className="flex items-center gap-4 py-3 first:pt-0">
+                  <StoreMark name={store.name} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-extrabold">{store.name}</p>
+                    <p className="truncate text-sm text-muted">{store.address}</p>
+                  </div>
+                  {store.distance_miles != null ? (
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted">{miles(store.distance_miles)}</span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="flex items-center gap-3 text-sm text-muted">
+              <StoreIcon aria-hidden className="h-5 w-5" />
+              No stores saved yet. Add where you shop to keep a shopping list for each store.
+            </p>
+          )}
+          {isOwner ? (
+            <div className="mt-4 flex justify-end">
+              <Button onClick={() => setPickingStores(true)}>{(household.stores ?? []).length > 0 ? 'Change stores' : 'Choose stores'}</Button>
+            </div>
+          ) : null}
+          {pickingStores ? <StorePicker household={household} onClose={() => setPickingStores(false)} /> : null}
         </SettingsCard>
 
         <SettingsCard title="Appearance">

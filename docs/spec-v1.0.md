@@ -43,6 +43,39 @@ Acceptance Criteria:
   15-mile radius including Walmart, Costco, Publix, and local stores
 - AC5: User selects one or more regular stores from the returned list
 
+AC6–AC10 were added 2026-10-14 for the web app's store settings (UI-007
+AC19) and use EARS notation.
+
+- AC6: **Saved store details.**
+  - **When** a client saves the selected stores with their names,
+    addresses and distances, the API **shall** keep those details with
+    the store IDs and return them on the household as `stores`.
+  - **If** a client saves store IDs only, **then** the API **shall** keep
+    the IDs and return `stores` empty.
+- AC7: **Address to coordinates.**
+  - **When** an owner saves an address without coordinates and a Google
+    Maps key is configured, the API **shall** look up the address's
+    coordinates with the Geocoding API and save them with the address.
+  - **If** the lookup fails or finds nothing, **then** the API **shall**
+    save the address without coordinates.
+- AC8: **Store search provider.**
+  - **When** the household has coordinates and a Google Maps key is
+    configured, the API **shall** search with Places API (New) Nearby
+    Search, ranked by distance, for grocery stores, supermarkets and
+    warehouse clubs, plus Walmart and Target department or discount
+    stores.
+  - **If** the Places search fails, **then** the API **shall** log a
+    warning and answer with the stores it has (none in production).
+- AC9: **No placeholder stores in production.**
+  - **While** the API runs in production, it **shall** never return the
+    built-in placeholder stores.
+  - **While** the API runs outside production, it **shall** return the
+    placeholder stores when Places is unavailable, so clients can be
+    developed without a key.
+- AC10: **Missing location.**
+  - **If** the household has no coordinates, **then** the store search
+    **shall** answer with `needs_location: true`.
+
 ### REQ-004: Barcode Scanning and Product Lookup
 Priority: P0
 Description: User scans a barcode and the app retrieves item name,
@@ -522,7 +555,9 @@ Design Artifact: design/exports/superdesign/desktop/01-dashboard.html
   design/exports/superdesign/desktop/05-sign-in.html,
   design/exports/superdesign/desktop/06-receipt-upload-review.html,
   design/exports/superdesign/desktop/07-item-detail.html,
-  design/exports/superdesign/desktop/08-settings.html
+  design/exports/superdesign/desktop/08-settings.html,
+  design/exports/superdesign/mobile/02-store-selection.html and
+  design/mockups/OnboardingStoreSelection.jsx (AC19 store picker)
 User Flow: design/user-flows.md
 Test File: web/src/**/*.test.ts (unit), web/tests/layout/*.spec.ts (layout),
   design/baselines/web/ (visual baselines)
@@ -751,7 +786,51 @@ Acceptance Criteria:
   - **When** the user turns off "Share usage analytics" in Settings (on by
     default), the web app **shall** stop collection in that browser at
     once and remember the choice there.
+- AC19: **Grocery stores.** Added 2026-10-14.
+  - The Settings screen **shall** have a "Grocery stores" card listing the
+    household's saved stores, each with its name, address and distance
+    (REQ-003 AC6).
+  - **While** the household has no saved stores, the card **shall** say so.
+  - **Where** the user is an owner, the card **shall** offer "Choose
+    stores" (or "Change stores" once stores are saved). Teens and members
+    **shall** see the list only.
+  - **When** an owner opens the picker, the web app **shall** show "Where
+    do you shop?", the household address with the 15-mile radius, a
+    search field and the nearby stores, sorted by distance, with the saved
+    ones already selected (REQ-003 AC4).
+  - **While** the household has no address or coordinates, the picker
+    **shall** ask for the home address first and save it (REQ-003 AC3,
+    AC7). The owner **shall** be able to edit the address from the picker
+    at any time.
+  - **When** the owner types in the search field, the picker **shall**
+    show only the stores whose name or address contains the text.
+  - **When** the owner selects a store row, the picker **shall** toggle
+    its selection, shown with a check mark and the selected row style.
+  - **While** no store is selected, "Confirm stores" **shall** be
+    disabled.
+  - **When** the owner confirms, the web app **shall** save the selected
+    stores with their details (REQ-003 AC5, AC6), close the picker,
+    refresh the card and send the Analytics event `stores_saved` with the
+    store count.
+  - **If** the search returns no stores, **then** the picker **shall** say
+    that no stores were found near the address and offer to change it.
+  - **If** loading or saving fails, **then** the picker **shall** show an
+    error with "Try again" and keep the owner's selection.
 
+- AC20: **Shopping list per store** (REQ-024). Added 2026-10-14.
+  - **Where** the household has saved stores, the Shopping List screen
+    **shall** show a "Store" tab bar with "All stores", one tab per saved
+    store and "Any store", each with its count of open rows.
+  - **When** the user picks a store tab, the screen **shall** show only
+    that store's rows. "Print List" **shall** print the rows shown.
+  - **While** "All stores" is selected, each row **shall** show its store.
+  - The add form **shall** have a "Store" choice that starts on the
+    selected tab's store ("Any store" from "All stores") and saves the row
+    to it.
+  - Each row **shall** have a "Store" choice that moves the row to
+    another store's list (REQ-024 AC2).
+  - **Where** the household has no saved stores, the screen **shall** show
+    one list as before and point owners to Settings to add stores.
 ---
 
 ## Non-Functional Requirements
@@ -937,6 +1016,44 @@ Acceptance Criteria:
     API **shall** return the API path itself as the link.
   - **When** a returned link equals its API path, the web app **shall**
     fetch the image with the bearer token.
+
+### REQ-024: Shopping List per Store
+Priority: P1
+Status: Approved 2026-10-14
+Description: A household that shops at more than one store keeps one
+shopping list per store, for example one for Costco and one for H-E-B.
+The lists are the household's saved stores (REQ-003 AC5, AC6) plus an
+"Any store" list for items that can be bought anywhere. Acceptance
+criteria use EARS notation.
+Design Artifact: design/exports/superdesign/desktop/02-shopping-list.html,
+  design/exports/superdesign/mobile/02-store-selection.html
+Test File: tests/backend/test_shopping_per_store.py,
+  web/src/stores/logic.test.ts, web/tests/layout/screens.spec.ts
+Acceptance Criteria:
+- AC1: **Store on each row.**
+  - Each shopping list row **shall** have an optional `store_id`. A row
+    without one belongs to the "Any store" list.
+  - **When** a member adds a row with a `store_id`, the API **shall** save
+    it on the row.
+  - **If** the `store_id` is not one of the household's saved stores,
+    **then** the API **shall** reject the add or change with `422`.
+- AC2: **Moving a row.**
+  - **When** a household member changes a row's `store_id` (or clears it),
+    the API **shall** move the row to that store's list.
+- AC3: **Merging stays within a store.**
+  - **When** a row is added with the same name or inventory item as an
+    open row on the same store's list, the API **shall** add to that row's
+    quantity (REQ-011).
+  - **While** the matching open row is on a different store's list, the
+    API **shall** create a new row, so the same item can be on two lists.
+- AC4: **Automatic additions.**
+  - **When** a low-stock item is added automatically (REQ-011 AC1), the
+    API **shall** put it on the "Any store" list.
+- AC5: **Removed stores.**
+  - **If** a row's store is no longer one of the household's saved stores,
+    **then** clients **shall** show the row on the "Any store" list.
+- AC6: **Older clients.** Clients that don't send `store_id` **shall**
+  keep working; their rows go to the "Any store" list.
 
 ---
 
