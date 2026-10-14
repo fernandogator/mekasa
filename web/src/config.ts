@@ -21,7 +21,7 @@ export const directApiUrl: string = (env.VITE_API_DIRECT_URL ?? '').replace(/\/$
 export const mockAuth: boolean = env.VITE_MOCK_AUTH === '1';
 
 /** Hosts where Analytics may collect (UI-007 AC18). */
-export const liveHosts: readonly string[] = (env.VITE_LIVE_HOSTS ?? 'hackathon2025-472017.web.app,hackathon2025-472017.firebaseapp.com')
+export const liveHosts: readonly string[] = (env.VITE_LIVE_HOSTS ?? 'mekasa.web.app,mekasa.firebaseapp.com')
   .split(',')
   .map((host: string) => host.trim())
   .filter(Boolean);

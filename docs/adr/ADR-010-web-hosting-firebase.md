@@ -25,8 +25,8 @@ Host the web app on **Firebase Hosting** in the same project
 (`hackathon2025-472017`).
 
 - The app is built to static files and served from Firebase Hosting's
-  CDN at `https://<project>.web.app`, with an optional custom domain
-  (managed TLS).
+  CDN at `https://mekasa.web.app` (the `mekasa` Hosting site), with an
+  optional custom domain (managed TLS).
 - A Hosting rewrite sends `/v1/**` to the Cloud Run service
   `mekasa-api` in `us-central1`, so the browser calls the API on the
   same origin as the app. The API needs no CORS configuration for
