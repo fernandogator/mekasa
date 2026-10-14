@@ -318,6 +318,22 @@ def _map_inventory_errors(exc: Exception) -> HTTPException:
     raise exc
 
 
+def _assert_saved_store(household_id: str, actor_uid: str, store_id: str | None) -> None:
+    """
+    Satisfies: REQ-024
+    Acceptance criteria: AC1
+    Spec version: 1.0
+    """
+    if store_id is None:
+        return
+    assert_household_member(household_id, actor_uid)
+    household = get_household_repository().get(household_id)
+    if household is None:
+        raise KeyError(household_id)
+    if store_id not in household.store_ids:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unknown store")
+
+
 def _household_members_for_warnings(household_id: str, actor_uid: str) -> list:
     """Members list for REQ-021 warnings; never fails the inventory call."""
     try:
@@ -774,10 +790,11 @@ def create_shopping_list_item(
     repo: ShoppingListRepository = Depends(get_shopping_list_repository),
 ) -> ShoppingListItemResponse:
     """
-    Satisfies: REQ-011, REQ-012
+    Satisfies: REQ-011, REQ-012, REQ-024 AC1, AC3
     Spec version: 1.0
     """
     try:
+        _assert_saved_store(household_id, user.uid, payload.store_id)
         return repo.create(household_id, user.uid, payload)
     except (KeyError, PermissionError) as exc:
         raise _map_inventory_errors(exc) from exc
@@ -814,10 +831,11 @@ def update_shopping_list_item(
     repo: ShoppingListRepository = Depends(get_shopping_list_repository),
 ) -> ShoppingListItemResponse:
     """
-    Satisfies: REQ-011, REQ-014
+    Satisfies: REQ-011, REQ-014, REQ-024 AC2
     Spec version: 1.0
     """
     try:
+        _assert_saved_store(household_id, user.uid, payload.store_id)
         return repo.update(household_id, item_id, user.uid, payload)
     except (KeyError, PermissionError) as exc:
         raise _map_inventory_errors(exc) from exc

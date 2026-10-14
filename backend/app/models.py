@@ -313,6 +313,8 @@ class ShoppingListItemCreateRequest(BaseModel):
     requested_by: str | None = Field(default=None, max_length=80)
     inventory_item_id: str | None = Field(default=None, max_length=64)
     kind: ShoppingListKind = "custom"
+    # REQ-024 AC1: one of the household's saved stores; None is "Any store".
+    store_id: str | None = Field(default=None, min_length=1, max_length=300)
 
 
 class ShoppingListItemUpdateRequest(BaseModel):
@@ -329,6 +331,8 @@ class ShoppingListItemUpdateRequest(BaseModel):
     requested_by: str | None = Field(default=None, max_length=80)
     inventory_item_id: str | None = Field(default=None, max_length=64)
     kind: ShoppingListKind | None = None
+    # REQ-024 AC2: send null to move the row to "Any store".
+    store_id: str | None = Field(default=None, min_length=1, max_length=300)
 
 
 class ShoppingListItemResponse(BaseModel):
@@ -344,6 +348,7 @@ class ShoppingListItemResponse(BaseModel):
     requested_by: str | None = None
     inventory_item_id: str | None = None
     kind: ShoppingListKind
+    store_id: str | None = None
     created_by_uid: str
     updated_by_uid: str
     created_at: datetime

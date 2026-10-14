@@ -817,6 +817,20 @@ Acceptance Criteria:
   - **If** loading or saving fails, **then** the picker **shall** show an
     error with "Try again" and keep the owner's selection.
 
+- AC20: **Shopping list per store** (REQ-024). Added 2026-10-14.
+  - **Where** the household has saved stores, the Shopping List screen
+    **shall** show a "Store" tab bar with "All stores", one tab per saved
+    store and "Any store", each with its count of open rows.
+  - **When** the user picks a store tab, the screen **shall** show only
+    that store's rows. "Print List" **shall** print the rows shown.
+  - **While** "All stores" is selected, each row **shall** show its store.
+  - The add form **shall** have a "Store" choice that starts on the
+    selected tab's store ("Any store" from "All stores") and saves the row
+    to it.
+  - Each row **shall** have a "Store" choice that moves the row to
+    another store's list (REQ-024 AC2).
+  - **Where** the household has no saved stores, the screen **shall** show
+    one list as before and point owners to Settings to add stores.
 ---
 
 ## Non-Functional Requirements
@@ -1002,6 +1016,44 @@ Acceptance Criteria:
     API **shall** return the API path itself as the link.
   - **When** a returned link equals its API path, the web app **shall**
     fetch the image with the bearer token.
+
+### REQ-024: Shopping List per Store
+Priority: P1
+Status: Approved 2026-10-14
+Description: A household that shops at more than one store keeps one
+shopping list per store, for example one for Costco and one for H-E-B.
+The lists are the household's saved stores (REQ-003 AC5, AC6) plus an
+"Any store" list for items that can be bought anywhere. Acceptance
+criteria use EARS notation.
+Design Artifact: design/exports/superdesign/desktop/02-shopping-list.html,
+  design/exports/superdesign/mobile/02-store-selection.html
+Test File: tests/backend/test_shopping_per_store.py,
+  web/src/stores/logic.test.ts, web/tests/layout/screens.spec.ts
+Acceptance Criteria:
+- AC1: **Store on each row.**
+  - Each shopping list row **shall** have an optional `store_id`. A row
+    without one belongs to the "Any store" list.
+  - **When** a member adds a row with a `store_id`, the API **shall** save
+    it on the row.
+  - **If** the `store_id` is not one of the household's saved stores,
+    **then** the API **shall** reject the add or change with `422`.
+- AC2: **Moving a row.**
+  - **When** a household member changes a row's `store_id` (or clears it),
+    the API **shall** move the row to that store's list.
+- AC3: **Merging stays within a store.**
+  - **When** a row is added with the same name or inventory item as an
+    open row on the same store's list, the API **shall** add to that row's
+    quantity (REQ-011).
+  - **While** the matching open row is on a different store's list, the
+    API **shall** create a new row, so the same item can be on two lists.
+- AC4: **Automatic additions.**
+  - **When** a low-stock item is added automatically (REQ-011 AC1), the
+    API **shall** put it on the "Any store" list.
+- AC5: **Removed stores.**
+  - **If** a row's store is no longer one of the household's saved stores,
+    **then** clients **shall** show the row on the "Any store" list.
+- AC6: **Older clients.** Clients that don't send `store_id` **shall**
+  keep working; their rows go to the "Any store" list.
 
 ---
 
