@@ -1,8 +1,8 @@
 output "hosting_urls" {
-  description = "Default addresses of the web app."
+  description = "Addresses of the web app."
   value = [
-    "https://${google_firebase_hosting_site.default["default"].site_id}.web.app",
-    "https://${google_firebase_hosting_site.default["default"].site_id}.firebaseapp.com",
+    "https://${google_firebase_hosting_site.web.site_id}.web.app",
+    "https://${google_firebase_hosting_site.web.site_id}.firebaseapp.com",
   ]
 }
 
