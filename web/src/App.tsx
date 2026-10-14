@@ -2,9 +2,10 @@
  * Route tree and session gates.
  *
  * Satisfies: UI-007 (Desktop Web App)
- * Acceptance criteria: AC2, AC4
+ * Acceptance criteria: AC2, AC3, AC4
  */
 
+import { useQueryClient } from '@tanstack/react-query';
 import { Home, Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
@@ -83,6 +84,12 @@ function SignedIn() {
 
 export function App() {
   const { status } = useAuth();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (status === 'signedOut') queryClient.clear();
+  }, [status, queryClient]);
+
   if (status === 'loading') return <Splash />;
   if (status === 'signedOut') return <SignIn />;
   return <SignedIn />;

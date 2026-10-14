@@ -562,8 +562,21 @@ Acceptance Criteria:
     **then** the web app **shall** sign the user out and show the sign-in
     screen with the "session expired" message and the last email
     prefilled (REQ-022 AC1–AC3, AC5).
-  - **When** Firebase Auth reports the user signed out during a session,
-    the web app **shall** show the sign-in screen (REQ-022 AC4).
+  - **If** Firebase Auth refuses to refresh the ID token because the
+    session has expired, been revoked, or the account is disabled,
+    **then** the web app **shall** end the session as above without
+    sending the request (REQ-022 AC2).
+  - **If** the token refresh fails because the network is unreachable,
+    **then** the web app **shall** keep the session and show the request's
+    network error.
+  - **When** the browser tab becomes visible again while the user is
+    signed in, the web app **shall** check the session with Firebase Auth
+    and end it as above if the refresh is refused.
+  - **When** Firebase Auth reports the user signed out during a session
+    the user did not end, the web app **shall** show the sign-in screen
+    with the "session expired" message (REQ-022 AC4).
+  - **When** the user is signed out, the web app **shall** discard the
+    household data it has cached.
 - AC4: **Shell.**
   - The web app **shall** show a left sidebar with Dashboard, Inventory,
     Shopping List, Spending, Members and Settings, with the current screen

@@ -3,6 +3,12 @@
  *
  * Satisfies: UI-007 (Desktop Web App) AC2, AC3; REQ-022 AC1–AC5
  *
+ * The session counts as expired when the API still answers 401 after a
+ * token refresh, when Firebase refuses the refresh, or when Firebase signs
+ * the user out without the user asking. The tab re-checks the session each
+ * time it becomes visible, so a page left open for hours goes to sign-in
+ * instead of showing stale data.
+ *
  * Mock mode (VITE_MOCK_AUTH=1, layout tests and local design work) signs in
  * a fake user whose token is `test:<uid>`, which the API accepts only when
  * ALLOW_TEST_AUTH is on.
@@ -11,9 +17,10 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { analytics } from '../analytics/analytics';
-import { configureApi } from '../api/client';
+import { configureApi, SessionEndedError } from '../api/client';
 import { mockAuth } from '../config';
 import { appLog } from '../diagnostics/appLog';
+import { readIdToken } from './session';
 
 export interface SessionUser {
   uid: string;
@@ -52,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [lastEmail, setLastEmail] = useState(() => localStorage.getItem(LAST_EMAIL_KEY) ?? '');
   const authRef = useRef<{ mod: FirebaseAuthModule; auth: import('firebase/auth').Auth } | null>(null);
   const expiringRef = useRef(false);
+  const userSignOutRef = useRef(false);
 
   const rememberEmail = useCallback((email: string | null) => {
     if (!email) return;
@@ -76,12 +84,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const expireSession = useCallback(() => {
+    if (expiringRef.current) return;
+    expiringRef.current = true;
+    void endSession(true).finally(() => {
+      expiringRef.current = false;
+    });
+  }, [endSession]);
+
   useEffect(() => {
     if (mockAuth) {
       const fake = mockUser();
       configureApi({
         getToken: async () => `test:${fake.uid}`,
-        onSessionExpired: () => void endSession(true),
+        onSessionExpired: expireSession,
       });
       setUser(fake);
       setStatus('signedIn');
@@ -100,21 +116,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const auth = mod.getAuth(firebaseApp());
       authRef.current = { mod, auth };
       configureApi({
-        getToken: async (force) => (auth.currentUser ? auth.currentUser.getIdToken(force) : null),
-        onSessionExpired: () => {
-          if (expiringRef.current) return;
-          expiringRef.current = true;
-          void endSession(true).finally(() => {
-            expiringRef.current = false;
-          });
-        },
+        getToken: (force) => readIdToken(auth.currentUser, force),
+        onSessionExpired: expireSession,
       });
+      let signedIn = false;
       unsubscribe = mod.onAuthStateChanged(auth, (firebaseUser) => {
         if (firebaseUser) {
+          signedIn = true;
+          userSignOutRef.current = false;
           setUser({ uid: firebaseUser.uid, email: firebaseUser.email, displayName: firebaseUser.displayName });
           rememberEmail(firebaseUser.email);
           setStatus('signedIn');
         } else {
+          if (signedIn && !userSignOutRef.current) {
+            appLog.info('session', 'Signed out by Firebase Auth; session expired');
+            setSessionExpired(true);
+          }
+          signedIn = false;
           setUser(null);
           setStatus('signedOut');
         }
@@ -124,7 +142,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       unsubscribe();
     };
-  }, [endSession, rememberEmail]);
+  }, [expireSession, rememberEmail]);
+
+  useEffect(() => {
+    if (mockAuth || status !== 'signedIn') return;
+    const check = () => {
+      const ref = authRef.current;
+      if (document.visibilityState !== 'visible' || !ref) return;
+      readIdToken(ref.auth.currentUser).catch((error: unknown) => {
+        if (error instanceof SessionEndedError) expireSession();
+        else appLog.log('warning', 'session', 'Session check failed; keeping the session', { fields: { error: String(error) } });
+      });
+    };
+    document.addEventListener('visibilitychange', check);
+    return () => document.removeEventListener('visibilitychange', check);
+  }, [status, expireSession]);
 
   const signInWithGoogle = useCallback(async () => {
     const ref = authRef.current;
@@ -156,6 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     appLog.info('auth', 'Signed out');
+    userSignOutRef.current = true;
     setSessionExpired(false);
     await endSession(false);
   }, [endSession]);
