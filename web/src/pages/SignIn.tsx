@@ -59,7 +59,8 @@ export function SignIn() {
           <h1 className="text-5xl font-extrabold leading-tight">Know what’s in your home</h1>
           <p className="mt-5 text-lg text-on-brand-muted">The simple, shared way to manage your household inventory together.</p>
         </div>
-        <div aria-hidden className="h-64 rounded-xl border border-on-brand/15 bg-on-brand/5" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-48 -left-32 h-[600px] w-[600px] rounded-full bg-brand-muted/25 blur-[100px]" />
+        <span aria-hidden />
       </section>
 
       <section className="flex items-center justify-center p-8">

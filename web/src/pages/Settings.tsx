@@ -16,12 +16,12 @@ import { Button, Card, Field, Switch } from '../components/ui';
 import { sendDiagnostics } from '../diagnostics/reporting';
 import { useHousehold } from '../household/HouseholdProvider';
 import { Shell } from '../layout/Shell';
-import { applyTheme, readPreference, savePreference, type ThemePreference } from '../theme/theme';
+import { applyTheme, readPreference, savePreference, type ThemeName, type ThemePreference } from '../theme/theme';
 
-const THEME_CHOICES: { key: ThemePreference; label: string; swatch: string }[] = [
-  { key: 'grounded', label: 'Grounded', swatch: 'bg-surface' },
-  { key: 'grounded-dark', label: 'Grounded Dark', swatch: 'bg-brand' },
-  { key: 'system', label: 'System', swatch: 'bg-gradient-to-r from-surface to-brand' },
+const THEME_CHOICES: { key: ThemePreference; label: string; previews: ThemeName[] }[] = [
+  { key: 'grounded', label: 'Grounded', previews: ['grounded'] },
+  { key: 'grounded-dark', label: 'Grounded Dark', previews: ['grounded-dark'] },
+  { key: 'system', label: 'System', previews: ['grounded', 'grounded-dark'] },
 ];
 
 function SettingsCard({ title, children }: { title: string; children: ReactNode }) {
@@ -120,7 +120,15 @@ export function Settings() {
                 onClick={() => chooseTheme(choice.key)}
                 className={`rounded-lg border-2 p-3 text-left ${theme === choice.key ? 'border-accent' : 'border-line hover:border-border'}`}
               >
-                <span className={`block h-20 rounded-md border border-line ${choice.swatch}`} />
+                <span className="flex h-20 overflow-hidden rounded-md border border-line">
+                  {choice.previews.map((preview) => (
+                    <span key={preview} data-theme={preview} className="flex flex-1 items-end gap-1.5 bg-surface p-2.5">
+                      <span className="h-full w-3 rounded-sm bg-brand" />
+                      <span className="h-6 flex-1 rounded-sm bg-elevated" />
+                      <span className="h-6 w-4 rounded-sm bg-accent" />
+                    </span>
+                  ))}
+                </span>
                 <span className="mt-2 block text-sm font-extrabold">{choice.label}</span>
               </button>
             ))}

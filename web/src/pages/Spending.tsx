@@ -45,7 +45,7 @@ export function contributions(events: PurchaseEvent[], members: Member[]): { uid
 function Trend({ data }: { data: { label: string; total: number }[] }) {
   const max = Math.max(1, ...data.map((d) => d.total));
   return (
-    <svg role="img" aria-label="Spending trend" viewBox={`0 0 ${data.length * 60} 180`} className="h-56 w-full" preserveAspectRatio="none">
+    <svg role="img" aria-label="Spending trend" viewBox={`0 0 ${data.length * 60} 180`} className="h-56 w-full">
       {data.map((d, i) => {
         const h = (d.total / max) * 140;
         return (

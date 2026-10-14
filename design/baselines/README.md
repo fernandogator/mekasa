@@ -5,6 +5,9 @@ Convention for approved visual baselines used by semantic visual verification.
 - Baseline screenshots are captured from approved mockup renders on simulators/emulators.
 - They represent approved structural layout, not pixel-perfect content.
 - Stored in `design/baselines/android/` and `design/baselines/ios/`.
+- Web (UI-007) baselines live in `design/baselines/web/`, written by
+  `npm run test:layout:update` in `web/` (Playwright, mock auth, API fixtures)
+  at 1280×800 and 1920×1080.
 - Named to match screen (e.g., `Dashboard_baseline.png`).
 - Regenerated only when a UI requirement is explicitly updated and approved.
 - Visual verification compares structure and layout, not text content.
