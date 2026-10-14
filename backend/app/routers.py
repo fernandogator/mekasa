@@ -81,7 +81,7 @@ from app.models import (
 )
 from app.catalog_repository import CatalogRepository, get_catalog_repository
 from app.members_repository import MembersRepository, get_members_repository
-from app.places_lookup import fetch_nearby_stores
+from app.places_lookup import fetch_nearby_stores, geocode_address
 from app.product_health import AVOIDANCES, member_warnings
 from app.push_notify import notify_invite_accepted, notify_invite_created
 from app.observability import log_event
@@ -191,17 +191,27 @@ def get_current_household(
 
 
 @api_router.put("/households/{household_id}/address", response_model=HouseholdResponse)
-def update_address(
+async def update_address(
     household_id: str,
     payload: AddressUpdateRequest,
     user: AuthUser = Depends(verify_bearer_token),
     repo: HouseholdRepository = Depends(get_household_repository),
+    settings: Settings = Depends(get_settings),
 ) -> HouseholdResponse:
     """
     Satisfies: REQ-003
-    Acceptance criteria: AC1, AC2, AC3
+    Acceptance criteria: AC1, AC2, AC3, AC7
     Spec version: 1.0
     """
+    api_key = (settings.google_places_api_key or "").strip()
+    if api_key and (payload.latitude is None or payload.longitude is None):
+        try:
+            found = await geocode_address(payload.address, api_key=api_key)
+        except Exception as exc:
+            logger.warning("address geocoding failed: %s", type(exc).__name__)
+            found = None
+        if found is not None:
+            payload = payload.model_copy(update={"latitude": found[0], "longitude": found[1]})
     try:
         return repo.update_address(household_id, user.uid, payload)
     except KeyError as exc:
@@ -242,7 +252,7 @@ async def list_nearby_stores(
 ) -> StoreSearchResponse:
     """
     Satisfies: REQ-003
-    Acceptance criteria: AC4
+    Acceptance criteria: AC4, AC8, AC9, AC10
     Spec version: 1.0
     """
     household = repo.get(household_id)
@@ -253,13 +263,14 @@ async def list_nearby_stores(
     except PermissionError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden") from exc
     radius = settings.store_search_radius_miles
-    stores = stub_nearby_stores(
-        latitude=household.latitude,
-        longitude=household.longitude,
-        radius_miles=radius,
+    located = household.latitude is not None and household.longitude is not None
+    stores = (
+        []
+        if settings.environment == "prod"
+        else stub_nearby_stores(latitude=household.latitude, longitude=household.longitude, radius_miles=radius)
     )
     api_key = (settings.google_places_api_key or "").strip()
-    if api_key and household.latitude is not None and household.longitude is not None:
+    if api_key and located:
         try:
             places = await fetch_nearby_stores(
                 latitude=household.latitude,
@@ -267,15 +278,15 @@ async def list_nearby_stores(
                 radius_miles=radius,
                 api_key=api_key,
             )
-            if places:
+            if places or settings.environment == "prod":
                 stores = places
-        except Exception:
-            # Keep stub list if Places is misconfigured or unreachable.
-            pass
+        except Exception as exc:
+            logger.warning("places nearby search failed: %s", type(exc).__name__)
     return StoreSearchResponse(
         household_id=household_id,
         radius_miles=radius,
         stores=stores,
+        needs_location=not located,
     )
 
 
@@ -288,11 +299,11 @@ def select_stores(
 ) -> HouseholdResponse:
     """
     Satisfies: REQ-003
-    Acceptance criteria: AC5
+    Acceptance criteria: AC5, AC6
     Spec version: 1.0
     """
     try:
-        return repo.set_stores(household_id, user.uid, payload.store_ids)
+        return repo.set_stores(household_id, user.uid, payload.store_ids, payload.saved_stores() or None)
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found") from exc
     except PermissionError as exc:

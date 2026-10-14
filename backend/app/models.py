@@ -37,6 +37,21 @@ class HouseholdCreateRequest(BaseModel):
     photo_url: str | None = None
 
 
+class SavedStore(BaseModel):
+    """
+    Satisfies: REQ-003
+    Acceptance criteria: AC6
+    Spec version: 1.0
+
+    A selected store as the client saw it in the nearby search.
+    """
+
+    id: str = Field(min_length=1, max_length=300)
+    name: str = Field(min_length=1, max_length=200)
+    address: str = Field(default="", max_length=300)
+    distance_miles: float | None = None
+
+
 class HouseholdResponse(BaseModel):
     """Household resource."""
 
@@ -48,6 +63,7 @@ class HouseholdResponse(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     store_ids: list[str] = Field(default_factory=list)
+    stores: list[SavedStore] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 
@@ -95,6 +111,7 @@ class StoreSearchResponse(BaseModel):
     household_id: str
     radius_miles: float
     stores: list[Store]
+    needs_location: bool = False
 
 
 class StoreSelectionRequest(BaseModel):
@@ -105,6 +122,18 @@ class StoreSelectionRequest(BaseModel):
     """
 
     store_ids: list[str] = Field(min_length=1)
+    stores: list[SavedStore] | None = Field(default=None, max_length=50)
+
+    def saved_stores(self) -> list[SavedStore]:
+        """
+        Satisfies: REQ-003
+        Acceptance criteria: AC6
+        Spec version: 1.0
+
+        Details for the selected IDs only, in `store_ids` order.
+        """
+        by_id = {store.id: store for store in self.stores or []}
+        return [by_id[store_id] for store_id in self.store_ids if store_id in by_id]
 
 
 InventorySource = Literal["manual", "barcode", "receipt", "voice"]
