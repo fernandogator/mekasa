@@ -2,5 +2,26 @@
   "firestore": {
     "database": "mekasa-db",
     "rules": "firestore.rules"
+  },
+  "hosting": {
+    "site": "mekasa",
+    "public": "web/dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*"
+    ],
+    "rewrites": [
+      {
+        "source": "/v1/**",
+        "run": {
+          "serviceId": "mekasa-api",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
   }
 }
