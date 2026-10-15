@@ -1,0 +1,128 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-brand: #D4A01B;
+      --color-brand-muted: #B8860B;
+      --color-surface: #1A1513;
+      --color-surface-elevated: #2D2620;
+      --color-surface-muted: #3D3630;
+      --color-text: #F5E8DC;
+      --color-text-muted: #C4B5A0;
+      --color-accent: #9FD356;
+      --color-danger: #E8745C;
+      --color-success: #A8B86F;
+      --color-warning: #E8C74F;
+      --color-warning-tint: #3A2E14;
+      --color-success-tint: #2A3318;
+      --color-accent-tint: #2A3318;
+      --color-danger-tint: #3A221C;
+      --color-line: #A8894A;
+      --color-border: #A8894A;
+      --color-on-brand: #1A1513;
+      --color-on-accent: #1A1513;
+      --color-on-brand-muted: #5C4A2E;
+      --color-overlay: rgba(184, 134, 11, 0.15);
+    }
+    body {
+      font-family: 'Nunito', sans-serif;
+      background-color: var(--color-surface);
+      color: var(--color-text);
+      -webkit-font-smoothing: antialiased;
+    }
+    .palette-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="w-full min-h-screen flex flex-col relative" data-sd-id="1">
+    <!-- Header -->
+    <header class="shrink-0 pt-14 px-4 flex items-center mb-6" data-sd-id="2">
+      <a id="btn-back" href="#" class="w-10 h-10 -ml-2 flex items-center justify-center text-[var(--color-text)] active:opacity-60 transition-opacity" data-sd-id="3">
+        <iconify-icon icon="lucide:chevron-left" class="text-2xl"></iconify-icon>
+      </a>
+      <h1 class="text-xl font-extrabold tracking-tight" data-sd-id="4">Settings</h1>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 px-4 pb-[34px]" data-sd-id="5">
+      <!-- Appearance Section Heading -->
+      <div class="mb-6" data-sd-id="6">
+        <h2 class="text-[12px] font-bold uppercase tracking-[0.12em] text-[var(--color-text-muted)] mb-4" data-sd-id="7">Appearance</h2>
+        
+        <div class="flex flex-col gap-3" data-sd-id="8">
+          <p class="text-[14px] font-bold text-[var(--color-text-muted)]" data-sd-id="9">Theme</p>
+          
+          <!-- Card 1: Grounded -->
+          <button id="theme-card-grounded" class="flex flex-col w-full bg-[var(--color-surface-muted)] p-4 rounded-xl text-left border border-transparent active:scale-[0.98] transition-all" data-sd-id="10">
+            <div class="flex justify-between items-center mb-3" data-sd-id="11">
+              <span class="text-[16px] font-bold" data-sd-id="12">Grounded</span>
+              <div class="flex gap-1.5" data-sd-id="13">
+                <div class="palette-swatch bg-[#171e19]" data-sd-id="14"></div>
+                <div class="palette-swatch bg-[#b7c6c2]" data-sd-id="15"></div>
+                <div class="palette-swatch bg-[#eeebe3]" data-sd-id="16"></div>
+                <div class="palette-swatch bg-[#ca0013]" data-sd-id="17"></div>
+              </div>
+            </div>
+            <p class="text-[12px] text-[var(--color-text-muted)]" data-sd-id="18">Original rich &amp; earthy home palette.</p>
+          </button>
+
+          <!-- Card 2: Halloween (Selected) -->
+          <button id="theme-card-halloween" class="flex flex-col w-full bg-[var(--color-surface-elevated)] p-4 rounded-xl text-left border-2 border-[var(--color-brand)] shadow-lg shadow-black/40 active:scale-[0.98] transition-all relative" data-sd-id="19">
+            <div class="absolute top-3 right-3 text-[var(--color-accent)]" data-sd-id="20">
+              <iconify-icon icon="lucide:check-circle-2" class="text-xl"></iconify-icon>
+            </div>
+            <div class="flex justify-between items-center mb-3 pr-8" data-sd-id="21">
+              <span class="text-[16px] font-bold" data-sd-id="22">Halloween</span>
+              <div class="flex gap-1.5" data-sd-id="23">
+                <div class="palette-swatch bg-[#D4A01B]" data-sd-id="24"></div>
+                <div class="palette-swatch bg-[#9FD356]" data-sd-id="25"></div>
+                <div class="palette-swatch bg-[#F5E8DC]" data-sd-id="26"></div>
+                <div class="palette-swatch bg-[#1A1513]" data-sd-id="27"></div>
+              </div>
+            </div>
+            <p class="text-[12px] text-[var(--color-text-muted)]" data-sd-id="28">Spooky candy corn and slime theme.</p>
+          </button>
+        </div>
+      </div>
+
+      <!-- Appearance Control -->
+      <div class="mt-8" data-sd-id="29">
+        <p class="text-[14px] font-bold text-[var(--color-text-muted)] mb-3" data-sd-id="30">Appearance Mode</p>
+        <div class="w-full h-11 bg-[var(--color-surface-muted)] rounded-lg p-1 flex items-center" data-sd-id="31">
+          <button id="tab-system" class="flex-1 h-full rounded-md flex items-center justify-center text-[14px] font-medium text-[var(--color-text-muted)]" data-sd-id="32">System</button>
+          <button id="tab-light" class="flex-1 h-full rounded-md flex items-center justify-center text-[14px] font-medium text-[var(--color-text-muted)]" data-sd-id="33">Light</button>
+          <button id="tab-dark" class="flex-1 h-full rounded-md bg-[var(--color-brand)] flex items-center justify-center text-[14px] font-bold text-[var(--color-surface)] shadow-sm" data-sd-id="34">Dark</button>
+        </div>
+      </div>
+
+      <!-- Additional Settings (Visual Filler) -->
+      <div class="mt-10 pt-6 border-t border-[var(--color-line)]" data-sd-id="35">
+        <h2 class="text-[12px] font-bold uppercase tracking-[0.12em] text-[var(--color-text-muted)] mb-4" data-sd-id="36">General</h2>
+        <div class="flex flex-col gap-4" data-sd-id="37">
+          <div class="flex justify-between items-center" data-sd-id="38">
+            <span class="text-[16px]" data-sd-id="39">Notifications</span>
+            <div class="w-11 h-6 bg-[var(--color-accent)] rounded-full relative" data-sd-id="40">
+              <div class="absolute right-0.5 top-0.5 w-5 h-5 bg-[var(--color-surface)] rounded-full" data-sd-id="41"></div>
+            </div>
+          </div>
+          <div class="flex justify-between items-center" data-sd-id="42">
+            <span class="text-[16px]" data-sd-id="43">Units</span>
+            <span class="text-[var(--color-text-muted)]" data-sd-id="44">Imperial (US)</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Subtle Background Atmosphere -->
+    <div class="absolute bottom-0 right-0 w-64 h-64 bg-[#9FD356] opacity-[0.03] blur-[80px] pointer-events-none" data-sd-id="45"></div>
+  </div>
+
+</body></html>

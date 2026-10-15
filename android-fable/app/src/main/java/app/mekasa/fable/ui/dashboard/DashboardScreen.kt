@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -54,10 +55,13 @@ import app.mekasa.fable.ui.components.SectionHeading
 import app.mekasa.fable.ui.components.moneyCompact
 import app.mekasa.fable.ui.components.plural
 import app.mekasa.fable.ui.inventory.InventoryRow
+import app.mekasa.fable.ui.theme.MekasaPaletteStyle
 import app.mekasa.fable.ui.theme.MekasaTheme
 import app.mekasa.fable.ui.theme.Shapes
 import app.mekasa.fable.ui.theme.Space
+import app.mekasa.fable.ui.theme.ThemePreferences
 import app.mekasa.fable.ui.theme.Type
+import kotlinx.coroutines.delay
 
 @Composable
 fun DashboardScreen(
@@ -75,7 +79,18 @@ fun DashboardScreen(
     val household = state.household
     val lowStock = data.lowStock
     val approvals = data.pendingApprovals
+    val halloweenPromptRevision = ThemePreferences.promptRevision
+    val showHalloweenPrompt = halloweenPromptRevision.let { ThemePreferences.shouldShowHalloweenPrompt() }
+    val showHalloweenUndo = ThemePreferences.halloweenUndoVisible
 
+    LaunchedEffect(showHalloweenUndo) {
+        if (showHalloweenUndo) {
+            delay(5_000)
+            ThemePreferences.clearHalloweenUndo()
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().testTag(TestTags.DASHBOARD_VIEW),
         contentPadding = PaddingValues(
@@ -119,6 +134,10 @@ fun DashboardScreen(
                     onClick = onOpenSpending,
                 )
             }
+        }
+
+        if (showHalloweenPrompt) {
+            item { HalloweenPromptCard() }
         }
 
         if (state.submitsShoppingRequests) {
@@ -205,6 +224,70 @@ fun DashboardScreen(
                 InventoryRow(item = item, onClick = { onOpenItem(item, recentIds) }, onConsume = { session.consume(item.id) })
             }
         }
+    }
+
+        if (showHalloweenUndo) {
+            HalloweenUndoToast(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = Space.lg)
+                    .padding(bottom = contentPadding.calculateBottomPadding() + Space.base),
+            )
+        }
+    }
+}
+
+@Composable
+private fun HalloweenPromptCard() {
+    val palette = MekasaTheme.palette
+    Card(modifier = Modifier.testTag(TestTags.HALLOWEEN_PROMPT_CARD)) {
+        Text("Try the Halloween theme", style = Type.subhead, color = palette.text)
+        Text(
+            "Give Mekasa a spooky look for October. You can switch back anytime.",
+            style = Type.caption,
+            color = palette.textMuted,
+        )
+        Spacer(Modifier.height(Space.sm))
+        PrimaryButton(
+            "Try it",
+            onClick = { ThemePreferences.select(MekasaPaletteStyle.Halloween, showUndo = true) },
+            modifier = Modifier.testTag(TestTags.HALLOWEEN_TRY_BUTTON),
+        )
+        LinkButton(
+            "Not now",
+            onClick = { ThemePreferences.dismissHalloweenPrompt() },
+            color = palette.textMuted,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(TestTags.HALLOWEEN_SKIP_BUTTON),
+        )
+    }
+}
+
+@Composable
+private fun HalloweenUndoToast(modifier: Modifier = Modifier) {
+    val palette = MekasaTheme.palette
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(Shapes.card)
+            .background(palette.brand)
+            .padding(horizontal = Space.lg, vertical = Space.base)
+            .testTag(TestTags.HALLOWEEN_UNDO_TOAST),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "Halloween theme on",
+            style = Type.body,
+            color = palette.onBrand,
+            modifier = Modifier.weight(1f),
+        )
+        LinkButton(
+            "Undo",
+            onClick = { ThemePreferences.undoHalloween() },
+            color = palette.accentTint,
+            modifier = Modifier.testTag(TestTags.HALLOWEEN_UNDO_BUTTON),
+        )
     }
 }
 

@@ -1,0 +1,210 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="view-transition" content="same-origin">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-brand: #D4A01B;
+      --color-brand-muted: #B8860B;
+      --color-surface: #1A1513;
+      --color-surface-elevated: #2D2620;
+      --color-surface-muted: #3D3630;
+      --color-text: #F5E8DC;
+      --color-text-muted: #C4B5A0;
+      --color-accent: #9FD356;
+      --color-danger: #E8745C;
+      --color-success: #A8B86F;
+      --color-warning: #E8C74F;
+      --color-warning-tint: #3A2E14;
+      --color-success-tint: #2A3318;
+      --color-accent-tint: #2A3318;
+      --color-danger-tint: #3A221C;
+      --color-line: #A8894A;
+      --color-border: #A8894A;
+      --color-on-brand: #1A1513;
+      --color-on-accent: #1A1513;
+      --color-on-brand-muted: #5C4A2E;
+      --color-overlay: rgba(184, 134, 11, 0.15);
+    }
+
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background-color: var(--color-surface);
+      color: var(--color-text);
+      margin: 0;
+      padding: 0;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 0px;
+      background: transparent;
+    }
+
+    .spooky-wash {
+      background: radial-gradient(circle at top right, var(--color-overlay), transparent 70%);
+    }
+
+    @view-transition {
+      navigation: auto;
+    }
+
+    ::view-transition-old(main-content) {
+      animation: 0.25s ease-out both fade-out;
+    }
+
+    ::view-transition-new(main-content) {
+      animation: 0.25s ease-in 0.1s both fade-in;
+    }
+
+    @keyframes fade-out {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(-8px); }
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="custom-scrollbar">
+  <div class="flex flex-col w-full h-screen relative overflow-hidden spooky-wash" data-sd-id="1">
+    
+    <!-- Header Section -->
+    <header class="shrink-0 pt-14 px-6 pb-6 z-10" data-sd-id="2">
+      <div class="flex justify-between items-center mb-6" data-sd-id="3">
+        <h1 class="text-[32px] font-black tracking-tight text-[var(--color-text)]" data-sd-id="4">Shopping List</h1>
+        <button class="w-10 h-10 rounded-full bg-[var(--color-surface-elevated)] flex items-center justify-center border border-[var(--color-border)] text-[var(--color-text)]" data-sd-id="5">
+          <iconify-icon icon="lucide:more-horizontal" class="text-xl"></iconify-icon>
+        </button>
+      </div>
+
+      <!-- Store Tabs -->
+      <div class="flex space-x-2 overflow-x-auto custom-scrollbar no-scrollbar py-1" data-sd-id="6">
+        <button class="px-5 py-2.5 rounded-full bg-[var(--color-brand)] text-[var(--color-surface)] font-extrabold text-sm whitespace-nowrap" data-sd-id="7">All stores</button>
+        <button class="px-5 py-2.5 rounded-full bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] border border-[var(--color-border)] font-bold text-sm whitespace-nowrap" data-sd-id="8">Costco Wholesale</button>
+        <button class="px-5 py-2.5 rounded-full bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] border border-[var(--color-border)] font-bold text-sm whitespace-nowrap" data-sd-id="9">H-E-B</button>
+        <button class="px-5 py-2.5 rounded-full bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] border border-[var(--color-border)] font-bold text-sm whitespace-nowrap" data-sd-id="10">Any store</button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto px-6 pb-32 z-0" style="view-transition-name: main-content" data-sd-id="11">
+      
+      <!-- Needs Approval Section -->
+      <div class="mb-8" data-sd-id="12">
+        <div class="flex justify-between items-center mb-4" data-sd-id="13">
+          <h2 class="text-[20px] font-extrabold text-[var(--color-text)]" data-sd-id="14">Needs Approval</h2>
+          <button class="text-[10px] font-bold uppercase tracking-widest text-[var(--color-accent)]" data-sd-id="15">View all</button>
+        </div>
+
+        <!-- Approval Item 1 -->
+        <div class="bg-[var(--color-surface-elevated)] rounded-[24px] p-4 border border-[var(--color-border)] shadow-sm mb-3" data-sd-id="16">
+          <div class="flex items-center" data-sd-id="17">
+            <div class="w-12 h-12 rounded-[16px] bg-[var(--color-surface-muted)] flex items-center justify-center mr-4 shrink-0 text-[var(--color-brand)]" data-sd-id="18">
+              <iconify-icon icon="lucide:milk" class="text-2xl"></iconify-icon>
+            </div>
+            <div class="flex-1" data-sd-id="19">
+              <div class="flex items-center gap-2 mb-0.5" data-sd-id="20">
+                <p class="font-bold text-[16px]" data-sd-id="21">Oat Milk</p>
+                <span class="bg-[var(--color-warning)] text-[var(--color-surface)] text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter" data-sd-id="22">Pending</span>
+              </div>
+              <p class="text-[12px] font-semibold text-[var(--color-text-muted)]" data-sd-id="23">Requested by Leo • Chobani 52oz</p>
+            </div>
+            <div class="flex gap-2" data-sd-id="24">
+              <button class="w-10 h-10 rounded-full border border-[var(--color-border)] flex items-center justify-center text-[var(--color-danger)] active:scale-95 transition-transform" data-sd-id="25">
+                <iconify-icon icon="lucide:x"></iconify-icon>
+              </button>
+              <button class="w-10 h-10 rounded-full bg-[var(--color-accent)] flex items-center justify-center text-[var(--color-surface)] active:scale-95 transition-transform" data-sd-id="26">
+                <iconify-icon icon="lucide:check" class="text-xl"></iconify-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shopping List Items -->
+      <div class="mb-4" data-sd-id="27">
+        <div class="flex justify-between items-center mb-4" data-sd-id="28">
+          <h2 class="text-[20px] font-extrabold text-[var(--color-text)]" data-sd-id="29">In the cart</h2>
+        </div>
+
+        <div class="space-y-1" data-sd-id="30">
+          <!-- Item 1 -->
+          <div class="flex items-center py-4 px-2 rounded-[24px] active:bg-[var(--color-surface-muted)] transition-colors" data-sd-id="31">
+            <div class="w-6 h-6 rounded-full border-2 border-[var(--color-accent)] bg-[var(--color-accent)] flex items-center justify-center mr-4" data-sd-id="32">
+              <iconify-icon icon="lucide:check" class="text-[var(--color-surface)] text-sm"></iconify-icon>
+            </div>
+            <div class="flex-1 opacity-50" data-sd-id="33">
+              <p class="font-bold text-[16px] line-through" data-sd-id="34">Organic Spinach</p>
+              <p class="text-[12px] font-semibold text-[var(--color-text-muted)]" data-sd-id="35">Costco Wholesale • $8.99</p>
+            </div>
+          </div>
+
+          <!-- Item 2 -->
+          <div class="flex items-center py-4 px-2 rounded-[24px] active:bg-[var(--color-surface-muted)] transition-colors" data-sd-id="36">
+            <div class="w-6 h-6 rounded-full border-2 border-[var(--color-border)] mr-4" data-sd-id="37"></div>
+            <div class="flex-1" data-sd-id="38">
+              <p class="font-bold text-[16px]" data-sd-id="39">Oreos Family Pack</p>
+              <p class="text-[12px] font-semibold text-[var(--color-text-muted)]" data-sd-id="40">H-E-B • $4.50</p>
+            </div>
+            <div class="text-[var(--color-text-muted)] font-bold text-sm" data-sd-id="41">x2</div>
+          </div>
+
+          <!-- Item 3 -->
+          <div class="flex items-center py-4 px-2 rounded-[24px] active:bg-[var(--color-surface-muted)] transition-colors" data-sd-id="42">
+            <div class="w-6 h-6 rounded-full border-2 border-[var(--color-border)] mr-4" data-sd-id="43"></div>
+            <div class="flex-1" data-sd-id="44">
+              <p class="font-bold text-[16px]" data-sd-id="45">Dawn Dish Soap</p>
+              <p class="text-[12px] font-semibold text-[var(--color-text-muted)]" data-sd-id="46">Any store • $12.99</p>
+            </div>
+          </div>
+
+          <!-- Item 4 -->
+          <div class="flex items-center py-4 px-2 rounded-[24px] active:bg-[var(--color-surface-muted)] transition-colors" data-sd-id="47">
+            <div class="w-6 h-6 rounded-full border-2 border-[var(--color-border)] mr-4" data-sd-id="48"></div>
+            <div class="flex-1" data-sd-id="49">
+              <p class="font-bold text-[16px]" data-sd-id="50">Avocados (5ct)</p>
+              <p class="text-[12px] font-semibold text-[var(--color-text-muted)]" data-sd-id="51">H-E-B • $5.00</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom Navigation Bar (Persistent) -->
+    <nav class="fixed bottom-8 left-6 right-6 z-40" data-sd-id="52">
+      <div class="bg-[var(--color-brand)] h-[64px] rounded-full flex items-center justify-between px-6 shadow-[0_8px_32px_rgba(0,0,0,0.4)] relative" data-sd-id="53">
+        <a id="nav-home" href="#" class="flex flex-col items-center justify-center text-[var(--color-surface)]/60 w-12 hover:text-[var(--color-surface)] transition-colors" data-sd-id="54">
+          <iconify-icon icon="lucide:home" class="text-2xl mb-1"></iconify-icon>
+        </a>
+        <a id="nav-list" href="#" class="flex flex-col items-center justify-center text-[var(--color-surface)] w-12" data-sd-id="55">
+          <iconify-icon icon="lucide:list-todo" class="text-2xl mb-1"></iconify-icon>
+        </a>
+        
+        <!-- Spacer for FAB -->
+        <div class="w-16" data-sd-id="56"></div>
+        
+        <a id="nav-spend" href="#" class="flex flex-col items-center justify-center text-[var(--color-surface)]/60 w-12 hover:text-[var(--color-surface)] transition-colors" data-sd-id="57">
+          <iconify-icon icon="lucide:pie-chart" class="text-2xl mb-1"></iconify-icon>
+        </a>
+        <a id="nav-people" href="#" class="flex flex-col items-center justify-center text-[var(--color-surface)]/60 w-12 hover:text-[var(--color-surface)] transition-colors" data-sd-id="58">
+          <iconify-icon icon="lucide:users" class="text-2xl mb-1"></iconify-icon>
+        </a>
+      </div>
+      
+      <!-- Center Add FAB -->
+      <a id="nav-add" href="#" class="absolute left-1/2 -top-6 -translate-x-1/2 w-[56px] h-[56px] bg-[var(--color-accent)] rounded-full flex items-center justify-center text-[var(--color-surface)] shadow-[0_8px_16px_rgba(159,211,86,0.3)] border-[4px] border-[var(--color-surface)] active:scale-95 transition-transform cursor-pointer block" data-sd-id="59">
+        <iconify-icon icon="lucide:plus" class="text-2xl"></iconify-icon>
+      </a>
+    </nav>
+  </div>
+
+</body></html>

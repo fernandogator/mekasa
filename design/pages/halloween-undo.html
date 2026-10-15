@@ -1,0 +1,112 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-brand: #8B4A0C;
+      --color-brand-muted: #D4A574;
+      --color-surface: #FFF8F0;
+      --color-surface-elevated: #FFFBF7;
+      --color-surface-muted: #F5E8DC;
+      --color-text: #3D2817;
+      --color-text-muted: #5C4336;
+      --color-accent: #6B247A;
+      --color-danger: #A03224;
+      --color-success: #4A5E2C;
+      --color-warning: #7A5210;
+      --color-warning-tint: #F5E8C8;
+      --color-success-tint: #E8EDD9;
+      --color-accent-tint: #F3E6F6;
+      --color-danger-tint: #F8E5DF;
+      --color-line: #6F5638;
+      --color-border: #6F5638;
+      --color-on-brand: #FFFBF7;
+      --color-on-accent: #FFFBF7;
+      --color-on-brand-muted: #E8D7C3;
+      --color-overlay: rgba(212, 165, 116, 0.15);
+    }
+    body {
+      font-family: 'Nunito', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--color-surface);
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    .toast-animation {
+      animation: slideUp 0.3s ease-out forwards, fadeOut 5s ease-in forwards;
+    }
+  </style>
+</head>
+<body>
+  <div class="flex flex-col h-screen overflow-hidden relative" data-sd-id="1">
+    <header class="shrink-0 pt-14 px-6 flex justify-between items-center" data-sd-id="2">
+      <div class="flex flex-col" data-sd-id="3">
+        <span class="text-[10px] font-bold uppercase tracking-[0.12em] text-[#6B5344]" data-sd-id="4">Good Morning</span>
+        <h1 class="text-[28px] font-black text-[#3D2817] leading-tight tracking-tight" data-sd-id="5">The Rodriguez House</h1>
+      </div>
+      <div class="w-10 h-10 rounded-full bg-white/40 flex items-center justify-center border border-[#B8620F]/20" data-sd-id="6">
+        <iconify-icon icon="lucide:bell" class="text-xl text-[#3D2817]"></iconify-icon>
+      </div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto px-6 py-4" data-sd-id="7">
+      <div class="bg-white/80 rounded-[40px] p-6 mb-8 border border-[#B8620F]/10 shadow-sm" data-sd-id="8">
+        <div class="flex items-center justify-between" data-sd-id="9">
+          <div class="flex flex-col" data-sd-id="10">
+            <p class="text-xs font-bold text-[#6B5344] uppercase tracking-wider" data-sd-id="11">Halloween Active</p>
+            <p class="text-xl font-extrabold text-[#3D2817]" data-sd-id="12">Spooky Mode On 🎃</p>
+          </div>
+          <iconify-icon icon="lucide:ghost" class="text-3xl text-[#7B2D8F]"></iconify-icon>
+        </div>
+      </div>
+
+      <div class="space-y-4" data-sd-id="13">
+        <div class="h-20 bg-white/40 rounded-[24px] border border-dashed border-[#B8620F]/30" data-sd-id="14"></div>
+        <div class="h-20 bg-white/40 rounded-[24px] border border-dashed border-[#B8620F]/30" data-sd-id="15"></div>
+        <div class="h-20 bg-white/40 rounded-[24px] border border-dashed border-[#B8620F]/30" data-sd-id="16"></div>
+      </div>
+    </main>
+
+    <div class="fixed bottom-[110px] left-0 right-0 px-6 z-50" data-sd-id="17">
+      <div class="toast-animation bg-[#B8620F] h-[56px] rounded-[24px] shadow-[0_-2px_8px_rgba(0,0,0,0.15)] flex items-center justify-between px-6 border border-[#3D2817]/10" data-sd-id="18">
+        <span class="text-[16px] font-medium text-[#3D2817]" data-sd-id="19">Halloween theme on</span>
+        <button id="toast-undo-btn" class="text-[14px] font-bold text-[#7B2D8F] hover:underline cursor-pointer active:scale-95 transition-transform" data-sd-id="20">
+          Undo
+        </button>
+      </div>
+    </div>
+
+    <footer class="shrink-0 pb-[34px] bg-[#3D2817] px-6 pt-3" data-sd-id="21">
+      <div class="h-[64px] bg-[#B8620F] rounded-full flex items-center justify-between px-8 relative shadow-lg" data-sd-id="22">
+        <a id="nav-home" href="#" class="text-[#FFFBF7] flex flex-col items-center" data-sd-id="23">
+          <iconify-icon icon="lucide:home" class="text-2xl"></iconify-icon>
+        </a>
+        <a id="nav-list" href="#" class="text-[#E8D7C3] flex flex-col items-center" data-sd-id="24">
+          <iconify-icon icon="lucide:list-todo" class="text-2xl"></iconify-icon>
+        </a>
+        <div class="w-12" data-sd-id="25"></div>
+        <a id="nav-spend" href="#" class="text-[#E8D7C3] flex flex-col items-center" data-sd-id="26">
+          <iconify-icon icon="lucide:pie-chart" class="text-2xl"></iconify-icon>
+        </a>
+        <a id="nav-settings" href="#" class="text-[#E8D7C3] flex flex-col items-center" data-sd-id="27">
+          <iconify-icon icon="lucide:settings" class="text-2xl"></iconify-icon>
+        </a>
+        <div class="absolute left-1/2 -top-6 -translate-x-1/2 w-14 h-14 bg-[#7B2D8F] rounded-full flex items-center justify-center text-[#FFFBF7] shadow-lg border-[4px] border-[#3D2817]" data-sd-id="28">
+          <iconify-icon icon="lucide:plus" class="text-2xl"></iconify-icon>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+</body></html>

@@ -140,6 +140,14 @@ object TestTags {
     const val SIGN_OUT = "SignOut"
     const val SEND_DIAGNOSTICS = "SendDiagnostics"
     const val DIAGNOSTICS_STATUS = "DiagnosticsStatus"
+    const val APPEARANCE_SECTION = "AppearanceSection"
+    const val GROUNDED_THEME_CARD = "GroundedThemeCard"
+    const val HALLOWEEN_THEME_CARD = "HalloweenThemeCard"
+    const val HALLOWEEN_PROMPT_CARD = "HalloweenPromptCard"
+    const val HALLOWEEN_TRY_BUTTON = "HalloweenTryButton"
+    const val HALLOWEEN_SKIP_BUTTON = "HalloweenSkipButton"
+    const val HALLOWEEN_UNDO_TOAST = "HalloweenUndoToast"
+    const val HALLOWEEN_UNDO_BUTTON = "HalloweenUndoButton"
 
     fun member(uid: String) = "Member-$uid"
 

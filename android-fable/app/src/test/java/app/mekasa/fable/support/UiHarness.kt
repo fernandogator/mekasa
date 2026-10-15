@@ -1,5 +1,6 @@
 package app.mekasa.fable.support
 
+import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -22,7 +23,9 @@ import app.mekasa.fable.session.InMemoryEmailMemory
 import app.mekasa.fable.session.SessionViewModel
 import app.mekasa.fable.ui.MekasaRoot
 import app.mekasa.fable.ui.home.Routes
+import app.mekasa.fable.ui.theme.MekasaPaletteStyle
 import app.mekasa.fable.ui.theme.MekasaTheme
+import app.mekasa.fable.ui.theme.ThemePreferences
 import coil.Coil
 import coil.ImageLoader
 import coil.test.FakeImageLoaderEngine
@@ -98,6 +101,12 @@ object UiHarness {
 
     /** Composes the app root exactly as [app.mekasa.fable.MainActivity] does. */
     fun ComposeContentTestRule.setApp(session: SessionViewModel, startRoute: String = Routes.DASHBOARD) {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        ThemePreferences.init(context)
+        ThemePreferences.select(MekasaPaletteStyle.Grounded)
+        // Keep October promo and undo toast out of structural / snapshot baselines.
+        ThemePreferences.dismissHalloweenPrompt()
+        ThemePreferences.clearHalloweenUndo()
         setContent {
             MekasaTheme {
                 MekasaRoot(session = session, startRoute = startRoute)

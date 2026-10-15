@@ -164,4 +164,13 @@ enum TestIdentifiers {
     static let faceIDLockScreen = "FaceIDLockScreen"
     static let faceIDUnlockButton = "FaceIDUnlockButton"
     static let faceIDLockStatus = "FaceIDLockStatus"
+    /// Seasonal palette (Halloween).
+    static let appearanceSection = "AppearanceSection"
+    static let groundedThemeCard = "GroundedThemeCard"
+    static let halloweenThemeCard = "HalloweenThemeCard"
+    static let halloweenPromptCard = "HalloweenPromptCard"
+    static let halloweenTryButton = "HalloweenTryButton"
+    static let halloweenSkipButton = "HalloweenSkipButton"
+    static let halloweenUndoToast = "HalloweenUndoToast"
+    static let halloweenUndoButton = "HalloweenUndoButton"
 }

@@ -1,6 +1,8 @@
 package app.mekasa.fable.ui.family
 
 import android.content.Intent
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,10 +15,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.SupportAgent
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -26,6 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
@@ -44,8 +49,11 @@ import app.mekasa.fable.ui.components.PrimaryButton
 import app.mekasa.fable.ui.components.ScreenHeader
 import app.mekasa.fable.ui.components.SecondaryButton
 import app.mekasa.fable.ui.components.SectionHeading
+import app.mekasa.fable.ui.theme.MekasaPaletteStyle
 import app.mekasa.fable.ui.theme.MekasaTheme
+import app.mekasa.fable.ui.theme.Shapes
 import app.mekasa.fable.ui.theme.Space
+import app.mekasa.fable.ui.theme.ThemePreferences
 import app.mekasa.fable.ui.theme.Type
 
 /** REQ-019: members, invites (share link), pending invite acceptance, plus account actions. */
@@ -217,6 +225,8 @@ fun FamilyScreen(
                 }
             }
 
+            AppearanceSection()
+
             SectionHeading("Devices")
             SecondaryButton(
                 "Trash station kiosk",
@@ -263,6 +273,50 @@ fun FamilyScreen(
             SectionHeading("Account")
             SecondaryButton("Refresh everything", onClick = { session.refreshAll() })
             PrimaryButton("Sign out", onClick = session::signOut, accent = true, modifier = Modifier.testTag(TestTags.SIGN_OUT))
+        }
+    }
+}
+
+@Composable
+private fun AppearanceSection() {
+    val palette = MekasaTheme.palette
+    val selected = ThemePreferences.style
+    SectionHeading("Appearance")
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(TestTags.APPEARANCE_SECTION),
+        verticalArrangement = Arrangement.spacedBy(Space.sm),
+    ) {
+        Text("Theme", style = Type.caption, color = palette.textMuted)
+        MekasaPaletteStyle.entries.forEach { option ->
+            val active = selected == option
+            val tag = when (option) {
+                MekasaPaletteStyle.Grounded -> TestTags.GROUNDED_THEME_CARD
+                MekasaPaletteStyle.Halloween -> TestTags.HALLOWEEN_THEME_CARD
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(Shapes.card)
+                    .border(
+                        width = if (active) 2.dp else 1.dp,
+                        color = if (active) palette.accent else palette.border.copy(alpha = 0.45f),
+                        shape = Shapes.card,
+                    )
+                    .clickable { ThemePreferences.select(option) }
+                    .padding(Space.base)
+                    .testTag(tag),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(option.title, style = Type.body, color = palette.text)
+                    Text(option.subtitle, style = Type.caption, color = palette.textMuted)
+                }
+                if (active) {
+                    Icon(Icons.Outlined.CheckCircle, contentDescription = "Selected", tint = palette.accent)
+                }
+            }
         }
     }
 }
