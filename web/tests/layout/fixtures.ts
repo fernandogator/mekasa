@@ -123,6 +123,8 @@ export interface FixtureOptions {
   failMembers?: boolean;
   /** Household with no address and no saved stores. */
   noStores?: boolean;
+  /** Household saved before store details were kept: bare placeholder IDs, no details. */
+  legacyStoreIds?: boolean;
 }
 
 /** Answers every API call the app makes from in-memory fixtures. */
@@ -142,7 +144,11 @@ export async function useFixtures(page: Page, options: FixtureOptions = {}): Pro
     const method = route.request().method();
     if (options.signedOut) return json(route, { detail: 'expired' }, 401);
     if (path === '/v1/me') return json(route, { uid, email: `${uid}@example.com`, name: null });
-    const home = options.noStores ? { ...household, address: null, latitude: null, longitude: null, store_ids: [], stores: [] } : household;
+    const home = options.noStores
+      ? { ...household, address: null, latitude: null, longitude: null, store_ids: [], stores: [] }
+      : options.legacyStoreIds
+        ? { ...household, store_ids: ['stub-heb', 'stub-costco', 'stub-walmart'], stores: [] }
+        : household;
     if (path === '/v1/households/current') return json(route, home);
     if (path.endsWith('/stores/nearby')) return json(route, { household_id: H, radius_miles: 15, stores: nearbyStores });
     if (path.endsWith('/stores') && method === 'PUT') {
