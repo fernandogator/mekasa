@@ -874,8 +874,23 @@ Acceptance Criteria:
     `localStorage`, iOS `UserDefaults`, Android DataStore). It **shall
     not** be sent to the backend or synced to other devices.
   - **When** the user signs out, the client **shall** keep the choice.
-- AC5: **Manual only.** The clients **shall not** switch themes
-  automatically by date.
+- AC5: **"Try the Halloween theme" prompt.** Added 2026-10-15.
+  - The clients **shall not** switch themes automatically by date.
+  - **While** the device's local date is in October, the Halloween theme
+    is not selected and the prompt has not been dismissed on this device
+    this year, the Dashboard **shall** show a "Try the Halloween theme"
+    card with "Try it" and "Not now".
+  - **When** the user taps "Try it", the client **shall** switch to
+    Halloween, keep the current appearance, hide the card, and show a
+    confirmation with "Undo" for at least 5 seconds.
+  - **When** the user taps "Undo", the client **shall** restore the theme
+    selected before "Try it".
+  - **When** the user taps "Not now", the client **shall** hide the card
+    and not show it again on this device until next October.
+  - **If** the Halloween theme is not offered (AC7), **then** the card
+    **shall not** appear.
+  - **When** October ends, the client **shall** stop showing the card and
+    **shall** keep whatever theme the user selected.
 - AC6: **Colors from roles.**
   - A theme **shall** be defined only as values for the existing color
     roles (`brand`, `brandMuted`, `surface`, `surfaceElevated`, `text`,
