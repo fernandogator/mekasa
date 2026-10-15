@@ -844,7 +844,8 @@ sounds and syncing the choice across devices. Acceptance criteria use EARS
 notation.
 Design Artifact: design/design-system.md (Grounded roles);
   design/exports/superdesign/desktop/08-settings.html (picker);
-  Halloween drafts to be exported to design/exports/superdesign/themes/
+  Halloween drafts, including the Dashboard "Try the Halloween theme"
+  card (AC5), to be exported to design/exports/superdesign/themes/
   (pending)
 Test File: web/src/theme/theme.test.ts, web/tests/layout/screens.spec.ts,
   ios/MekasaTests/ThemeAppearanceTests.swift,
@@ -882,18 +883,26 @@ Acceptance Criteria:
     `line`, `danger`, `success`, `warning` and their tints, plus each
     platform's camera and scrim roles), and optionally a display font.
   - Screens **shall not** reference a theme by name.
-- AC7: **Contrast.** **Before** a theme ships, every role pair in both its
-  light and dark versions **shall** pass NFR-005 AC2. The web unit tests
-  **shall** compute these ratios from the token file.
+- AC7: **Contrast.**
+  - **If** any role pair in a theme's light or dark version fails NFR-005
+    AC2, **then** the theme **shall not** be offered in Settings.
+  - The web unit tests **shall** compute these ratios from the token file.
 - AC8: **Design source.** The Halloween values **shall** come from the
   Superdesign drafts exported under `design/exports/superdesign/themes/`
   and **shall** be recorded in `design/design-system.md`.
-- AC9: **Analytics (web).** **When** the user changes the theme or
-  appearance, the web app **shall** send `theme_changed` with the
-  resulting theme (UI-007 AC18).
-- AC10: **Visual checks.** Each client **shall** have layout or snapshot
-  tests of Settings and the Dashboard in Halloween light and Halloween
-  dark (rule 9).
+- AC9: **Analytics (web).**
+  - **When** the user changes the theme or appearance, the web app
+    **shall** send `theme_changed` with the resulting theme (UI-007 AC18).
+  - **When** the AC5 card is shown, tried, undone or dismissed, the web
+    app **shall** send `theme_prompt` with `action` set to `shown`,
+    `tried`, `undone` or `dismissed`.
+- AC10: **Visual checks.**
+  - Each client **shall** have layout or snapshot tests of Settings and
+    the Dashboard in Halloween light and Halloween dark (rule 9).
+  - Each client **shall** have a layout or snapshot test of the Dashboard
+    with the AC5 card in Grounded, and unit tests of when the card shows
+    (October only, not after "Not now", not while Halloween is
+    selected).
 
 ---
 
