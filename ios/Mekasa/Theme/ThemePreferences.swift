@@ -32,8 +32,8 @@ final class ThemePreferences: ObservableObject {
     static let styleKey = "mekasa.paletteStyle"
     static let promptDismissedKey = "mekasa.halloweenPromptDismissed"
 
-    @Published var style: MekasaPaletteStyle {
-        didSet { UserDefaults.standard.set(style.rawValue, forKey: Self.styleKey) }
+    @Published var style: MekasaPaletteStyle = .grounded {
+        didSet { defaults.set(style.rawValue, forKey: Self.styleKey) }
     }
 
     /// Brief undo toast after enabling Halloween from the promo card.

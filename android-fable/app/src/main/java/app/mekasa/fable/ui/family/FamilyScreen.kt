@@ -1,13 +1,16 @@
 package app.mekasa.fable.ui.family
 
 import android.content.Intent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -55,6 +58,7 @@ import app.mekasa.fable.ui.theme.Shapes
 import app.mekasa.fable.ui.theme.Space
 import app.mekasa.fable.ui.theme.ThemePreferences
 import app.mekasa.fable.ui.theme.Type
+import app.mekasa.fable.ui.theme.paletteFor
 
 /** REQ-019: members, invites (share link), pending invite acceptance, plus account actions. */
 @Composable
@@ -295,7 +299,7 @@ private fun AppearanceSection() {
                 MekasaPaletteStyle.Grounded -> TestTags.GROUNDED_THEME_CARD
                 MekasaPaletteStyle.Halloween -> TestTags.HALLOWEEN_THEME_CARD
             }
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(Shapes.card)
@@ -307,16 +311,35 @@ private fun AppearanceSection() {
                     .clickable { ThemePreferences.select(option) }
                     .padding(Space.base)
                     .testTag(tag),
-                verticalAlignment = Alignment.Top,
+                verticalArrangement = Arrangement.spacedBy(Space.sm),
             ) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(option.title, style = Type.body, color = palette.text)
-                    Text(option.subtitle, style = Type.caption, color = palette.textMuted)
-                }
-                if (active) {
-                    Icon(Icons.Outlined.CheckCircle, contentDescription = "Selected", tint = palette.accent)
+                PalettePreviewStrip(option)
+                Row(verticalAlignment = Alignment.Top) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(option.title, style = Type.body, color = palette.text)
+                        Text(option.subtitle, style = Type.caption, color = palette.textMuted)
+                    }
+                    if (active) {
+                        Icon(Icons.Outlined.CheckCircle, contentDescription = "Selected", tint = palette.accent)
+                    }
                 }
             }
+        }
+    }
+}
+
+/** Static light swatches so both cards preview correctly regardless of the active palette. */
+@Composable
+private fun PalettePreviewStrip(style: MekasaPaletteStyle) {
+    val preview = paletteFor(style, darkTheme = false)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(36.dp)
+            .clip(Shapes.well),
+    ) {
+        listOf(preview.brand, preview.accent, preview.surface).forEach { color ->
+            Box(modifier = Modifier.weight(1f).fillMaxHeight().background(color))
         }
     }
 }

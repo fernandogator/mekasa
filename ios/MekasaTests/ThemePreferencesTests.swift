@@ -46,6 +46,7 @@ final class ThemePreferencesTests: XCTestCase {
         XCTAssertTrue(prefs.halloweenUndoVisible)
         prefs.undoHalloween()
         XCTAssertEqual(prefs.style, .grounded)
+        XCTAssertEqual(defaults.string(forKey: ThemePreferences.styleKey), "grounded")
         XCTAssertFalse(prefs.halloweenUndoVisible)
     }
 

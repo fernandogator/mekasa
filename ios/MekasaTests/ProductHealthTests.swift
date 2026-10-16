@@ -1,3 +1,5 @@
+import SwiftUI
+import UIKit
 import XCTest
 @testable import Mekasa
 
@@ -241,6 +243,18 @@ final class ProductHealthTests: XCTestCase {
         XCTAssertEqual(HealthGrade.label(for: "E"), "Bad")
         XCTAssertEqual(HealthGrade.label(for: nil), "No grade")
         XCTAssertNotEqual(HealthGrade.color(for: "A"), HealthGrade.color(for: "E"))
-        XCTAssertEqual(HealthGrade.color(for: nil), MekasaTheme.border)
+        // Dynamic theme Colors are not Equatable by identity — compare resolved RGB.
+        XCTAssertEqual(
+            resolvedRGB(HealthGrade.color(for: nil)),
+            resolvedRGB(MekasaTheme.border)
+        )
+    }
+
+    private func resolvedRGB(_ color: Color) -> UInt32 {
+        let resolved = UIColor(color).resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        resolved.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        func byte(_ value: CGFloat) -> UInt32 { UInt32((value * 255).rounded()) }
+        return byte(red) << 16 | byte(green) << 8 | byte(blue)
     }
 }
