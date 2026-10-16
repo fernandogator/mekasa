@@ -21,6 +21,11 @@ ITEM_PHOTO_BUCKET="${ITEM_PHOTO_BUCKET:-mekasa-item-photos-prod}"
 # account also needs to sign blobs as itself.
 PRODUCT_PHOTO_BUCKET="${PRODUCT_PHOTO_BUCKET:-mekasa-product-photos-prod}"
 RUNTIME_SA="mekasa-api@${PROJECT_ID}.iam.gserviceaccount.com"
+# DEPLOY_ONLY=1 (CI) skips enabling APIs, buckets and IAM bindings, so the
+# deployer needs no admin roles; run once without it to set those up.
+DEPLOY_ONLY="${DEPLOY_ONLY:-0}"
+# GIT_SHA labels the revision (commit-sha=<first 12>) so CI can confirm what is live.
+GIT_SHA="${GIT_SHA:-$(git -C "$(dirname "$0")" rev-parse HEAD 2>/dev/null || true)}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -30,30 +35,32 @@ echo "Region:   $REGION"
 echo "Service:  $SERVICE"
 echo "Source:   $ROOT"
 echo "Min inst: $MIN_INSTANCES"
+echo "Commit:   ${GIT_SHA:-unknown}"
 
 gcloud config set project "$PROJECT_ID"
 
-gcloud services enable \
-  run.googleapis.com \
-  iamcredentials.googleapis.com \
-  cloudbuild.googleapis.com \
-  artifactregistry.googleapis.com \
-  secretmanager.googleapis.com \
-  firestore.googleapis.com \
-  identitytoolkit.googleapis.com \
-  vision.googleapis.com \
-  aiplatform.googleapis.com \
-  sqladmin.googleapis.com \
-  storage.googleapis.com \
-  --project "$PROJECT_ID"
+if [ "$DEPLOY_ONLY" != "1" ]; then
+  gcloud services enable \
+    run.googleapis.com \
+    iamcredentials.googleapis.com \
+    cloudbuild.googleapis.com \
+    artifactregistry.googleapis.com \
+    secretmanager.googleapis.com \
+    firestore.googleapis.com \
+    identitytoolkit.googleapis.com \
+    vision.googleapis.com \
+    aiplatform.googleapis.com \
+    sqladmin.googleapis.com \
+    storage.googleapis.com \
+    --project "$PROJECT_ID"
 
-# Private item photos: one bucket, no public access, service account only.
-if ! gcloud storage buckets describe "gs://${ITEM_PHOTO_BUCKET}" --project "$PROJECT_ID" >/dev/null 2>&1; then
-  gcloud storage buckets create "gs://${ITEM_PHOTO_BUCKET}" \
-    --project "$PROJECT_ID" \
-    --location "$REGION" \
-    --uniform-bucket-level-access \
-    --public-access-prevention
+  # Private item photos: one bucket, no public access, service account only.
+  if ! gcloud storage buckets describe "gs://${ITEM_PHOTO_BUCKET}" --project "$PROJECT_ID" >/dev/null 2>&1; then
+    gcloud storage buckets create "gs://${ITEM_PHOTO_BUCKET}" \
+      --project "$PROJECT_ID" \
+      --location "$REGION" \
+      --uniform-bucket-level-access \
+      --public-access-prevention
 fi
 gcloud storage buckets add-iam-policy-binding "gs://${ITEM_PHOTO_BUCKET}" \
   --member "serviceAccount:mekasa-api@${PROJECT_ID}.iam.gserviceaccount.com" \
@@ -84,6 +91,7 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --role "roles/aiplatform.user" \
   --condition=None \
   --quiet >/dev/null
+fi
 
 SQL_FLAGS=()
 SECRETS=()
@@ -114,6 +122,7 @@ gcloud run deploy "$SERVICE" \
   --min-instances "$MIN_INSTANCES" \
   --set-env-vars "ENVIRONMENT=prod,GCP_PROJECT_ID=${PROJECT_ID},FIREBASE_PROJECT_ID=${PROJECT_ID},FIRESTORE_DATABASE_ID=mekasa-db,HOUSEHOLD_PERSISTENCE=firestore,ALLOW_TEST_AUTH=false,ITEM_PHOTO_BUCKET=${ITEM_PHOTO_BUCKET},PRODUCT_PHOTO_BUCKET=${PRODUCT_PHOTO_BUCKET}" \
   --service-account "mekasa-api@${PROJECT_ID}.iam.gserviceaccount.com" \
+  ${GIT_SHA:+--update-labels "commit-sha=${GIT_SHA:0:12}"} \
   ${SQL_FLAGS[@]+"${SQL_FLAGS[@]}"}
 
 echo
