@@ -327,20 +327,23 @@ struct FamilyMembersView: View {
                 Button {
                     themePreferences.select(option)
                 } label: {
-                    HStack(alignment: .top, spacing: 12) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(option.title)
-                                .font(.system(size: 16, weight: .bold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.text)
-                            Text(option.subtitle)
-                                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .foregroundStyle(MekasaTheme.textMuted)
-                                .multilineTextAlignment(.leading)
-                        }
-                        Spacer(minLength: 0)
-                        if themePreferences.style == option {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(MekasaTheme.accent)
+                    VStack(alignment: .leading, spacing: 12) {
+                        palettePreviewStrip(for: option)
+                        HStack(alignment: .top, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(option.title)
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundStyle(MekasaTheme.text)
+                                Text(option.subtitle)
+                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(MekasaTheme.textMuted)
+                                    .multilineTextAlignment(.leading)
+                            }
+                            Spacer(minLength: 0)
+                            if themePreferences.style == option {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(MekasaTheme.accent)
+                            }
                         }
                     }
                     .padding(14)
@@ -368,6 +371,26 @@ struct FamilyMembersView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(TestIdentifiers.appearanceSection)
+    }
+
+    /// Static light swatches so both cards preview correctly regardless of the active palette.
+    private func palettePreviewStrip(for option: MekasaPaletteStyle) -> some View {
+        let light = PaletteTokens.tokens(for: option).light
+        return HStack(spacing: 0) {
+            rgbColor(light.brand)
+            rgbColor(light.accent)
+            rgbColor(light.surface)
+        }
+        .frame(height: 36)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func rgbColor(_ rgb: UInt32) -> Color {
+        Color(
+            red: Double((rgb >> 16) & 0xff) / 255,
+            green: Double((rgb >> 8) & 0xff) / 255,
+            blue: Double(rgb & 0xff) / 255
+        )
     }
 
     private var faceIDLockSection: some View {
