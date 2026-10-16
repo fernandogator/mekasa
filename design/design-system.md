@@ -114,9 +114,58 @@ Contrast (NFR-005 AC2, dark appearance):
 
 Design reference: `design/pages/dashboard-dark.html`, `scan-barcode-dark.html`, `scan-new-product-dark.html`, `scan-haul-summary-dark.html`.
 
-Do not introduce purple, indigo, terracotta, cream-serif luxury, or neon palettes.
+Do not introduce purple, indigo, terracotta, cream-serif luxury, or neon palettes — except the seasonal **Halloween** palette below, where purple accent and pumpkin/candy-corn roles are intentional.
 Never use pure black; dark fills use `#5d5652` (light) / near-charcoal (dark).
 Danger red `#a44a3f` is reserved for destructive actions and errors.
+
+### Halloween (seasonal, Superdesign 2026-10-15)
+
+Optional palette selectable in Family → Appearance. October shows a dashboard promo card (“Try the Halloween theme”) until dismissed or Halloween is on; enabling from the promo shows a short Undo toast. Light/dark still follow the system appearance. Tokens below are AA-tuned from the Superdesign drafts (raw pumpkin `#B8620F` / purple `#7B2D8F` / gold warning were darkened where needed for text/fill contrast).
+
+#### Light
+
+| Token | Role | Value |
+|-------|------|-------|
+| `--color-brand` | Pumpkin brown: nav pill, dark fills | `#8b4a0c` |
+| `--color-brand-muted` | Caramel wash (decorative) | `#d4a574` |
+| `--color-surface` | Cream parchment page | `#fff8f0` |
+| `--color-surface-elevated` | Cards / sheets | `#fffbf7` |
+| `--color-surface-muted` | Wells / unselected | `#f5e8dc` |
+| `--color-text` | Dark chocolate text | `#3d2817` |
+| `--color-text-muted` | Warm taupe secondary | `#5c4336` |
+| `--color-accent` | Deep purple CTA | `#6b247a` |
+| `--color-danger` | Rust | `#a03224` |
+| `--color-success` | Olive sage | `#4a5e2c` |
+| `--color-warning` | Amber brown (text) | `#7a5210` |
+| `--color-border` / `--color-line` | Icons and outlines | `#6f5638` |
+| `--color-on-brand` / `--color-on-accent` | Labels on brand/accent fills | `#fffbf7` |
+| `--color-on-brand-muted` | Inactive icons on brand | `#e8d7c3` |
+
+Contrast (NFR-005 AC2, Halloween light): text on surface 13.2; muted text 8.6; accent / danger / success / warning on surface ≥6.5; onBrand on brand 6.6; onAccent on accent 9.5; border on surface 6.5.
+
+#### Dark
+
+| Token | Role | Value |
+|-------|------|-------|
+| `--color-brand` | Candy corn gold nav | `#d4a01b` |
+| `--color-brand-muted` | Dark gold wash | `#b8860b` |
+| `--color-surface` | Midnight parchment | `#1a1513` |
+| `--color-surface-elevated` | Cards / sheets | `#2d2620` |
+| `--color-text` | Warm parchment | `#f5e8dc` |
+| `--color-text-muted` | Soft tan | `#c4b5a0` |
+| `--color-accent` | Slime green CTA | `#9fd356` |
+| `--color-danger` | Soft rust | `#e8745c` |
+| `--color-success` | Moss | `#a8b86f` |
+| `--color-warning` | Candy gold | `#e8c74f` |
+| `--color-border` / `--color-line` | Gold outlines | `#a8894a` |
+| `--color-on-brand` / `--color-on-accent` | Dark labels on gold/slime fills | `#1a1513` |
+| `--color-on-brand-muted` | Secondary on brand | `#5c4a2e` |
+
+Contrast (NFR-005 AC2, Halloween dark): text on surface 15.0; muted text 9.0; accent on surface 10.3; onBrand on brand 7.6; onAccent on accent 10.3; border on surface 5.5.
+
+Design reference: `design/pages/halloween-dashboard.html`, `halloween-dashboard-dark.html`, `halloween-shopping-list.html`, `halloween-shopping-list-dark.html`, `halloween-settings.html`, `halloween-settings-dark.html`, `halloween-prompt-card.html`, `halloween-undo.html`.
+
+Native: `ThemePreferences` / `MekasaPaletteStyle` (iOS + Android) persist `grounded` | `halloween`.
 
 ## Typography
 

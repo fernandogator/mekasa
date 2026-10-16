@@ -19,8 +19,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Semantic palette from design/design-system.md (Rich & Grounded). Screens read
- * colours through [MekasaTheme.palette] so dark mode (UI-001 AC3) is a second instance.
+ * Semantic palette from design/design-system.md (Grounded + Halloween seasonal).
+ * Screens read colours through [MekasaTheme.palette] so dark mode (UI-001 AC3)
+ * and seasonal style are additional instances of the same roles.
  *
  * Satisfies: NFR-005 AC2, AC5 — screens never use literal colours, and every
  * text/fill pair below is contrast-checked in design/design-system.md.
@@ -111,6 +112,63 @@ val DarkPalette = MekasaPalette(
     isDark = true,
 )
 
+/** Halloween Light — Superdesign 2026-10-15, AA-tuned (NFR-005 AC2). */
+val HalloweenLightPalette = MekasaPalette(
+    brand = Color(0xFF8B4A0C),
+    brandMuted = Color(0xFFD4A574),
+    surface = Color(0xFFFFF8F0),
+    surfaceElevated = Color(0xFFFFFBF7),
+    text = Color(0xFF3D2817),
+    textMuted = Color(0xFF5C4336),
+    accent = Color(0xFF6B247A),
+    danger = Color(0xFFA03224),
+    success = Color(0xFF4A5E2C),
+    warning = Color(0xFF7A5210),
+    overlay = Color(0x26D4A574),
+    successTint = Color(0xFFE8EDD9),
+    accentTint = Color(0xFFF3E6F6),
+    dangerTint = Color(0xFFF8E5DF),
+    warningTint = Color(0xFFF5E8C8),
+    border = Color(0xFF6F5638),
+    onBrand = Color(0xFFFFFBF7),
+    onAccent = Color(0xFFFFFBF7),
+    onBrandMuted = Color(0xFFE8D7C3),
+    onCamera = Color(0xFFFFFBF7),
+    photoScrim = Color(0xFF1A1513),
+    isDark = false,
+)
+
+/** Halloween Dark — Superdesign 2026-10-15, AA-tuned (NFR-005 AC2). */
+val HalloweenDarkPalette = MekasaPalette(
+    brand = Color(0xFFD4A01B),
+    brandMuted = Color(0xFFB8860B),
+    surface = Color(0xFF1A1513),
+    surfaceElevated = Color(0xFF2D2620),
+    text = Color(0xFFF5E8DC),
+    textMuted = Color(0xFFC4B5A0),
+    accent = Color(0xFF9FD356),
+    danger = Color(0xFFE8745C),
+    success = Color(0xFFA8B86F),
+    warning = Color(0xFFE8C74F),
+    overlay = Color(0x26B8860B),
+    successTint = Color(0xFF2A3318),
+    accentTint = Color(0xFF2A3318),
+    dangerTint = Color(0xFF3A221C),
+    warningTint = Color(0xFF3A2E14),
+    border = Color(0xFFA8894A),
+    onBrand = Color(0xFF1A1513),
+    onAccent = Color(0xFF1A1513),
+    onBrandMuted = Color(0xFF5C4A2E),
+    onCamera = Color(0xFFF5E8DC),
+    photoScrim = Color(0xFF0F0E0D),
+    isDark = true,
+)
+
+fun paletteFor(style: MekasaPaletteStyle, darkTheme: Boolean): MekasaPalette = when (style) {
+    MekasaPaletteStyle.Grounded -> if (darkTheme) DarkPalette else LightPalette
+    MekasaPaletteStyle.Halloween -> if (darkTheme) HalloweenDarkPalette else HalloweenLightPalette
+}
+
 object Space {
     val xs = 4.dp
     val sm = 8.dp
@@ -170,9 +228,10 @@ private fun MekasaPalette.toColorScheme(): ColorScheme = if (isDark) {
 @Composable
 fun MekasaTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    style: MekasaPaletteStyle = ThemePreferences.style,
     content: @Composable () -> Unit,
 ) {
-    val palette = if (darkTheme) DarkPalette else LightPalette
+    val palette = paletteFor(style, darkTheme)
     CompositionLocalProvider(LocalPalette provides palette) {
         MaterialTheme(
             colorScheme = palette.toColorScheme(),

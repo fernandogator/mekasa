@@ -6,6 +6,7 @@ import SwiftUI
 struct RootView: View {
     @EnvironmentObject private var session: AppSession
     @ObservedObject private var faceIDLock = FaceIDLock.shared
+    @ObservedObject private var themePreferences = ThemePreferences.shared
 
     private var showFaceIDLock: Bool {
         faceIDLock.shouldPresentLock(
@@ -42,6 +43,9 @@ struct RootView: View {
         // "RootView" (AddItemButton, HomeTab, etc. became unfindable in XCUITest).
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(TestIdentifiers.rootView)
+        // Force a redraw when the seasonal palette changes (UIColor dynamic colors
+        // otherwise keep the previous style until the next trait refresh).
+        .id(themePreferences.style)
         .animation(session.isUITesting ? nil : .easeInOut(duration: 0.25), value: session.onboardingStep)
         .transition(.opacity.combined(with: .move(edge: .bottom)))
         .overlay {

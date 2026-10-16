@@ -1,0 +1,219 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mekasa Halloween Shopping List</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-brand: #8B4A0C;
+      --color-brand-muted: #D4A574;
+      --color-surface: #FFF8F0;
+      --color-surface-elevated: #FFFBF7;
+      --color-surface-muted: #F5E8DC;
+      --color-text: #3D2817;
+      --color-text-muted: #5C4336;
+      --color-accent: #6B247A;
+      --color-danger: #A03224;
+      --color-success: #4A5E2C;
+      --color-warning: #7A5210;
+      --color-warning-tint: #F5E8C8;
+      --color-success-tint: #E8EDD9;
+      --color-accent-tint: #F3E6F6;
+      --color-danger-tint: #F8E5DF;
+      --color-line: #6F5638;
+      --color-border: #6F5638;
+      --color-on-brand: #FFFBF7;
+      --color-on-accent: #FFFBF7;
+      --color-on-brand-muted: #E8D7C3;
+      --color-overlay: rgba(212, 165, 116, 0.15);
+    }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background-color: var(--color-surface);
+      color: var(--color-text);
+      margin: 0;
+      padding: 0;
+    }
+
+    .halloween-gradient {
+      background: linear-gradient(180deg, var(--color-overlay) 0%, rgba(255, 248, 240, 0) 100%);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: var(--color-surface);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: var(--color-brand-muted);
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="w-full h-screen flex flex-col relative overflow-hidden" data-sd-id="1">
+    <!-- Atmosphere -->
+    <div class="absolute top-0 left-0 w-full h-64 halloween-gradient pointer-events-none z-0" data-sd-id="2"></div>
+    <div class="absolute top-10 right-10 opacity-20 pointer-events-none" data-sd-id="3">
+      <iconify-icon icon="mdi:pumpkin" class="text-4xl text-[#B8620F]"></iconify-icon>
+    </div>
+
+    <!-- Header -->
+    <header class="shrink-0 pt-14 px-6 z-10" data-sd-id="4">
+      <div class="flex justify-between items-center mb-6" data-sd-id="5">
+        <h1 class="text-[32px] font-black tracking-tight leading-tight" data-sd-id="6">Shopping List</h1>
+        <button class="w-10 h-10 rounded-full bg-white border border-[#E8DDD0] flex items-center justify-center text-[#3D2817] shadow-sm" data-sd-id="7">
+          <iconify-icon icon="lucide:search" class="text-xl"></iconify-icon>
+        </button>
+      </div>
+
+      <!-- Store Tabs -->
+      <div class="flex gap-2 overflow-x-auto pb-4 no-scrollbar custom-scrollbar" data-sd-id="8">
+        <button class="shrink-0 px-5 py-2.5 rounded-full bg-[#B8620F] text-white font-bold text-sm shadow-sm" data-sd-id="9">All stores</button>
+        <button class="shrink-0 px-5 py-2.5 rounded-full bg-white border border-[#E8DDD0] text-[#6B5344] font-bold text-sm hover:bg-[#F5E8DC] transition-colors" data-sd-id="10">Costco</button>
+        <button class="shrink-0 px-5 py-2.5 rounded-full bg-white border border-[#E8DDD0] text-[#6B5344] font-bold text-sm hover:bg-[#F5E8DC] transition-colors" data-sd-id="11">H-E-B</button>
+        <button class="shrink-0 px-5 py-2.5 rounded-full bg-white border border-[#E8DDD0] text-[#6B5344] font-bold text-sm hover:bg-[#F5E8DC] transition-colors" data-sd-id="12">Trader Joe's</button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto px-6 pb-40 z-10" data-sd-id="13">
+      <!-- Needs Approval Section -->
+      <section class="mb-8" data-sd-id="14">
+        <div class="flex justify-between items-center mb-4" data-sd-id="15">
+          <h2 class="text-xl font-extrabold flex items-center gap-2" data-sd-id="16">
+            Needs Approval
+            <span class="bg-[#7B2D8F] text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider" data-sd-id="17">2</span>
+          </h2>
+        </div>
+
+        <div class="space-y-3" data-sd-id="18">
+          <!-- Approval Item 1 -->
+          <div class="bg-white border border-[#E8DDD0] rounded-[24px] p-4 shadow-sm" data-sd-id="19">
+            <div class="flex items-center gap-4 mb-4" data-sd-id="20">
+              <div class="w-12 h-12 rounded-[16px] bg-[#F5E8DC] flex items-center justify-center shrink-0" data-sd-id="21">
+                <iconify-icon icon="lucide:milk" class="text-2xl text-[#3D2817]"></iconify-icon>
+              </div>
+              <div class="flex-1" data-sd-id="22">
+                <p class="font-bold text-[16px] leading-tight mb-0.5" data-sd-id="23">Oat Milk (Barista)</p>
+                <p class="text-[12px] font-semibold text-[#6B5344]" data-sd-id="24">Requested by Maya • H-E-B</p>
+              </div>
+              <div class="text-right" data-sd-id="25">
+                <p class="font-black text-[16px] text-[#3D2817]" data-sd-id="26">x2</p>
+                <p class="text-[12px] font-bold text-[#D4A01B]" data-sd-id="27">$8.40</p>
+              </div>
+            </div>
+            <div class="flex gap-2" data-sd-id="28">
+              <button class="flex-1 h-11 rounded-[16px] border border-[#8B6F4E] text-[#3D2817] font-bold text-sm hover:bg-[#F5E8DC] transition-colors" data-sd-id="29">Reject</button>
+              <button class="flex-1 h-11 rounded-[16px] bg-[#7B2D8F] text-white font-bold text-sm shadow-md hover:opacity-90 active:scale-95 transition-all" data-sd-id="30">Approve</button>
+            </div>
+          </div>
+
+          <!-- Approval Item 2 -->
+          <div class="bg-white border border-[#E8DDD0] rounded-[24px] p-4 shadow-sm" data-sd-id="31">
+            <div class="flex items-center gap-4 mb-4" data-sd-id="32">
+              <div class="w-12 h-12 rounded-[16px] bg-[#F5E8DC] flex items-center justify-center shrink-0" data-sd-id="33">
+                <iconify-icon icon="lucide:cookie" class="text-2xl text-[#3D2817]"></iconify-icon>
+              </div>
+              <div class="flex-1" data-sd-id="34">
+                <p class="font-bold text-[16px] leading-tight mb-0.5" data-sd-id="35">Halloween Oreos</p>
+                <p class="text-[12px] font-semibold text-[#6B5344]" data-sd-id="36">Requested by Leo • Target</p>
+              </div>
+              <div class="text-right" data-sd-id="37">
+                <p class="font-black text-[16px] text-[#3D2817]" data-sd-id="38">x1</p>
+                <p class="text-[12px] font-bold text-[#D4A01B]" data-sd-id="39">$4.50</p>
+              </div>
+            </div>
+            <div class="flex gap-2" data-sd-id="40">
+              <button class="flex-1 h-11 rounded-[16px] border border-[#8B6F4E] text-[#3D2817] font-bold text-sm" data-sd-id="41">Reject</button>
+              <button class="flex-1 h-11 rounded-[16px] bg-[#7B2D8F] text-white font-bold text-sm" data-sd-id="42">Approve</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Current List -->
+      <section data-sd-id="43">
+        <h2 class="text-xl font-extrabold mb-4" data-sd-id="44">Your List</h2>
+        <div class="space-y-1" data-sd-id="45">
+          <!-- List Item 1 -->
+          <div class="flex items-center p-3 rounded-[20px] hover:bg-[#F5E8DC] transition-colors" data-sd-id="46">
+            <button class="w-10 h-10 rounded-full border-2 border-[#8B6F4E] flex items-center justify-center shrink-0 mr-4" data-sd-id="47">
+              <div class="w-5 h-5 rounded-sm" data-sd-id="48"></div>
+            </button>
+            <div class="flex-1" data-sd-id="49">
+              <p class="font-bold text-[16px]" data-sd-id="50">Avocados</p>
+              <p class="text-[12px] font-semibold text-[#6B5344]" data-sd-id="51">x3 • Any store</p>
+            </div>
+            <div class="flex -space-x-2" data-sd-id="52">
+              <div class="w-8 h-8 rounded-full border-2 border-white bg-[#B8620F] flex items-center justify-center text-[10px] font-bold text-white" data-sd-id="53">R</div>
+            </div>
+          </div>
+          <div class="h-[1px] bg-[#E8DDD0] mx-4" data-sd-id="54"></div>
+
+          <!-- List Item 2 -->
+          <div class="flex items-center p-3 rounded-[20px] hover:bg-[#F5E8DC] transition-colors" data-sd-id="55">
+            <button class="w-10 h-10 rounded-full border-2 border-[#8B6F4E] flex items-center justify-center shrink-0 mr-4" data-sd-id="56">
+              <div class="w-5 h-5 rounded-sm" data-sd-id="57"></div>
+            </button>
+            <div class="flex-1" data-sd-id="58">
+              <p class="font-bold text-[16px]" data-sd-id="59">Paper Towels</p>
+              <p class="text-[12px] font-semibold text-[#6B5344]" data-sd-id="60">x1 • Costco Wholesale</p>
+            </div>
+            <div class="flex -space-x-2" data-sd-id="61">
+              <div class="w-8 h-8 rounded-full border-2 border-white bg-[#7B2D8F] flex items-center justify-center text-[10px] font-bold text-white" data-sd-id="62">M</div>
+            </div>
+          </div>
+          <div class="h-[1px] bg-[#E8DDD0] mx-4" data-sd-id="63"></div>
+
+          <!-- List Item 3 -->
+          <div class="flex items-center p-3 rounded-[20px] hover:bg-[#F5E8DC] transition-colors" data-sd-id="64">
+            <button class="w-10 h-10 rounded-full bg-[#B8620F] flex items-center justify-center shrink-0 mr-4 border-2 border-[#B8620F]" data-sd-id="65">
+              <iconify-icon icon="lucide:check" class="text-white"></iconify-icon>
+            </button>
+            <div class="flex-1 opacity-50" data-sd-id="66">
+              <p class="font-bold text-[16px] line-through" data-sd-id="67">2% Milk</p>
+              <p class="text-[12px] font-semibold text-[#6B5344]" data-sd-id="68">Purchased by Dad</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Fixed Bottom Navigation (Pill Style) -->
+    <div class="fixed bottom-8 left-6 right-6 z-40" data-sd-id="69">
+      <div class="bg-[#3D2817] h-[64px] rounded-full flex items-center justify-between px-6 shadow-2xl relative" data-sd-id="70">
+        <a id="nav-home" href="#" class="flex flex-col items-center justify-center text-[#E8D7C3] w-12 hover:text-white transition-colors" data-sd-id="71">
+          <iconify-icon icon="lucide:home" class="text-2xl mb-1"></iconify-icon>
+        </a>
+        <a id="nav-list" href="#" class="flex flex-col items-center justify-center text-white w-12" data-sd-id="72">
+          <iconify-icon icon="lucide:list-todo" class="text-2xl mb-1"></iconify-icon>
+          <div class="w-1 h-1 bg-white rounded-full mt-[-2px]" data-sd-id="73"></div>
+        </a>
+        
+        <!-- Spacer for FAB -->
+        <div class="w-16" data-sd-id="74"></div>
+        
+        <a id="nav-spend" href="#" class="flex flex-col items-center justify-center text-[#E8D7C3] w-12 hover:text-white transition-colors" data-sd-id="75">
+          <iconify-icon icon="lucide:pie-chart" class="text-2xl mb-1"></iconify-icon>
+        </a>
+        <a id="nav-people" href="#" class="flex flex-col items-center justify-center text-[#E8D7C3] w-12 hover:text-white transition-colors" data-sd-id="76">
+          <iconify-icon icon="lucide:users" class="text-2xl mb-1"></iconify-icon>
+        </a>
+      </div>
+      
+      <!-- Center Add FAB -->
+      <button id="nav-add" class="absolute left-1/2 -top-6 -translate-x-1/2 w-[56px] h-[56px] bg-[#7B2D8F] rounded-full flex items-center justify-center text-white shadow-[0_8px_16px_rgba(123,45,143,0.3)] border-[4px] border-[#FFF8F0] active:scale-95 transition-transform cursor-pointer" data-sd-id="77">
+        <iconify-icon icon="lucide:plus" class="text-2xl"></iconify-icon>
+      </button>
+    </div>
+
+    <!-- Home Indicator Area -->
+    <div class="shrink-0 pb-[34px]" data-sd-id="78"></div>
+  </div>
+
+</body></html>

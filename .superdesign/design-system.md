@@ -2,6 +2,8 @@
 
 Living visual source of truth for Superdesign mockups. Native clients (Jetpack Compose / SwiftUI) implement these tokens structurally, not pixel-for-pixel.
 
+> Canonical token tables (including the seasonal Halloween palette, AA contrast pairs, and design page references) live in `design/design-system.md`. Keep this file aligned when Superdesign drafts change.
+
 **Style source:** Superdesign library prompt `babybites-sophisticated-palette` (mobile-first, sophisticated-playful). Adapted for household inventory — not a parenting app clone. Do not blend a second library style.
 
 ## Product context

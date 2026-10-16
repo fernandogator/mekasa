@@ -7,6 +7,7 @@ import UIKit
 /// Spec version: 1.0
 struct DashboardView: View {
     @EnvironmentObject private var session: AppSession
+    @ObservedObject private var themePreferences = ThemePreferences.shared
     @Binding var selectedTab: MainTab
     @State private var toast: String?
     @State private var selectedItemID: String?
@@ -30,6 +31,9 @@ struct DashboardView: View {
                 VStack(alignment: .leading, spacing: 32) {
                     statsRow
                         .padding(.top, 8)
+                    if themePreferences.shouldShowHalloweenPrompt {
+                        halloweenPromptCard
+                    }
                     lowStockSection
                     if session.submitsShoppingRequests {
                         wantsSection
@@ -72,8 +76,70 @@ struct DashboardView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+        .overlay(alignment: .bottom) {
+            if themePreferences.halloweenUndoVisible {
+                halloweenUndoToast
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 110)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
         .animation(.easeInOut(duration: 0.25), value: toast)
+        .animation(.easeInOut(duration: 0.25), value: themePreferences.halloweenUndoVisible)
         .animation(.easeInOut(duration: 0.2), value: pendingApprovals.map(\.id))
+    }
+
+    private var halloweenPromptCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Try the Halloween theme")
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundStyle(MekasaTheme.text)
+            Text("Give Mekasa a spooky look for October. You can switch back anytime.")
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundStyle(MekasaTheme.textMuted)
+            PrimaryButton(title: "Try it") {
+                themePreferences.select(.halloween, showUndo: true)
+            }
+            .accessibilityIdentifier(TestIdentifiers.halloweenTryButton)
+            Button("Not now") {
+                themePreferences.dismissHalloweenPrompt()
+            }
+            .font(.system(size: 14, weight: .bold, design: .rounded))
+            .foregroundStyle(MekasaTheme.textMuted)
+            .frame(maxWidth: .infinity)
+            .accessibilityIdentifier(TestIdentifiers.halloweenSkipButton)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(MekasaTheme.surfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(MekasaTheme.line, lineWidth: 1)
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(TestIdentifiers.halloweenPromptCard)
+    }
+
+    private var halloweenUndoToast: some View {
+        HStack {
+            Text("Halloween theme on")
+                .font(.system(size: 16, weight: .medium, design: .rounded))
+                .foregroundStyle(MekasaTheme.onBrand)
+            Spacer(minLength: 12)
+            Button("Undo") {
+                themePreferences.undoHalloween()
+            }
+            .font(.system(size: 14, weight: .bold, design: .rounded))
+            .foregroundStyle(MekasaTheme.accentTint)
+            .accessibilityIdentifier(TestIdentifiers.halloweenUndoButton)
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 56)
+        .background(MekasaTheme.brand)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(TestIdentifiers.halloweenUndoToast)
     }
 
     private var heroFace: some View {

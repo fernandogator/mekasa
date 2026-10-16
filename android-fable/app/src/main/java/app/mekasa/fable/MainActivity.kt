@@ -17,6 +17,7 @@ import app.mekasa.fable.session.PrefsEmailMemory
 import app.mekasa.fable.session.SessionViewModel
 import app.mekasa.fable.ui.MekasaRoot
 import app.mekasa.fable.ui.theme.MekasaTheme
+import app.mekasa.fable.ui.theme.ThemePreferences
 
 class MainActivity : ComponentActivity() {
 
@@ -39,6 +40,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        ThemePreferences.init(this)
         session.onInviteLink(intent?.dataString)
         setContent {
             MekasaTheme {

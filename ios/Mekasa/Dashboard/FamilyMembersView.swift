@@ -18,6 +18,7 @@ struct FamilyMembersView: View {
     @State private var scanSoundsEnabled = ScanFeedback.soundsEnabled
     @ObservedObject private var faceIDLock = FaceIDLock.shared
     @State private var faceIDEnabled = FaceIDLock.shared.isEnabled
+    @ObservedObject private var themePreferences = ThemePreferences.shared
     @State private var isSendingDiagnostics = false
     @State private var diagnosticsStatus: String?
 
@@ -34,6 +35,7 @@ struct FamilyMembersView: View {
                 membersSection
                 inviteSection
                 scanSoundsSection
+                appearanceSection
                 faceIDLockSection
                 trashKioskSection
                 helpSection
@@ -311,6 +313,61 @@ struct FamilyMembersView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(MekasaTheme.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var appearanceSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Appearance")
+                .font(.system(size: 18, weight: .heavy, design: .rounded))
+                .foregroundStyle(MekasaTheme.text)
+            Text("Theme")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(MekasaTheme.textMuted)
+            ForEach(MekasaPaletteStyle.allCases) { option in
+                Button {
+                    themePreferences.select(option)
+                } label: {
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(option.title)
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundStyle(MekasaTheme.text)
+                            Text(option.subtitle)
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundStyle(MekasaTheme.textMuted)
+                                .multilineTextAlignment(.leading)
+                        }
+                        Spacer(minLength: 0)
+                        if themePreferences.style == option {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(MekasaTheme.accent)
+                        }
+                    }
+                    .padding(14)
+                    .background(
+                        themePreferences.style == option
+                            ? MekasaTheme.surfaceElevated
+                            : MekasaTheme.surfaceMuted
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(
+                                themePreferences.style == option ? MekasaTheme.accent : MekasaTheme.line,
+                                lineWidth: themePreferences.style == option ? 2 : 1
+                            )
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(
+                    option == .halloween
+                        ? TestIdentifiers.halloweenThemeCard
+                        : TestIdentifiers.groundedThemeCard
+                )
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(TestIdentifiers.appearanceSection)
     }
 
     private var faceIDLockSection: some View {

@@ -6,6 +6,16 @@ import XCTest
 /// UI-002 AC3: every theme role resolves to the Rich & Grounded light and dark values
 /// in design/design-system.md, and dark labels on accent fills stay charcoal (NFR-005 AC2).
 final class ThemeAppearanceTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        UserDefaults.standard.set(MekasaPaletteStyle.grounded.rawValue, forKey: ThemePreferences.styleKey)
+    }
+
+    override func tearDown() {
+        UserDefaults.standard.set(MekasaPaletteStyle.grounded.rawValue, forKey: ThemePreferences.styleKey)
+        super.tearDown()
+    }
+
     private let roles: [(String, Color, UInt32, UInt32)] = [
         ("brand", MekasaTheme.brand, 0x5d5652, 0x3a3531),
         ("brandMuted", MekasaTheme.brandMuted, 0x8fa085, 0x5a6f4f),
@@ -32,10 +42,35 @@ final class ThemeAppearanceTests: XCTestCase {
         ("scrim", MekasaTheme.scrim, 0x1a1918, 0x0f0e0d),
     ]
 
+    private let halloweenRoles: [(String, Color, UInt32, UInt32)] = [
+        ("brand", MekasaTheme.brand, 0x8b4a0c, 0xd4a01b),
+        ("brandMuted", MekasaTheme.brandMuted, 0xd4a574, 0xb8860b),
+        ("surface", MekasaTheme.surface, 0xfff8f0, 0x1a1513),
+        ("surfaceElevated", MekasaTheme.surfaceElevated, 0xfffbf7, 0x2d2620),
+        ("text", MekasaTheme.text, 0x3d2817, 0xf5e8dc),
+        ("textMuted", MekasaTheme.textMuted, 0x5c4336, 0xc4b5a0),
+        ("accent", MekasaTheme.accent, 0x6b247a, 0x9fd356),
+        ("danger", MekasaTheme.danger, 0xa03224, 0xe8745c),
+        ("success", MekasaTheme.success, 0x4a5e2c, 0xa8b86f),
+        ("warning", MekasaTheme.warning, 0x7a5210, 0xe8c74f),
+        ("border", MekasaTheme.border, 0x6f5638, 0xa8894a),
+        ("onBrand", MekasaTheme.onBrand, 0xfffbf7, 0x1a1513),
+        ("onAccent", MekasaTheme.onAccent, 0xfffbf7, 0x1a1513),
+        ("onBrandMuted", MekasaTheme.onBrandMuted, 0xe8d7c3, 0x5c4a2e),
+    ]
+
     func testRolesResolvePerAppearance() {
         for (name, color, light, dark) in roles {
             XCTAssertEqual(rgb(color, .light), light, "\(name) light")
             XCTAssertEqual(rgb(color, .dark), dark, "\(name) dark")
+        }
+    }
+
+    func testHalloweenRolesResolvePerAppearance() {
+        UserDefaults.standard.set(MekasaPaletteStyle.halloween.rawValue, forKey: ThemePreferences.styleKey)
+        for (name, color, light, dark) in halloweenRoles {
+            XCTAssertEqual(rgb(color, .light), light, "halloween \(name) light")
+            XCTAssertEqual(rgb(color, .dark), dark, "halloween \(name) dark")
         }
     }
 

@@ -1,0 +1,440 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="view-transition" content="same-origin">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+    
+    :root {
+      --color-brand: #8B4A0C;
+      --color-brand-muted: #D4A574;
+      --color-surface: #FFF8F0;
+      --color-surface-elevated: #FFFBF7;
+      --color-surface-muted: #F5E8DC;
+      --color-text: #3D2817;
+      --color-text-muted: #5C4336;
+      --color-accent: #6B247A;
+      --color-danger: #A03224;
+      --color-success: #4A5E2C;
+      --color-warning: #7A5210;
+      --color-warning-tint: #F5E8C8;
+      --color-success-tint: #E8EDD9;
+      --color-accent-tint: #F3E6F6;
+      --color-danger-tint: #F8E5DF;
+      --color-line: #6F5638;
+      --color-border: #6F5638;
+      --color-on-brand: #FFFBF7;
+      --color-on-accent: #FFFBF7;
+      --color-on-brand-muted: #E8D7C3;
+      --color-overlay: rgba(212, 165, 116, 0.15);
+    }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background-color: var(--color-surface);
+      color: var(--color-text);
+      margin: 0;
+    }
+
+    .sidebar {
+      background-color: var(--color-brand);
+      width: 280px;
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      color: #FFFBF7;
+      z-index: 40;
+    }
+
+    .main-content {
+      margin-left: 280px;
+      min-height: 100vh;
+      padding: 32px 48px;
+      position: relative;
+    }
+
+    .hero-section {
+      height: 280px;
+      width: 100%;
+      border-radius: 40px;
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 48px;
+      background-image: url('https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/747347d9-34d0-43dd-a1c8-e170f34a7b5c/generated-images/generated-5231b399-34d0-43dd-a1c8-e170f34a7b5c.png');
+      background-size: cover;
+      background-position: center 40%;
+      box-shadow: 0 10px 40px -10px rgba(184, 98, 15, 0.2);
+    }
+
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(61, 40, 23, 0.1), rgba(61, 40, 23, 0.5));
+    }
+
+    .card {
+      background-color: var(--color-surface-elevated);
+      border-radius: 40px;
+      padding: 24px;
+      box-shadow: 0 20px 50px -12px rgba(61, 40, 23, 0.08);
+      border: 1px solid var(--color-line);
+    }
+
+    .sidebar-link.active {
+      background-color: rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+    }
+
+    .halloween-decoration {
+      position: absolute;
+      opacity: 0.15;
+      pointer-events: none;
+    }
+
+    /* Chart Mockups */
+    .chart-bar {
+      background-color: var(--color-accent);
+      border-radius: 4px;
+      transition: height 0.3s ease;
+    }
+
+    .chart-bar-muted {
+      background-color: var(--color-brand-muted);
+      border-radius: 4px;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--color-surface);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--color-brand-muted);
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="min-h-screen flex" data-sd-id="1">
+    <!-- Sidebar -->
+    <aside class="sidebar flex flex-col p-8" data-sd-id="2">
+      <div class="flex items-center gap-3 mb-12" data-sd-id="3">
+        <img src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/747347d9-34d0-43dd-a1c8-e170f34a7b5c/generated-images/generated-b4990631-3f37-4a3c-8db8-46174fd7fd83.png" class="w-10 h-10 rounded-xl" data-sd-id="4">
+        <span class="text-2xl font-black tracking-tighter text-white" data-sd-id="5">Mekasa</span>
+      </div>
+
+      <nav class="flex-1 space-y-2" data-sd-id="6">
+        <a id="nav-dashboard" href="#" class="sidebar-link active flex items-center gap-4 px-4 py-3 text-white" data-sd-id="7">
+          <iconify-icon icon="lucide:layout-dashboard" class="text-2xl"></iconify-icon>
+          <span class="font-bold" data-sd-id="8">Dashboard</span>
+        </a>
+        <a id="nav-inventory" href="#" class="sidebar-link flex items-center gap-4 px-4 py-3 text-[#E8D7C3] hover:text-white transition-colors" data-sd-id="9">
+          <iconify-icon icon="lucide:package" class="text-2xl"></iconify-icon>
+          <span class="font-bold" data-sd-id="10">Inventory</span>
+        </a>
+        <a id="nav-shopping" href="#" class="sidebar-link flex items-center gap-4 px-4 py-3 text-[#E8D7C3] hover:text-white transition-colors" data-sd-id="11">
+          <iconify-icon icon="lucide:shopping-cart" class="text-2xl"></iconify-icon>
+          <span class="font-bold" data-sd-id="12">Shopping List</span>
+        </a>
+        <a id="nav-spend" href="#" class="sidebar-link flex items-center gap-4 px-4 py-3 text-[#E8D7C3] hover:text-white transition-colors" data-sd-id="13">
+          <iconify-icon icon="lucide:bar-chart-3" class="text-2xl"></iconify-icon>
+          <span class="font-bold" data-sd-id="14">Spending</span>
+        </a>
+        <a id="nav-family" href="#" class="sidebar-link flex items-center gap-4 px-4 py-3 text-[#E8D7C3] hover:text-white transition-colors" data-sd-id="15">
+          <iconify-icon icon="lucide:users" class="text-2xl"></iconify-icon>
+          <span class="font-bold" data-sd-id="16">Family</span>
+        </a>
+      </nav>
+
+      <div class="mt-auto" data-sd-id="17">
+        <a id="nav-settings" href="#" class="sidebar-link flex items-center gap-4 px-4 py-3 text-[#E8D7C3] hover:text-white transition-colors" data-sd-id="18">
+          <iconify-icon icon="lucide:settings" class="text-2xl"></iconify-icon>
+          <span class="font-bold" data-sd-id="19">Settings</span>
+        </a>
+      </div>
+      
+      <!-- Subtle Halloween Decoration -->
+      <div class="halloween-decoration bottom-8 right-8" data-sd-id="20">
+        <iconify-icon icon="lucide:pumpkin" class="text-3xl text-white"></iconify-icon>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content w-full" data-sd-id="21">
+      <!-- Top Header Bar -->
+      <header class="flex justify-between items-center mb-8" data-sd-id="22">
+        <div class="relative" data-sd-id="23">
+          <iconify-icon icon="lucide:search" class="absolute left-4 top-1/2 -translate-y-1/2 text-brand-muted text-xl"></iconify-icon>
+          <input type="text" placeholder="Search inventory..." class="w-96 h-12 bg-surface-elevated border border-line rounded-2xl pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-accent" data-sd-id="24">
+        </div>
+
+        <div class="flex items-center gap-6" data-sd-id="25">
+          <button class="w-12 h-12 rounded-2xl bg-surface-elevated border border-line flex items-center justify-center text-text" data-sd-id="26">
+            <iconify-icon icon="lucide:bell" class="text-2xl"></iconify-icon>
+          </button>
+          <div class="flex items-center gap-3" data-sd-id="27">
+            <div class="text-right" data-sd-id="28">
+              <p class="font-black text-sm" data-sd-id="29">Leo Rodriguez</p>
+              <p class="text-xs font-bold text-text-muted" data-sd-id="30">Household Admin</p>
+            </div>
+            <div class="w-12 h-12 rounded-full bg-brand-muted flex items-center justify-center font-black text-white" data-sd-id="31">
+              LR
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Hero Section -->
+      <div class="hero-section" data-sd-id="32">
+        <div class="hero-overlay" data-sd-id="33"></div>
+        <div class="relative h-full flex flex-col justify-center px-12 text-white" data-sd-id="34">
+          <span class="text-sm font-black uppercase tracking-[0.2em] mb-2 opacity-80" data-sd-id="35">Happy October</span>
+          <h1 class="text-5xl font-black leading-none mb-4 tracking-tight" data-sd-id="36">The Rodriguez House</h1>
+          <p class="text-lg font-semibold opacity-90" data-sd-id="37">14 low stock items need your attention today.</p>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-4 gap-6 mb-12" data-sd-id="38">
+        <div class="card flex flex-col justify-between min-h-[160px]" data-sd-id="39">
+          <div class="flex justify-between items-start" data-sd-id="40">
+            <div class="w-12 h-12 rounded-2xl bg-[#C2522B]/10 flex items-center justify-center text-[#C2522B]" data-sd-id="41">
+              <iconify-icon icon="lucide:alert-triangle" class="text-2xl"></iconify-icon>
+            </div>
+            <span class="text-xs font-black uppercase tracking-widest text-text-muted" data-sd-id="42">Attention</span>
+          </div>
+          <div data-sd-id="43">
+            <h3 class="text-4xl font-black mb-1" data-sd-id="44">14</h3>
+            <p class="font-bold text-text-muted" data-sd-id="45">Low Stock Items</p>
+          </div>
+        </div>
+
+        <div class="card flex flex-col justify-between min-h-[160px]" data-sd-id="46">
+          <div class="flex justify-between items-start" data-sd-id="47">
+            <div class="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-accent" data-sd-id="48">
+              <iconify-icon icon="lucide:dollar-sign" class="text-2xl"></iconify-icon>
+            </div>
+            <span class="text-xs font-black uppercase tracking-widest text-text-muted" data-sd-id="49">Monthly</span>
+          </div>
+          <div data-sd-id="50">
+            <h3 class="text-4xl font-black mb-1" data-sd-id="51">$1,240</h3>
+            <p class="font-bold text-text-muted" data-sd-id="52">Estimated Spend</p>
+          </div>
+        </div>
+
+        <div class="card flex flex-col justify-between min-h-[160px]" data-sd-id="53">
+          <div class="flex justify-between items-start" data-sd-id="54">
+            <div class="w-12 h-12 rounded-2xl bg-success/10 flex items-center justify-center text-success" data-sd-id="55">
+              <iconify-icon icon="lucide:users" class="text-2xl"></iconify-icon>
+            </div>
+            <span class="text-xs font-black uppercase tracking-widest text-text-muted" data-sd-id="56">Active</span>
+          </div>
+          <div data-sd-id="57">
+            <h3 class="text-4xl font-black mb-1" data-sd-id="58">5</h3>
+            <p class="font-bold text-text-muted" data-sd-id="59">Family Members</p>
+          </div>
+        </div>
+
+        <div class="card flex flex-col justify-between min-h-[160px]" data-sd-id="60">
+          <div class="flex justify-between items-start" data-sd-id="61">
+            <div class="w-12 h-12 rounded-2xl bg-warning/10 flex items-center justify-center text-warning" data-sd-id="62">
+              <iconify-icon icon="lucide:clipboard-list" class="text-2xl"></iconify-icon>
+            </div>
+            <span class="text-xs font-black uppercase tracking-widest text-text-muted" data-sd-id="63">Pending</span>
+          </div>
+          <div data-sd-id="64">
+            <h3 class="text-4xl font-black mb-1" data-sd-id="65">8</h3>
+            <p class="font-bold text-text-muted" data-sd-id="66">Approval Requests</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dashboard Main Section -->
+      <div class="grid grid-cols-3 gap-8" data-sd-id="67">
+        <!-- Left: Inventory List Manager -->
+        <div class="col-span-2 space-y-6" data-sd-id="68">
+          <div class="flex justify-between items-end mb-4" data-sd-id="69">
+            <div data-sd-id="70">
+              <h2 class="text-2xl font-black tracking-tight mb-1" data-sd-id="71">Inventory Items</h2>
+              <p class="text-text-muted font-bold" data-sd-id="72">Managing 248 total products</p>
+            </div>
+            <button class="px-6 py-3 bg-accent text-white rounded-2xl font-black flex items-center gap-2 shadow-lg shadow-purple-900/20 active:scale-95 transition-transform" data-sd-id="73">
+              <iconify-icon icon="lucide:plus"></iconify-icon>
+              Add New Item
+            </button>
+          </div>
+
+          <div class="card overflow-hidden !p-0" data-sd-id="74">
+            <table class="w-full text-left" data-sd-id="75">
+              <thead data-sd-id="76">
+                <tr class="bg-surface-muted border-b border-line" data-sd-id="77">
+                  <th class="px-8 py-5 text-xs font-black uppercase tracking-widest text-text-muted" data-sd-id="78">Item</th>
+                  <th class="px-8 py-5 text-xs font-black uppercase tracking-widest text-text-muted" data-sd-id="79">Category</th>
+                  <th class="px-8 py-5 text-xs font-black uppercase tracking-widest text-text-muted text-center" data-sd-id="80">Stock</th>
+                  <th class="px-8 py-5 text-xs font-black uppercase tracking-widest text-text-muted text-right" data-sd-id="81">Action</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line" data-sd-id="82">
+                <tr class="hover:bg-surface-muted/50 transition-colors group" data-sd-id="83">
+                  <td class="px-8 py-5" data-sd-id="84">
+                    <div class="flex items-center gap-4" data-sd-id="85">
+                      <div class="w-12 h-12 rounded-xl bg-surface-muted flex items-center justify-center border border-line" data-sd-id="86">
+                        <iconify-icon icon="lucide:milk" class="text-2xl text-brand"></iconify-icon>
+                      </div>
+                      <div data-sd-id="87">
+                        <p class="font-black" data-sd-id="88">Oat Milk (2%)</p>
+                        <p class="text-xs font-bold text-text-muted" data-sd-id="89">Planet Oat • 64 fl oz</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-8 py-5" data-sd-id="90">
+                    <span class="px-3 py-1 bg-brand-muted/10 text-brand text-[10px] font-black uppercase tracking-widest rounded-full" data-sd-id="91">Dairy</span>
+                  </td>
+                  <td class="px-8 py-5 text-center" data-sd-id="92">
+                    <div class="inline-flex items-center gap-2" data-sd-id="93">
+                      <div class="w-2 h-2 rounded-full bg-danger" data-sd-id="94"></div>
+                      <span class="font-black" data-sd-id="95">1 Left</span>
+                    </div>
+                  </td>
+                  <td class="px-8 py-5 text-right" data-sd-id="96">
+                    <button class="w-10 h-10 rounded-xl hover:bg-line transition-colors" data-sd-id="97">
+                      <iconify-icon icon="lucide:more-horizontal" class="text-xl"></iconify-icon>
+                    </button>
+                  </td>
+                </tr>
+                <tr class="hover:bg-surface-muted/50 transition-colors group" data-sd-id="98">
+                  <td class="px-8 py-5" data-sd-id="99">
+                    <div class="flex items-center gap-4" data-sd-id="100">
+                      <div class="w-12 h-12 rounded-xl bg-surface-muted flex items-center justify-center border border-line" data-sd-id="101">
+                        <iconify-icon icon="lucide:egg" class="text-2xl text-brand"></iconify-icon>
+                      </div>
+                      <div data-sd-id="102">
+                        <p class="font-black" data-sd-id="103">Cage-Free Eggs</p>
+                        <p class="text-xs font-bold text-text-muted" data-sd-id="104">Costco Wholesale • 24ct</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-8 py-5" data-sd-id="105">
+                    <span class="px-3 py-1 bg-brand-muted/10 text-brand text-[10px] font-black uppercase tracking-widest rounded-full" data-sd-id="106">Pantry</span>
+                  </td>
+                  <td class="px-8 py-5 text-center" data-sd-id="107">
+                    <div class="inline-flex items-center gap-2" data-sd-id="108">
+                      <div class="w-2 h-2 rounded-full bg-warning" data-sd-id="109"></div>
+                      <span class="font-black" data-sd-id="110">4 Left</span>
+                    </div>
+                  </td>
+                  <td class="px-8 py-5 text-right" data-sd-id="111">
+                    <button class="w-10 h-10 rounded-xl hover:bg-line transition-colors" data-sd-id="112">
+                      <iconify-icon icon="lucide:more-horizontal" class="text-xl"></iconify-icon>
+                    </button>
+                  </td>
+                </tr>
+                <tr class="hover:bg-surface-muted/50 transition-colors group" data-sd-id="113">
+                  <td class="px-8 py-5" data-sd-id="114">
+                    <div class="flex items-center gap-4" data-sd-id="115">
+                      <div class="w-12 h-12 rounded-xl bg-surface-muted flex items-center justify-center border border-line" data-sd-id="116">
+                        <iconify-icon icon="lucide:apple" class="text-2xl text-brand"></iconify-icon>
+                      </div>
+                      <div data-sd-id="117">
+                        <p class="font-black" data-sd-id="118">Granny Smith Apples</p>
+                        <p class="text-xs font-bold text-text-muted" data-sd-id="119">H-E-B • Bag (3lb)</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-8 py-5" data-sd-id="120">
+                    <span class="px-3 py-1 bg-brand-muted/10 text-brand text-[10px] font-black uppercase tracking-widest rounded-full" data-sd-id="121">Fresh</span>
+                  </td>
+                  <td class="px-8 py-5 text-center" data-sd-id="122">
+                    <div class="inline-flex items-center gap-2" data-sd-id="123">
+                      <div class="w-2 h-2 rounded-full bg-success" data-sd-id="124"></div>
+                      <span class="font-black" data-sd-id="125">12 Left</span>
+                    </div>
+                  </td>
+                  <td class="px-8 py-5 text-right" data-sd-id="126">
+                    <button class="w-10 h-10 rounded-xl hover:bg-line transition-colors" data-sd-id="127">
+                      <iconify-icon icon="lucide:more-horizontal" class="text-xl"></iconify-icon>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="p-6 bg-surface-muted flex justify-center" data-sd-id="128">
+              <button class="text-xs font-black uppercase tracking-widest text-text-muted hover:text-accent transition-colors" data-sd-id="129">View All 248 Items</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Activity & Spend -->
+        <div class="space-y-8" data-sd-id="130">
+          <div data-sd-id="131">
+            <h2 class="text-2xl font-black tracking-tight mb-4" data-sd-id="132">Household Activity</h2>
+            <div class="card space-y-6" data-sd-id="133">
+              <div class="flex gap-4" data-sd-id="134">
+                <div class="w-10 h-10 rounded-full bg-brand-muted flex items-center justify-center shrink-0 font-black text-white" data-sd-id="135">MA</div>
+                <div class="flex-1" data-sd-id="136">
+                  <p class="text-sm font-bold" data-sd-id="137"><span class="font-black" data-sd-id="138">Maya</span> requested 2 items for <span class="font-black italic" data-sd-id="139">Costco Wholesale</span></p>
+                  <p class="text-xs text-text-muted mt-1" data-sd-id="140">14 mins ago</p>
+                </div>
+              </div>
+              <div class="flex gap-4" data-sd-id="141">
+                <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center shrink-0 text-white" data-sd-id="142">
+                  <iconify-icon icon="lucide:trash-2"></iconify-icon>
+                </div>
+                <div class="flex-1" data-sd-id="143">
+                  <p class="text-sm font-bold" data-sd-id="144"><span class="font-black" data-sd-id="145">Leo</span> depleted 1 carton of <span class="font-black" data-sd-id="146">2% Milk</span></p>
+                  <p class="text-xs text-text-muted mt-1" data-sd-id="147">1 hour ago</p>
+                </div>
+              </div>
+              <div class="flex gap-4" data-sd-id="148">
+                <div class="w-10 h-10 rounded-full bg-brand flex items-center justify-center shrink-0 text-white" data-sd-id="149">
+                  <iconify-icon icon="lucide:check-circle"></iconify-icon>
+                </div>
+                <div class="flex-1" data-sd-id="150">
+                  <p class="text-sm font-bold" data-sd-id="151"><span class="font-black" data-sd-id="152">Sara</span> completed the <span class="font-black" data-sd-id="153">H-E-B</span> shopping list</p>
+                  <p class="text-xs text-text-muted mt-1" data-sd-id="154">3 hours ago</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div data-sd-id="155">
+            <h2 class="text-2xl font-black tracking-tight mb-4" data-sd-id="156">Spending Trends</h2>
+            <div class="card" data-sd-id="157">
+              <div class="h-40 flex items-end justify-between gap-3 mb-6" data-sd-id="158">
+                <div class="chart-bar-muted w-full h-[40%]" data-sd-id="159"></div>
+                <div class="chart-bar-muted w-full h-[60%]" data-sd-id="160"></div>
+                <div class="chart-bar-muted w-full h-[55%]" data-sd-id="161"></div>
+                <div class="chart-bar w-full h-[90%]" data-sd-id="162"></div>
+                <div class="chart-bar-muted w-full h-[70%]" data-sd-id="163"></div>
+                <div class="chart-bar-muted w-full h-[45%]" data-sd-id="164"></div>
+                <div class="chart-bar-muted w-full h-[50%]" data-sd-id="165"></div>
+              </div>
+              <div class="flex justify-between items-center" data-sd-id="166">
+                <div data-sd-id="167">
+                  <p class="text-xs font-black uppercase tracking-widest text-text-muted mb-1" data-sd-id="168">Week to Date</p>
+                  <p class="text-xl font-black" data-sd-id="169">$342.12</p>
+                </div>
+                <div class="text-right text-danger" data-sd-id="170">
+                  <p class="text-xs font-black uppercase" data-sd-id="171">+12%</p>
+                  <p class="text-[10px] font-bold" data-sd-id="172">vs last wk</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Halloween Subtle Floating Elements -->
+  <div class="halloween-decoration top-64 right-12" data-sd-id="173">
+    <iconify-icon icon="mdi:ghost" class="text-4xl text-brand-muted"></iconify-icon>
+  </div>
+
+</body></html>
