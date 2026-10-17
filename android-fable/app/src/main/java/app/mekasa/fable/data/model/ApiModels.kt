@@ -2,6 +2,9 @@ package app.mekasa.fable.data.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 /*
  * Wire models for the Mekasa Cloud Run API (backend/app/models.py).
@@ -34,10 +37,27 @@ data class Household(
     val latitude: Double? = null,
     val longitude: Double? = null,
     @SerialName("store_ids") val storeIds: List<String> = emptyList(),
+    /** Saved stores with their details (REQ-003 AC6); empty when only bare IDs were saved. Satisfies: REQ-003 AC11 */
+    @SerialName("stores") val stores: List<SavedStore> = emptyList(),
 ) {
     val hasAddress: Boolean get() = !address.isNullOrBlank()
     val hasStores: Boolean get() = storeIds.isNotEmpty()
+
+    /** Store search needs coordinates (REQ-003 AC7, AC10). Satisfies: REQ-003 AC11 */
+    val hasCoordinates: Boolean get() = latitude != null && longitude != null
 }
+
+/**
+ * A store the household saved, with the details shown in settings and on the
+ * shopping list (REQ-003 AC6). Satisfies: REQ-003 AC11, REQ-024 AC7
+ */
+@Serializable
+data class SavedStore(
+    val id: String,
+    val name: String,
+    val address: String = "",
+    @SerialName("distance_miles") val distanceMiles: Double? = null,
+)
 
 @Serializable
 data class HouseholdCreateRequest(
@@ -55,8 +75,12 @@ data class AddressUpdateRequest(
 @Serializable
 data class HouseholdNameUpdateRequest(val name: String? = null)
 
+/** `PUT …/stores` body: the IDs plus their details in the same order (REQ-003 AC6). Satisfies: REQ-003 AC11 */
 @Serializable
-data class StoreSelectionRequest(@SerialName("store_ids") val storeIds: List<String>)
+data class StoreSelectionRequest(
+    @SerialName("store_ids") val storeIds: List<String>,
+    val stores: List<SavedStore> = emptyList(),
+)
 
 @Serializable
 data class Store(
@@ -74,6 +98,8 @@ data class StoreSearchResponse(
     @SerialName("household_id") val householdId: String? = null,
     @SerialName("radius_miles") val radiusMiles: Double = 0.0,
     val stores: List<Store> = emptyList(),
+    /** The household has no coordinates yet; ask for the address first (REQ-003 AC10). Satisfies: REQ-003 AC11 */
+    @SerialName("needs_location") val needsLocation: Boolean = false,
 )
 
 // ---------------------------------------------------------------- inventory
@@ -242,6 +268,8 @@ data class ShoppingItem(
     @SerialName("requested_by") val requestedBy: String? = null,
     @SerialName("inventory_item_id") val inventoryItemId: String? = null,
     val kind: String = "custom",
+    /** The store list this row is on; null is "Any store" (REQ-024 AC1). Satisfies: REQ-024 AC7 */
+    @SerialName("store_id") val storeId: String? = null,
 )
 
 @Serializable
@@ -266,6 +294,8 @@ data class ShoppingItemCreateRequest(
     @SerialName("needs_approval") val needsApproval: Boolean = false,
     @SerialName("requested_by") val requestedBy: String? = null,
     val kind: String = "custom",
+    /** Omitted when null, so the row goes on "Any store" (REQ-024 AC1, AC6). Satisfies: REQ-024 AC7 */
+    @SerialName("store_id") val storeId: String? = null,
 )
 
 @Serializable
@@ -276,6 +306,15 @@ data class ShoppingItemPatch(
     @SerialName("needs_approval") val needsApproval: Boolean? = null,
     val kind: String? = null,
 )
+
+/**
+ * `PATCH …/shopping-list/{id}` body that moves a row to another store's list (REQ-024 AC2).
+ * Built as a [JsonObject] because the API's `explicitNulls = false` config would drop a null
+ * `store_id`, and null is how a row moves to "Any store". Satisfies: REQ-024 AC7
+ */
+object ShoppingStoreMove {
+    fun body(storeId: String?): JsonObject = buildJsonObject { put("store_id", storeId) }
+}
 
 // ----------------------------------------------------------------- spending
 

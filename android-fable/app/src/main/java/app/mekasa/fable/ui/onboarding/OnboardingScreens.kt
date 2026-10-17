@@ -1,12 +1,8 @@
 package app.mekasa.fable.ui.onboarding
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,10 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.outlined.Circle
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -29,20 +21,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.dp
-import app.mekasa.fable.data.model.Store
 import app.mekasa.fable.session.SessionState
 import app.mekasa.fable.session.Stage
 import app.mekasa.fable.ui.TestTags
 import app.mekasa.fable.ui.components.Backdrop
-import app.mekasa.fable.ui.components.EmptyMessage
 import app.mekasa.fable.ui.components.LabeledField
 import app.mekasa.fable.ui.components.LinkButton
 import app.mekasa.fable.ui.components.OnboardingFooter
 import app.mekasa.fable.ui.components.PrimaryButton
-import app.mekasa.fable.ui.components.miles
+import app.mekasa.fable.ui.stores.StoreList
 import app.mekasa.fable.ui.theme.MekasaTheme
-import app.mekasa.fable.ui.theme.Shapes
 import app.mekasa.fable.ui.theme.Space
 import app.mekasa.fable.ui.theme.Type
 
@@ -171,6 +159,7 @@ fun AddressScreen(
     }
 }
 
+/** Onboarding step 3: the shared store list; finishing saves the stores with details. Satisfies: REQ-003 AC11 */
 @Composable
 fun StoresScreen(
     state: SessionState,
@@ -191,47 +180,11 @@ fun StoresScreen(
             )
         },
     ) {
-        if (state.nearbyStores.isEmpty()) {
-            EmptyMessage("No stores came back for that address. You can finish now and add stores later.")
-        } else {
-            state.nearbyStores.forEach { store ->
-                StoreRow(store = store, selected = store.id in state.selectedStoreIds, onClick = { onToggle(store.id) })
-            }
-        }
-    }
-}
-
-@Composable
-private fun StoreRow(store: Store, selected: Boolean, onClick: () -> Unit) {
-    val palette = MekasaTheme.palette
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(palette.surfaceElevated, Shapes.card)
-            .border(
-                width = if (selected) 2.dp else 1.dp,
-                color = if (selected) palette.accent else palette.brandMuted.copy(alpha = 0.3f),
-                shape = Shapes.card,
-            )
-            .clickable(onClick = onClick)
-            .padding(Space.base)
-            .testTag(TestTags.storeRow(store.id)),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Space.md),
-    ) {
-        Icon(
-            imageVector = if (selected) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
-            contentDescription = if (selected) "Selected" else "Not selected",
-            tint = if (selected) palette.accent else palette.border,
+        StoreList(
+            stores = state.nearbyStores,
+            selectedIds = state.selectedStoreIds,
+            onToggle = onToggle,
+            emptyText = "No stores came back for that address. You can finish now and add stores later.",
         )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(store.name, style = Type.body, color = palette.text)
-            Text(
-                listOfNotNull(store.address.ifBlank { null }, store.distanceMiles.takeIf { it > 0 }?.let(::miles))
-                    .joinToString(" · "),
-                style = Type.caption,
-                color = palette.textMuted,
-            )
-        }
     }
 }

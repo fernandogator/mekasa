@@ -44,6 +44,21 @@ object TestTags {
 
     fun storeRow(id: String) = "StoreRow-$id"
 
+    // Grocery stores settings + store picker (REQ-003 AC11)
+    const val GROCERY_STORES_SECTION = "GroceryStoresSection"
+    const val CHOOSE_STORES_BUTTON = "ChooseStoresButton"
+    const val GROCERY_STORES_EMPTY = "GroceryStoresEmpty"
+    const val STORE_PICKER = "StorePicker"
+    const val STORE_PICKER_SEARCH = "StorePickerSearch"
+    const val STORE_PICKER_CONFIRM = "StorePickerConfirm"
+    const val STORE_PICKER_CANCEL = "StorePickerCancel"
+    const val STORE_PICKER_ADDRESS_FIELD = "StorePickerAddressField"
+    const val STORE_PICKER_FIND = "StorePickerFind"
+    const val STORE_PICKER_ERROR = "StorePickerError"
+    const val STORE_PICKER_LOADING = "StorePickerLoading"
+
+    fun savedStore(id: String) = "SavedStore-$id"
+
     // Dashboard (UI-004)
     const val DASHBOARD_VIEW = "DashboardView"
     const val HOME_PHOTO_HERO = "HomePhotoHero"
@@ -115,6 +130,16 @@ object TestTags {
     const val SHOPPING_ADD_SUBMIT = "ShoppingAddSubmit"
     const val SHOPPING_EMPTY = "ShoppingEmpty"
     const val PURCHASE_LOCK_NOTICE = "PurchaseLockNotice"
+
+    // Per-store lists (REQ-024 AC7)
+    const val SHOPPING_STORE_SELECTOR = "ShoppingStoreSelector"
+    const val SHOPPING_STORES_HINT = "ShoppingStoresHint"
+
+    fun storeChip(key: String) = "StoreChip-$key"
+    fun shoppingRowStore(id: String) = "ShoppingRowStore-$id"
+    fun shoppingMove(id: String) = "Move-$id"
+    fun shoppingMoveMenu(id: String) = "MoveMenu-$id"
+    fun shoppingMoveTo(id: String, key: String) = "MoveTo-$id-$key"
 
     fun shoppingRow(id: String) = "ShoppingRow-$id"
     fun shoppingToggle(id: String) = "Toggle-$id"

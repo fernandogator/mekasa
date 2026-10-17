@@ -17,10 +17,12 @@ import app.mekasa.fable.data.model.ProductHit
 import app.mekasa.fable.data.model.ProductPhotoUpload
 import app.mekasa.fable.data.model.ReceiptLine
 import app.mekasa.fable.data.model.ReceiptScanResponse
+import app.mekasa.fable.data.model.SavedStore
 import app.mekasa.fable.data.model.ShoppingItem
 import app.mekasa.fable.data.model.SpendingCategoryTotal
 import app.mekasa.fable.data.model.SpendingReport
 import app.mekasa.fable.data.model.Store
+import app.mekasa.fable.data.model.StoreSearchResponse
 import app.mekasa.fable.data.model.UnknownBarcodeEvent
 import app.mekasa.fable.data.model.UserProfile
 import app.mekasa.fable.diagnostics.ClientDiagnosticsResponse
@@ -72,7 +74,10 @@ class DemoBackend(
             name = "The Guerrero Home",
             ownerUid = uid,
             address = "123 Peachtree St, Atlanta, GA",
-            storeIds = listOf("publix-midtown", "kroger-ponce"),
+            latitude = DEMO_LATITUDE,
+            longitude = DEMO_LONGITUDE,
+            storeIds = DEMO_SAVED_STORES.map { it.id },
+            stores = DEMO_SAVED_STORES,
         )
         inventoryRows += listOf(
             InventoryItem(
@@ -101,6 +106,7 @@ class DemoBackend(
             ShoppingItem(
                 id = nextId("shop"), householdId = HOUSEHOLD_ID, name = "Avocados", quantity = 3,
                 kind = "request", needsApproval = true, requestedBy = "Mateo",
+                storeId = DEMO_SAVED_STORES.last().id,
             ),
         )
         memberRows += HouseholdMember(
@@ -122,14 +128,22 @@ class DemoBackend(
     }
 
     override suspend fun updateAddress(householdId: String, address: String): Household = mutateHousehold {
-        it.copy(address = address, latitude = 33.78, longitude = -84.38)
+        it.copy(address = address, latitude = DEMO_LATITUDE, longitude = DEMO_LONGITUDE)
     }
 
-    override suspend fun nearbyStores(householdId: String): List<Store> = SAMPLE_STORES
-
-    override suspend fun selectStores(householdId: String, storeIds: List<String>): Household = mutateHousehold {
-        it.copy(storeIds = storeIds)
+    /** Like the API, asks for the address first while the household has no coordinates (REQ-003 AC10). */
+    override suspend fun nearbyStores(householdId: String): StoreSearchResponse {
+        val located = lock.withLock { household?.hasCoordinates == true }
+        return if (located) {
+            StoreSearchResponse(householdId = householdId, radiusMiles = 15.0, stores = SAMPLE_STORES)
+        } else {
+            StoreSearchResponse(householdId = householdId, radiusMiles = 15.0, needsLocation = true)
+        }
     }
+
+    /** Keeps the IDs and their details, as the API does (REQ-003 AC6). Satisfies: REQ-003 AC11 */
+    override suspend fun selectStores(householdId: String, storeIds: List<String>, stores: List<SavedStore>): Household =
+        mutateHousehold { it.copy(storeIds = storeIds, stores = stores) }
 
     override suspend fun renameHousehold(householdId: String, name: String?): Household = mutateHousehold {
         it.copy(name = name)
@@ -287,7 +301,9 @@ class DemoBackend(
         quantity: Int,
         asRequest: Boolean,
         requestedBy: String?,
+        storeId: String?,
     ): ShoppingItem = lock.withLock {
+        requireSavedStore(storeId)
         ShoppingItem(
             id = nextId("shop"),
             householdId = householdId,
@@ -296,11 +312,23 @@ class DemoBackend(
             needsApproval = asRequest,
             requestedBy = if (asRequest) requestedBy else null,
             kind = if (asRequest) "request" else "custom",
+            storeId = storeId,
         ).also { shoppingRows.add(0, it) }
     }
 
     override suspend fun setShoppingChecked(householdId: String, itemId: String, checked: Boolean): ShoppingItem =
         replaceShopping(itemId) { it.copy(isChecked = checked) }
+
+    /** REQ-024 AC2: moves the row; an unsaved store is rejected with 422 like the API (AC1). */
+    override suspend fun moveShoppingItem(householdId: String, itemId: String, storeId: String?): ShoppingItem {
+        lock.withLock { requireSavedStore(storeId) }
+        return replaceShopping(itemId) { it.copy(storeId = storeId) }
+    }
+
+    /** Call with [lock] held. */
+    private fun requireSavedStore(storeId: String?) {
+        if (storeId != null && household?.storeIds?.contains(storeId) != true) throw ApiException(422, "unknown_store")
+    }
 
     override suspend fun deleteShoppingItem(householdId: String, itemId: String) {
         lock.withLock { shoppingRows.removeAll { it.id == itemId } }
@@ -420,6 +448,8 @@ class DemoBackend(
         const val DEMO_EMAIL = "preview@mekasa.local"
         const val HOUSEHOLD_ID = "demo-home"
         const val DIET_COKE_UPC = "049000028911"
+        private const val DEMO_LATITUDE = 33.78
+        private const val DEMO_LONGITUDE = -84.38
 
         val SAMPLE_STORES = listOf(
             Store("publix-midtown", "Publix", "950 W Peachtree St NW, Atlanta", distanceMiles = 0.8),
@@ -427,6 +457,11 @@ class DemoBackend(
             Store("costco-brookhaven", "Costco", "500 Brookhaven Ave NE, Atlanta", distanceMiles = 5.2),
             Store("walmart-howell", "Walmart Supercenter", "1801 Howell Mill Rd NW, Atlanta", distanceMiles = 3.1),
         )
+
+        /** The preview household shops at two stores, so the per-store lists show (REQ-024 AC7). */
+        val DEMO_SAVED_STORES = listOf("publix-midtown", "costco-brookhaven").map { id ->
+            SAMPLE_STORES.first { it.id == id }.let { SavedStore(it.id, it.name, it.address, it.distanceMiles) }
+        }
 
         val CATALOG = listOf(
             ProductHit(

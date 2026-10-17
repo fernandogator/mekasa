@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material.icons.outlined.SupportAgent
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -52,6 +53,9 @@ import app.mekasa.fable.ui.components.PrimaryButton
 import app.mekasa.fable.ui.components.ScreenHeader
 import app.mekasa.fable.ui.components.SecondaryButton
 import app.mekasa.fable.ui.components.SectionHeading
+import app.mekasa.fable.ui.stores.StoreLogo
+import app.mekasa.fable.ui.stores.StorePickerDialog
+import app.mekasa.fable.ui.stores.storeDetailLine
 import app.mekasa.fable.ui.theme.MekasaPaletteStyle
 import app.mekasa.fable.ui.theme.MekasaTheme
 import app.mekasa.fable.ui.theme.Shapes
@@ -60,7 +64,10 @@ import app.mekasa.fable.ui.theme.ThemePreferences
 import app.mekasa.fable.ui.theme.Type
 import app.mekasa.fable.ui.theme.paletteFor
 
-/** REQ-019: members, invites (share link), pending invite acceptance, plus account actions. */
+/**
+ * REQ-019: members, invites (share link), pending invite acceptance, plus account actions.
+ * Satisfies: REQ-003 AC11 (Grocery stores section and store picker)
+ */
 @Composable
 fun FamilyScreen(
     state: SessionState,
@@ -75,6 +82,7 @@ fun FamilyScreen(
     var inviteRole by rememberSaveable { mutableStateOf("member") }
     var sendingDiagnostics by rememberSaveable { mutableStateOf(false) }
     var diagnosticsStatus by rememberSaveable { mutableStateOf<String?>(null) }
+    var showStorePicker by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(state.household?.id) {
         if (!state.isDemo) session.refreshFamily()
@@ -229,6 +237,8 @@ fun FamilyScreen(
                 }
             }
 
+            GroceryStoresSection(state = state, onChoose = { showStorePicker = true })
+
             AppearanceSection()
 
             SectionHeading("Devices")
@@ -277,6 +287,57 @@ fun FamilyScreen(
             SectionHeading("Account")
             SecondaryButton("Refresh everything", onClick = { session.refreshAll() })
             PrimaryButton("Sign out", onClick = session::signOut, accent = true, modifier = Modifier.testTag(TestTags.SIGN_OUT))
+        }
+    }
+
+    if (showStorePicker && state.isOwner) {
+        StorePickerDialog(state = state, session = session, onDismiss = { showStorePicker = false })
+    }
+}
+
+/**
+ * The household's saved stores with name, address and distance. Owners get "Choose stores"
+ * or "Change stores" to open the picker; teens and members only see the list.
+ * Satisfies: REQ-003 AC11
+ */
+@Composable
+private fun GroceryStoresSection(state: SessionState, onChoose: () -> Unit) {
+    val palette = MekasaTheme.palette
+    val stores = state.household?.stores.orEmpty()
+    SectionHeading("Grocery stores")
+    Column(
+        modifier = Modifier.fillMaxWidth().testTag(TestTags.GROCERY_STORES_SECTION),
+        verticalArrangement = Arrangement.spacedBy(Space.sm),
+    ) {
+        if (stores.isEmpty()) {
+            Card(modifier = Modifier.testTag(TestTags.GROCERY_STORES_EMPTY)) {
+                Text(
+                    "No stores saved yet. Add where you shop to keep a shopping list for each store.",
+                    style = Type.body,
+                    color = palette.textMuted,
+                )
+            }
+        }
+        stores.forEach { store ->
+            Card(modifier = Modifier.testTag(TestTags.savedStore(store.id))) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.md)) {
+                    StoreLogo(store.name)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(store.name, style = Type.body, color = palette.text)
+                        storeDetailLine(store.address, store.distanceMiles).takeIf { it.isNotEmpty() }?.let {
+                            Text(it, style = Type.caption, color = palette.textMuted)
+                        }
+                    }
+                }
+            }
+        }
+        if (state.isOwner) {
+            SecondaryButton(
+                if (stores.isEmpty()) "Choose stores" else "Change stores",
+                onClick = onChoose,
+                icon = Icons.Outlined.Storefront,
+                modifier = Modifier.testTag(TestTags.CHOOSE_STORES_BUTTON),
+            )
         }
     }
 }
