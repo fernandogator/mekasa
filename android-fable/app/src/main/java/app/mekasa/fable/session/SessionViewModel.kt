@@ -19,6 +19,7 @@ import app.mekasa.fable.data.model.InventoryMergeResponse
 import app.mekasa.fable.data.model.ProductHit
 import app.mekasa.fable.data.model.ReceiptScanResponse
 import app.mekasa.fable.data.model.ShoppingItem
+import app.mekasa.fable.data.model.Store
 import app.mekasa.fable.data.remote.ApiException
 import app.mekasa.fable.data.remote.CorrelationId
 import app.mekasa.fable.data.remote.ImageAuth
@@ -30,6 +31,7 @@ import app.mekasa.fable.diagnostics.ClientDiagnosticsUpload
 import app.mekasa.fable.diagnostics.CrashReporting
 import app.mekasa.fable.diagnostics.ErrorReporter
 import app.mekasa.fable.diagnostics.userRef
+import app.mekasa.fable.ui.shopping.ShoppingStores
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -224,7 +226,7 @@ class SessionViewModel(
         val backend = require()
         val id = householdId()
         val household = backend.updateAddress(id, address.trim())
-        val stores = runCatching { backend.nearbyStores(id) }.getOrDefault(emptyList())
+        val stores = runCatching { backend.nearbyStores(id).stores }.getOrDefault(emptyList())
         _state.update {
             it.copy(
                 household = household,
@@ -241,11 +243,68 @@ class SessionViewModel(
         it.copy(selectedStoreIds = next)
     }
 
+    /** Saves the checked stores with their details (REQ-003 AC6). Satisfies: REQ-003 AC11 */
     fun finishStoreSelection() = guarded(busy = true) {
-        val ids = current.selectedStoreIds.toList()
-        val household = if (ids.isEmpty()) current.household else require().selectStores(householdId(), ids)
+        val selection = ShoppingStores.selectionToSave(current.selectedStoreIds, current.nearbyStores)
+        val household = if (selection.storeIds.isEmpty()) {
+            current.household
+        } else {
+            require().selectStores(householdId(), selection.storeIds, selection.stores)
+        }
         _state.update { it.copy(household = household, stage = Stage.Home) }
         reloadAll()
+    }
+
+    // ------------------------------------------------------ grocery stores
+
+    /**
+     * Opens the settings store picker: asks for the address first while the household has
+     * no coordinates (REQ-003 AC7, AC10), otherwise searches. Satisfies: REQ-003 AC11
+     */
+    fun loadStorePicker(onResult: (StorePickerResult) -> Unit) {
+        val household = current.household ?: return onResult(StorePickerResult.NeedsAddress)
+        if (!household.hasCoordinates) return onResult(StorePickerResult.NeedsAddress)
+        launchInline(onError = { onResult(StorePickerResult.Failed(it)) }) {
+            val response = require().nearbyStores(householdId())
+            onResult(if (response.needsLocation) StorePickerResult.NeedsAddress else StorePickerResult.Stores(response.stores))
+        }
+    }
+
+    /**
+     * Saves the home address (the API geocodes it, REQ-003 AC7), then searches. An address
+     * that finds no coordinates is reported so the owner can fix it. Satisfies: REQ-003 AC11
+     */
+    fun findStoresNear(address: String, onResult: (StorePickerResult) -> Unit) {
+        val trimmed = address.trim()
+        if (trimmed.isEmpty()) return
+        launchInline(onError = { onResult(StorePickerResult.Failed(it)) }) {
+            val backend = require()
+            val id = householdId()
+            val household = backend.updateAddress(id, trimmed)
+            _state.update { it.copy(household = household) }
+            if (!household.hasCoordinates) {
+                onResult(StorePickerResult.Failed(ADDRESS_NOT_FOUND))
+                return@launchInline
+            }
+            val response = backend.nearbyStores(id)
+            onResult(
+                if (response.needsLocation) StorePickerResult.Failed(ADDRESS_NOT_FOUND) else StorePickerResult.Stores(response.stores),
+            )
+        }
+    }
+
+    /**
+     * Confirm in the settings picker: saves the checked IDs with their details (REQ-003 AC6)
+     * and updates the household. [onDone] gets an error to show, or null once saved.
+     * Satisfies: REQ-003 AC11
+     */
+    fun saveStores(selected: Set<String>, candidates: List<Store>, onDone: (String?) -> Unit) {
+        val selection = ShoppingStores.selectionToSave(selected, candidates)
+        launchInline(onError = onDone) {
+            val household = require().selectStores(householdId(), selection.storeIds, selection.stores)
+            _state.update { it.copy(household = household) }
+            onDone(null)
+        }
     }
 
     // ------------------------------------------------------ household data
@@ -634,7 +693,8 @@ class SessionViewModel(
 
     // ------------------------------------------------------- shopping list
 
-    fun addShoppingItem(name: String, quantity: Int = 1) {
+    /** Adds a row or request to [storeId]'s list; null is "Any store" (REQ-024 AC1). Satisfies: REQ-024 AC7 */
+    fun addShoppingItem(name: String, quantity: Int = 1, storeId: String? = null) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
         val asRequest = current.submitsShoppingRequests
@@ -646,8 +706,23 @@ class SessionViewModel(
                 quantity.coerceAtLeast(1),
                 asRequest = asRequest,
                 requestedBy = requestedBy,
+                storeId = storeId,
             )
             _state.update { it.copy(data = it.data.copy(shopping = listOf(created) + it.data.shopping)) }
+        }
+    }
+
+    /**
+     * "Move to…": moves the row at once, then reconciles with the API's row; on failure
+     * the row goes back and the error shows (REQ-024 AC2). Satisfies: REQ-024 AC7
+     */
+    fun moveShoppingItem(itemId: String, storeId: String?) {
+        val before = current.data.shopping.firstOrNull { it.id == itemId } ?: return
+        if (before.storeId == storeId) return
+        replaceShopping(before.copy(storeId = storeId))
+        guarded(onFailure = { replaceShopping(before) }) {
+            val updated = require().moveShoppingItem(householdId(), itemId, storeId)
+            replaceShopping(updated)
         }
     }
 
@@ -884,6 +959,40 @@ class SessionViewModel(
         }
     }
 
+    /**
+     * For screens that show their own error (the store picker): runs [block] with the same
+     * one-refresh 401 retry as [guarded], ends the session on a second 401, and hands any
+     * other failure to [onError] instead of the global error dialog. Satisfies: REQ-003 AC11
+     */
+    private fun launchInline(
+        onError: (String) -> Unit,
+        where: String = actionName(),
+        block: suspend () -> Unit,
+    ): Job = viewModelScope.launch {
+        try {
+            try {
+                block()
+            } catch (e: ApiException) {
+                if (!e.isUnauthorized || current.isDemo) throw e
+                val refreshed = auth.refreshIdToken()
+                if (refreshed == null || refreshed == idToken) throw e
+                idToken = refreshed
+                block()
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (e is ApiException && e.isUnauthorized && !current.isDemo) {
+                AppLog.warning("auth", "$where: session expired", mapOf("path" to e.path), e.requestId, e.correlationId)
+                endSession(notice = SESSION_EXPIRED)
+                return@launch
+            }
+            val message = if (e is ApiException) e.userMessage else e.message?.takeIf { it.isNotBlank() } ?: "Something went wrong"
+            AppLog.error(where, e, message, categoryOf(where))
+            onError(message)
+        }
+    }
+
     override fun onCleared() {
         api.close()
         super.onCleared()
@@ -897,8 +1006,9 @@ class SessionViewModel(
         const val DUPLICATES_CHANGED = "Those items changed. Check for duplicates again."
         const val MERGE_FAILED = "Couldn’t merge those items. Try again."
         const val DIAGNOSTICS_FAILED = "Couldn't send diagnostics. Try again."
+        const val ADDRESS_NOT_FOUND = "We couldn't find that address. Check it and try again."
         fun diagnosticsSent(reference: String) = "Sent. Reference $reference"
-        private val PLUMBING = setOf("guarded", "fail", "actionName", "categoryOf", "Companion")
+        private val PLUMBING = setOf("guarded", "launchInline", "fail", "actionName", "categoryOf", "Companion")
         private const val MAX_PHOTO_BYTES = 5_000_000
         private const val SCAN_FEED_LIMIT = 20
         const val UNDO_WINDOW_MILLIS = 5_000L

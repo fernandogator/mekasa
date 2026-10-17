@@ -30,10 +30,12 @@ import app.mekasa.fable.data.model.ProductPhotoUpload
 import app.mekasa.fable.data.model.ProductSearchResponse
 import app.mekasa.fable.data.model.ReceiptScanRequest
 import app.mekasa.fable.data.model.ReceiptScanResponse
+import app.mekasa.fable.data.model.SavedStore
 import app.mekasa.fable.data.model.ShoppingItem
 import app.mekasa.fable.data.model.ShoppingItemCreateRequest
 import app.mekasa.fable.data.model.ShoppingItemPatch
 import app.mekasa.fable.data.model.ShoppingListResponse
+import app.mekasa.fable.data.model.ShoppingStoreMove
 import app.mekasa.fable.data.model.ShoppingSyncResponse
 import app.mekasa.fable.data.model.SpendingReport
 import app.mekasa.fable.data.model.StoreSearchResponse
@@ -78,6 +80,18 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
+ * Wire JSON config shared by [KtorMekasaApi] and the model tests. Null properties are
+ * omitted from request bodies (`explicitNulls = false`), so PATCHes leave untouched fields
+ * alone. Satisfies: REQ-024 AC7 (decoding `store_id`), REQ-003 AC11 (decoding `stores`)
+ */
+internal val ApiJson = Json {
+    ignoreUnknownKeys = true
+    isLenient = true
+    explicitNulls = false
+    coerceInputValues = true
+}
+
+/**
  * Ktor/OkHttp implementation of [MekasaApi]. [engine] is injectable so unit
  * tests can drive the client with `MockEngine`.
  */
@@ -89,12 +103,7 @@ class KtorMekasaApi(
 
     private val root = baseUrl.trimEnd('/')
 
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-        explicitNulls = false
-        coerceInputValues = true
-    }
+    private val json = ApiJson
 
     private val client: HttpClient = run {
         val configure: HttpClientConfig<*>.() -> Unit = {
@@ -159,8 +168,18 @@ class KtorMekasaApi(
     override suspend fun nearbyStores(token: String, householdId: String): StoreSearchResponse =
         call(HttpMethod.Get, "/v1/households/$householdId/stores/nearby", token)
 
-    override suspend fun selectStores(token: String, householdId: String, storeIds: List<String>): Household =
-        call(HttpMethod.Put, "/v1/households/$householdId/stores", token, StoreSelectionRequest(storeIds))
+    /** Sends the IDs with their details in the same order (REQ-003 AC6). Satisfies: REQ-003 AC11 */
+    override suspend fun selectStores(
+        token: String,
+        householdId: String,
+        storeIds: List<String>,
+        stores: List<SavedStore>,
+    ): Household = call(
+        HttpMethod.Put,
+        "/v1/households/$householdId/stores",
+        token,
+        StoreSelectionRequest(storeIds = storeIds, stores = stores),
+    )
 
     override suspend fun listInventory(token: String, householdId: String): InventoryListResponse =
         call(HttpMethod.Get, "/v1/households/$householdId/inventory", token)
@@ -298,6 +317,19 @@ class KtorMekasaApi(
         itemId: String,
         patch: ShoppingItemPatch,
     ): ShoppingItem = call(HttpMethod.Patch, "/v1/households/$householdId/shopping-list/$itemId", token, patch)
+
+    /** Always sends `store_id`, as JSON null for "Any store" (REQ-024 AC2). Satisfies: REQ-024 AC7 */
+    override suspend fun moveShoppingItem(
+        token: String,
+        householdId: String,
+        itemId: String,
+        storeId: String?,
+    ): ShoppingItem = call(
+        HttpMethod.Patch,
+        "/v1/households/$householdId/shopping-list/$itemId",
+        token,
+        ShoppingStoreMove.body(storeId),
+    )
 
     override suspend fun deleteShoppingItem(token: String, householdId: String, itemId: String) {
         val response = send("$root/v1/households/$householdId/shopping-list/$itemId") {

@@ -12,9 +12,10 @@ import app.mekasa.fable.data.model.ProductCaptureRequest
 import app.mekasa.fable.data.model.ProductHit
 import app.mekasa.fable.data.model.ProductPhotoUpload
 import app.mekasa.fable.data.model.ReceiptScanResponse
+import app.mekasa.fable.data.model.SavedStore
 import app.mekasa.fable.data.model.ShoppingItem
 import app.mekasa.fable.data.model.SpendingReport
-import app.mekasa.fable.data.model.Store
+import app.mekasa.fable.data.model.StoreSearchResponse
 import app.mekasa.fable.data.model.UnknownBarcodeEvent
 import app.mekasa.fable.data.model.UserProfile
 import app.mekasa.fable.diagnostics.ClientDiagnosticsResponse
@@ -47,8 +48,14 @@ interface HouseholdBackend {
     suspend fun currentHousehold(): Household?
     suspend fun createHousehold(name: String?): Household
     suspend fun updateAddress(householdId: String, address: String): Household
-    suspend fun nearbyStores(householdId: String): List<Store>
-    suspend fun selectStores(householdId: String, storeIds: List<String>): Household
+    /** Stores near home; `needs_location` when the household has no coordinates (REQ-003 AC10, AC11). */
+    suspend fun nearbyStores(householdId: String): StoreSearchResponse
+
+    /**
+     * REQ-003 AC6, AC11: save the selected store IDs with the details known for them,
+     * [stores] in the same order as [storeIds].
+     */
+    suspend fun selectStores(householdId: String, storeIds: List<String>, stores: List<SavedStore>): Household
     suspend fun renameHousehold(householdId: String, name: String?): Household
     suspend fun uploadHomePhoto(householdId: String, jpeg: ByteArray): Household
 
@@ -103,8 +110,13 @@ interface HouseholdBackend {
         quantity: Int,
         asRequest: Boolean = false,
         requestedBy: String? = null,
+        /** REQ-024 AC1, AC7: the store list to add to; null is "Any store". */
+        storeId: String? = null,
     ): ShoppingItem
     suspend fun setShoppingChecked(householdId: String, itemId: String, checked: Boolean): ShoppingItem
+
+    /** REQ-024 AC2, AC7: move a row to [storeId]'s list; null moves it to "Any store". */
+    suspend fun moveShoppingItem(householdId: String, itemId: String, storeId: String?): ShoppingItem
     suspend fun deleteShoppingItem(householdId: String, itemId: String)
     suspend fun approveShoppingItem(householdId: String, itemId: String): ShoppingItem
     suspend fun rejectShoppingItem(householdId: String, itemId: String): ShoppingItem
