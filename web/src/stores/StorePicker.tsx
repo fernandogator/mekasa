@@ -37,7 +37,8 @@ export function StorePicker({ household, onClose }: { household: Household; onCl
   const [addressError, setAddressError] = useState('');
   const [savingAddress, setSavingAddress] = useState(false);
   const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(household.store_ids ?? []));
+  // Households set up before store details were saved hold bare IDs (often old placeholder stores); start from stores we can show.
+  const [selected, setSelected] = useState<Set<string>>(() => new Set((household.stores ?? []).map((store) => store.id)));
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
 

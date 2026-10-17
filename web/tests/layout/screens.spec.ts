@@ -173,6 +173,17 @@ test.describe('roles and themes', () => {
     await expect(saved).toContainText('Costco Wholesale');
   });
 
+  test('old bare store IDs are not counted as selected (AC19)', async ({ page }) => {
+    await useFixtures(page, { legacyStoreIds: true });
+    await page.goto('/settings');
+    await expect(page.getByText('No stores saved yet.', { exact: false })).toBeVisible();
+    await page.getByRole('button', { name: 'Choose stores' }).click();
+    const dialog = page.getByTestId('store-picker');
+    await expect(dialog.getByRole('checkbox', { checked: true })).toHaveCount(0);
+    await expect(dialog.getByText('0 selected')).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Confirm stores' })).toBeDisabled();
+  });
+
   test('teen sees stores without the picker (AC19)', async ({ page }) => {
     await useFixtures(page, { uid: 'teen-1' });
     await page.goto('/settings');
