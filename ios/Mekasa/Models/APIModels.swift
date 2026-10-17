@@ -11,11 +11,15 @@ struct Household: Codable, Identifiable, Equatable {
     var latitude: Double?
     var longitude: Double?
     var storeIDs: [String]
+    /// Saved stores with their details, in the order they were saved. Empty when
+    /// an older client saved bare IDs only.
+    /// Satisfies: REQ-003 AC6, AC11
+    var stores: [SavedStore]
     let createdAt: Date?
     let updatedAt: Date?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, address, latitude, longitude
+        case id, name, address, latitude, longitude, stores
         case photoURL = "photo_url"
         case ownerUID = "owner_uid"
         case storeIDs = "store_ids"
@@ -32,6 +36,7 @@ struct Household: Codable, Identifiable, Equatable {
         latitude: Double?,
         longitude: Double?,
         storeIDs: [String],
+        stores: [SavedStore] = [],
         createdAt: Date?,
         updatedAt: Date?
     ) {
@@ -43,9 +48,15 @@ struct Household: Codable, Identifiable, Equatable {
         self.latitude = latitude
         self.longitude = longitude
         self.storeIDs = storeIDs
+        self.stores = stores
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
+
+    /// True when the household has coordinates the store search can use.
+    /// Satisfies: REQ-003 AC10, AC11
+    /// Spec version: 1.0
+    var hasCoordinates: Bool { latitude != nil && longitude != nil }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -57,6 +68,7 @@ struct Household: Codable, Identifiable, Equatable {
         latitude = try c.decodeIfPresent(Double.self, forKey: .latitude)
         longitude = try c.decodeIfPresent(Double.self, forKey: .longitude)
         storeIDs = try c.decodeIfPresent([String].self, forKey: .storeIDs) ?? []
+        stores = try c.decodeIfPresent([SavedStore].self, forKey: .stores) ?? []
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt)
     }
@@ -77,15 +89,82 @@ struct Store: Codable, Identifiable, Equatable, Hashable {
     }
 }
 
+/// A store the household shops at, saved with its details (`household.stores`).
+/// Satisfies: REQ-003 AC6, AC11; REQ-024 AC7
+/// Spec version: 1.0
+struct SavedStore: Codable, Identifiable, Equatable, Hashable {
+    let id: String
+    let name: String
+    let address: String
+    let distanceMiles: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, address
+        case distanceMiles = "distance_miles"
+    }
+
+    init(id: String, name: String, address: String, distanceMiles: Double?) {
+        self.id = id
+        self.name = name
+        self.address = address
+        self.distanceMiles = distanceMiles
+    }
+
+    /// Satisfies: REQ-003 AC6, AC11
+    /// Spec version: 1.0
+    init(_ store: Store) {
+        self.init(id: store.id, name: store.name, address: store.address, distanceMiles: store.distanceMiles)
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        address = try c.decodeIfPresent(String.self, forKey: .address) ?? ""
+        distanceMiles = try c.decodeIfPresent(Double.self, forKey: .distanceMiles)
+    }
+}
+
 struct StoreSearchResponse: Codable {
     let householdId: String
     let radiusMiles: Double
     let stores: [Store]
+    /// True when the household has no coordinates to search from (REQ-003 AC10).
+    let needsLocation: Bool
 
     enum CodingKeys: String, CodingKey {
         case stores
         case householdId = "household_id"
         case radiusMiles = "radius_miles"
+        case needsLocation = "needs_location"
+    }
+
+    /// Satisfies: REQ-003 AC10, AC11
+    /// Spec version: 1.0
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        householdId = try c.decode(String.self, forKey: .householdId)
+        radiusMiles = try c.decode(Double.self, forKey: .radiusMiles)
+        stores = try c.decodeIfPresent([Store].self, forKey: .stores) ?? []
+        needsLocation = try c.decodeIfPresent(Bool.self, forKey: .needsLocation) ?? false
+    }
+}
+
+/// Body of `PUT /v1/households/{id}/stores`: IDs plus their details in the same order.
+/// Satisfies: REQ-003 AC6, AC11
+/// Spec version: 1.0
+struct StoreSelectionBody: Encodable, Equatable {
+    let storeIDs: [String]
+    let stores: [SavedStore]
+
+    enum CodingKeys: String, CodingKey {
+        case stores
+        case storeIDs = "store_ids"
+    }
+
+    init(stores: [SavedStore]) {
+        storeIDs = stores.map(\.id)
+        self.stores = stores
     }
 }
 
@@ -231,6 +310,8 @@ struct ShoppingListItemDTO: Codable, Equatable, Identifiable {
     let requestedBy: String?
     let inventoryItemId: String?
     let kind: String
+    /// Store list the row is on; nil means "Any store" (REQ-024 AC1).
+    let storeId: String?
     let createdByUid: String?
     let updatedByUid: String?
     let createdAt: Date?
@@ -244,12 +325,36 @@ struct ShoppingListItemDTO: Codable, Equatable, Identifiable {
         case needsApproval = "needs_approval"
         case requestedBy = "requested_by"
         case inventoryItemId = "inventory_item_id"
+        case storeId = "store_id"
         case createdByUid = "created_by_uid"
         case updatedByUid = "updated_by_uid"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
 
+    /// Satisfies: REQ-011–REQ-014; REQ-024 AC6, AC7 (`store_id` is optional for older API builds)
+    /// Spec version: 1.0
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        householdId = try c.decode(String.self, forKey: .householdId)
+        name = try c.decode(String.self, forKey: .name)
+        quantity = try c.decode(Int.self, forKey: .quantity)
+        quantityLabel = try c.decodeIfPresent(String.self, forKey: .quantityLabel)
+        isChecked = try c.decode(Bool.self, forKey: .isChecked)
+        needsApproval = try c.decode(Bool.self, forKey: .needsApproval)
+        requestedBy = try c.decodeIfPresent(String.self, forKey: .requestedBy)
+        inventoryItemId = try c.decodeIfPresent(String.self, forKey: .inventoryItemId)
+        kind = try c.decode(String.self, forKey: .kind)
+        storeId = try c.decodeIfPresent(String.self, forKey: .storeId)
+        createdByUid = try c.decodeIfPresent(String.self, forKey: .createdByUid)
+        updatedByUid = try c.decodeIfPresent(String.self, forKey: .updatedByUid)
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
+        updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt)
+    }
+
+    /// Satisfies: REQ-011–REQ-014; REQ-024 AC7
+    /// Spec version: 1.0
     func toLocal() -> ShoppingListItem {
         ShoppingListItem(
             id: id,
@@ -260,7 +365,8 @@ struct ShoppingListItemDTO: Codable, Equatable, Identifiable {
             needsApproval: needsApproval,
             requestedBy: requestedBy,
             inventoryItemID: inventoryItemId,
-            kind: ShoppingListItem.Kind(rawValue: kind) ?? .custom
+            kind: ShoppingListItem.Kind(rawValue: kind) ?? .custom,
+            storeID: storeId
         )
     }
 }
@@ -295,6 +401,8 @@ struct ShoppingListItemCreateBody: Encodable {
     let requestedBy: String?
     let inventoryItemId: String?
     let kind: String
+    /// Omitted when nil so the row lands on "Any store" (REQ-024 AC1, AC6).
+    let storeId: String?
 
     enum CodingKeys: String, CodingKey {
         case name, quantity, kind
@@ -303,8 +411,11 @@ struct ShoppingListItemCreateBody: Encodable {
         case needsApproval = "needs_approval"
         case requestedBy = "requested_by"
         case inventoryItemId = "inventory_item_id"
+        case storeId = "store_id"
     }
 
+    /// Satisfies: REQ-011–REQ-014; REQ-024 AC7
+    /// Spec version: 1.0
     init(from item: ShoppingListItem) {
         name = item.name
         quantity = item.quantity
@@ -314,6 +425,28 @@ struct ShoppingListItemCreateBody: Encodable {
         requestedBy = item.requestedBy
         inventoryItemId = item.inventoryItemID
         kind = item.kind.rawValue
+        storeId = item.storeID
+    }
+}
+
+/// Body of `PATCH …/shopping-list/{item_id}` that moves a row to another store's list.
+/// `store_id` is always written, as JSON `null` to move the row to "Any store".
+/// Satisfies: REQ-024 AC2, AC7
+/// Spec version: 1.0
+struct ShoppingListMoveBody: Encodable, Equatable {
+    let storeID: String?
+
+    enum CodingKeys: String, CodingKey {
+        case storeID = "store_id"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        if let storeID {
+            try c.encode(storeID, forKey: .storeID)
+        } else {
+            try c.encodeNil(forKey: .storeID)
+        }
     }
 }
 

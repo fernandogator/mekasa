@@ -21,6 +21,8 @@ struct FamilyMembersView: View {
     @ObservedObject private var themePreferences = ThemePreferences.shared
     @State private var isSendingDiagnostics = false
     @State private var diagnosticsStatus: String?
+    /// REQ-003 AC11: owner opened the store picker.
+    @State private var showStorePicker = false
 
     var body: some View {
         ScrollView {
@@ -37,6 +39,7 @@ struct FamilyMembersView: View {
                 scanSoundsSection
                 appearanceSection
                 faceIDLockSection
+                groceryStoresSection
                 trashKioskSection
                 helpSection
 
@@ -86,6 +89,77 @@ struct FamilyMembersView: View {
             }
             .environmentObject(session)
         }
+        .sheet(isPresented: $showStorePicker) {
+            StorePickerSheet()
+                .environmentObject(session)
+        }
+    }
+
+    /// Saved stores with name, address and distance; owners can choose or change them.
+    /// Satisfies: REQ-003 AC11
+    /// Spec version: 1.0
+    private var groceryStoresSection: some View {
+        let stores = session.household?.stores ?? []
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Grocery stores")
+                .font(.system(size: 18, weight: .heavy, design: .rounded))
+                .foregroundStyle(MekasaTheme.text)
+                .accessibilityAddTraits(.isHeader)
+
+            if stores.isEmpty {
+                Text(ShoppingStores.emptySettingsMessage)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(MekasaTheme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier(TestIdentifiers.groceryStoresEmpty)
+            } else {
+                ForEach(stores) { store in
+                    groceryStoreRow(store)
+                }
+            }
+
+            if session.isHouseholdOwner {
+                SecondaryButton(title: stores.isEmpty ? "Choose stores" : "Change stores") {
+                    showStorePicker = true
+                }
+                .accessibilityIdentifier(TestIdentifiers.chooseStoresButton)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(MekasaTheme.surfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(TestIdentifiers.groceryStoresSection)
+    }
+
+    /// Satisfies: REQ-003 AC11
+    /// Spec version: 1.0
+    private func groceryStoreRow(_ store: SavedStore) -> some View {
+        let distance = ShoppingStores.miles(store.distanceMiles)
+        return HStack(spacing: 12) {
+            StoreLogoCircle(name: store.name)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(store.name)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(MekasaTheme.text)
+                if !store.address.isEmpty {
+                    Text(store.address)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(MekasaTheme.textMuted)
+                        .lineLimit(2)
+                }
+            }
+            Spacer(minLength: 0)
+            if !distance.isEmpty {
+                Text(distance)
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(MekasaTheme.textMuted)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel([store.name, store.address, distance].filter { !$0.isEmpty }.joined(separator: ", "))
+        .accessibilityIdentifier(TestIdentifiers.groceryStoreRow)
     }
 
     private func avoidSummary(for member: HouseholdMemberDTO) -> String {

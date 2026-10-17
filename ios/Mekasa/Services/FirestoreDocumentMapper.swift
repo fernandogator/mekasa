@@ -24,6 +24,8 @@ enum FirestoreDocumentMapper {
         )
     }
 
+    /// Satisfies: REQ-020; REQ-024 AC7 (`store_id` survives real-time sync)
+    /// Spec version: 1.0
     static func shoppingListItem(id: String, data: [String: Any]) -> ShoppingListItem? {
         guard let name = string(data["name"]), !name.isEmpty else { return nil }
         return ShoppingListItem(
@@ -35,7 +37,8 @@ enum FirestoreDocumentMapper {
             needsApproval: bool(data["needs_approval"]) ?? false,
             requestedBy: string(data["requested_by"]),
             inventoryItemID: string(data["inventory_item_id"]),
-            kind: ShoppingListItem.Kind(rawValue: string(data["kind"]) ?? "") ?? .custom
+            kind: ShoppingListItem.Kind(rawValue: string(data["kind"]) ?? "") ?? .custom,
+            storeID: string(data["store_id"]).flatMap { $0.isEmpty ? nil : $0 }
         )
     }
 
