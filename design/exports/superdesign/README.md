@@ -84,6 +84,10 @@ and keep the tables below in step with it.
 | [`desktop/02-shopping-list.html`](desktop/02-shopping-list.html) | Desktop Shopping List | `e2f353ac-4065-4a39-af5d-8d5784761809` |
 | [`desktop/03-spending-analytics.html`](desktop/03-spending-analytics.html) | Desktop Spending Analytics | `5f669691-b723-4a86-bb50-d6d7ef4f1ca0` |
 | [`desktop/04-family-members.html`](desktop/04-family-members.html) | Desktop Family Members | `35546fc3-efa9-4da5-a502-2570c2d6e706` |
+| [`desktop/05-sign-in.html`](desktop/05-sign-in.html) | Desktop Sign In | `34307113-e2a3-4c58-8482-b8143fba9261` |
+| [`desktop/06-receipt-upload-review.html`](desktop/06-receipt-upload-review.html) | Desktop Receipt Upload and Review | `01ac8495-9de5-4d41-bacb-6e7796318643` |
+| [`desktop/07-item-detail.html`](desktop/07-item-detail.html) | Desktop Item Detail | `b95daad0-b60f-424a-af0a-77187d265de8` |
+| [`desktop/08-settings.html`](desktop/08-settings.html) | Desktop Settings | `63cb673b-f7d6-4b37-8446-50cd1dfb302c` |
 
 ## App Store screenshots
 

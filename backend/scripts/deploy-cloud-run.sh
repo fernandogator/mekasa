@@ -13,6 +13,9 @@ MIN_INSTANCES="${CLOUD_RUN_MIN_INSTANCES:-0}"
 SQL_INSTANCE="${CLOUD_SQL_INSTANCE:-mekasa-pg}"
 DATABASE_URL_SECRET="${DATABASE_URL_SECRET:-mekasa-database-url}"
 CATALOG_SALT_SECRET="${CATALOG_SALT_SECRET:-mekasa-catalog-salt}"
+# Google Maps key for store search and address lookup (REQ-003 AC7-AC8);
+# created by infra/terraform (places.tf).
+PLACES_KEY_SECRET="${PLACES_KEY_SECRET:-mekasa-places-api-key}"
 # Household-private item photos (REQ-INV-019). Private bucket, uniform access,
 # readable only by the runtime service account; created here if missing.
 ITEM_PHOTO_BUCKET="${ITEM_PHOTO_BUCKET:-mekasa-item-photos-prod}"
@@ -101,6 +104,13 @@ if gcloud secrets describe "$CATALOG_SALT_SECRET" --project "$PROJECT_ID" >/dev/
 else
   echo "WARNING: secret $CATALOG_SALT_SECRET missing; catalog writes will return 503."
   echo "         Run backend/scripts/provision-cloud-sql.sh first."
+fi
+# Without the key, prod store search returns no stores (REQ-003 AC9).
+if gcloud secrets describe "$PLACES_KEY_SECRET" --project "$PROJECT_ID" >/dev/null 2>&1; then
+  SECRETS+=("GOOGLE_PLACES_API_KEY=${PLACES_KEY_SECRET}:latest")
+else
+  echo "WARNING: secret $PLACES_KEY_SECRET missing; store search will find no stores."
+  echo "         Run terraform apply in infra/terraform first."
 fi
 if [ ${#SECRETS[@]} -gt 0 ]; then
   SQL_FLAGS+=(--set-secrets "$(IFS=,; echo "${SECRETS[*]}")")

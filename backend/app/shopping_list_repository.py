@@ -167,7 +167,9 @@ class InMemoryShoppingListRepository:
         with self._lock:
             bucket = self._items.setdefault(household_id, {})
             if not create_payload.needs_approval and not create_payload.is_checked:
-                existing = self._find_open(bucket, create_payload.name, create_payload.inventory_item_id)
+                existing = self._find_open(
+                    bucket, create_payload.name, create_payload.inventory_item_id, create_payload.store_id
+                )
                 if existing is not None:
                     updates = {
                         "quantity": existing.quantity + create_payload.quantity,
@@ -194,6 +196,7 @@ class InMemoryShoppingListRepository:
                 requested_by=create_payload.requested_by,
                 inventory_item_id=create_payload.inventory_item_id,
                 kind=create_payload.kind,
+                store_id=create_payload.store_id,
                 created_by_uid=owner_uid,
                 updated_by_uid=owner_uid,
                 created_at=now,
@@ -326,10 +329,12 @@ class InMemoryShoppingListRepository:
         bucket: dict[str, ShoppingListItemResponse],
         name: str,
         inventory_item_id: str | None,
+        store_id: str | None = None,
     ) -> ShoppingListItemResponse | None:
+        """REQ-011 merge target; REQ-024 AC3 keeps merges within one store's list."""
         target = _norm(name)
         for item in bucket.values():
-            if item.is_checked or item.needs_approval:
+            if item.is_checked or item.needs_approval or item.store_id != store_id:
                 continue
             if inventory_item_id and item.inventory_item_id == inventory_item_id:
                 return item
