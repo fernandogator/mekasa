@@ -715,10 +715,11 @@ Acceptance Criteria:
     **then** the token lint check **shall** fail.
   - The web app **shall** select the theme with `data-theme` on `<html>`
     and ship the `grounded` and `grounded-dark` themes in v1.0.
-  - **While** the theme preference is System, the web app **shall** follow
-    the browser's `prefers-color-scheme`.
+  - **While** the appearance preference is System, the web app **shall**
+    follow the browser's `prefers-color-scheme`.
   - **Where** a seasonal theme (for example Halloween) is added, it
-    **shall** be one extra token block that needs no component changes.
+    **shall** be one extra token block per appearance that needs no
+    component changes. Theme and appearance choices follow UI-008.
   - **When** `data-theme` changes, the web app **shall** render with the
     new theme's computed colors (checked by a test).
 - AC14: **Accessibility.**
@@ -831,6 +832,93 @@ Acceptance Criteria:
     another store's list (REQ-024 AC2).
   - **Where** the household has no saved stores, the screen **shall** show
     one list as before and point owners to Settings to add stores.
+### UI-008: Selectable Themes (Halloween)
+Priority: P2
+Status: Approved 2026-10-15; Halloween design pending in Superdesign
+Description: On the web, iOS and Android clients, a user can pick a
+theme in Settings. v1 adds a Halloween theme next to the standard Grounded
+theme. Each theme has a light and a dark version, and the choice is kept
+per device. Seasonal themes change colors (and optionally the display
+font) only; layouts and components stay the same. Out of scope: app icons,
+sounds and syncing the choice across devices. Acceptance criteria use EARS
+notation.
+Design Artifact: design/design-system.md (Grounded roles);
+  design/exports/superdesign/desktop/08-settings.html (picker);
+  Halloween drafts, including the Dashboard "Try the Halloween theme"
+  card (AC5), to be exported to design/exports/superdesign/themes/
+  (pending)
+Test File: web/src/theme/theme.test.ts, web/tests/layout/screens.spec.ts,
+  ios/MekasaTests/ThemeAppearanceTests.swift,
+  android-fable/app/src/test/java/app/mekasa/fable/ui/ (theme tests)
+Acceptance Criteria:
+- AC1: **Choices.**
+  - The Settings screen on web, iOS and Android **shall** offer a "Theme"
+    choice (Grounded, Halloween) and an "Appearance" choice (System,
+    Light, Dark).
+  - Every theme **shall** have a light and a dark version.
+- AC2: **Defaults.**
+  - **If** no choice is saved on the device, **then** the client **shall**
+    use Grounded with System appearance.
+  - **When** the web app finds a preference saved before this requirement
+    (`grounded`, `grounded-dark` or `system`), it **shall** read it as
+    Grounded with Light, Dark or System appearance.
+- AC3: **Applying a choice.**
+  - **When** the user changes the theme or the appearance, the client
+    **shall** redraw every screen in the new colors without a restart or
+    sign-out.
+  - **While** the appearance is System, the client **shall** follow the
+    device or browser light/dark setting, including changes made while the
+    app is open.
+- AC4: **Per device.**
+  - The client **shall** save the choice on the device only (web
+    `localStorage`, iOS `UserDefaults`, Android DataStore). It **shall
+    not** be sent to the backend or synced to other devices.
+  - **When** the user signs out, the client **shall** keep the choice.
+- AC5: **"Try the Halloween theme" prompt.** Added 2026-10-15.
+  - The clients **shall not** switch themes automatically by date.
+  - **While** the device's local date is in October, the Halloween theme
+    is not selected and the prompt has not been dismissed on this device
+    this year, the Dashboard **shall** show a "Try the Halloween theme"
+    card with "Try it" and "Not now".
+  - **When** the user taps "Try it", the client **shall** switch to
+    Halloween, keep the current appearance, hide the card, and show a
+    confirmation with "Undo" for at least 5 seconds.
+  - **When** the user taps "Undo", the client **shall** restore the theme
+    selected before "Try it".
+  - **When** the user taps "Not now", the client **shall** hide the card
+    and not show it again on this device until next October.
+  - **If** the Halloween theme is not offered (AC7), **then** the card
+    **shall not** appear.
+  - **When** October ends, the client **shall** stop showing the card and
+    **shall** keep whatever theme the user selected.
+- AC6: **Colors from roles.**
+  - A theme **shall** be defined only as values for the existing color
+    roles (`brand`, `brandMuted`, `surface`, `surfaceElevated`, `text`,
+    `textMuted`, `accent`, `onAccent`, `onBrand`, `onBrandMuted`, `border`,
+    `line`, `danger`, `success`, `warning` and their tints, plus each
+    platform's camera and scrim roles), and optionally a display font.
+  - Screens **shall not** reference a theme by name.
+- AC7: **Contrast.**
+  - **If** any role pair in a theme's light or dark version fails NFR-005
+    AC2, **then** the theme **shall not** be offered in Settings.
+  - The web unit tests **shall** compute these ratios from the token file.
+- AC8: **Design source.** The Halloween values **shall** come from the
+  Superdesign drafts exported under `design/exports/superdesign/themes/`
+  and **shall** be recorded in `design/design-system.md`.
+- AC9: **Analytics (web).**
+  - **When** the user changes the theme or appearance, the web app
+    **shall** send `theme_changed` with the resulting theme (UI-007 AC18).
+  - **When** the AC5 card is shown, tried, undone or dismissed, the web
+    app **shall** send `theme_prompt` with `action` set to `shown`,
+    `tried`, `undone` or `dismissed`.
+- AC10: **Visual checks.**
+  - Each client **shall** have layout or snapshot tests of Settings and
+    the Dashboard in Halloween light and Halloween dark (rule 9).
+  - Each client **shall** have a layout or snapshot test of the Dashboard
+    with the AC5 card in Grounded, and unit tests of when the card shows
+    (October only, not after "Not now", not while Halloween is
+    selected).
+
 ---
 
 ## Non-Functional Requirements
