@@ -13,6 +13,7 @@ from app.models import (
     HouseholdCreateRequest,
     HouseholdNameUpdateRequest,
     HouseholdResponse,
+    SavedStore,
     Store,
 )
 
@@ -39,9 +40,9 @@ class HouseholdRepository(Protocol):
         """Update address fields."""
 
     def set_stores(
-        self, household_id: str, owner_uid: str, store_ids: list[str]
+        self, household_id: str, owner_uid: str, store_ids: list[str], stores: list[SavedStore] | None = None
     ) -> HouseholdResponse:
-        """Persist selected store ids."""
+        """Persist selected store ids and, when known, their details (REQ-003 AC6)."""
 
     def update_photo_url(
         self, household_id: str, owner_uid: str, photo_url: str
@@ -110,11 +111,11 @@ class InMemoryHouseholdRepository:
         return updated
 
     def set_stores(
-        self, household_id: str, owner_uid: str, store_ids: list[str]
+        self, household_id: str, owner_uid: str, store_ids: list[str], stores: list[SavedStore] | None = None
     ) -> HouseholdResponse:
         household = self._require_owner(household_id, owner_uid)
         updated = household.model_copy(
-            update={"store_ids": list(store_ids), "updated_at": _utcnow()}
+            update={"store_ids": list(store_ids), "stores": list(stores or []), "updated_at": _utcnow()}
         )
         with self._lock:
             self._items[household_id] = updated

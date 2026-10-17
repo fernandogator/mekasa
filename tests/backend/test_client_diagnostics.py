@@ -237,3 +237,13 @@ def test_personal_details_never_reach_the_logs(client: TestClient, lines: _Lines
     [line] = lines.events("client.error")
     assert line["breadcrumbs"][0]["fields"]["item"] == "Bananas"
     assert line["breadcrumbs"][0]["fields"]["email"] == "[redacted]"
+
+
+def test_web_app_reports_are_accepted(client: TestClient, lines: _Lines) -> None:
+    """UI-007 AC15: the web app reports errors with platform `web`."""
+    web_app = {**APP, "platform": "web", "os_version": "", "device_model": "Chrome 141"}
+    response = client.post("/v1/client-errors", json={"app": web_app, "reports": [_report()]}, headers=AUTH)
+
+    assert response.status_code == 202
+    [line] = lines.events("client.error")
+    assert line["platform"] == "web"

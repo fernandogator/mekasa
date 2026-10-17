@@ -1,0 +1,38 @@
+@import './theme/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-surface font-sans text-text antialiased;
+  }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
+}
+
+@layer components {
+  .label-caps {
+    @apply text-[11px] font-extrabold uppercase tracking-[0.12em] text-muted;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: none;
+  }
+}

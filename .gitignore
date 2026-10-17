@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
 package-lock.json
+!web/package-lock.json
+*.tsbuildinfo
 npm-debug.log*
 yarn-error.log*
 
@@ -53,3 +55,7 @@ android-fable/.kotlin/
 **/.gradle/
 **/build/
 
+
+# Playwright output
+web/test-results/
+web/playwright-report/
