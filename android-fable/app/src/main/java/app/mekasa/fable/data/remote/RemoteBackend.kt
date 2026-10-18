@@ -18,11 +18,12 @@ import app.mekasa.fable.data.model.ProductCaptureRequest
 import app.mekasa.fable.data.model.ProductHit
 import app.mekasa.fable.data.model.ProductPhotoUpload
 import app.mekasa.fable.data.model.ReceiptScanResponse
+import app.mekasa.fable.data.model.SavedStore
 import app.mekasa.fable.data.model.ShoppingItem
 import app.mekasa.fable.data.model.ShoppingItemCreateRequest
 import app.mekasa.fable.data.model.ShoppingItemPatch
 import app.mekasa.fable.data.model.SpendingReport
-import app.mekasa.fable.data.model.Store
+import app.mekasa.fable.data.model.StoreSearchResponse
 import app.mekasa.fable.data.model.UnknownBarcodeEvent
 import app.mekasa.fable.data.model.UserProfile
 import app.mekasa.fable.diagnostics.ClientDiagnosticsResponse
@@ -53,11 +54,11 @@ class RemoteBackend(
     override suspend fun updateAddress(householdId: String, address: String): Household =
         api.updateAddress(token(), householdId, address)
 
-    override suspend fun nearbyStores(householdId: String): List<Store> =
-        api.nearbyStores(token(), householdId).stores
+    override suspend fun nearbyStores(householdId: String): StoreSearchResponse =
+        api.nearbyStores(token(), householdId)
 
-    override suspend fun selectStores(householdId: String, storeIds: List<String>): Household =
-        api.selectStores(token(), householdId, storeIds)
+    override suspend fun selectStores(householdId: String, storeIds: List<String>, stores: List<SavedStore>): Household =
+        api.selectStores(token(), householdId, storeIds, stores)
 
     override suspend fun renameHousehold(householdId: String, name: String?): Household =
         api.renameHousehold(token(), householdId, name)
@@ -148,6 +149,7 @@ class RemoteBackend(
         quantity: Int,
         asRequest: Boolean,
         requestedBy: String?,
+        storeId: String?,
     ): ShoppingItem =
         api.createShoppingItem(
             token(),
@@ -158,11 +160,15 @@ class RemoteBackend(
                 needsApproval = asRequest,
                 requestedBy = if (asRequest) requestedBy else null,
                 kind = if (asRequest) "request" else "custom",
+                storeId = storeId,
             ),
         )
 
     override suspend fun setShoppingChecked(householdId: String, itemId: String, checked: Boolean): ShoppingItem =
         api.patchShoppingItem(token(), householdId, itemId, ShoppingItemPatch(isChecked = checked))
+
+    override suspend fun moveShoppingItem(householdId: String, itemId: String, storeId: String?): ShoppingItem =
+        api.moveShoppingItem(token(), householdId, itemId, storeId)
 
     override suspend fun deleteShoppingItem(householdId: String, itemId: String) =
         api.deleteShoppingItem(token(), householdId, itemId)

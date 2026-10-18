@@ -1074,14 +1074,18 @@ final class AppSession: ObservableObject {
         Task { await persistShoppingPatch(itemID: id, isChecked: checked) }
     }
 
-    func addCustomShoppingItem(name: String, quantity: Int) {
+    /// Adds an owner item or a teen/member request, on `storeID`'s list (nil = "Any store").
+    /// Satisfies: REQ-012; REQ-024 AC1, AC7
+    /// Spec version: 1.0
+    func addCustomShoppingItem(name: String, quantity: Int, storeID: String? = nil) {
         let asRequest = submitsShoppingRequests
         let item = ShoppingListItem(
             name: name,
             quantity: max(1, quantity),
             needsApproval: asRequest,
             requestedBy: asRequest ? (displayName ?? "Member") : nil,
-            kind: asRequest ? .request : .custom
+            kind: asRequest ? .request : .custom,
+            storeID: storeID
         )
         shoppingList.insert(item, at: 0)
         logActivity(
@@ -1116,6 +1120,19 @@ final class AppSession: ObservableObject {
         logActivity("Denied \(name)", kind: .warning)
         guard canSyncShoppingList else { return }
         Task { await persistShoppingReject(itemID: id) }
+    }
+
+    /// Moves a row to `storeID`'s list (nil = "Any store"). Updates the row at once and
+    /// puts it back if the API refuses.
+    /// Satisfies: REQ-024 AC2, AC7
+    /// Spec version: 1.0
+    func moveShoppingItem(id: String, toStoreID storeID: String?) {
+        guard let idx = shoppingList.firstIndex(where: { $0.id == id }) else { return }
+        let previous = shoppingList[idx].storeID
+        guard previous != storeID else { return }
+        shoppingList[idx].storeID = storeID
+        guard canSyncShoppingList else { return }
+        Task { await persistShoppingMove(itemID: id, storeID: storeID, previous: previous) }
     }
 
     /// Remove a row from the list (any member; REQ-012). Pending requests should go
@@ -1404,6 +1421,31 @@ final class AppSession: ObservableObject {
             }
             showError("Couldn’t sync purchase: \(error.localizedDescription)", error: error)
             await refreshShoppingList()
+        }
+    }
+
+    /// Satisfies: REQ-024 AC2, AC7
+    /// Spec version: 1.0
+    private func persistShoppingMove(itemID: String, storeID: String?, previous: String?) async {
+        guard let token = idToken, let householdID = household?.id else { return }
+        do {
+            let remote = try await MekasaAPIClient.shared.moveShoppingListItem(
+                householdID: householdID,
+                itemID: itemID,
+                storeID: storeID,
+                token: token
+            )
+            upsertShoppingRemote(remote)
+        } catch {
+            if let idx = shoppingList.firstIndex(where: { $0.id == itemID }),
+               shoppingList[idx].storeID == storeID {
+                shoppingList[idx].storeID = previous
+            }
+            if SessionExpiry.isUnauthorized(error) {
+                handleAPIFailure(error)
+                return
+            }
+            showError("Couldn’t move that item: \(error.localizedDescription)", error: error)
         }
     }
 

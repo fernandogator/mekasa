@@ -2,7 +2,11 @@ import Foundation
 
 /// Local fixtures for DEBUG UI preview and unit tests.
 enum PreviewFixtures {
-    static func household(name: String? = "The Rivas House", photoURL: String? = nil) -> Household {
+    static func household(
+        name: String? = "The Rivas House",
+        photoURL: String? = nil,
+        stores: [SavedStore] = []
+    ) -> Household {
         Household(
             id: "preview-household",
             name: name,
@@ -11,11 +15,18 @@ enum PreviewFixtures {
             address: nil,
             latitude: nil,
             longitude: nil,
-            storeIDs: [],
+            storeIDs: stores.map(\.id),
+            stores: stores,
             createdAt: Date(),
             updatedAt: Date()
         )
     }
+
+    /// Saved stores for per-store list previews and tests (REQ-003 AC11, REQ-024 AC7).
+    static let savedStores: [SavedStore] = [
+        SavedStore(id: "stub-costco", name: "Costco Wholesale", address: "200 Warehouse Blvd", distanceMiles: 4.2),
+        SavedStore(id: "stub-heb", name: "H-E-B", address: "100 Main St", distanceMiles: 0.8),
+    ]
 
     static let nearbyStores: [Store] = [
         Store(

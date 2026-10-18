@@ -19,6 +19,9 @@ struct ShoppingListItem: Identifiable, Equatable, Hashable {
     var requestedBy: String?
     var inventoryItemID: String?
     var kind: Kind
+    /// Saved store whose list holds this row; nil (or a removed store) means "Any store".
+    /// Satisfies: REQ-024 AC1, AC5, AC7
+    var storeID: String?
 
     init(
         id: String = UUID().uuidString,
@@ -29,7 +32,8 @@ struct ShoppingListItem: Identifiable, Equatable, Hashable {
         needsApproval: Bool = false,
         requestedBy: String? = nil,
         inventoryItemID: String? = nil,
-        kind: Kind = .custom
+        kind: Kind = .custom,
+        storeID: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -40,6 +44,7 @@ struct ShoppingListItem: Identifiable, Equatable, Hashable {
         self.requestedBy = requestedBy
         self.inventoryItemID = inventoryItemID
         self.kind = kind
+        self.storeID = storeID
     }
 
     var displayQuantity: String {

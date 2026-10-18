@@ -22,6 +22,7 @@ import app.mekasa.fable.data.model.ProductCaptureResponse
 import app.mekasa.fable.data.model.ProductPhotoUpload
 import app.mekasa.fable.data.model.ProductSearchResponse
 import app.mekasa.fable.data.model.ReceiptScanResponse
+import app.mekasa.fable.data.model.SavedStore
 import app.mekasa.fable.data.model.ShoppingItem
 import app.mekasa.fable.data.model.ShoppingItemCreateRequest
 import app.mekasa.fable.data.model.ShoppingItemPatch
@@ -57,7 +58,8 @@ interface MekasaApi {
         filename: String,
     ): Household
     suspend fun nearbyStores(token: String, householdId: String): StoreSearchResponse
-    suspend fun selectStores(token: String, householdId: String, storeIds: List<String>): Household
+    /** REQ-003 AC6, AC11: save the selected stores with their details. */
+    suspend fun selectStores(token: String, householdId: String, storeIds: List<String>, stores: List<SavedStore>): Household
 
     // Inventory
     suspend fun listInventory(token: String, householdId: String): InventoryListResponse
@@ -102,6 +104,9 @@ interface MekasaApi {
     suspend fun listShopping(token: String, householdId: String): ShoppingListResponse
     suspend fun createShoppingItem(token: String, householdId: String, body: ShoppingItemCreateRequest): ShoppingItem
     suspend fun patchShoppingItem(token: String, householdId: String, itemId: String, patch: ShoppingItemPatch): ShoppingItem
+
+    /** REQ-024 AC2, AC7: move a row to [storeId]'s list; null moves it to "Any store". */
+    suspend fun moveShoppingItem(token: String, householdId: String, itemId: String, storeId: String?): ShoppingItem
     suspend fun deleteShoppingItem(token: String, householdId: String, itemId: String)
     suspend fun approveShoppingItem(token: String, householdId: String, itemId: String): ShoppingItem
     suspend fun rejectShoppingItem(token: String, householdId: String, itemId: String): ShoppingItem

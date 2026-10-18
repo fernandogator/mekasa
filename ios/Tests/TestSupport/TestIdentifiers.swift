@@ -121,6 +121,18 @@ enum TestIdentifiers {
     static let shoppingRemoveButton = "ShoppingRemoveButton"
     static let shoppingAutoChip = "ShoppingAutoChip"
     static let purchaseLockNotice = "PurchaseLockNotice"
+    /// REQ-024 AC7: per-store lists.
+    static let shoppingStoreSelector = "ShoppingStoreSelector"
+    /// Chips are `ShoppingStoreChip-<list key>` (`all`, a store id, or `any`).
+    static let shoppingStoreChip = "ShoppingStoreChip"
+    static let shoppingRowStoreLabel = "ShoppingRowStoreLabel"
+    static let shoppingMoveMenu = "ShoppingMoveMenu"
+    static let shoppingStoresHint = "ShoppingStoresHint"
+
+    /// Satisfies: REQ-024 AC7
+    static func shoppingStoreChipID(_ listKey: String) -> String {
+        "\(shoppingStoreChip)-\(listKey)"
+    }
     static let addItemsHub = "AddItemsHub"
     static let bottomNavBar = "BottomNavBar"
     static let homeTab = "HomeTab"
@@ -156,6 +168,17 @@ enum TestIdentifiers {
     static let familyHouseholdAddress = "FamilyHouseholdAddress"
     static let familyMemberSubtitle = "FamilyMemberSubtitle"
     static let familyRefreshButton = "FamilyRefreshButton"
+    /// REQ-003 AC11: Family → Grocery stores and the store picker.
+    static let groceryStoresSection = "GroceryStoresSection"
+    static let groceryStoreRow = "GroceryStoreRow"
+    static let groceryStoresEmpty = "GroceryStoresEmpty"
+    static let chooseStoresButton = "ChooseStoresButton"
+    static let storePickerSheet = "StorePickerSheet"
+    static let storePickerCancelButton = "StorePickerCancelButton"
+    static let storePickerMessage = "StorePickerMessage"
+    static let storeAddressField = "StoreAddressField"
+    static let storeFindButton = "StoreFindButton"
+    static let storeConfirmButton = "StoreConfirmButton"
     /// NFR-007 AC5: Family → Help.
     static let sendDiagnosticsButton = "SendDiagnosticsButton"
     static let diagnosticsStatus = "DiagnosticsStatus"
