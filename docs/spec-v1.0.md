@@ -111,6 +111,23 @@ AC19) and use EARS notation.
 - AC10: **Missing location.**
   - **If** the household has no coordinates, **then** the store search
     **shall** answer with `needs_location: true`.
+- AC11: **Store settings on iOS and Android.** Added 2026-10-17.
+  - The Family screen's settings on iOS and Android **shall** have a
+    "Grocery stores" section listing the household's saved stores
+    (`stores`) with name, address and distance.
+  - **Where** the signed-in user is an owner, the section **shall** offer
+    "Choose stores" (no saved stores) or "Change stores", which opens the
+    store picker (`design/exports/superdesign/mobile/02-store-selection.html`):
+    search by name or address, check rows on or off, and "Confirm stores".
+  - **If** the household has no coordinates, **then** the picker **shall**
+    first ask for the home address and save it (AC7) before searching.
+  - The picker **shall** start with only the stores that have saved
+    details checked, so bare IDs from older clients are not counted.
+  - **When** the owner confirms, the client **shall** save the selected
+    store IDs with their details (AC6) and show them in the section.
+  - The onboarding store step **shall** also save store details (AC6).
+  - **Where** the user is a teen or member, the section **shall** list
+    the stores without the picker.
 
 ### REQ-004: Barcode Scanning and Product Lookup
 Priority: P0
@@ -1064,7 +1081,9 @@ criteria use EARS notation.
 Design Artifact: design/exports/superdesign/desktop/02-shopping-list.html,
   design/exports/superdesign/mobile/02-store-selection.html
 Test File: tests/backend/test_shopping_per_store.py,
-  web/src/stores/logic.test.ts, web/tests/layout/screens.spec.ts
+  web/src/stores/logic.test.ts, web/tests/layout/screens.spec.ts,
+  ios/MekasaTests/ShoppingStoresTests.swift,
+  android-fable/app/src/test/java/app/mekasa/fable/ui/ShoppingStoresTest.kt
 Acceptance Criteria:
 - AC1: **Store on each row.**
   - Each shopping list row **shall** have an optional `store_id`. A row
@@ -1090,6 +1109,24 @@ Acceptance Criteria:
     **then** clients **shall** show the row on the "Any store" list.
 - AC6: **Older clients.** Clients that don't send `store_id` **shall**
   keep working; their rows go to the "Any store" list.
+- AC7: **iOS and Android lists.** Added 2026-10-17.
+  - **Where** the household has saved stores, the Shopping List screen on
+    iOS and Android **shall** show a store selector with "All stores", one
+    entry per saved store and "Any store", each with its count of rows
+    still to buy.
+  - **When** the user picks a store, the screen **shall** show only that
+    store's rows (AC5 applies to rows whose store was removed).
+  - **While** "All stores" is selected, each row **shall** show its
+    store's name.
+  - **When** the user adds an item or request, the client **shall** save
+    it to the selected store ("Any store" from "All stores").
+  - **When** the user picks "Move to…" on a row and chooses a store, the
+    client **shall** move the row (AC2).
+  - **Where** the household has no saved stores, the screen **shall** show
+    one list as before; owners **shall** see a hint pointing to the
+    Grocery stores settings.
+  - Rows **shall** keep their `store_id` through the local cache and
+    real-time sync.
 
 ---
 

@@ -103,15 +103,15 @@ actor MekasaAPIClient {
         )
     }
 
-    func selectStores(householdID: String, storeIDs: [String], token: String) async throws -> Household {
-        struct Body: Encodable {
-            let store_ids: [String]
-        }
-        return try await request(
+    /// Saves the selected stores' IDs with their details (`stores`), same order.
+    /// Satisfies: REQ-003 AC5, AC6, AC11
+    /// Spec version: 1.0
+    func selectStores(householdID: String, stores: [SavedStore], token: String) async throws -> Household {
+        try await request(
             path: "/v1/households/\(householdID)/stores",
             method: "PUT",
             token: token,
-            body: Body(store_ids: storeIDs)
+            body: StoreSelectionBody(stores: stores)
         )
     }
 
@@ -568,6 +568,23 @@ actor MekasaAPIClient {
                 needs_approval: needsApproval,
                 kind: kind
             )
+        )
+    }
+
+    /// Moves a row to a saved store's list, or to "Any store" when `storeID` is nil.
+    /// Satisfies: REQ-024 AC2, AC7
+    /// Spec version: 1.0
+    func moveShoppingListItem(
+        householdID: String,
+        itemID: String,
+        storeID: String?,
+        token: String
+    ) async throws -> ShoppingListItemDTO {
+        try await request(
+            path: "/v1/households/\(householdID)/shopping-list/\(itemID)",
+            method: "PATCH",
+            token: token,
+            body: ShoppingListMoveBody(storeID: storeID)
         )
     }
 

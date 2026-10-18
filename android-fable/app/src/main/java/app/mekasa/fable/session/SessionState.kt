@@ -85,6 +85,14 @@ data class DuplicatesOutcome(val groups: List<DuplicateGroup>?, val error: Strin
 /** REQ-INV-021: the groups that merged, the "Merged N items into …" line, and any error. */
 data class MergeOutcome(val merged: List<DuplicateGroup>, val confirmation: String?, val error: String?)
 
+/** What the settings store picker shows next. Satisfies: REQ-003 AC11 */
+sealed interface StorePickerResult {
+    /** The household has no coordinates: ask for the home address first (REQ-003 AC7, AC10). */
+    data object NeedsAddress : StorePickerResult
+    data class Stores(val stores: List<Store>) : StorePickerResult
+    data class Failed(val message: String) : StorePickerResult
+}
+
 /** Everything fetched for the current household. Kept separate so refreshes replace it wholesale. */
 data class HouseholdData(
     val inventory: List<InventoryItem> = emptyList(),

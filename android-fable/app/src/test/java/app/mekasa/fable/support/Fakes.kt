@@ -27,6 +27,7 @@ import app.mekasa.fable.data.model.ProductCaptureResponse
 import app.mekasa.fable.data.model.ProductPhotoUpload
 import app.mekasa.fable.data.model.ProductSearchResponse
 import app.mekasa.fable.data.model.ReceiptScanResponse
+import app.mekasa.fable.data.model.SavedStore
 import app.mekasa.fable.data.model.ShoppingItem
 import app.mekasa.fable.data.model.ShoppingItemCreateRequest
 import app.mekasa.fable.data.model.ShoppingItemPatch
@@ -147,9 +148,13 @@ open class FakeApi : MekasaApi {
         return StoreSearchResponse()
     }
 
-    override suspend fun selectStores(token: String, householdId: String, storeIds: List<String>): Household {
+    /** Last `PUT …/stores` details sent (REQ-003 AC11). */
+    var savedStoreDetails: List<SavedStore>? = null
+
+    override suspend fun selectStores(token: String, householdId: String, storeIds: List<String>, stores: List<SavedStore>): Household {
         record("selectStores")
-        return household!!.copy(storeIds = storeIds).also { household = it }
+        savedStoreDetails = stores
+        return household!!.copy(storeIds = storeIds, stores = stores).also { household = it }
     }
 
     override suspend fun listInventory(token: String, householdId: String): InventoryListResponse {
@@ -298,6 +303,7 @@ open class FakeApi : MekasaApi {
             needsApproval = body.needsApproval,
             requestedBy = body.requestedBy,
             kind = body.kind,
+            storeId = body.storeId,
         ).also { shopping.add(it) }
     }
 
@@ -307,6 +313,12 @@ open class FakeApi : MekasaApi {
         val updated = shopping[idx].copy(isChecked = patch.isChecked ?: shopping[idx].isChecked)
         shopping[idx] = updated
         return updated
+    }
+
+    override suspend fun moveShoppingItem(token: String, householdId: String, itemId: String, storeId: String?): ShoppingItem {
+        record("moveShopping:$itemId:$storeId")
+        val idx = shopping.indexOfFirst { it.id == itemId }
+        return shopping[idx].copy(storeId = storeId).also { shopping[idx] = it }
     }
 
     override suspend fun deleteShoppingItem(token: String, householdId: String, itemId: String) {

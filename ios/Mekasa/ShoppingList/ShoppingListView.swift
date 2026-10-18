@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Shared shopping list: check off, approve requests, add custom.
-/// Satisfies: REQ-011–REQ-014 (client staging)
+/// Shared shopping list: check off, approve requests, add custom, one list per store.
+/// Satisfies: REQ-011–REQ-014 (client staging); REQ-024 AC7
 /// Spec version: 1.0
 /// Design: design/mockups/ShoppingList.jsx
 struct ShoppingListView: View {
@@ -10,11 +10,14 @@ struct ShoppingListView: View {
     @State private var customName = ""
     @State private var customQty = 1
     @State private var toast: String?
+    /// REQ-024 AC7: `ShoppingStores.allStores`, a saved store id, or `ShoppingStores.anyStore`.
+    @State private var selectedList = ShoppingStores.allStores
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 header
+                storeSelectorOrHint
                 purchaseLockNotice
                 listCard
                 addCustomButton
@@ -99,7 +102,154 @@ struct ShoppingListView: View {
     }
 
     private var grouped: ShoppingListSections.Grouped {
-        ShoppingListSections.group(session.shoppingList)
+        ShoppingListSections.group(visibleItems)
+    }
+
+    // MARK: - Per-store lists (REQ-024 AC7)
+
+    private var savedStores: [SavedStore] {
+        session.household?.stores ?? []
+    }
+
+    /// The selected list, or "All stores" once its store is no longer saved.
+    private var activeList: String {
+        ShoppingStores.validSelection(selectedList, saved: savedStores)
+    }
+
+    private var visibleItems: [ShoppingListItem] {
+        ShoppingStores.filter(session.shoppingList, list: activeList, saved: savedStores)
+    }
+
+    private var showsRowStoreNames: Bool {
+        !savedStores.isEmpty && activeList == ShoppingStores.allStores
+    }
+
+    /// Where new items and requests go: the selected store, or "Any store".
+    private var newItemStoreID: String? {
+        ShoppingStores.storeIDForNewItem(selected: activeList, saved: savedStores)
+    }
+
+    /// Satisfies: REQ-024 AC7
+    /// Spec version: 1.0
+    @ViewBuilder
+    private var storeSelectorOrHint: some View {
+        if !savedStores.isEmpty {
+            storeSelector
+        } else if session.isHouseholdOwner {
+            HStack(spacing: 8) {
+                Image(systemName: "storefront")
+                    .font(.system(size: 12, weight: .bold))
+                    .accessibilityHidden(true)
+                Text(ShoppingStores.noStoresHint)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .foregroundStyle(MekasaTheme.textMuted)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier(TestIdentifiers.shoppingStoresHint)
+        }
+    }
+
+    /// Capsule chips: "All stores", each saved store, "Any store", with open counts.
+    /// Satisfies: REQ-024 AC7
+    /// Spec version: 1.0
+    private var storeSelector: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(ShoppingStores.tabs(session.shoppingList, saved: savedStores)) { tab in
+                    storeChip(tab, isSelected: tab.key == activeList)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(TestIdentifiers.shoppingStoreSelector)
+    }
+
+    private func storeChip(_ tab: ShoppingStores.Tab, isSelected: Bool) -> some View {
+        Button {
+            selectedList = tab.key
+        } label: {
+            HStack(spacing: 6) {
+                Text(tab.title)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .lineLimit(1)
+                Text("\(tab.count)")
+                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(
+                        Capsule().fill(isSelected ? MekasaTheme.onBrand.opacity(0.2) : MekasaTheme.surfaceMuted)
+                    )
+            }
+            .foregroundStyle(isSelected ? MekasaTheme.onBrand : MekasaTheme.text)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+            .background(Capsule().fill(isSelected ? MekasaTheme.brand : MekasaTheme.surfaceElevated))
+            .overlay(
+                Capsule().stroke(MekasaTheme.brandMuted.opacity(isSelected ? 0 : 0.3), lineWidth: 1)
+            )
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(tab.title), \(tab.count) to buy")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityIdentifier(TestIdentifiers.shoppingStoreChipID(tab.key))
+    }
+
+    /// Small store caption on a row while "All stores" is selected.
+    @ViewBuilder
+    private func rowStoreLabel(_ item: ShoppingListItem) -> some View {
+        if showsRowStoreNames {
+            Text(ShoppingStores.rowStoreName(item, saved: savedStores))
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundStyle(MekasaTheme.textMuted)
+                .lineLimit(1)
+                .accessibilityIdentifier(TestIdentifiers.shoppingRowStoreLabel)
+        }
+    }
+
+    /// "Move to…" menu: each saved store, then "Any store".
+    /// Satisfies: REQ-024 AC2, AC7
+    /// Spec version: 1.0
+    private func moveMenu(_ item: ShoppingListItem) -> some View {
+        let current = ShoppingStores.listKey(for: item.storeID, saved: savedStores)
+        return Menu {
+            Section("Move to…") {
+                ForEach(savedStores) { store in
+                    moveOption(item, title: store.name, storeID: store.id, isCurrent: current == store.id)
+                }
+                moveOption(
+                    item,
+                    title: ShoppingStores.anyStoreName,
+                    storeID: nil,
+                    isCurrent: current == ShoppingStores.anyStore
+                )
+            }
+        } label: {
+            Image(systemName: "arrow.left.arrow.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(MekasaTheme.textMuted)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Move \(item.name) to another store")
+        .accessibilityIdentifier(TestIdentifiers.shoppingMoveMenu)
+    }
+
+    private func moveOption(_ item: ShoppingListItem, title: String, storeID: String?, isCurrent: Bool) -> some View {
+        Button {
+            session.moveShoppingItem(id: item.id, toStoreID: storeID)
+            showToast("Moved \(item.name) to \(title)")
+        } label: {
+            if isCurrent {
+                Label(title, systemImage: "checkmark")
+            } else {
+                Text(title)
+            }
+        }
+        .disabled(isCurrent)
     }
 
     @ViewBuilder
@@ -120,10 +270,8 @@ struct ShoppingListView: View {
 
     private var listCard: some View {
         Group {
-            if session.shoppingList.isEmpty {
-                Text(session.submitsShoppingRequests
-                     ? "Nothing to buy yet. Ask for something you want."
-                     : "Nothing to buy yet. Mark inventory low or add a custom item.")
+            if visibleItems.isEmpty {
+                Text(emptyListMessage)
                     .font(MekasaTheme.bodyFont)
                     .foregroundStyle(MekasaTheme.textMuted)
                     .padding(20)
@@ -149,6 +297,15 @@ struct ShoppingListView: View {
                 .accessibilityIdentifier(TestIdentifiers.itemList)
             }
         }
+    }
+
+    private var emptyListMessage: String {
+        if !session.shoppingList.isEmpty {
+            return "Nothing on the \(ShoppingStores.storeName(for: activeList, saved: savedStores)) list yet."
+        }
+        return session.submitsShoppingRequests
+            ? "Nothing to buy yet. Ask for something you want."
+            : "Nothing to buy yet. Mark inventory low or add a custom item."
     }
 
     @ViewBuilder
@@ -209,7 +366,8 @@ struct ShoppingListView: View {
         let canPurchase = session.canMarkShoppingPurchased
         // The remove control sits beside (not inside) the toggle button so the two
         // taps never compete.
-        let origin = item.kind == .auto ? ", auto-added" : ""
+        let auto = item.kind == .auto ? ", auto-added" : ""
+        let origin = showsRowStoreNames ? "\(auto), \(ShoppingStores.rowStoreName(item, saved: savedStores))" : auto
         return HStack(spacing: 0) {
             if canPurchase {
                 Button {
@@ -224,6 +382,9 @@ struct ShoppingListView: View {
                 shoppingRowLabel(item, showCheckbox: true)
                     .accessibilityLabel("\(item.name)\(origin), view only")
                     .accessibilityIdentifier(TestIdentifiers.itemCell)
+            }
+            if !savedStores.isEmpty {
+                moveMenu(item)
             }
             removeButton(item)
         }
@@ -252,6 +413,7 @@ struct ShoppingListView: View {
                     if let label = ShoppingListSections.chipLabel(for: item) {
                         chip(label)
                     }
+                    rowStoreLabel(item)
                 }
             }
             .opacity(item.isChecked ? 0.5 : 1)
@@ -300,6 +462,7 @@ struct ShoppingListView: View {
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(MekasaTheme.warning)
                     .accessibilityIdentifier(TestIdentifiers.requestorLabel)
+                rowStoreLabel(item)
             }
 
             Spacer(minLength: 0)
@@ -392,9 +555,14 @@ struct ShoppingListView: View {
     private var addCustomSheet: some View {
         NavigationStack {
             MekasaScreen {
-                Group {
+                VStack(alignment: .leading, spacing: 12) {
+                    if !savedStores.isEmpty {
+                        Text("Adds to \(ShoppingStores.storeName(for: newItemStoreID ?? ShoppingStores.anyStore, saved: savedStores))")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundStyle(MekasaTheme.textMuted)
+                    }
                     if session.submitsShoppingRequests {
-                        ShoppingRequestComposer { _ in
+                        ShoppingRequestComposer(storeID: newItemStoreID) { _ in
                             showAddCustom = false
                             showToast("Asked. An owner will approve it.")
                         }
@@ -446,7 +614,8 @@ struct ShoppingListView: View {
             ) {
                 session.addCustomShoppingItem(
                     name: customName.trimmingCharacters(in: .whitespacesAndNewlines),
-                    quantity: customQty
+                    quantity: customQty,
+                    storeID: newItemStoreID
                 )
                 showAddCustom = false
                 showToast("Added to list")
@@ -483,9 +652,12 @@ struct ShoppingListView: View {
 }
 
 /// Name and quantity for a teen or member shopping request (REQ-012).
+/// Satisfies: REQ-012; REQ-024 AC7 (requests go to `storeID`'s list, nil = "Any store")
+/// Spec version: 1.0
 struct ShoppingRequestComposer: View {
     @EnvironmentObject private var session: AppSession
     var showsQuantity = true
+    var storeID: String? = nil
     var onSubmitted: (String) -> Void = { _ in }
 
     @State private var name = ""
@@ -531,7 +703,7 @@ struct ShoppingRequestComposer: View {
     private func submit() {
         let itemName = trimmed
         guard !itemName.isEmpty else { return }
-        session.addCustomShoppingItem(name: itemName, quantity: quantity)
+        session.addCustomShoppingItem(name: itemName, quantity: quantity, storeID: storeID)
         name = ""
         quantity = 1
         onSubmitted(itemName)
@@ -543,7 +715,10 @@ struct ShoppingRequestComposer: View {
         ShoppingListView()
             .environmentObject({
                 let s = AppSession()
-                s.household = PreviewFixtures.household(name: "The Rivas House")
+                s.household = PreviewFixtures.household(
+                    name: "The Rivas House",
+                    stores: PreviewFixtures.savedStores
+                )
                 s.ensureShoppingListSeeded()
                 return s
             }())

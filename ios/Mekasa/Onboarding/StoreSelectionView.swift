@@ -1,22 +1,12 @@
 import SwiftUI
 
 /// Multi-select nearby stores (Google Places when configured, else stub list).
-/// Satisfies: REQ-003 AC4–AC5, UI-002 / UI-003
+/// Shares its list, rows and address prompt with Family → Grocery stores.
+/// Satisfies: REQ-003 AC4–AC6, AC11, UI-002 / UI-003
 /// Spec version: 1.0
 struct StoreSelectionView: View {
     @EnvironmentObject private var session: AppSession
-    @State private var stores: [Store] = []
-    @State private var selected: Set<String> = []
-    @State private var query = ""
-    @State private var loaded = false
-
-    private var filtered: [Store] {
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !q.isEmpty else { return stores }
-        return stores.filter {
-            $0.name.lowercased().contains(q) || $0.address.lowercased().contains(q)
-        }
-    }
+    @StateObject private var model = StorePickerModel()
 
     var body: some View {
         MekasaScreen {
@@ -29,43 +19,32 @@ struct StoreSelectionView: View {
                         .font(MekasaTheme.displayFont)
                         .foregroundStyle(MekasaTheme.text)
 
-                    Text(subtitle)
-                        .font(MekasaTheme.bodyFont)
-                        .foregroundStyle(MekasaTheme.textMuted)
-
-                    HStack(spacing: 10) {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundStyle(MekasaTheme.textMuted)
-                        TextField("Search for a store...", text: $query)
+                    switch model.phase {
+                    case .address:
+                        StoreAddressPrompt(
+                            address: $model.address,
+                            isLoading: model.isWorking,
+                            message: model.message
+                        ) {
+                            Task { await model.findStores(session: session) }
+                        }
+                        Spacer()
+                    case .loading, .failed, .list:
+                        Text(StoreSelectionCopy.subtitle(address: session.household?.address))
                             .font(MekasaTheme.bodyFont)
-                    }
-                    .padding(.horizontal, 16)
-                    .frame(height: 56)
-                    .background(MekasaTheme.surfaceElevated)
-                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(MekasaTheme.brandMuted.opacity(0.3), lineWidth: 1)
-                    )
+                            .foregroundStyle(MekasaTheme.textMuted)
 
-                    ScrollView {
-                        LazyVStack(spacing: 4) {
-                            ForEach(filtered) { store in
-                                StoreRow(
-                                    store: store,
-                                    isSelected: selected.contains(store.id)
-                                ) {
-                                    toggle(store.id)
-                                }
+                        if model.phase == .failed {
+                            SecondaryButton(title: "Try again") {
+                                Task { await model.load(session: session) }
                             }
                         }
-                        .padding(8)
-                        .background(MekasaTheme.surfaceElevated)
-                        .clipShape(RoundedRectangle(cornerRadius: 40, style: .continuous))
-                        .shadow(color: MekasaTheme.shadow.opacity(0.08), radius: 24, y: 12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 40, style: .continuous)
-                                .stroke(MekasaTheme.brandMuted.opacity(0.25), lineWidth: 1)
+
+                        StorePickerList(
+                            stores: model.stores,
+                            placesIDs: model.placesIDs,
+                            selected: $model.selected,
+                            query: $model.query
                         )
                     }
                 }
@@ -76,159 +55,24 @@ struct StoreSelectionView: View {
                 StickyBottomBar(progress: 4.0 / 6.0) {
                     PrimaryButton(
                         title: "Confirm stores",
-                        disabled: selected.isEmpty,
-                        isLoading: session.isBusy
+                        disabled: model.selected.isEmpty || model.phase != .list,
+                        isLoading: session.isBusy || model.isWorking
                     ) {
                         Task { await confirm() }
                     }
+                    .accessibilityIdentifier(TestIdentifiers.storeConfirmButton)
                 }
             }
         }
-        .task { await load() }
+        .task { await model.start(session: session) }
     }
 
-    private var subtitle: String {
-        if let address = session.household?.address, !address.isEmpty {
-            return "We'll look within 15 miles of \(address)."
-        }
-        return "We'll look within 15 miles of your home."
-    }
-
-    private func toggle(_ id: String) {
-        withAnimation(.easeInOut(duration: 0.15)) {
-            if selected.contains(id) {
-                selected.remove(id)
-            } else {
-                selected.insert(id)
-            }
-        }
-    }
-
-    private func load() async {
-        guard !loaded, let household = session.household else { return }
-        if session.isUIPreview {
-            stores = PreviewFixtures.nearbyStores
-            selected = Set(household.storeIDs)
-            loaded = true
-            return
-        }
-        guard let token = session.idToken else { return }
-        session.isBusy = true
-        defer { session.isBusy = false }
-        do {
-            let response = try await MekasaAPIClient.shared.nearbyStores(householdID: household.id, token: token)
-            stores = response.stores
-            selected = Set(household.storeIDs)
-            loaded = true
-        } catch {
-            session.showError(error.localizedDescription, error: error)
-        }
-    }
-
+    /// Satisfies: REQ-003 AC6, AC11 (onboarding saves store details too)
+    /// Spec version: 1.0
     private func confirm() async {
-        guard var household = session.household else { return }
-        if session.isUIPreview {
-            household.storeIDs = Array(selected)
-            session.household = household
+        if await model.confirm(session: session) {
             withAnimation { session.onboardingStep = .initialScan }
-            return
         }
-        guard let token = session.idToken else { return }
-        session.isBusy = true
-        defer { session.isBusy = false }
-        do {
-            let updated = try await MekasaAPIClient.shared.selectStores(
-                householdID: household.id,
-                storeIDs: Array(selected),
-                token: token
-            )
-            session.household = updated
-            withAnimation { session.onboardingStep = .initialScan }
-        } catch {
-            session.showError(error.localizedDescription, error: error)
-        }
-    }
-}
-
-private struct StoreRow: View {
-    let store: Store
-    let isSelected: Bool
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .fill(isSelected ? MekasaTheme.surfaceElevated : MekasaTheme.surfaceMuted)
-                        .frame(width: 48, height: 48)
-                    Text(store.initials)
-                        .font(.system(size: 11, weight: .black, design: .rounded))
-                        .foregroundStyle(MekasaTheme.text)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 8) {
-                        Text(store.name)
-                            .font(.system(size: 16, weight: .heavy, design: .rounded))
-                        if store.provider == "places" {
-                            Text("Places")
-                                .font(.system(size: 10, weight: .heavy, design: .rounded))
-                                .foregroundStyle(isSelected ? MekasaTheme.onBrandMuted : MekasaTheme.accent)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .overlay(
-                                    Capsule().stroke(
-                                        isSelected ? MekasaTheme.onBrandMuted : MekasaTheme.accent,
-                                        lineWidth: 1
-                                    )
-                                )
-                        }
-                    }
-                    Text(String(format: "%.1f mi", store.distanceMiles))
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .tracking(0.8)
-                        .textCase(.uppercase)
-                        .foregroundStyle(isSelected ? MekasaTheme.onBrandMuted : MekasaTheme.textMuted)
-                }
-
-                Spacer()
-
-                ZStack {
-                    Circle()
-                        .fill(isSelected ? MekasaTheme.accent : Color.clear)
-                        .frame(width: 32, height: 32)
-                        .overlay(
-                            Circle()
-                                .stroke(isSelected ? MekasaTheme.accent : MekasaTheme.border, lineWidth: 2)
-                        )
-                    if isSelected {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(MekasaTheme.onAccent)
-                    }
-                }
-            }
-            .padding(16)
-            .foregroundStyle(isSelected ? MekasaTheme.onBrand : MekasaTheme.text)
-            .background(
-                RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    .fill(isSelected ? MekasaTheme.brand : Color.clear)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private extension Store {
-    var initials: String {
-        let parts = name.split(separator: " ")
-        if parts.count >= 2 {
-            return String(parts[0].prefix(1) + parts[1].prefix(1)).uppercased()
-        }
-        return String(name.prefix(4))
     }
 }
 
