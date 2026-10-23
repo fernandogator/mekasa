@@ -2,9 +2,11 @@
 
 import { apiRequest } from './client';
 import type {
+  DuplicateGroup,
   Household,
   InventoryCreate,
   InventoryItem,
+  InventoryMergeResult,
   InventoryUpdate,
   Invite,
   InviteCreate,
@@ -49,6 +51,10 @@ export const api = {
     apiRequest<InventoryItem>(`${hh(id)}/inventory/${itemId}/restore`, { method: 'POST', where: 'inventory.restore' }),
   purgeInventory: (id: string, itemId: string) =>
     apiRequest<void>(`${hh(id)}/inventory/${itemId}/purge`, { method: 'POST', where: 'inventory.purge' }),
+  duplicates: (id: string) =>
+    apiRequest<{ groups: DuplicateGroup[] }>(`${hh(id)}/inventory/duplicates`).then((r) => r.groups),
+  mergeInventory: (id: string, itemIds: string[]) =>
+    apiRequest<InventoryMergeResult>(`${hh(id)}/inventory/merge`, { method: 'POST', body: { item_ids: itemIds }, where: 'inventory.merge' }),
   refreshImage: (id: string, itemId: string) =>
     apiRequest<InventoryItem>(`${hh(id)}/inventory/${itemId}/refresh-image`, { method: 'POST', where: 'inventory.refreshImage' }),
 

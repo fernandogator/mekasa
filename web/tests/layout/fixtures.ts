@@ -59,6 +59,20 @@ export const inventory = [
   item('inv-8', 'Greek Yogurt', 'Dairy', 4, 2),
 ];
 
+/** REQ-INV-021: two groups for the Duplicates review (UI-007 AC21). */
+export const duplicates = [
+  {
+    reason: 'same_barcode',
+    keep_id: 'inv-1',
+    items: [inventory[0], item('dup-1', 'Whole Milk 1 gal', 'Dairy', 2, 1, { barcode: '041303001486' })],
+  },
+  {
+    reason: 'same_name',
+    keep_id: 'inv-2',
+    items: [item('dup-2', 'Honeycrisp apple', 'Produce', 2, 1), inventory[1]],
+  },
+];
+
 export const shopping = [
   { id: 'sh-1', household_id: H, name: 'Whole Milk', quantity: 2, is_checked: false, needs_approval: false, inventory_item_id: 'inv-1', store_id: 'place-heb', kind: 'auto', created_by_uid: 'owner-1', created_at: now, updated_at: now },
   { id: 'sh-2', household_id: H, name: 'Paper Towels', quantity: 1, is_checked: false, needs_approval: false, inventory_item_id: 'inv-7', store_id: 'place-costco', kind: 'auto', created_by_uid: 'owner-1', created_at: now, updated_at: now },
@@ -125,6 +139,8 @@ export interface FixtureOptions {
   noStores?: boolean;
   /** Household saved before store details were kept: bare placeholder IDs, no details. */
   legacyStoreIds?: boolean;
+  /** The duplicates search finds nothing. */
+  noDuplicates?: boolean;
 }
 
 /** Answers every API call the app makes from in-memory fixtures. */
@@ -170,6 +186,14 @@ export async function useFixtures(page: Page, options: FixtureOptions = {}): Pro
     }
     if (path.endsWith('/members')) return options.failMembers ? json(route, { detail: 'boom' }, 500) : json(route, { members });
     if (path.endsWith('/invites')) return json(route, { invites });
+    if (path.endsWith('/inventory/duplicates')) return json(route, { household_id: H, groups: options.noDuplicates ? [] : duplicates });
+    if (path.endsWith('/inventory/merge') && method === 'POST') {
+      const ids = (route.request().postDataJSON() as { item_ids: string[] }).item_ids;
+      const group = duplicates.find((entry) => entry.items.some((member) => ids.includes(member.id))) ?? duplicates[0];
+      const keep = group.items.find((member) => member.id === group.keep_id) ?? group.items[0];
+      const quantity = Math.max(...group.items.map((member) => member.quantity));
+      return json(route, { household_id: H, item: { ...keep, quantity }, removed_ids: ids.filter((id) => id !== keep.id), shopping_list_items: [] });
+    }
     if (path.endsWith('/inventory') && method === 'GET') return json(route, { items: options.empty ? [] : inventory });
     if (path.endsWith('/shopping-list') && method === 'GET') return json(route, { items: options.empty ? [] : shopping });
     if (path.endsWith('/spending')) return json(route, options.empty ? { ...spending, total: 0, by_category: [], events: [] } : spending);
