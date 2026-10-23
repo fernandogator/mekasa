@@ -70,6 +70,24 @@ export interface InventoryItem {
   updated_at: string;
   deleted?: boolean;
   health?: ProductHealth | null;
+  product_id?: string | null;
+  image_updated_at?: string | null;
+}
+
+export type DuplicateReason = 'same_barcode' | 'same_product' | 'same_name';
+
+/** REQ-INV-021 AC1, AC2: items that look like one product; `keep_id` survives a merge. */
+export interface DuplicateGroup {
+  reason: DuplicateReason;
+  keep_id: string;
+  items: InventoryItem[];
+}
+
+export interface InventoryMergeResult {
+  household_id: string;
+  item: InventoryItem;
+  removed_ids: string[];
+  shopping_list_items: ShoppingItem[];
 }
 
 export interface InventoryCreate {

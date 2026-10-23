@@ -1,12 +1,13 @@
 /**
  * Inventory grid with filters, search and the item detail panel.
  *
- * Satisfies: UI-007 (Desktop Web App) AC6 (UI-006 AC2, AC3, AC5, AC6)
+ * Satisfies: UI-007 (Desktop Web App) AC6 (UI-006 AC2, AC3, AC5, AC6), AC21, AC22
  * Design: design/exports/superdesign/desktop/01-dashboard.html,
- *   design/exports/superdesign/desktop/07-item-detail.html
+ *   design/exports/superdesign/desktop/07-item-detail.html,
+ *   design/pages/inventory-duplicates.html, design/pages/item-detail-swipe.html
  */
 
-import { PackageOpen, Plus, ScanLine, Search } from 'lucide-react';
+import { CopyCheck, PackageOpen, Plus, ScanLine, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
@@ -14,8 +15,10 @@ import { Photo } from '../components/Photo';
 import { Button, Chip, EmptyState, ErrorNote, Select, Spinner, Tag } from '../components/ui';
 import { filterInventory, type InventorySort, isLowStock, useInventory } from '../household/data';
 import { Shell } from '../layout/Shell';
+import { pagerPosition } from '../inventory/pager';
 import { useReceipt } from '../receipt/ReceiptContext';
 import { AddItemDialog } from './inventory/AddItemDialog';
+import { DuplicatesDialog } from './inventory/DuplicatesDialog';
 import { ItemDetailPanel } from './inventory/ItemDetailPanel';
 
 export function Inventory() {
@@ -27,12 +30,14 @@ export function Inventory() {
   const [category, setCategory] = useState<string | null>(null);
   const [sort, setSort] = useState<InventorySort>('newest');
   const [adding, setAdding] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
 
   const items = useMemo(() => (inventory.data ?? []).filter((item) => !item.deleted), [inventory.data]);
   const categories = useMemo(() => [...new Set(items.map((item) => item.category))].sort(), [items]);
   const rows = useMemo(() => filterInventory(items, query, category, sort), [items, query, category, sort]);
   const lowCount = items.filter(isLowStock).length;
   const selected = items.find((item) => item.id === itemId) ?? null;
+  const position = useMemo(() => pagerPosition(rows.map((item) => item.id), itemId), [rows, itemId]);
 
   const search = (
     <label className="relative hidden md:block">
@@ -57,6 +62,9 @@ export function Inventory() {
           </Button>
           <Button icon={<ScanLine aria-hidden className="h-4 w-4" />} onClick={receipt.open}>
             Scan hauls
+          </Button>
+          <Button icon={<CopyCheck aria-hidden className="h-4 w-4" />} onClick={() => setReviewing(true)} disabled={items.length < 2}>
+            Find duplicates
           </Button>
         </div>
         <div className="flex items-center gap-3">
@@ -132,9 +140,17 @@ export function Inventory() {
         </ul>
       )}
 
-      {selected ? <ItemDetailPanel item={selected} onClose={() => navigate('/inventory')} /> : null}
+      {selected ? (
+        <ItemDetailPanel
+          item={selected}
+          position={position}
+          onMove={(id) => navigate(`/inventory/${id}`, { replace: true })}
+          onClose={() => navigate('/inventory')}
+        />
+      ) : null}
       {itemId && !selected && inventory.isSuccess ? <ErrorNote>That item is no longer in the inventory.</ErrorNote> : null}
       {adding ? <AddItemDialog onClose={() => setAdding(false)} /> : null}
+      {reviewing ? <DuplicatesDialog onClose={() => setReviewing(false)} /> : null}
     </Shell>
   );
 }

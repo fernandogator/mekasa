@@ -1,13 +1,13 @@
 /**
  * Item detail side panel.
  *
- * Satisfies: UI-007 (Desktop Web App) AC6 (UI-006 AC2, AC3, AC5; REQ-INV-016–018)
- * Design: design/exports/superdesign/desktop/07-item-detail.html
+ * Satisfies: UI-007 (Desktop Web App) AC6 (UI-006 AC2, AC3, AC5; REQ-INV-016–018), AC22 (REQ-INV-020)
+ * Design: design/exports/superdesign/desktop/07-item-detail.html, design/pages/item-detail-swipe.html
  */
 
 import { useQueryClient } from '@tanstack/react-query';
-import { Copy, Expand, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Copy, Expand, X } from 'lucide-react';
+import { type TouchEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { api } from '../../api/endpoints';
@@ -18,10 +18,22 @@ import { Button, IconButton, Stepper, Tag } from '../../components/ui';
 import { appLog } from '../../diagnostics/appLog';
 import { useUpdateItem } from '../../household/data';
 import { useHousehold } from '../../household/HouseholdProvider';
+import { isTypingTarget, type PagerPosition, positionLabel, swipeDirection } from '../../inventory/pager';
 
 const UNDO_MS = 5000;
 
-export function ItemDetailPanel({ item, onClose }: { item: InventoryItem; onClose: () => void }) {
+export function ItemDetailPanel({
+  item,
+  position = null,
+  onMove,
+  onClose,
+}: {
+  item: InventoryItem;
+  /** Where the item sits in the grid; null shows no position or chevrons (UI-007 AC22). */
+  position?: PagerPosition | null;
+  onMove?: (id: string) => void;
+  onClose: () => void;
+}) {
   const { household } = useHousehold();
   const client = useQueryClient();
   const toast = useToast();
@@ -31,9 +43,12 @@ export function ItemDetailPanel({ item, onClose }: { item: InventoryItem; onClos
   const [copied, setCopied] = useState(false);
   const refreshed = useRef<string | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const previousId = onMove ? (position?.previousId ?? null) : null;
+  const nextId = onMove ? (position?.nextId ?? null) : null;
 
   useEffect(() => setName(item.name), [item.id, item.name]);
-  useEffect(() => closeRef.current?.focus(), [item.id]);
+  useEffect(() => closeRef.current?.focus(), []);
 
   useEffect(() => {
     if (item.image_url || refreshed.current === item.id) return;
@@ -47,10 +62,62 @@ export function ItemDetailPanel({ item, onClose }: { item: InventoryItem; onClos
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !enlarged) onClose();
+      if (isTypingTarget(event.target) || event.altKey || event.ctrlKey || event.metaKey) return;
+      const target = event.key === 'ArrowLeft' ? previousId : event.key === 'ArrowRight' ? nextId : null;
+      if (target && onMove) {
+        event.preventDefault();
+        onMove(target);
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, enlarged]);
+  }, [onClose, enlarged, previousId, nextId, onMove]);
+
+  function onTouchStart(event: TouchEvent) {
+    const touch = event.touches[0];
+    touchStart.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+  }
+
+  function onTouchEnd(event: TouchEvent) {
+    const start = touchStart.current;
+    const touch = event.changedTouches[0];
+    touchStart.current = null;
+    if (!start || !touch || !onMove) return;
+    const direction = swipeDirection(touch.clientX - start.x, touch.clientY - start.y);
+    const target = direction === 'next' ? nextId : direction === 'previous' ? previousId : null;
+    if (target) onMove(target);
+  }
+
+  const chevrons = (
+    <>
+      {previousId ? (
+        <IconButton
+          label="Previous item"
+          onClick={(event) => {
+            event.stopPropagation();
+            onMove?.(previousId);
+          }}
+          className="absolute left-3 top-1/2 -translate-y-1/2 bg-elevated/90 shadow-card"
+          data-testid="pager-previous"
+        >
+          <ChevronLeft aria-hidden className="h-5 w-5" />
+        </IconButton>
+      ) : null}
+      {nextId ? (
+        <IconButton
+          label="Next item"
+          onClick={(event) => {
+            event.stopPropagation();
+            onMove?.(nextId);
+          }}
+          className="absolute right-3 top-1/2 -translate-y-1/2 bg-elevated/90 shadow-card"
+          data-testid="pager-next"
+        >
+          <ChevronRight aria-hidden className="h-5 w-5" />
+        </IconButton>
+      ) : null}
+    </>
+  );
 
   function saveName() {
     const trimmed = name.trim();
@@ -93,8 +160,13 @@ export function ItemDetailPanel({ item, onClose }: { item: InventoryItem; onClos
 
   return createPortal(
     <div className="fixed inset-0 z-30 flex justify-end bg-scrim/25" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <aside role="dialog" aria-modal="false" aria-label={`${item.name} details`} data-testid="item-detail" className="flex h-full w-[440px] max-w-full flex-col bg-elevated shadow-raised">
+      <aside role="dialog" aria-modal="false" aria-label={`${item.name} details`} data-testid="item-detail" className="flex h-full w-[440px] max-w-full flex-col bg-elevated shadow-raised" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <div className="min-h-0 flex-1 overflow-y-auto p-6">
+          {position && onMove ? (
+            <p className="label-caps mb-3" aria-live="polite" data-testid="pager-position">
+              {positionLabel(position)}
+            </p>
+          ) : null}
           <div className="relative">
             <button type="button" onClick={() => setEnlarged(true)} aria-label="Enlarge picture" className="block w-full overflow-hidden rounded-lg">
               <Photo url={item.image_url} alt={item.name} category={item.category} className="h-72 w-full" />
@@ -105,6 +177,7 @@ export function ItemDetailPanel({ item, onClose }: { item: InventoryItem; onClos
             <IconButton label="Close details" onClick={onClose} className="absolute right-3 top-3 bg-elevated/90 shadow-card">
               <X aria-hidden className="h-5 w-5" />
             </IconButton>
+            {chevrons}
           </div>
 
           <label className="mt-6 block">
@@ -184,11 +257,19 @@ export function ItemDetailPanel({ item, onClose }: { item: InventoryItem; onClos
       </aside>
 
       {enlarged ? (
-        <div role="dialog" aria-label={`${item.name} picture`} className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/85 p-10" onClick={() => setEnlarged(false)}>
+        <div
+          role="dialog"
+          aria-label={`${item.name} picture`}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/85 p-10"
+          onClick={() => setEnlarged(false)}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+        >
           <Photo url={item.image_url} alt={item.name} category={item.category} className="max-h-full max-w-full rounded-lg" />
           <IconButton label="Close picture" onClick={() => setEnlarged(false)} className="absolute right-6 top-6 bg-elevated">
             <X aria-hidden className="h-5 w-5" />
           </IconButton>
+          {chevrons}
         </div>
       ) : null}
     </div>,

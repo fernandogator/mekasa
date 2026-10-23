@@ -2,7 +2,7 @@
  * Layout tests for every desktop screen (UI-007; guardrail rule 9).
  *
  * Satisfies: UI-007 (Desktop Web App)
- * Acceptance criteria: AC1–AC10, AC13, AC14
+ * Acceptance criteria: AC1–AC10, AC13, AC14, AC21, AC22
  * Designs: design/exports/superdesign/desktop/01–08
  *
  * Each test asserts the structure through roles first, then compares a
@@ -62,6 +62,47 @@ for (const size of SIZES) {
       await expect(page.getByRole('textbox', { name: 'Product name' })).toHaveValue('Whole Milk');
       await expect(page.getByText('041303001486')).toBeVisible();
       await expect(page).toHaveScreenshot(`ItemDetail_${size.name}.png`);
+    });
+
+    test('item detail previous and next (AC22)', async ({ page }) => {
+      await useFixtures(page);
+      await page.goto('/inventory/inv-1');
+      const detail = page.getByTestId('item-detail');
+      await expect(detail.getByTestId('pager-position')).toHaveText('1 of 8');
+      await expect(detail.getByRole('button', { name: 'Previous item' })).toHaveCount(0);
+      await page.keyboard.press('ArrowRight');
+      await expect(page).toHaveURL(/\/inventory\/inv-2$/);
+      await expect(page.getByRole('textbox', { name: 'Product name' })).toHaveValue('Honeycrisp Apples');
+      await expect(detail.getByTestId('pager-position')).toHaveText('2 of 8');
+      await detail.getByRole('button', { name: 'Previous item' }).click();
+      await expect(page.getByRole('textbox', { name: 'Product name' })).toHaveValue('Whole Milk');
+      await page.getByRole('textbox', { name: 'Product name' }).focus();
+      await page.keyboard.press('ArrowRight');
+      await expect(page).toHaveURL(/\/inventory\/inv-1$/);
+    });
+
+    test('duplicates review (AC21)', async ({ page }) => {
+      await useFixtures(page);
+      await page.goto('/inventory');
+      await page.getByRole('button', { name: 'Find duplicates' }).click();
+      const dialog = page.getByTestId('duplicates-dialog');
+      await expect(dialog.getByTestId('duplicate-group')).toHaveCount(2);
+      await expect(dialog.getByText('Same barcode')).toBeVisible();
+      await expect(dialog.getByText('Same name')).toBeVisible();
+      await expect(dialog.getByText('Keeps this photo')).toHaveCount(2);
+      await expect(dialog.getByText('Merges into Whole Milk · keeps qty 2 (higher) · no photo')).toBeVisible();
+      await expect(dialog.getByRole('button', { name: 'Merge all 2' })).toBeVisible();
+      await expect(page).toHaveScreenshot(`Duplicates_${size.name}.png`);
+      await dialog.getByRole('button', { name: 'Merge 2 items into Whole Milk' }).click();
+      await expect(page.getByText('Merged 2 items into Whole Milk')).toBeVisible();
+    });
+
+    test('duplicates review, nothing found (AC21)', async ({ page }) => {
+      await useFixtures(page, { noDuplicates: true });
+      await page.goto('/inventory');
+      await page.getByRole('button', { name: 'Find duplicates' }).click();
+      await expect(page.getByText('No duplicates found')).toBeVisible();
+      await expect(page.getByText('Your inventory is tidy.')).toBeVisible();
     });
 
     test('shopping list (AC7)', async ({ page }) => {

@@ -291,7 +291,7 @@ Description: **While** an item detail is open from a list, a household
 member **shall** be able to swipe left for the next item and right for the
 previous item of that list, without going back to it.
 Design Artifact: design/pages/item-detail-swipe.html (Superdesign "Mekasa v1.0", draft "Item Detail Pager", 2026-10-05)
-Test File: ios/MekasaTests/ItemPagerTests.swift, android-fable/app/src/test/java/app/mekasa/fable/ui/ItemPagerTest.kt
+Test File: ios/MekasaTests/ItemPagerTests.swift, android-fable/app/src/test/java/app/mekasa/fable/ui/ItemPagerTest.kt, web/src/inventory/pager.test.ts (UI-007 AC22)
 Acceptance Criteria:
 - AC1: The order is the list the detail was opened from, as shown at that moment: the Inventory list with its search and category grouping, or the Dashboard section (Low stock, or Recently added on Android). Items removed while the detail is open are skipped
 - AC2: A horizontal swipe (at least 60 pt/dp and clearly more horizontal than vertical) moves one item: left → next, right → previous. Vertical scrolling is unaffected; on iOS a swipe that starts at the left screen edge stays the system "back" gesture
@@ -309,7 +309,7 @@ inventory items that are the same product listed more than once, review
 each group, and merge it into one item that keeps the newest picture.
 Nothing merges without the member's confirmation.
 Design Artifact: design/pages/inventory-duplicates.html (Superdesign "Mekasa v1.0", draft "Duplicates Review", 2026-10-06)
-Test File: tests/backend/test_inventory_duplicates.py, ios/MekasaTests/InventoryDuplicatesTests.swift, android-fable/app/src/test/java/app/mekasa/fable/ui/InventoryDuplicatesTest.kt
+Test File: tests/backend/test_inventory_duplicates.py, ios/MekasaTests/InventoryDuplicatesTests.swift, android-fable/app/src/test/java/app/mekasa/fable/ui/InventoryDuplicatesTest.kt, web/src/inventory/duplicates.test.ts (UI-007 AC21)
 Acceptance Criteria:
 - AC1: `GET /v1/households/{hid}/inventory/duplicates` (household member) returns groups of two or more visible (not soft-deleted) items that share any of the following:
   - the same non-empty `barcode` (reason `same_barcode`);
@@ -884,6 +884,49 @@ Acceptance Criteria:
     another store's list (REQ-024 AC2).
   - **Where** the household has no saved stores, the screen **shall** show
     one list as before and point owners to Settings to add stores.
+- AC21: **Find duplicates** (REQ-INV-021). Added 2026-10-23.
+  - The Inventory screen **shall** have a "Find duplicates" button.
+  - **When** the user chooses it, the web app **shall** call
+    `GET …/inventory/duplicates` and open the Duplicates review
+    (`design/pages/inventory-duplicates.html`) as a dialog.
+  - Each group card **shall** show the reason chip ("Same barcode", "Same
+    product", "Same name") and each item's picture, name, category,
+    quantity and photo age, mark the survivor "Keeps this photo", and show
+    a one-line preview of the result ("Merges into Bananas · keeps qty 3
+    (higher) · newest photo").
+  - **When** the user chooses "Merge" on a card, the web app **shall** call
+    `POST …/inventory/merge` with that group's ids and confirm with
+    "Merged N items into {name}".
+  - **When** the user chooses "Not duplicates", the web app **shall** hide
+    that group in this browser for this household until any of its items
+    changes.
+  - **Where** more than one group is shown, the dialog **shall** offer
+    "Merge all N", which merges every group shown.
+  - **When** a merge succeeds, the web app **shall** update the inventory
+    and shopping list from the response without a full reload.
+  - **If** the merge is rejected (`404`, `409`), **then** the web app
+    **shall** say the items changed, reload the groups and change nothing
+    else.
+  - **When** there are no groups, the dialog **shall** show "No duplicates
+    found · Your inventory is tidy."
+- AC22: **Previous and next item** (REQ-INV-020). Added 2026-10-23.
+  - **While** the item detail panel shows an item that is in the
+    Inventory grid, the panel **shall** show its position ("3 of 24") and
+    previous and next chevrons on the picture, in the grid's current
+    order (search, category and sort as shown).
+  - **When** the user chooses a chevron, presses the Left or Right arrow
+    key (outside a text field), or swipes horizontally at least 60 px on a
+    touch screen, the panel **shall** show the previous or next item and
+    update the address (`/inventory/{id}`).
+  - **While** the first or last item is shown, the chevron on that side
+    **shall** be hidden and the matching key or swipe **shall** do
+    nothing; the order does not wrap.
+  - **If** the item is not in the grid (filtered out), **then** the panel
+    **shall** show no position or chevrons.
+  - The enlarged picture **shall** offer the same chevrons and arrow keys
+    and stay open while the item changes.
+  - Moving to another item **shall** run the same on-open refreshes as
+    opening it from the grid (REQ-INV-020 AC7).
 ---
 
 ## Non-Functional Requirements
