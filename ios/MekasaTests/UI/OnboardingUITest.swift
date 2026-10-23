@@ -76,6 +76,12 @@ final class OnboardingUITest: XCTestCase {
         XCTAssertEqual(Self.resumeStep(for: household), .done)
     }
 
+    func testServerErrorDoesNotStartANewHouse() {
+        XCTAssertTrue(APIError.server(status: 404, detail: "No household").isMissingHousehold)
+        XCTAssertFalse(APIError.server(status: 500, detail: "Internal Server Error").isMissingHousehold)
+        XCTAssertFalse(APIError.invalidResponse.isMissingHousehold)
+    }
+
     @MainActor
     func testFlow_inviteDeepLinkIsRemembered() {
         let session = AppSession()
